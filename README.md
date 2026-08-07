@@ -4,7 +4,7 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_rpa-ai-guidance-hub-ui&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DEFRA_rpa-ai-guidance-hub-ui)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_rpa-ai-guidance-hub-ui&metric=coverage)](https://sonarcloud.io/summary/new_code?id=DEFRA_rpa-ai-guidance-hub-ui)
 
-Core delivery platform Node.js Frontend Template.
+Frontend service for the RPA Guidance Hub, built on the Core Delivery Platform.
 
 - [Requirements](#requirements)
   - [Node.js](#nodejs)
@@ -61,25 +61,12 @@ disable setting `SESSION_CACHE_ENGINE=false` or changing the default value in `s
 
 ## Proxy
 
-We are using forward-proxy which is set up by default. To make use of this: `import { fetch } from 'undici'` then
-because of the `setGlobalDispatcher(new ProxyAgent(proxyUrl))` calls will use the ProxyAgent Dispatcher
+Proxying is handled at the infrastructure level via the `NODE_USE_ENV_PROXY` environment variable, rather than the
+application setting up a global `undici` `ProxyAgent` dispatcher itself. When enabled, Node's built-in `fetch`
+(and anything built on `undici`) will automatically pick up the standard `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY`
+environment variables.
 
-If you are not using Wreck, Axios or Undici or a similar http that uses `Request`. Then you may have to provide the
-proxy dispatcher:
-
-To add the dispatcher to your own client:
-
-```javascript
-import { ProxyAgent } from 'undici'
-
-return await fetch(url, {
-  dispatcher: new ProxyAgent({
-    uri: proxyUrl,
-    keepAliveTimeout: 10,
-    keepAliveMaxTimeout: 10
-  })
-})
-```
+`NODE_USE_ENV_PROXY` is set to `true` by default when deployed to the platform.
 
 ## Local Development
 
@@ -101,11 +88,23 @@ npm run git:hooks
 
 ### Development
 
-To run the application in `development` mode run:
+To run the frontend and backend together locally:
+
+**1. Start the backend** (`aice-triage-automation` repo):
+
+```bash
+npm run start:dev
+```
+
+The backend runs on `http://localhost:3001` by default.
+
+**2. Start the frontend** (this repo):
 
 ```bash
 npm run dev
 ```
+
+The frontend runs on `http://localhost:3000`. The home page shows whether the backend is reachable.
 
 ### Production
 
@@ -187,7 +186,6 @@ A local environment with:
 - Redis
 - MongoDB
 - This service.
-- A commented out backend example.
 
 ```bash
 docker compose up --build -d
