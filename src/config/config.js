@@ -45,13 +45,7 @@ const config = convict({
   serviceName: {
     doc: 'Applications Service Name',
     format: String,
-    default: 'AICE Triage Automation'
-  },
-  triageApiUrl: {
-    doc: 'Base URL for the triage backend API',
-    format: 'url',
-    default: 'http://localhost:3001',
-    env: 'TRIAGE_API_URL'
+    default: 'RPA Guidance Hub'
   },
   root: {
     doc: 'Project root',

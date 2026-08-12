@@ -57,7 +57,7 @@ describe('views plugin', () => {
         expect.objectContaining({
           assetPath: '/public/assets',
           getAssetPath: expect.any(Function),
-          serviceName: 'AICE Triage Automation'
+          serviceName: 'RPA Guidance Hub'
         })
       )
     })
@@ -77,7 +77,7 @@ describe('views plugin', () => {
 
       const ctx = viewPlugin.options.context()
 
-      expect(ctx.serviceName).toBe('AICE Triage Automation')
+      expect(ctx.serviceName).toBe('RPA Guidance Hub')
     })
 
     test('Should expose cspNonce when Blankie is registered', async () => {

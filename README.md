@@ -88,23 +88,12 @@ npm run git:hooks
 
 ### Development
 
-To run the frontend and backend together locally:
-
-**1. Start the backend** (`aice-triage-automation` repo):
-
-```bash
-npm run start:dev
-```
-
-The backend runs on `http://localhost:3001` by default.
-
-**2. Start the frontend** (this repo):
-
+To run the frontend:
 ```bash
 npm run dev
 ```
 
-The frontend runs on `http://localhost:3000`. The home page shows whether the backend is reachable.
+The frontend runs on `http://localhost:3000`.
 
 ### Production
 

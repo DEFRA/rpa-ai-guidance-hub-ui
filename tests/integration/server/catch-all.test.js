@@ -21,7 +21,7 @@ describe('#catchAll integration', () => {
     })
 
     expect(result).toEqual(
-      expect.stringContaining('Page not found | AICE Triage Automation')
+      expect.stringContaining('Page not found | RPA Guidance Hub')
     )
     expect(statusCode).toBe(statusCodes.HTTP_STATUS_NOT_FOUND)
   })
