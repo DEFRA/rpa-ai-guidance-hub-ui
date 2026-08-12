@@ -12,7 +12,7 @@
     "build": "vite build",
     "build:watch": "vite build --watch",
     "start": "NODE_ENV=production node --env-file-if-exists=.env --use-strict ./src/index.js",
-    "start:dev": "NODE_ENV=development run-p build:watch server:watch",
+    "start:dev": "NODE_ENV=development run-s build:watch server:watch",
     "dev": "npm run start:dev",
     "server:watch": "nodemon --env-file-if-exists=.env --watch src --watch .public --ext js,njk,yaml,json --ignore src/client --exec 'node --env-file-if-exists=.env --use-strict ./src/index.js'",
     "format": "prettier --write .",

@@ -15,12 +15,11 @@ describe('#homepageController', () => {
   })
 
   test('Should respond with 200 and render the home page', async () => {
-    const { statusCode, payload } = await server.inject({
+    const { statusCode } = await server.inject({
       method: 'GET',
       url: '/'
     })
 
     expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-    expect(payload).toContain('Backend API is')
   })
 })

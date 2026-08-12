@@ -20,7 +20,7 @@ const contentSecurityPolicy = {
     ],
     imgSrc: ['self', 'data:'],
     frameSrc: ['self', 'data:'],
-    objectSrc: ['self'],
+    objectSrc: ['none'],
     frameAncestors: ['none'],
     formAction: ['self'],
     manifestSrc: ['self'],
