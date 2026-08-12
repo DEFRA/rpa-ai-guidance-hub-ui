@@ -17,7 +17,7 @@ services:
       PORT: 3000
       NODE_ENV: development
       REDIS_HOST: redis
-      LOCALSTACK_ENDPOINT: http://floci:4566
+      FLOCI_ENDPOINT: http://floci:4566
       USE_SINGLE_INSTANCE_CACHE: true
     networks:
       - rpa-ai-guidance-hub-ui

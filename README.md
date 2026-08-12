@@ -31,6 +31,8 @@ Frontend service for the RPA Guidance Hub, built on the Core Delivery Platform.
 
 ### Node.js
 
+This project requires Node.js >=24.
+
 Please install Node Version Manager [nvm](https://github.com/creationix/nvm)
 
 To use the correct version of Node.js for this application, via nvm:
@@ -83,7 +85,7 @@ npm install
 Install git hooks (optional)
 
 ```bash
-npm run git:hooks
+npm run git:setup-hooks
 ```
 
 ### Development
@@ -112,6 +114,20 @@ To view them in your command line run:
 npm run
 ```
 
+### Linting & Formatting
+
+Lint the codebase:
+
+```bash
+npm run lint
+```
+
+Fix linting issues:
+
+```bash
+npm run lint:js:fix
+```
+
 ### Update dependencies
 
 To update dependencies use [npm-check-updates](https://github.com/raineorshine/npm-check-updates):
@@ -121,16 +137,6 @@ To update dependencies use [npm-check-updates](https://github.com/raineorshine/n
 
 ```bash
 ncu --interactive --format group
-```
-
-### Formatting
-
-#### Windows prettier issue
-
-If you are having issues with formatting of line breaks on Windows update your global git config by running:
-
-```bash
-git config --global core.autocrlf false
 ```
 
 ## Docker
@@ -171,7 +177,6 @@ docker run -p 3000:3000 rpa-ai-guidance-hub-ui
 
 A local environment with:
 
-- Floci (replacing Localstack) for AWS services (S3, SQS)
 - Redis
 - MongoDB
 - This service.
