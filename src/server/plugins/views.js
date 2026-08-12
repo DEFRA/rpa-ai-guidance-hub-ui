@@ -19,22 +19,29 @@ const nunjucksEnvironment = nunjucks.configure(
   }
 )
 
+function loadManifest () {
+  const manifestPath = path.join(
+    config.get('root'),
+    '.public/.vite/manifest.json'
+  )
+
+  if (!fs.existsSync(manifestPath)) {
+    if (config.get('env') === 'production') {
+      throw new Error(`Vite manifest file not found at ${manifestPath}`)
+    }
+
+    console.warn(`Vite manifest file not found at ${manifestPath}. Asset paths may not be resolved correctly.`)
+
+    return {}
+  }
+
+  return JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+}
+
 const assetPath = config.get('assetPath')
 const serviceName = config.get('serviceName')
 
-const manifestPath = path.join(
-  config.get('root'),
-  '.public/.vite/manifest.json'
-)
-
-const viteManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-
-const getAssetPath = (asset) => {
-  const manifestEntry = viteManifest?.[asset]
-  const viteAsset =
-    typeof manifestEntry === 'object' ? manifestEntry?.file : manifestEntry
-  return `${assetPath}/${viteAsset ?? asset}`
-}
+const viteManifest = loadManifest()
 
 const viewPlugin = {
   plugin: hapiVision,
@@ -56,7 +63,15 @@ const viewPlugin = {
     isCached: config.get('env') === 'production',
     context: (request) => ({
       assetPath: `${assetPath}/assets`,
-      getAssetPath,
+      getAssetPath (asset) {
+        const manifestEntry = viteManifest?.[asset]
+
+        const viteAsset = typeof manifestEntry === 'object'
+          ? manifestEntry?.file
+          : manifestEntry
+
+        return `${assetPath}/${viteAsset ?? asset}`
+      },
       serviceName,
       // Blankie generates nonces when configured with generateNonces: true
       // Returns { script, style } when enabled, undefined otherwise

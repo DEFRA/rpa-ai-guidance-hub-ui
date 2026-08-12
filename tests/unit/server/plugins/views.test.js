@@ -1,12 +1,15 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest'
 
 const mockReadFileSync = vi.fn()
+const mockExistsSyncFn = vi.fn()
 const mockNunjucksConfigure = vi.fn()
 const mockNunjucksCompile = vi.fn()
+const mockConfigGet = vi.fn()
 
 vi.mock('node:fs', () => ({
   default: {
-    readFileSync: mockReadFileSync
+    readFileSync: mockReadFileSync,
+    existsSync: mockExistsSyncFn
   }
 }))
 
@@ -17,16 +20,37 @@ vi.mock('nunjucks', () => ({
   }
 }))
 
+vi.mock('../../config/config.js', () => ({
+  config: {
+    get: mockConfigGet
+  }
+}))
+
 describe('views plugin', () => {
   beforeEach(() => {
     mockReadFileSync.mockReset()
+    mockExistsSyncFn.mockReset()
     mockNunjucksConfigure.mockReset()
     mockNunjucksCompile.mockReset()
+    mockConfigGet.mockReset()
+
+    // Set up default config mock behavior
+    mockConfigGet.mockImplementation((key) => {
+      const configValues = {
+        root: '/home/shaun/repos/ai/rpa/rpa-ai-guidance-hub-ui',
+        assetPath: '/public',
+        serviceName: 'RPA Guidance Hub',
+        env: 'development'
+      }
+      return configValues[key]
+    })
+
     vi.resetModules()
   })
 
   describe('Context configuration', () => {
     beforeEach(() => {
+      mockExistsSyncFn.mockReturnValue(true)
       mockReadFileSync.mockReturnValue(
         JSON.stringify({
           'src/client/javascripts/application.js': {
@@ -125,6 +149,7 @@ describe('views plugin', () => {
 
   describe('Vite manifest handling', () => {
     beforeEach(() => {
+      mockExistsSyncFn.mockReturnValue(true)
       mockNunjucksConfigure.mockReturnValue({ addFilter: vi.fn() })
     })
 
@@ -177,8 +202,91 @@ describe('views plugin', () => {
     })
   })
 
+  describe('loadManifest error handling', () => {
+    test('Should handle missing manifest file in development mode', async () => {
+      mockExistsSyncFn.mockReturnValue(false)
+      mockConfigGet.mockImplementation((key) => {
+        const configValues = {
+          root: '/home/shaun/repos/ai/rpa/rpa-ai-guidance-hub-ui',
+          assetPath: '/public',
+          serviceName: 'RPA Guidance Hub',
+          env: 'development'
+        }
+        return configValues[key]
+      })
+
+      vi.resetModules()
+      mockNunjucksConfigure.mockReturnValue({ addFilter: vi.fn() })
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      const { viewPlugin } =
+        await import('../../../../src/server/plugins/views.js')
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Vite manifest file not found')
+      )
+
+      // getAssetPath should work with empty manifest
+      const ctx = viewPlugin.options.context()
+      expect(ctx.getAssetPath('any-asset.js')).toBe('/public/any-asset.js')
+
+      warnSpy.mockRestore()
+    })
+
+    test('Should throw error on invalid JSON', async () => {
+      mockExistsSyncFn.mockReturnValue(true)
+      mockReadFileSync.mockReturnValue('{ invalid json')
+      mockConfigGet.mockImplementation((key) => {
+        const configValues = {
+          root: '/home/shaun/repos/ai/rpa/rpa-ai-guidance-hub-ui',
+          assetPath: '/public',
+          serviceName: 'RPA Guidance Hub',
+          env: 'development'
+        }
+        return configValues[key]
+      })
+
+      vi.resetModules()
+      mockNunjucksConfigure.mockReturnValue({ addFilter: vi.fn() })
+
+      await expect(
+        import('../../../../src/server/plugins/views.js')
+      ).rejects.toThrow(SyntaxError)
+    })
+
+    test('Should return empty manifest when file does not exist', async () => {
+      mockExistsSyncFn.mockReturnValue(false)
+      mockConfigGet.mockImplementation((key) => {
+        const configValues = {
+          root: '/home/shaun/repos/ai/rpa/rpa-ai-guidance-hub-ui',
+          assetPath: '/public',
+          serviceName: 'RPA Guidance Hub',
+          env: 'development'
+        }
+        return configValues[key]
+      })
+
+      vi.resetModules()
+      mockNunjucksConfigure.mockReturnValue({ addFilter: vi.fn() })
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      const { viewPlugin } =
+        await import('../../../../src/server/plugins/views.js')
+
+      const ctx = viewPlugin.options.context()
+
+      // When manifest is empty/missing, asset path should be returned as-is
+      expect(ctx.getAssetPath('src/client/javascripts/app.js')).toBe(
+        '/public/src/client/javascripts/app.js'
+      )
+
+      console.warn.mockRestore()
+    })
+  })
+
   describe('getAssetPath function', () => {
     beforeEach(() => {
+      mockExistsSyncFn.mockReturnValue(true)
       mockNunjucksConfigure.mockReturnValue({ addFilter: vi.fn() })
     })
 
@@ -283,6 +391,7 @@ describe('views plugin', () => {
 
   describe('Template compilation', () => {
     beforeEach(() => {
+      mockExistsSyncFn.mockReturnValue(true)
       mockReadFileSync.mockReturnValue(JSON.stringify({}))
       mockNunjucksConfigure.mockReturnValue({ addFilter: vi.fn() })
     })
