@@ -150,7 +150,7 @@ const config = convict({
       password: {
         doc: 'session cookie password',
         format: String,
-        default: 'the-password-must-be-at-least-32-characters-long',
+        default: null,
         env: 'SESSION_COOKIE_PASSWORD',
         sensitive: true
       },
@@ -172,13 +172,15 @@ const config = convict({
     username: {
       doc: 'Redis cache username',
       format: String,
-      default: '',
+      default: null,
+      nullable: process.env.NODE_ENV !== 'production',
       env: 'REDIS_USERNAME'
     },
     password: {
       doc: 'Redis cache password',
       format: '*',
-      default: '',
+      default: null,
+      nullable: process.env.NODE_ENV !== 'production',
       sensitive: true,
       env: 'REDIS_PASSWORD'
     },
@@ -220,7 +222,52 @@ const config = convict({
       default: 'x-cdp-request-id',
       env: 'TRACING_HEADER'
     }
-  }
+  },
+  auth: {
+    provider: {
+      doc: 'Authentication provider to use',
+      format: ['entra', 'local'],
+      default: 'entra',
+      env: 'AUTH_PROVIDER'
+    },
+    entra: {
+      tenantId: {
+        doc: 'Entra ID (Azure AD) tenant ID (GUID) that issues tokens for this app registration',
+        format: String,
+        default: null,
+        nullable: process.env.NODE_ENV !== 'production',
+        env: 'ENTRA_TENANT_ID'
+      },
+      clientId: {
+        doc: 'Entra ID application (client) ID registered for this portal',
+        format: String,
+        default: null,
+        nullable: process.env.NODE_ENV !== 'production',
+        env: 'ENTRA_CLIENT_ID'
+      },
+      clientSecret: {
+        doc: 'Entra ID application client secret',
+        format: String,
+        default: null,
+        nullable: process.env.NODE_ENV !== 'production',
+        env: 'ENTRA_CLIENT_SECRET',
+        sensitive: true
+      },
+      authorityHost: {
+        doc: 'Entra authority host used to build the authorize/token/JWKS/logout endpoints',
+        format: String,
+        default: 'https://login.microsoftonline.com',
+        env: 'ENTRA_AUTHORITY_HOST'
+      },
+      redirectHost: {
+        doc: 'Entra redirect host used to build the redirect URI for the OIDC flow',
+        format: String,
+        default: null,
+        nullable: process.env.NODE_ENV !== 'production',
+        env: 'ENTRA_REDIRECT_HOST'
+      }
+    }
+  },
 })
 
 config.validate({ allowed: 'strict' })
