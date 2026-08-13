@@ -1,4 +1,6 @@
 process.env.SESSION_COOKIE_PASSWORD = 'the-password-must-be-at-least-32-characters-long'
+process.env.REDIS_USERNAME = 'user'
+process.env.REDIS_PASSWORD = 'pass'
 process.env.AUTH_PROVIDER = 'local'
 process.env.ENTRA_TENANT_ID = 'fake-tenant-id'
 process.env.ENTRA_CLIENT_ID = 'fake-client-id'
