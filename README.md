@@ -4,7 +4,7 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_rpa-ai-guidance-hub-ui&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DEFRA_rpa-ai-guidance-hub-ui)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_rpa-ai-guidance-hub-ui&metric=coverage)](https://sonarcloud.io/summary/new_code?id=DEFRA_rpa-ai-guidance-hub-ui)
 
-Core delivery platform Node.js Frontend Template.
+Frontend service for the RPA Guidance Hub, built on the Core Delivery Platform.
 
 - [Requirements](#requirements)
   - [Node.js](#nodejs)
@@ -30,6 +30,8 @@ Core delivery platform Node.js Frontend Template.
 ## Requirements
 
 ### Node.js
+
+This project requires Node.js >=24.
 
 Please install Node Version Manager [nvm](https://github.com/creationix/nvm)
 
@@ -61,25 +63,12 @@ disable setting `SESSION_CACHE_ENGINE=false` or changing the default value in `s
 
 ## Proxy
 
-We are using forward-proxy which is set up by default. To make use of this: `import { fetch } from 'undici'` then
-because of the `setGlobalDispatcher(new ProxyAgent(proxyUrl))` calls will use the ProxyAgent Dispatcher
+Proxying is handled at the infrastructure level via the `NODE_USE_ENV_PROXY` environment variable, rather than the
+application setting up a global `undici` `ProxyAgent` dispatcher itself. When enabled, Node's built-in `fetch`
+(and anything built on `undici`) will automatically pick up the standard `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY`
+environment variables.
 
-If you are not using Wreck, Axios or Undici or a similar http that uses `Request`. Then you may have to provide the
-proxy dispatcher:
-
-To add the dispatcher to your own client:
-
-```javascript
-import { ProxyAgent } from 'undici'
-
-return await fetch(url, {
-  dispatcher: new ProxyAgent({
-    uri: proxyUrl,
-    keepAliveTimeout: 10,
-    keepAliveMaxTimeout: 10
-  })
-})
-```
+`NODE_USE_ENV_PROXY` is set to `true` by default when deployed to the platform.
 
 ## Local Development
 
@@ -96,16 +85,17 @@ npm install
 Install git hooks (optional)
 
 ```bash
-npm run git:hooks
+npm run git:setup-hooks
 ```
 
 ### Development
 
-To run the application in `development` mode run:
-
+To run the frontend:
 ```bash
 npm run dev
 ```
+
+The frontend runs on `http://localhost:3000`.
 
 ### Production
 
@@ -124,6 +114,20 @@ To view them in your command line run:
 npm run
 ```
 
+### Linting & Formatting
+
+Lint the codebase:
+
+```bash
+npm run lint
+```
+
+Fix linting issues:
+
+```bash
+npm run lint:js:fix
+```
+
 ### Update dependencies
 
 To update dependencies use [npm-check-updates](https://github.com/raineorshine/npm-check-updates):
@@ -133,16 +137,6 @@ To update dependencies use [npm-check-updates](https://github.com/raineorshine/n
 
 ```bash
 ncu --interactive --format group
-```
-
-### Formatting
-
-#### Windows prettier issue
-
-If you are having issues with formatting of line breaks on Windows update your global git config by running:
-
-```bash
-git config --global core.autocrlf false
 ```
 
 ## Docker
@@ -183,11 +177,9 @@ docker run -p 3000:3000 rpa-ai-guidance-hub-ui
 
 A local environment with:
 
-- Floci (replacing Localstack) for AWS services (S3, SQS)
 - Redis
 - MongoDB
 - This service.
-- A commented out backend example.
 
 ```bash
 docker compose up --build -d
