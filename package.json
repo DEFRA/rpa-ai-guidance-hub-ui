@@ -44,7 +44,7 @@
     "convict-format-with-validator": "6.2.0",
     "date-fns": "4.4.0",
     "flatted": "3.4.2",
-    "govuk-frontend": "6.2.0",
+    "govuk-frontend": "6.4.0",
     "hapi-pino": "13.0.0",
     "hapi-pulse": "4.0.0",
     "ioredis": "5.11.1",
