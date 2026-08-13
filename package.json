@@ -62,7 +62,7 @@
     "@vitest/coverage-v8": "4.1.9",
     "autoprefixer": "10.5.0",
     "cssnano": "8.0.2",
-    "cssnano-preset-default": "8.0.2",
+    "cssnano-preset-default": "8.0.4",
     "eslint": "9.39.2",
     "husky": "9.1.7",
     "neostandard": "0.13.0",
