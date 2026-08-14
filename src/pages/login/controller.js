@@ -84,7 +84,11 @@ async function logout (request, h) {
  */
 async function _getEntraSession (request) {
   if (!request.auth.isAuthenticated) {
-    throw new Error('Authentication failed')
+    logger.warn(buildErrorLog(request.auth.error, {
+      type: 'entra_bell_authentication_failed'
+    }))
+
+    throw Boom.unauthorized('Authentication failed')
   }
 
   const { profile, token, idToken, refreshToken } = request.auth.credentials

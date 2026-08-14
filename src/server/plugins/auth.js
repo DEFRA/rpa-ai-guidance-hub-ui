@@ -3,6 +3,9 @@ import Jwt from '@hapi/jwt'
 import JwksRsa from 'jwks-rsa'
 
 import { config } from '../../config/config.js'
+import { createLogger } from '../../infra/logging/logger.js'
+
+const logger = createLogger()
 
 const entraConfig = {
   tenantId: config.get('auth.entra.tenantId'),
@@ -21,12 +24,16 @@ const auth = {
       server.auth.default('session')
 
       if (config.get('auth.provider') === 'entra') {
+        logger.info('Using Microsoft Entra ID for authentication')
+
         await server.register(Bell)
 
         const jwksClient = _getJwksClient()
 
         server.auth.strategy('entra', 'bell', _getBellOptions())
         server.decorate('server', 'verifyEntraToken', (token) => _verifyEntraToken(token, jwksClient))
+      } else {
+        logger.info('Using dev authentication strategy (no external identity provider)')
       }
     }
   }
@@ -198,7 +205,7 @@ async function _validateSessionToken (request, session) {
     Jwt.token.verifyTime(decoded)
   } catch (error) {
     if (!config.get('auth.entra.useRefreshTokens')) {
-      request.server.logger.warn(
+      logger.warn(
         { type: 'entra_token_expired', error },
         'Entra ID token invalid and refresh is disabled'
       )
