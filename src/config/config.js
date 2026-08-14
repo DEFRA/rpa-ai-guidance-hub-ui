@@ -271,6 +271,12 @@ const config = convict({
         format: Boolean,
         default: false,
         env: 'ENTRA_USE_REFRESH_TOKENS'
+      },
+      refreshTokenAquisitionTimeout: {
+        doc: 'Timeout in milliseconds for acquiring a new access token using the refresh token.',
+        format: Number,
+        default: 5000,
+        env: 'ENTRA_REFRESH_TOKEN_ACQUISITION_TIMEOUT'
       }
     }
   },

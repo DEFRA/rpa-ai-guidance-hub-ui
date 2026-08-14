@@ -142,7 +142,7 @@ async function _refreshEntraToken (refreshToken) {
   const response = await fetch(tokenEndpoint, {
     method: 'POST',
     body: params,
-    signal: AbortSignal.timeout(5000)
+    signal: AbortSignal.timeout(config.get('auth.entra.refreshTokenAquisitionTimeout'))
   })
 
   if (!response.ok) {
