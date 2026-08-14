@@ -90,6 +90,12 @@ async function createServer () {
     router
   ]
 
+  server.app.cache = server.cache({
+    cache: config.get('session.cache.name'),
+    segment: 'auth-session',
+    expiresIn: config.get('session.cache.ttl')
+  })
+
   await server.register(plugins)
 
   server.ext('onPreResponse', catchAll)

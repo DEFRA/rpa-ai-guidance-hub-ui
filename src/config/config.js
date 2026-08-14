@@ -265,6 +265,12 @@ const config = convict({
         default: null,
         nullable: process.env.NODE_ENV !== 'production',
         env: 'ENTRA_REDIRECT_HOST'
+      },
+      useRefreshTokens: {
+        doc: 'Toggle whether to refresh tokens on expiration. If false, the user will be logged out when the access token expires.',
+        format: Boolean,
+        default: false,
+        env: 'ENTRA_USE_REFRESH_TOKENS'
       }
     }
   },

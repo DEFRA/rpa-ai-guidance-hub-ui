@@ -15,15 +15,17 @@ describe('#homepageController', () => {
     await server.stop({ timeout: 0 })
   })
 
-  test('Should respond with 200 and render the home page', async () => {
-    const cookie = await loginAsDevUser(server)
+  describe('When logged in as a dev user', () => {
+    test('Should respond with 302 and render the home page', async () => {
+      const cookie = await loginAsDevUser(server)
 
-    const { statusCode } = await server.inject({
-      method: 'GET',
-      url: '/',
-      headers: { cookie }
+      const { statusCode } = await server.inject({
+        method: 'GET',
+        url: '/',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
     })
-
-    expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
   })
 })

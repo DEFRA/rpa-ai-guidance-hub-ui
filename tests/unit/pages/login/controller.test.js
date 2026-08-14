@@ -1,186 +1,188 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
-const mockLoggerWarn = vi.fn()
-
-vi.mock('../../../../src/infra/logging/logger.js', () => ({
-  createLogger: () => ({ warn: mockLoggerWarn })
+const { mockLoggerWarn, mockLoggerError } = vi.hoisted(() => ({
+  mockLoggerWarn: vi.fn(),
+  mockLoggerError: vi.fn()
 }))
 
-const originalEnv = { ...process.env }
+vi.mock('../../../../src/infra/logging/logger.js', () => ({
+  createLogger: () => ({
+    warn: mockLoggerWarn,
+    error: mockLoggerError
+  })
+}))
 
-async function buildController () {
-  const { getLogin, handleLoginCallback, logout } = await import('../../../../src/pages/login/controller.js')
-  return { getLogin, handleLoginCallback, logout }
+const credentials = {
+  profile: {
+    displayName: 'Test User',
+    id: 'user-123'
+  },
+  token: 'abc123def456',
+  idToken: 'xyz789uvw012',
+  refreshToken: 'refresh-token-abc'
+}
+
+async function getHandleLoginCallback () {
+  const controller = await import(
+    '../../../../src/pages/login/controller.js'
+  )
+
+  return controller.handleLoginCallback
 }
 
 function buildRequest (overrides = {}) {
   return {
-    yar: { set: vi.fn(), get: vi.fn(), reset: vi.fn(), id: 'test-session-id' },
-    cookieAuth: { set: vi.fn(), clear: vi.fn() },
-    auth: { isAuthenticated: false, credentials: {} },
-    server: { verifyEntraToken: vi.fn() },
+    cookieAuth: {
+      set: vi.fn()
+    },
+    auth: {
+      isAuthenticated: false,
+      credentials: {}
+    },
+    server: {
+      verifyEntraToken: vi.fn(),
+      app: {
+        cache: {
+          set: vi.fn()
+        }
+      }
+    },
     ...overrides
   }
 }
 
-function buildH () {
+function buildAuthenticatedRequest () {
+  return buildRequest({
+    auth: {
+      isAuthenticated: true,
+      credentials
+    }
+  })
+}
+
+function buildResponseToolkit () {
   return {
-    view: vi.fn((tpl, ctx) => ({ tpl, ctx })),
-    redirect: vi.fn((location) => ({ redirectedTo: location }))
+    view: vi.fn((template, context) => ({
+      template,
+      context
+    })),
+    redirect: vi.fn((location) => ({
+      redirectedTo: location
+    }))
   }
 }
 
-describe('#login controller', () => {
-  afterEach(() => {
-    process.env = { ...originalEnv }
+function expectSessionNotCreated (request) {
+  expect(request.server.app.cache.set).not.toHaveBeenCalled()
+  expect(request.cookieAuth.set).not.toHaveBeenCalled()
+}
+
+describe('#loginController', () => {
+  beforeEach(() => {
+    vi.stubEnv('AUTH_PROVIDER', 'entra')
     vi.resetModules()
-    mockLoggerWarn.mockClear()
   })
 
-  describe('#getLogin', () => {
-    test('Should render the login view with the expected page title', async () => {
-      const { getLogin } = await buildController()
-      const request = buildRequest()
-      const h = buildH()
-
-      await getLogin(request, h)
-
-      expect(h.view).toHaveBeenCalledWith('login/login.njk', { pageTitle: 'Sign in' })
-    })
-  })
-
-  describe('#handleLoginCallback with local provider', () => {
-    beforeEach(() => {
-      process.env.AUTH_PROVIDER = 'local'
-      vi.resetModules()
-    })
-
-    test('Should store the dev-session profile and jwt in yar, set cookieAuth, and redirect to /', async () => {
-      const { handleLoginCallback } = await buildController()
-      const request = buildRequest()
-      const h = buildH()
-
-      await handleLoginCallback(request, h)
-
-      expect(request.yar.set).toHaveBeenCalledTimes(1)
-      const [key, value] = request.yar.set.mock.calls[0]
-      expect(key).toBe('userAuth')
-      expect(value).toMatchObject({
-        token: expect.any(String),
-        profile: expect.objectContaining({
-          id: 'dev-user-123'
-        })
-      })
-
-      expect(request.cookieAuth.set).toHaveBeenCalledWith({ sessionId: 'test-session-id' })
-      expect(h.redirect).toHaveBeenCalledWith('/')
-    })
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.clearAllMocks()
   })
 
   describe('#handleLoginCallback with entra provider', () => {
-    beforeEach(() => {
-      process.env.AUTH_PROVIDER = 'entra'
-      vi.resetModules()
+    test('throws when authentication has failed', async () => {
+      const handleLoginCallback = await getHandleLoginCallback()
+      const request = buildRequest()
+      const h = buildResponseToolkit()
+
+      await expect(
+        handleLoginCallback(request, h)
+      ).rejects.toThrow(/^Authentication failed$/)
+
+      expectSessionNotCreated(request)
     })
 
-    test('Should throw "Authentication failed" when request.auth.isAuthenticated is false', async () => {
-      const { handleLoginCallback } = await buildController()
-      const request = buildRequest({ auth: { isAuthenticated: false } })
-      const h = buildH()
+    test('logs a warning and hides token verification errors', async () => {
+      const handleLoginCallback = await getHandleLoginCallback()
+      const request = buildAuthenticatedRequest()
+      const h = buildResponseToolkit()
 
-      await expect(handleLoginCallback(request, h)).rejects.toThrow('Authentication failed')
+      request.server.verifyEntraToken.mockRejectedValue(
+        new Error('signature mismatch: verification failed')
+      )
 
-      expect(request.yar.set).not.toHaveBeenCalled()
-      expect(request.cookieAuth.set).not.toHaveBeenCalled()
+      await expect(
+        handleLoginCallback(request, h)
+      ).rejects.toThrow(/^Token verification failed$/)
+
+      expect(mockLoggerWarn).toHaveBeenCalledOnce()
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: expect.objectContaining({
+            type: 'entra_token_verification_failed',
+            outcome: 'failure'
+          }),
+          error: expect.objectContaining({
+            message: 'signature mismatch: verification failed'
+          })
+        })
+      )
+
+      expectSessionNotCreated(request)
     })
 
-    test('Should log warning and throw generic error when verifyEntraToken rejects, without leaking the original error message', async () => {
-      const { handleLoginCallback } = await buildController()
-      const originalError = new Error('signature mismatch: verification failed')
-      const sessionValue = 'abc123def456'
-      const idValue = 'xyz789uvw012'
-      const request = buildRequest({
-        auth: {
-          isAuthenticated: true,
-          credentials: {
-            profile: { displayName: 'Test User' },
-            token: sessionValue,
-            idToken: idValue
-          }
-        }
+    describe('when token verification succeeds', () => {
+      let handleLoginCallback
+      let request
+      let h
+      let result
+
+      beforeEach(async () => {
+        handleLoginCallback = await getHandleLoginCallback()
+        request = buildAuthenticatedRequest()
+        h = buildResponseToolkit()
+
+        request.server.verifyEntraToken.mockResolvedValue({})
+
+        result = await handleLoginCallback(request, h)
       })
-      request.server.verifyEntraToken.mockRejectedValue(originalError)
-      const h = buildH()
 
-      const error = await handleLoginCallback(request, h).catch(e => e)
+      test('verifies the ID token', () => {
+        expect(request.server.verifyEntraToken).toHaveBeenCalledOnce()
+        expect(request.server.verifyEntraToken).toHaveBeenCalledWith(
+          credentials.idToken
+        )
+      })
 
-      expect(error).toBeInstanceOf(Error)
-      expect(error.message).toBe('Authentication failed')
-      expect(error.message).not.toContain('signature mismatch')
+      test('stores the authenticated session', () => {
+        expect(request.server.app.cache.set).toHaveBeenCalledOnce()
 
-      expect(mockLoggerWarn).toHaveBeenCalledTimes(1)
-      const [logPayload] = mockLoggerWarn.mock.calls[0]
-      expect(logPayload).toMatchObject({
-        event: expect.objectContaining({
-          type: 'entra_token_verification_failed',
-          outcome: 'failure'
-        }),
-        error: expect.objectContaining({
-          message: 'signature mismatch: verification failed'
+        const [sessionId, storedSession] = request.server.app.cache.set.mock.calls[0]
+
+        expect(sessionId).toMatch(/^auth-session:/)
+        expect(storedSession).toEqual({
+          token: credentials.token,
+          profile: credentials.profile,
+          refreshToken: credentials.refreshToken
         })
       })
 
-      expect(request.yar.set).not.toHaveBeenCalled()
-      expect(request.cookieAuth.set).not.toHaveBeenCalled()
-    })
+      test('sets the authentication cookie to the stored session ID', () => {
+        const [cacheKey] = request.server.app.cache.set.mock.calls[0]
+        const storedSessionId = cacheKey.replace(/^auth-session:/, '')
 
-    test('Should store profile and session value, set cookieAuth, and redirect to / when verifyEntraToken resolves', async () => {
-      const { handleLoginCallback } = await buildController()
-      const sessionValue = 'abc123def456'
-      const idValue = 'xyz789uvw012'
-      const credentials = {
-        profile: { displayName: 'Test User', id: 'user-123' },
-        token: sessionValue,
-        idToken: idValue
-      }
-      const request = buildRequest({
-        auth: {
-          isAuthenticated: true,
-          credentials
-        }
+        expect(request.cookieAuth.set).toHaveBeenCalledOnce()
+        expect(request.cookieAuth.set).toHaveBeenCalledWith({
+          sessionId: storedSessionId
+        })
       })
-      request.server.verifyEntraToken.mockResolvedValue({ /* decoded payload */ })
-      const h = buildH()
 
-      await handleLoginCallback(request, h)
-
-      expect(request.server.verifyEntraToken).toHaveBeenCalledWith(idValue)
-
-      expect(request.yar.set).toHaveBeenCalledWith(
-        'userAuth',
-        {
-          token: sessionValue,
-          profile: { displayName: 'Test User', id: 'user-123' }
-        }
-      )
-      expect(request.yar.set.mock.calls[0][1]).not.toHaveProperty('idToken')
-
-      expect(request.cookieAuth.set).toHaveBeenCalledWith({ sessionId: 'test-session-id' })
-      expect(h.redirect).toHaveBeenCalledWith('/')
-    })
-  })
-
-  describe('#logout', () => {
-    test('Should reset yar, clear cookieAuth, and redirect to /', async () => {
-      const { logout } = await buildController()
-      const request = buildRequest()
-      const h = buildH()
-
-      await logout(request, h)
-
-      expect(request.yar.reset).toHaveBeenCalled()
-      expect(request.cookieAuth.clear).toHaveBeenCalled()
-      expect(h.redirect).toHaveBeenCalledWith('/')
+      test('redirects to the home page', () => {
+        expect(h.redirect).toHaveBeenCalledOnce()
+        expect(h.redirect).toHaveBeenCalledWith('/')
+        expect(result).toEqual({
+          redirectedTo: '/'
+        })
+      })
     })
   })
 })

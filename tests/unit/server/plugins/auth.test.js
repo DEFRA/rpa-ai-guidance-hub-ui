@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import Hapi from '@hapi/hapi'
@@ -31,14 +33,12 @@ async function buildServer () {
 
 /**
  * Boots a real Hapi server with the 'session' auth strategy wired up exactly
- * as it is in the app (auth + session-cache plugins, a real yar-backed
- * cookie), plus two throwaway routes so `_validateSessionToken` can be
- * exercised end-to-end via `server.inject` rather than exported and unit
- * tested directly.
+ * as it is in the app (auth plugin plus a real cache engine), plus two
+ * throwaway routes so `_validateSessionToken` can be exercised end-to-end
+ * via `server.inject` rather than exported and unit tested directly.
  */
 async function buildServerWithSession () {
   const { auth } = await import('../../../../src/server/plugins/auth.js')
-  const { sessionCache } = await import('../../../../src/server/plugins/session-cache/session-cache.js')
   const { getCacheEngine } = await import('../../../../src/server/plugins/session-cache/cache-engine.js')
   const { config } = await import('../../../../src/config/config.js')
 
@@ -53,26 +53,37 @@ async function buildServerWithSession () {
 
   server.decorate('server', 'logger', { info: vi.fn(), warn: vi.fn(), error: vi.fn() })
 
+  server.app.cache = server.cache({
+    cache: config.get('session.cache.name'),
+    segment: 'auth-session',
+    expiresIn: config.get('session.cache.ttl')
+  })
+
   await server.register(HapiCookie)
-  await server.register(sessionCache)
   await server.register(auth)
 
   // Mimics the relevant part of the real `/login/callback` handler (see
   // `pages/login/controller.js`) closely enough to populate a real session,
   // without pulling in the whole login page/router just to authenticate a
-  // test request. Skipping `userAuth` reproduces a cookieAuth cookie that
-  // has outlived its yar-stored session data (e.g. the cache entry expired
-  // or was evicted independently of the cookie).
+  // test request. Omitting `token` reproduces a cookieAuth cookie that has
+  // outlived its cached session data (e.g. the cache entry expired or was
+  // evicted independently of the cookie).
   server.route({
     method: 'GET',
     path: '/test-login',
     options: { auth: false },
-    handler: (request) => {
+    handler: async (request) => {
+      const sessionId = randomUUID()
+
       if (request.query.token) {
-        request.yar.set('userAuth', { token: request.query.token, profile: { id: 'user-123' } })
+        await request.server.app.cache.set(`auth-session:${sessionId}`, {
+          token: request.query.token,
+          refreshToken: request.query.refreshToken,
+          profile: { id: 'user-123' }
+        })
       }
 
-      request.cookieAuth.set({ sessionId: request.yar.id })
+      request.cookieAuth.set({ sessionId })
 
       return 'ok'
     }
@@ -94,14 +105,25 @@ async function buildServerWithSession () {
  * Logs in to a `buildServerWithSession` server and returns a `Cookie` header
  * value carrying the authenticated session, for use in a subsequent
  * `server.inject` call. Omit `token` to set the cookieAuth cookie without a
- * corresponding yar `userAuth` session.
+ * corresponding cached session.
  *
  * @param {import('@hapi/hapi').Server} server
  * @param {string} [token]
+ * @param {string} [refreshToken]
  * @returns {Promise<string>}
  */
-async function loginWithToken (server, token) {
-  const query = token ? `?token=${encodeURIComponent(token)}` : ''
+async function loginWithToken (server, token, refreshToken) {
+  const params = new URLSearchParams()
+
+  if (token) {
+    params.append('token', token)
+  }
+
+  if (refreshToken) {
+    params.append('refreshToken', refreshToken)
+  }
+
+  const query = params.size ? `?${params.toString()}` : ''
 
   const response = await server.inject({
     method: 'GET',
@@ -373,7 +395,7 @@ describe('#auth', () => {
       })
     })
 
-    test('Should redirect to /login and log when the session token has expired', async () => {
+    test('Should redirect to /login and log when the session token has expired and refresh tokens are disabled', async () => {
       const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
       const cookie = await loginWithToken(server, expiredToken)
 
@@ -385,7 +407,98 @@ describe('#auth', () => {
 
       expect(statusCode).toBe(302)
       expect(headers.location).toBe('/login')
-      expect(server.logger.info).toHaveBeenCalledWith('Session JWT token is invalid or has expired')
+      expect(server.logger.warn).toHaveBeenCalledWith(
+        { type: 'entra_token_expired', error: expect.any(Error) },
+        'Entra ID token invalid and refresh is disabled'
+      )
+    })
+  })
+
+  describe('when session auth strategy is used with ENTRA_USE_REFRESH_TOKENS overridden to true', () => {
+    let server
+
+    beforeEach(async () => {
+      process.env.ENTRA_USE_REFRESH_TOKENS = 'true'
+      process.env.ENTRA_TENANT_ID = ENTRA_TEST_FIXTURE_VALUE
+      process.env.ENTRA_CLIENT_ID = ENTRA_TEST_FIXTURE_VALUE
+      process.env.ENTRA_CLIENT_SECRET = ENTRA_TEST_FIXTURE_VALUE
+      vi.resetModules()
+
+      server = await buildServerWithSession()
+    })
+
+    afterEach(async () => {
+      await server.stop({ timeout: 0 })
+      nock.cleanAll()
+    })
+
+    test('Should refresh the expired session token and authenticate the request', async () => {
+      const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
+      const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
+
+      const refreshScope = nock('https://login.microsoftonline.com')
+        .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`, (body) => {
+          const params = new URLSearchParams(body)
+
+          return params.get('client_id') === ENTRA_TEST_FIXTURE_VALUE &&
+            params.get('client_secret') === ENTRA_TEST_FIXTURE_VALUE &&
+            params.get('grant_type') === 'refresh_token' &&
+            params.get('scope') === 'User.Read openid profile email' &&
+            params.get('refresh_token') === 'old-refresh-token'
+        })
+        .reply(200, { access_token: 'new-access-token', refresh_token: 'new-refresh-token' })
+
+      const { statusCode, result } = await server.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(200)
+      expect(result).toMatchObject({
+        token: 'new-access-token',
+        refreshToken: 'new-refresh-token',
+        profile: { id: 'user-123' },
+        sessionId: expect.any(String)
+      })
+      expect(refreshScope.isDone()).toBe(true)
+    })
+
+    test('Should redirect to /login when refreshing the expired session token fails', async () => {
+      const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
+      const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
+
+      nock('https://login.microsoftonline.com')
+        .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
+        .reply(400, { error: 'invalid_grant' })
+
+      const { statusCode, headers } = await server.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(302)
+      expect(headers.location).toBe('/login')
+    })
+
+    test('Should not attempt to refresh a session token that has not expired', async () => {
+      const token = generateEntraJwt()
+      const cookie = await loginWithToken(server, token, 'old-refresh-token')
+
+      const refreshScope = nock('https://login.microsoftonline.com')
+        .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
+        .reply(200, { access_token: 'new-access-token', refresh_token: 'new-refresh-token' })
+
+      const { statusCode, result } = await server.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(200)
+      expect(result.token).toBe(token)
+      expect(refreshScope.isDone()).toBe(false)
     })
   })
 })

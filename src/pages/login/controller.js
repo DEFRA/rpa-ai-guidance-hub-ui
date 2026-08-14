@@ -1,13 +1,18 @@
+import { randomUUID as uuidv4 } from 'node:crypto'
+
+import Boom from '@hapi/boom'
 import Jwt from '@hapi/jwt'
 
 import { config } from '../../config/config.js'
 import { createLogger } from '../../infra/logging/logger.js'
 import { buildErrorLog } from '../../infra/logging/utils/build-error-log.js'
+import { mockUser } from './mock-user.js'
 
 const logger = createLogger()
 
 /**
  * GET /login — renders the sign-in page.
+ *
  * @param {Hapi.Request} request
  * @param {Hapi.ResponseToolkit} h
  * @returns {Promise<any>}
@@ -37,16 +42,16 @@ async function getLogin (request, h) {
  * @returns {Promise<any>}
  */
 async function handleLoginCallback (request, h) {
-  const { profile, token } = config.get('auth.provider') === 'entra'
+  const { profile, token, refreshToken } = config.get('auth.provider') === 'entra'
     ? await _getEntraSession(request)
     : _getDevSession()
 
-  request.yar.set('userAuth', {
-    token,
-    profile
-  })
+  const sessionId = uuidv4()
+  const storedSessionId = `auth-session:${sessionId}`
 
-  request.cookieAuth.set({ sessionId: request.yar.id })
+  await request.server.app.cache.set(storedSessionId, { profile, token, refreshToken })
+
+  request.cookieAuth.set({ sessionId })
 
   return h.redirect('/')
 }
@@ -58,8 +63,13 @@ async function handleLoginCallback (request, h) {
  * @returns {Promise<any>}
  */
 async function logout (request, h) {
-  request.yar.reset()
-  request.cookieAuth.clear()
+  if (request.auth.isAuthenticated) {
+    const { sessionId } = request.auth.credentials
+
+    await request.yar.reset()
+    await request.server.app.cache.drop(`auth-session:${sessionId}`)
+    request.cookieAuth.clear()
+  }
 
   return h.redirect('/')
 }
@@ -77,17 +87,19 @@ async function _getEntraSession (request) {
     throw new Error('Authentication failed')
   }
 
-  const { profile, token, idToken } = request.auth.credentials
+  const { profile, token, idToken, refreshToken } = request.auth.credentials
 
   try {
     await request.server.verifyEntraToken(idToken)
   } catch (error) {
-    logger.warn(buildErrorLog(error, { type: 'entra_token_verification_failed' }), 'Entra token failed JWKS verification')
+    logger.warn(buildErrorLog(error, {
+      type: 'entra_token_verification_failed'
+    }))
 
-    throw new Error('Authentication failed')
+    throw Boom.unauthorized('Token verification failed')
   }
 
-  return { profile, token }
+  return { profile, token, refreshToken }
 }
 
 /**
@@ -111,18 +123,7 @@ function _getDevSession () {
 
   return {
     token,
-    profile: {
-      id: 'dev-user-123',
-      email: 'dev@example.com',
-      displayName: 'Dev User',
-      name: { familyName: 'User', givenName: 'Dev' },
-      emails: [{ value: 'dev@example.com' }],
-      mail: 'dev@example.com',
-      mailNickname: 'dev',
-      givenName: 'Dev',
-      surname: 'User',
-      userPrincipalName: 'dev@example.com'
-    }
+    profile: mockUser
   }
 }
 

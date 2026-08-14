@@ -4,6 +4,34 @@ import JwksRsa from 'jwks-rsa'
 
 import { config } from '../../config/config.js'
 
+const entraConfig = {
+  tenantId: config.get('auth.entra.tenantId'),
+  clientId: config.get('auth.entra.clientId'),
+  clientSecret: config.get('auth.entra.clientSecret'),
+  authorityHost: config.get('auth.entra.authorityHost'),
+  redirectHost: config.get('auth.entra.redirectHost'),
+  scopes: ['User.Read', 'openid', 'profile', 'email']
+}
+
+const auth = {
+  plugin: {
+    name: 'auth',
+    register: async (server) => {
+      server.auth.strategy('session', 'cookie', _getCookieOptions())
+      server.auth.default('session')
+
+      if (config.get('auth.provider') === 'entra') {
+        await server.register(Bell)
+
+        const jwksClient = _getJwksClient()
+
+        server.auth.strategy('entra', 'bell', _getBellOptions())
+        server.decorate('server', 'verifyEntraToken', (token) => _verifyEntraToken(token, jwksClient))
+      }
+    }
+  }
+}
+
 /**
  * @private
  * Creates a @type {Bell.BellOptions} object used to configure the 'azure'
@@ -22,7 +50,7 @@ import { config } from '../../config/config.js'
  */
 function _getBellOptions () {
   const provider = Bell.providers.azure({
-    tenant: config.get('auth.entra.tenantId')
+    tenant: entraConfig.tenantId
   })
 
   return {
@@ -34,12 +62,12 @@ function _getBellOptions () {
         await provider.profile.call(this, credentials, params, get)
       }
     },
-    clientId: config.get('auth.entra.clientId'),
-    clientSecret: config.get('auth.entra.clientSecret'),
-    location: config.get('auth.entra.redirectHost'),
+    clientId: entraConfig.clientId,
+    clientSecret: entraConfig.clientSecret,
+    location: entraConfig.redirectHost,
     password: config.get('session.cookie.password'),
     isSecure: config.get('session.cookie.secure'),
-    scope: ['User.Read', 'openid', 'profile', 'email']
+    scope: entraConfig.scopes
   }
 }
 
@@ -51,9 +79,8 @@ function _getBellOptions () {
  */
 function _getJwksUri () {
   const authorityHost = config.get('auth.entra.authorityHost')
-  const tenantId = config.get('auth.entra.tenantId')
 
-  return `${authorityHost}/${tenantId}/discovery/v2.0/keys`
+  return `${authorityHost}/${entraConfig.tenantId}/discovery/v2.0/keys`
 }
 
 /**
@@ -94,11 +121,35 @@ async function _verifyEntraToken (token, jwksClient) {
 
   Jwt.token.verifySignature(artifacts, publicKey)
   Jwt.token.verifyPayload(artifacts, {
-    aud: config.get('auth.entra.clientId'),
-    iss: `${config.get('auth.entra.authorityHost')}/${config.get('auth.entra.tenantId')}/v2.0`
+    aud: entraConfig.clientId,
+    iss: `${entraConfig.authorityHost}/${entraConfig.tenantId}/v2.0`
   })
 
   return artifacts.decoded.payload
+}
+
+async function _refreshEntraToken (refreshToken) {
+  const tokenEndpoint = `${entraConfig.authorityHost}/${entraConfig.tenantId}/oauth2/v2.0/token`
+
+  const params = new URLSearchParams()
+
+  params.append('client_id', entraConfig.clientId)
+  params.append('client_secret', entraConfig.clientSecret)
+  params.append('grant_type', 'refresh_token')
+  params.append('scope', entraConfig.scopes.join(' '))
+  params.append('refresh_token', refreshToken)
+
+  const response = await fetch(tokenEndpoint, {
+    method: 'POST',
+    body: params,
+    signal: AbortSignal.timeout(5000)
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to refresh Entra token: ${response.status} ${response.statusText}`)
+  }
+
+  return response.json()
 }
 
 /**
@@ -135,7 +186,7 @@ function _getCookieOptions () {
  * @returns {Promise<{isValid: boolean, credentials?: object}>}
  */
 async function _validateSessionToken (request, session) {
-  const userSession = await request.yar.get('userAuth')
+  const userSession = await request.server.app.cache.get(`auth-session:${session.sessionId}`)
 
   if (!userSession) {
     return { isValid: false }
@@ -146,31 +197,27 @@ async function _validateSessionToken (request, session) {
 
     Jwt.token.verifyTime(decoded)
   } catch (error) {
-    request.server.logger.info('Session JWT token is invalid or has expired')
+    if (!config.get('auth.entra.useRefreshTokens')) {
+      request.server.logger.warn(
+        { type: 'entra_token_expired', error },
+        'Entra ID token invalid and refresh is disabled'
+      )
 
-    return { isValid: false }
-  }
-
-  return { isValid: true, credentials: { ...userSession, sessionId: request.yar.id } }
-}
-
-const auth = {
-  plugin: {
-    name: 'auth',
-    register: async (server) => {
-      server.auth.strategy('session', 'cookie', _getCookieOptions())
-      server.auth.default('session')
-
-      if (config.get('auth.provider') === 'entra') {
-        await server.register(Bell)
-
-        const jwksClient = _getJwksClient()
-
-        server.auth.strategy('entra', 'bell', _getBellOptions())
-        server.decorate('server', 'verifyEntraToken', (token) => _verifyEntraToken(token, jwksClient))
-      }
+      return { isValid: false }
     }
+
+    const {
+      access_token: token,
+      refresh_token: refreshToken
+    } = await _refreshEntraToken(userSession.refreshToken)
+
+    userSession.token = token
+    userSession.refreshToken = refreshToken
+
+    await request.server.app.cache.set(`auth-session:${session.sessionId}`, userSession)
   }
+
+  return { isValid: true, credentials: { ...userSession, sessionId: session.sessionId } }
 }
 
 export { auth }

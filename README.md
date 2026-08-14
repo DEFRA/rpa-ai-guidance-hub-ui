@@ -58,6 +58,7 @@ nvm use
 npm install
 
 # 2. Create .env file for local development
+# Set SESSION_COOKIE_PASSWORD to a random string of at least 32 characters
 cp .env.example .env
 
 # 3. (Optional) Edit .env to use local auth if needed
@@ -80,6 +81,7 @@ cp .env.example .env
 
 # 3. Configure Entra ID in .env
 # Set these required values:
+# - SESSION_COOKIE_PASSWORD to a random string of at least 32 characters
 # - ENTRA_TENANT_ID=your-tenant-guid
 # - ENTRA_CLIENT_ID=your-client-id
 # - ENTRA_CLIENT_SECRET=your-client-secret
