@@ -11,6 +11,18 @@ import nock from 'nock'
 
 import { generateEntraJwt, getJwks, ENTRA_TEST_KID } from '../../../utils/oidc.js'
 
+const { mockLoggerWarn } = vi.hoisted(() => ({
+  mockLoggerWarn: vi.fn()
+}))
+
+vi.mock('../../../../src/infra/logging/logger.js', () => ({
+  createLogger: () => ({
+    info: vi.fn(),
+    warn: mockLoggerWarn,
+    error: vi.fn()
+  })
+}))
+
 const originalEnv = { ...process.env }
 
 // Not a real credential - Bell just requires the client secret to be a
@@ -53,8 +65,6 @@ async function buildServerWithSession () {
       }
     ]
   })
-
-  server.decorate('server', 'logger', { info: vi.fn(), warn: vi.fn(), error: vi.fn() })
 
   server.app.cache = server.cache({
     cache: config.get('session.cache.name'),
@@ -417,7 +427,7 @@ describe('#auth', () => {
 
       expect(statusCode).toBe(302)
       expect(headers.location).toBe('/login')
-      expect(server.logger.warn).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         { type: 'entra_token_expired', error: expect.any(Error) },
         'Entra ID token invalid and refresh is disabled'
       )
