@@ -205,7 +205,13 @@ async function _validateSessionToken (request, session) {
     Jwt.token.verifyTime(decoded)
   } catch (error) {
     if (!config.get('auth.entra.useRefreshTokens')) {
-      logger.warn(
+      // Prefer the server-scoped logger when validating a session so tests
+      // (and runtime code) that decorate `server.logger` observe the
+      // warning. Fall back to the module logger if the server logger is
+      // not available.
+      const warn = request?.server?.logger?.warn ?? logger.warn
+
+      warn(
         { type: 'entra_token_expired', error },
         'Entra ID token invalid and refresh is disabled'
       )
