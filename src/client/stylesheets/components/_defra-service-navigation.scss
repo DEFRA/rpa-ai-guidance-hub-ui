@@ -216,12 +216,7 @@
   }
 
   .defra-service-navigation__list {
-    display: none;
     flex-direction: column;
-
-    &.defra-service-navigation__list--open {
-      display: flex;
-    }
   }
 
   .defra-service-navigation__item {

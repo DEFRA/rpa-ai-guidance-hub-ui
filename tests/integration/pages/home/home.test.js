@@ -1,6 +1,7 @@
 import { constants as statusCodes } from 'node:http2'
 
 import { createServer } from '../../../../src/server/server.js'
+import { loginAsDevUser } from '../../helpers/login.js'
 
 describe('#homepageController', () => {
   let server
@@ -14,12 +15,17 @@ describe('#homepageController', () => {
     await server.stop({ timeout: 0 })
   })
 
-  test('Should respond with 200 and render the home page', async () => {
-    const { statusCode } = await server.inject({
-      method: 'GET',
-      url: '/'
-    })
+  describe('When logged in as a dev user', () => {
+    test('Should respond with 302 and render the home page', async () => {
+      const cookie = await loginAsDevUser(server)
 
-    expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      const { statusCode } = await server.inject({
+        method: 'GET',
+        url: '/',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+    })
   })
 })

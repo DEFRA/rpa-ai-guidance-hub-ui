@@ -44,7 +44,9 @@ describe('#buildRedisClient', () => {
         db: 0,
         host: '127.0.0.1',
         keyPrefix: 'rpa-ai-guidance-hub-ui:',
-        port: 6379
+        port: 6379,
+        username: 'user',
+        password: 'pass'
       })
     })
   })

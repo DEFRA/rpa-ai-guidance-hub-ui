@@ -83,7 +83,7 @@ const config = convict({
     enabled: {
       doc: 'Is logging enabled',
       format: Boolean,
-      default: process.env.NODE_ENV !== 'test',
+      default: !isTest,
       env: 'LOG_ENABLED'
     },
     level: {
@@ -150,7 +150,7 @@ const config = convict({
       password: {
         doc: 'session cookie password',
         format: String,
-        default: 'the-password-must-be-at-least-32-characters-long',
+        default: null,
         env: 'SESSION_COOKIE_PASSWORD',
         sensitive: true
       },
@@ -172,13 +172,15 @@ const config = convict({
     username: {
       doc: 'Redis cache username',
       format: String,
-      default: '',
+      default: null,
+      nullable: !isProduction,
       env: 'REDIS_USERNAME'
     },
     password: {
       doc: 'Redis cache password',
       format: '*',
-      default: '',
+      default: null,
+      nullable: !isProduction,
       sensitive: true,
       env: 'REDIS_PASSWORD'
     },
@@ -220,7 +222,64 @@ const config = convict({
       default: 'x-cdp-request-id',
       env: 'TRACING_HEADER'
     }
-  }
+  },
+  auth: {
+    provider: {
+      doc: 'Authentication provider to use',
+      format: isProduction ? ['entra'] : ['entra', 'local'],
+      default: 'entra',
+      env: 'AUTH_PROVIDER'
+    },
+    entra: {
+      tenantId: {
+        doc: 'Entra ID (Azure AD) tenant ID (GUID) that issues tokens for this app registration',
+        format: String,
+        default: null,
+        nullable: !isProduction,
+        env: 'ENTRA_TENANT_ID'
+      },
+      clientId: {
+        doc: 'Entra ID application (client) ID registered for this portal',
+        format: String,
+        default: null,
+        nullable: !isProduction,
+        env: 'ENTRA_CLIENT_ID'
+      },
+      clientSecret: {
+        doc: 'Entra ID application client secret',
+        format: String,
+        default: null,
+        nullable: !isProduction,
+        env: 'ENTRA_CLIENT_SECRET',
+        sensitive: true
+      },
+      authorityHost: {
+        doc: 'Entra authority host used to build the authorize/token/JWKS/logout endpoints',
+        format: String,
+        default: 'https://login.microsoftonline.com',
+        env: 'ENTRA_AUTHORITY_HOST'
+      },
+      redirectHost: {
+        doc: 'Entra redirect host used to build the redirect URI for the OIDC flow',
+        format: String,
+        default: null,
+        nullable: !isProduction,
+        env: 'ENTRA_REDIRECT_HOST'
+      },
+      useRefreshTokens: {
+        doc: 'Toggle whether to refresh tokens on expiration. If false, the user will be logged out when the access token expires.',
+        format: Boolean,
+        default: false,
+        env: 'ENTRA_USE_REFRESH_TOKENS'
+      },
+      refreshTokenAquisitionTimeout: {
+        doc: 'Timeout in milliseconds for acquiring a new access token using the refresh token.',
+        format: Number,
+        default: 5000,
+        env: 'ENTRA_REFRESH_TOKEN_ACQUISITION_TIMEOUT'
+      }
+    }
+  },
 })
 
 config.validate({ allowed: 'strict' })

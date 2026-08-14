@@ -4,6 +4,9 @@ const routes = [
   {
     method: 'GET',
     path: '/health',
+    options: {
+      auth: false,
+    },
     handler: controller.healthCheck
   }
 ]
