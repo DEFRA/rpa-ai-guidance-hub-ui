@@ -226,7 +226,7 @@ const config = convict({
   auth: {
     provider: {
       doc: 'Authentication provider to use',
-      format: ['entra', 'local'],
+      format: isProduction ? ['entra'] : ['entra', 'local'],
       default: 'entra',
       env: 'AUTH_PROVIDER'
     },
@@ -235,21 +235,21 @@ const config = convict({
         doc: 'Entra ID (Azure AD) tenant ID (GUID) that issues tokens for this app registration',
         format: String,
         default: null,
-        nullable: process.env.NODE_ENV !== 'production',
+        nullable: isDevelopment,
         env: 'ENTRA_TENANT_ID'
       },
       clientId: {
         doc: 'Entra ID application (client) ID registered for this portal',
         format: String,
         default: null,
-        nullable: process.env.NODE_ENV !== 'production',
+        nullable: isDevelopment,
         env: 'ENTRA_CLIENT_ID'
       },
       clientSecret: {
         doc: 'Entra ID application client secret',
         format: String,
         default: null,
-        nullable: process.env.NODE_ENV !== 'production',
+        nullable: isDevelopment,
         env: 'ENTRA_CLIENT_SECRET',
         sensitive: true
       },
@@ -263,7 +263,7 @@ const config = convict({
         doc: 'Entra redirect host used to build the redirect URI for the OIDC flow',
         format: String,
         default: null,
-        nullable: process.env.NODE_ENV !== 'production',
+        nullable: isDevelopment,
         env: 'ENTRA_REDIRECT_HOST'
       },
       useRefreshTokens: {
