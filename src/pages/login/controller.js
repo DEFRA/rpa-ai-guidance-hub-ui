@@ -10,6 +10,8 @@ import { mockUser } from './mock-user.js'
 
 const logger = createLogger()
 
+const AUTH_FAIL_MESSAGE = 'Authentication failed. Please try again.'
+
 /**
  * GET /login — renders the sign-in page.
  *
@@ -88,7 +90,7 @@ async function _getEntraSession (request) {
       type: 'entra_bell_authentication_failed'
     }))
 
-    throw Boom.unauthorized('Authentication failed')
+    throw Boom.unauthorized(AUTH_FAIL_MESSAGE)
   }
 
   const { profile, token, idToken, refreshToken } = request.auth.credentials
@@ -100,7 +102,7 @@ async function _getEntraSession (request) {
       type: 'entra_token_verification_failed'
     }))
 
-    throw Boom.unauthorized('Token verification failed')
+    throw Boom.unauthorized(AUTH_FAIL_MESSAGE)
   }
 
   return { profile, token, refreshToken }

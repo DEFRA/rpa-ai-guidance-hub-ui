@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto'
+import Http from 'node:http'
+import Https from 'node:https'
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import Hapi from '@hapi/hapi'
 import HapiCookie from '@hapi/cookie'
+import Wreck from '@hapi/wreck'
 import nock from 'nock'
 
 import { generateEntraJwt, getJwks, ENTRA_TEST_KID } from '../../../utils/oidc.js'
@@ -184,6 +187,13 @@ describe('#auth', () => {
           handler: () => 'ok'
         })
       ).not.toThrow()
+    })
+
+    test('Should point Wreck at the global http/https agents, so bell requests honour the egress proxy', async () => {
+      await buildServer()
+
+      expect(Wreck.agents.http).toBe(Http.globalAgent)
+      expect(Wreck.agents.https).toBe(Https.globalAgent)
     })
 
     describe('#server.verifyEntraToken', () => {

@@ -1,5 +1,9 @@
+import Http from 'node:http'
+import Https from 'node:https'
+
 import Bell from '@hapi/bell'
 import Jwt from '@hapi/jwt'
+import Wreck from '@hapi/wreck'
 import JwksRsa from 'jwks-rsa'
 
 import { config } from '../../config/config.js'
@@ -25,6 +29,8 @@ const auth = {
 
       if (config.get('auth.provider') === 'entra') {
         logger.info('Using Microsoft Entra ID for authentication')
+
+        _useProxyAwareWreckAgents()
 
         await server.register(Bell)
 
@@ -76,6 +82,28 @@ function _getBellOptions () {
     isSecure: config.get('session.cookie.secure'),
     scope: entraConfig.scopes
   }
+}
+
+/**
+ * @private
+ * Points Wreck - the HTTP client @hapi/bell uses internally for the OAuth
+ * code/token exchange and profile lookup - at Node's global http/https
+ * agents, instead of the dedicated agents it creates for itself at import
+ * time.
+ *
+ * Outbound access in production goes through an egress proxy, which we rely
+ * on Node's native `--use-env-proxy`/NODE_USE_ENV_PROXY support for: it makes
+ * `http.globalAgent`/`https.globalAgent` route through the proxy configured
+ * via HTTP_PROXY/HTTPS_PROXY/NO_PROXY. Wreck's own agents are plain
+ * `http.Agent`/`https.Agent` instances and know nothing about that, so
+ * requests bell makes via Wreck go direct and get blocked by the proxy. This
+ * only affects bell's requests (and anything else that happens to `require`
+ * the same @hapi/wreck singleton) - it doesn't touch the app's own `fetch`
+ * calls (e.g. `_refreshEntraToken`), which already pick up the proxy natively.
+ */
+function _useProxyAwareWreckAgents () {
+  Wreck.agents.http = Http.globalAgent
+  Wreck.agents.https = Https.globalAgent
 }
 
 /**

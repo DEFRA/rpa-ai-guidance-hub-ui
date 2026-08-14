@@ -96,7 +96,7 @@ describe('#loginController', () => {
 
       await expect(
         handleLoginCallback(request, h)
-      ).rejects.toThrow(/^Authentication failed$/)
+      ).rejects.toThrow(/^Authentication failed. Please try again.$/)
 
       expectSessionNotCreated(request)
     })
@@ -112,7 +112,7 @@ describe('#loginController', () => {
 
       await expect(
         handleLoginCallback(request, h)
-      ).rejects.toThrow(/^Token verification failed$/)
+      ).rejects.toThrow(/^Authentication failed. Please try again.$/)
 
       expect(mockLoggerWarn).toHaveBeenCalledOnce()
       expect(mockLoggerWarn).toHaveBeenCalledWith(
