@@ -83,7 +83,7 @@ const config = convict({
     enabled: {
       doc: 'Is logging enabled',
       format: Boolean,
-      default: process.env.NODE_ENV !== 'test',
+      default: !isTest,
       env: 'LOG_ENABLED'
     },
     level: {
@@ -173,14 +173,14 @@ const config = convict({
       doc: 'Redis cache username',
       format: String,
       default: null,
-      nullable: process.env.NODE_ENV !== 'production',
+      nullable: !isProduction,
       env: 'REDIS_USERNAME'
     },
     password: {
       doc: 'Redis cache password',
       format: '*',
       default: null,
-      nullable: process.env.NODE_ENV !== 'production',
+      nullable: !isProduction,
       sensitive: true,
       env: 'REDIS_PASSWORD'
     },
@@ -235,21 +235,21 @@ const config = convict({
         doc: 'Entra ID (Azure AD) tenant ID (GUID) that issues tokens for this app registration',
         format: String,
         default: null,
-        nullable: isDevelopment,
+        nullable: !isProduction,
         env: 'ENTRA_TENANT_ID'
       },
       clientId: {
         doc: 'Entra ID application (client) ID registered for this portal',
         format: String,
         default: null,
-        nullable: isDevelopment,
+        nullable: !isProduction,
         env: 'ENTRA_CLIENT_ID'
       },
       clientSecret: {
         doc: 'Entra ID application client secret',
         format: String,
         default: null,
-        nullable: isDevelopment,
+        nullable: !isProduction,
         env: 'ENTRA_CLIENT_SECRET',
         sensitive: true
       },
@@ -263,7 +263,7 @@ const config = convict({
         doc: 'Entra redirect host used to build the redirect URI for the OIDC flow',
         format: String,
         default: null,
-        nullable: isDevelopment,
+        nullable: !isProduction,
         env: 'ENTRA_REDIRECT_HOST'
       },
       useRefreshTokens: {
