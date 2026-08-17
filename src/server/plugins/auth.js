@@ -172,7 +172,7 @@ async function _refreshEntraToken (refreshToken) {
   const response = await fetch(tokenEndpoint, {
     method: 'POST',
     body: params,
-    signal: AbortSignal.timeout(config.get('auth.entra.refreshTokenAquisitionTimeout'))
+    signal: AbortSignal.timeout(config.get('auth.entra.refreshTokenAcquisitionTimeout'))
   })
 
   if (!response.ok) {
@@ -227,10 +227,10 @@ async function _validateSessionToken (request, session) {
 
     Jwt.token.verifyTime(decoded)
   } catch (error) {
-    if (!config.get('auth.entra.useRefreshTokens')) {
+    if (!config.get('auth.entra.useRefreshTokens') || !userSession.refreshToken) {
       logger.warn(
         { type: 'entra_token_expired', error },
-        'Entra ID token invalid and refresh is disabled'
+        'Session token invalid and cannot be refreshed'
       )
 
       return { isValid: false }

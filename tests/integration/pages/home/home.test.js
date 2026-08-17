@@ -16,7 +16,7 @@ describe('#homepageController', () => {
   })
 
   describe('When logged in as a dev user', () => {
-    test('Should respond with 302 and render the home page', async () => {
+    test('Should respond with 200 and render the home page', async () => {
       const cookie = await loginAsDevUser(server)
 
       const { statusCode } = await server.inject({

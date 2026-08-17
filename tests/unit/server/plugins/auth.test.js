@@ -429,7 +429,7 @@ describe('#auth', () => {
       expect(headers.location).toBe('/login')
       expect(mockLoggerWarn).toHaveBeenCalledWith(
         { type: 'entra_token_expired', error: expect.any(Error) },
-        'Entra ID token invalid and refresh is disabled'
+        'Session token invalid and cannot be refreshed'
       )
     })
   })
@@ -502,6 +502,29 @@ describe('#auth', () => {
       expect(headers.location).toBe('/login')
     })
 
+    test('Should redirect to /login without calling the token endpoint when the session has no refresh token', async () => {
+      const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
+      const cookie = await loginWithToken(server, expiredToken)
+
+      const refreshScope = nock('https://login.microsoftonline.com')
+        .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
+        .reply(200, { access_token: 'new-access-token', refresh_token: 'new-refresh-token' })
+
+      const { statusCode, headers } = await server.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(302)
+      expect(headers.location).toBe('/login')
+      expect(refreshScope.isDone()).toBe(false)
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        { type: 'entra_token_expired', error: expect.any(Error) },
+        'Session token invalid and cannot be refreshed'
+      )
+    })
+
     test('Should not attempt to refresh a session token that has not expired', async () => {
       const token = generateEntraJwt()
       const cookie = await loginWithToken(server, token, 'old-refresh-token')
@@ -519,6 +542,57 @@ describe('#auth', () => {
       expect(statusCode).toBe(200)
       expect(result.token).toBe(token)
       expect(refreshScope.isDone()).toBe(false)
+    })
+  })
+
+  // ENTRA_USE_REFRESH_TOKENS is an Entra-only concern, but nothing stops it
+  // being left set while AUTH_PROVIDER is 'local'. Local sessions carry no
+  // refresh token (and no tenant/client to spend it against), so the refresh
+  // path must not run for them.
+  describe('when AUTH_PROVIDER is "local" and ENTRA_USE_REFRESH_TOKENS is true', () => {
+    let server
+
+    beforeEach(async () => {
+      process.env.AUTH_PROVIDER = 'local'
+      process.env.ENTRA_USE_REFRESH_TOKENS = 'true'
+      delete process.env.ENTRA_TENANT_ID
+      delete process.env.ENTRA_CLIENT_ID
+      delete process.env.ENTRA_CLIENT_SECRET
+      vi.resetModules()
+
+      nock.disableNetConnect()
+
+      server = await buildServerWithSession()
+    })
+
+    afterEach(async () => {
+      await server.stop({ timeout: 0 })
+      nock.cleanAll()
+      nock.enableNetConnect()
+    })
+
+    test('Should redirect to /login without any outbound request when the session token has expired', async () => {
+      const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
+      const cookie = await loginWithToken(server, expiredToken)
+
+      const requests = []
+
+      const onNoMatch = (request) => requests.push(request)
+      nock.emitter.on('no match', onNoMatch)
+
+      try {
+        const { statusCode, headers } = await server.inject({
+          method: 'GET',
+          url: '/protected',
+          headers: { cookie }
+        })
+
+        expect(statusCode).toBe(302)
+        expect(headers.location).toBe('/login')
+        expect(requests).toHaveLength(0)
+      } finally {
+        nock.emitter.removeListener('no match', onNoMatch)
+      }
     })
   })
 })
