@@ -1,0 +1,58 @@
+@use '../variables/colours' as *;
+
+// Action cards, used on the home page to offer the two things a user can do
+// when they arrive.
+//
+// Only the heading is a link, so the description is not underlined and screen
+// readers get a sensible link name. The pseudo-element stretches the link's hit
+// area over the whole card so it still behaves like one clickable block.
+
+.app-card {
+  position: relative;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid $govuk-mid-grey;
+  border-left: 5px solid $defra-green;
+  background-color: $govuk-white;
+
+  &:hover {
+    background-color: $govuk-light-grey;
+  }
+
+  // Let the focus outline of the link show around the whole card.
+  &:focus-within {
+    outline: 3px solid $govuk-yellow;
+    outline-offset: 0;
+    box-shadow: 0 4px $govuk-black;
+  }
+}
+
+.app-card__title {
+  margin-bottom: 5px;
+}
+
+.app-card__link {
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    // Without this, the positioned .app-card__description below sits later
+    // in the DOM and paints on top, swallowing clicks over its own text.
+    z-index: 1;
+  }
+
+  // The card already shows focus, so the link does not need its own highlight.
+  &:focus {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.app-card__description {
+  position: relative;
+  margin-bottom: 0;
+  color: $govuk-secondary-text-colour;
+}
