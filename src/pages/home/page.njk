@@ -4,36 +4,15 @@
 {% set page = 'home' %}
 
 {% block content %}
-  <div class="govuk-grid-row">
+  <div class="govuk-width-container govuk-!-margin-top-6">
+
+      <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-
-      <span class="govuk-caption-l">Signed in as {{ userDisplayName }}</span>
-      <h1 class="govuk-heading-l">Guidance documents</h1>
-
-      <p class="govuk-body">
-        Edit the guidance already in the hub, or bring in a Word document and
-        convert it to markdown.
-      </p>
-
-      <div class="app-card">
-        <h2 class="govuk-heading-m app-card__title">
-          <a class="govuk-link app-card__link" href="/documents">Edit existing documents</a>
-        </h2>
-        <p class="govuk-body app-card__description">
-          Update guidance that is already in the hub.
-        </p>
+      <div class="govuk-body" data-testid="app-page-body">
+        <p></p>
       </div>
-
-      <div class="app-card">
-        <h2 class="govuk-heading-m app-card__title">
-          <a class="govuk-link app-card__link" href="/migrate">Migrate documents</a>
-        </h2>
-        <p class="govuk-body app-card__description">
-          Convert a Word document to markdown so you can edit and publish it in
-          the hub.
-        </p>
-      </div>
-
     </div>
+  </div>
+
   </div>
 {% endblock %}
