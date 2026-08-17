@@ -577,19 +577,22 @@ describe('#auth', () => {
 
       const requests = []
 
-      nock.emitter.on('no match', (request) => requests.push(request))
+      const onNoMatch = (request) => requests.push(request)
+      nock.emitter.on('no match', onNoMatch)
 
-      const { statusCode, headers } = await server.inject({
-        method: 'GET',
-        url: '/protected',
-        headers: { cookie }
-      })
+      try {
+        const { statusCode, headers } = await server.inject({
+          method: 'GET',
+          url: '/protected',
+          headers: { cookie }
+        })
 
-      expect(statusCode).toBe(302)
-      expect(headers.location).toBe('/login')
-      expect(requests).toHaveLength(0)
-
-      nock.emitter.removeAllListeners('no match')
+        expect(statusCode).toBe(302)
+        expect(headers.location).toBe('/login')
+        expect(requests).toHaveLength(0)
+      } finally {
+        nock.emitter.removeListener('no match', onNoMatch)
+      }
     })
   })
 })
