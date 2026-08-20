@@ -19,13 +19,14 @@ describe('#designerDashboardController', () => {
     test('Should respond with 200 and render the dashboard page', async () => {
       const cookie = await loginAsDevUser(server)
 
-      const { statusCode } = await server.inject({
+      const { statusCode, payload } = await server.inject({
         method: 'GET',
         url: '/designer/dashboard',
         headers: { cookie }
       })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(payload).toContain('Manage guidance')
     })
   })
 

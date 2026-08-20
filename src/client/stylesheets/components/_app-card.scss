@@ -1,7 +1,7 @@
 @use '../variables/colours' as *;
 
-// Action cards, used on the home page to offer the two things a user can do
-// when they arrive.
+// Action cards, used on landing pages (e.g. Home and Designer dashboard) to
+// offer the key actions a user can take when they arrive.
 //
 // Only the heading is a link, so the description is not underlined and screen
 // readers get a sensible link name. The pseudo-element stretches the link's hit
