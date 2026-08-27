@@ -1,0 +1,52 @@
+# Dependabot configuration for automated dependency updates
+#
+# This config uses Dependabot native groups to reduce PR volume while keeping
+# updates organised by ecosystem and purpose.
+#
+# Schedule: Dependabot runs weekly on Mondays at 10:00 Europe/London (UTC+1).
+
+version: 2
+
+updates:
+  # Update npm packages
+  - package-ecosystem: npm
+    directory: /
+    open-pull-requests-limit: 10
+
+    # Group all npm package updates into one PR per run
+    groups:
+      npm:
+        patterns:
+          - '*'
+
+    ignore:
+      - dependency-name: 'eslint-*'
+      - dependency-name: 'eslint'
+
+    # Schedule run every Monday, local time
+    schedule:
+      interval: weekly
+      time: '10:00'
+      timezone: 'Europe/London'
+
+    versioning-strategy: increase
+
+    allow:
+      # Include direct package.json updates
+      - dependency-type: direct
+
+  # Update GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+
+    # Group all GitHub Actions updates into one PR per run
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+
+    # Schedule run every Monday, local time
+    schedule:
+      interval: weekly
+      time: '10:00'
+      timezone: 'Europe/London'
