@@ -89,7 +89,7 @@ describe('#addMetadataController', () => {
       })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(headers.location).toBe('/create-guidance/upload')
+      expect(headers.location).toBe('/designer/dashboard')
     })
   })
 

@@ -27,7 +27,7 @@ async function addMetadata (request, h) {
     metadata: request.payload
   })
 
-  return h.redirect('/create-guidance/upload')
+  return h.redirect('/designer/dashboard')
 }
 
 export {

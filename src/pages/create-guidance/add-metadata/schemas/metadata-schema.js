@@ -9,6 +9,13 @@ const guidanceTypeOptions = [
   { value: 'reference', text: 'Reference' }
 ]
 
+const MAX_TITLE_LENGTH = 200
+const MAX_LONG_TEXT_LENGTH = 2000
+
+const SELECT_GUIDANCE_TYPE_MESSAGE = 'Select the type of guidance'
+const SELECT_SYSTEM_ACCESS_MESSAGE =
+  'Select whether users need access to any systems'
+
 /**
  * Reusable metadata schema for migration and future new-guidance creation.
  */
@@ -17,14 +24,14 @@ const metadataSchema = Joi.object({
     .valid(...guidanceTypeValues)
     .required()
     .messages({
-      'any.required': 'Select the type of guidance',
-      'any.only': 'Select the type of guidance',
-      'string.empty': 'Select the type of guidance'
+      'any.required': SELECT_GUIDANCE_TYPE_MESSAGE,
+      'any.only': SELECT_GUIDANCE_TYPE_MESSAGE,
+      'string.empty': SELECT_GUIDANCE_TYPE_MESSAGE
     }),
   title: Joi.string()
     .trim()
     .required()
-    .max(200)
+    .max(MAX_TITLE_LENGTH)
     .messages({
       'any.required': 'Enter the guidance title',
       'string.empty': 'Enter the guidance title',
@@ -33,7 +40,7 @@ const metadataSchema = Joi.object({
   intendedAudience: Joi.string()
     .trim()
     .required()
-    .max(2000)
+    .max(MAX_LONG_TEXT_LENGTH)
     .messages({
       'any.required': 'Enter who this guidance is for',
       'string.empty': 'Enter who this guidance is for',
@@ -43,7 +50,7 @@ const metadataSchema = Joi.object({
   intendedOutcome: Joi.string()
     .trim()
     .required()
-    .max(2000)
+    .max(MAX_LONG_TEXT_LENGTH)
     .messages({
       'any.required': 'Enter what this guidance aims to achieve',
       'string.empty': 'Enter what this guidance aims to achieve',
@@ -53,7 +60,7 @@ const metadataSchema = Joi.object({
   userPrerequisites: Joi.string()
     .trim()
     .required()
-    .max(2000)
+    .max(MAX_LONG_TEXT_LENGTH)
     .messages({
       'any.required':
         'Enter what users need to perform or understand',
@@ -66,19 +73,16 @@ const metadataSchema = Joi.object({
     .valid('yes', 'no')
     .required()
     .messages({
-      'any.required':
-        'Select whether users need access to any systems',
-      'any.only':
-        'Select whether users need access to any systems',
-      'string.empty':
-        'Select whether users need access to any systems'
+      'any.required': SELECT_SYSTEM_ACCESS_MESSAGE,
+      'any.only': SELECT_SYSTEM_ACCESS_MESSAGE,
+      'string.empty': SELECT_SYSTEM_ACCESS_MESSAGE
     }),
   systemAccessDetails: Joi.when('requiresSystemAccess', {
     is: 'yes',
     then: Joi.string()
       .trim()
       .required()
-      .max(2000)
+      .max(MAX_LONG_TEXT_LENGTH)
       .messages({
         'any.required':
           'Enter which systems users need access to',

@@ -100,7 +100,7 @@
         </div>
 
         <div class="govuk-form-group{% if errors.requiresSystemAccess %} govuk-form-group--error{% endif %}">
-          <fieldset class="govuk-fieldset" aria-describedby="{% if errors.requiresSystemAccess %}requiresSystemAccess-error{% endif %}">
+          <fieldset class="govuk-fieldset"{% if errors.requiresSystemAccess %} aria-describedby="requiresSystemAccess-error"{% endif %}>
             <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
               Do users need access to any systems?
             </legend>
