@@ -35,7 +35,7 @@
 
       <form method="post" action="/create-guidance/add-metadata" novalidate>
         <div class="govuk-form-group{% if errors.guidanceType %} govuk-form-group--error{% endif %}">
-          <label class="govuk-label govuk-label--m" for="guidanceType">
+          <label class="govuk-label" for="guidanceType">
             Type of guidance
           </label>
           {% if errors.guidanceType %}
@@ -52,7 +52,7 @@
         </div>
 
         <div class="govuk-form-group{% if errors.title %} govuk-form-group--error{% endif %}">
-          <label class="govuk-label govuk-label--m" for="title">
+          <label class="govuk-label" for="title">
             Guidance title
           </label>
           {% if errors.title %}
@@ -64,7 +64,7 @@
         </div>
 
         <div class="govuk-form-group{% if errors.intendedAudience %} govuk-form-group--error{% endif %}">
-          <label class="govuk-label govuk-label--m" for="intendedAudience">
+          <label class="govuk-label" for="intendedAudience">
             Who is this guidance for?
           </label>
           {% if errors.intendedAudience %}
@@ -76,7 +76,7 @@
         </div>
 
         <div class="govuk-form-group{% if errors.intendedOutcome %} govuk-form-group--error{% endif %}">
-          <label class="govuk-label govuk-label--m" for="intendedOutcome">
+          <label class="govuk-label" for="intendedOutcome">
             What does this guidance aim to achieve?
           </label>
           {% if errors.intendedOutcome %}
@@ -88,7 +88,7 @@
         </div>
 
         <div class="govuk-form-group{% if errors.userPrerequisites %} govuk-form-group--error{% endif %}">
-          <label class="govuk-label govuk-label--m" for="userPrerequisites">
+          <label class="govuk-label" for="userPrerequisites">
             What do users need to perform or understand?
           </label>
           {% if errors.userPrerequisites %}
@@ -101,7 +101,7 @@
 
         <div class="govuk-form-group{% if errors.requiresSystemAccess %} govuk-form-group--error{% endif %}">
           <fieldset class="govuk-fieldset"{% if errors.requiresSystemAccess %} aria-describedby="requiresSystemAccess-error"{% endif %}>
-            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+            <legend class="govuk-fieldset__legend">
               Do users need access to any systems?
             </legend>
             {% if errors.requiresSystemAccess %}
