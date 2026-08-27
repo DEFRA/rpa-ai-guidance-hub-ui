@@ -8,6 +8,7 @@ describe('#config', () => {
       expect(config.get('log.format')).toBe('pino-pretty')
       expect(config.get('log.redact')).toEqual([])
       expect(config.get('session.cache.engine')).toBe('memory')
+      expect(config.get('guidanceApi.baseUrl')).toBe('http://localhost:3001')
     })
   })
 
