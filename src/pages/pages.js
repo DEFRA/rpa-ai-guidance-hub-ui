@@ -12,8 +12,20 @@ async function findRoutes (dir) {
 
   return entries
     .filter(entry => entry.isFile() && entry.name === 'routes.js')
-    .map((entry) => path.join(entry.parentPath ?? entry.path, entry.name))
+    .map((entry) => path.join(entry.parentPath, entry.name))
     .sort((a, b) => a.localeCompare(b))
+}
+
+async function loadRouteModules (routeFiles) {
+  return Promise.all(routeFiles.map((routeFile) => import(routeFile)))
+}
+
+function registerRoutes (server, routeModules) {
+  for (const routeModule of routeModules) {
+    if (routeModule.routes) {
+      server.route(routeModule.routes)
+    }
+  }
 }
 
 const pageRouter = {
@@ -21,18 +33,15 @@ const pageRouter = {
     name: 'pageRouter',
     async register (server) {
       const routeFiles = await findRoutes(pagesDir)
+      const routeModules = await loadRouteModules(routeFiles)
 
-      for (const routeFile of routeFiles) {
-        const route = await import(routeFile)
-
-        if (route.routes) {
-          server.route(route.routes)
-        }
-      }
+      registerRoutes(server, routeModules)
     }
   }
 }
 
 export {
-  pageRouter
+  pageRouter,
+  findRoutes,
+  registerRoutes
 }

@@ -45,9 +45,15 @@ class MigrateMetadataViewModel {
       }
 
       errors[field] = detail.message
+
+      let href = `#${field}`
+      if (field === 'requiresSystemAccess') {
+        href = '#requiresSystemAccess-yes'
+      }
+
       errorList.push({
         text: detail.message,
-        href: `#${field}`
+        href
       })
     }
 
