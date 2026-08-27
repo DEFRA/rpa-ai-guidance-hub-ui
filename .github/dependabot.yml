@@ -1,3 +1,10 @@
+# Dependabot configuration for automated dependency updates
+#
+# This config uses Dependabot native groups to reduce PR volume while keeping
+# updates organised by ecosystem and purpose.
+#
+# Schedule: Dependabot runs weekly on Mondays at 10:00 Europe/London (UTC+1).
+
 version: 2
 
 updates:
@@ -6,48 +13,11 @@ updates:
     directory: /
     open-pull-requests-limit: 10
 
-    # Group packages into shared PR
+    # Group all npm package updates into one PR per run
     groups:
-      build:
+      npm:
         patterns:
-          - '@babel/*'
-          - 'autoprefixer'
-          - 'babel-plugin-module-resolver'
-          - 'babel-loader'
-          - 'babel-plugin-transform-import-meta'
-          - 'tsx'
-          - 'webpack'
-          - 'webpack-*'
-          - 'terser-webpack-plugin'
-
-      lint:
-        patterns:
-          - 'prettier'
-          - 'stylelint'
-          - 'stylelint-*'
-
-      logging:
-        patterns:
-          - '*-pino'
-          - '*-pino-format'
-          - 'pino'
-          - 'pino-*'
-
-      tools:
-        patterns:
-          - 'husky'
-          - 'vitest'
-          - 'vitest-*'
-          - 'nodemon'
-          - 'npm-run-all'
-          - 'lodash'
-          - 'source-map-loader'
-          - 'sass-*'
-          - 'postcss-*'
-
-      types:
-        patterns:
-          - '@types/*'
+          - '*'
 
     ignore:
       - dependency-name: 'eslint-*'
@@ -56,7 +26,7 @@ updates:
     # Schedule run every Monday, local time
     schedule:
       interval: weekly
-      time: '10:30'
+      time: '10:00'
       timezone: 'Europe/London'
 
     versioning-strategy: increase
@@ -69,8 +39,14 @@ updates:
   - package-ecosystem: github-actions
     directory: /
 
+    # Group all GitHub Actions updates into one PR per run
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+
     # Schedule run every Monday, local time
     schedule:
       interval: weekly
-      time: '10:30'
+      time: '10:00'
       timezone: 'Europe/London'
