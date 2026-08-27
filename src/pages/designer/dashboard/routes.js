@@ -8,13 +8,6 @@ const routes = [
   }
 ]
 
-const designerDashboardRouter = {
-  plugin: {
-    name: 'designerDashboardRouter',
-    register (server) {
-      server.route(routes)
-    }
-  }
+export {
+  routes
 }
-
-export { designerDashboardRouter }

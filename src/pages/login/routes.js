@@ -38,15 +38,6 @@ const routes = [
   }
 ]
 
-const loginRouter = {
-  plugin: {
-    name: 'loginRouter',
-    register (server) {
-      server.route(routes)
-    }
-  }
-}
-
 export {
-  loginRouter
+  routes
 }

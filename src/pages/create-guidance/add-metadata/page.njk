@@ -1,0 +1,149 @@
+{% extends "common/layout.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-l">Capture guidance metadata</h1>
+
+      <p class="govuk-body">
+        Add context for the guidance before conversion to Markdown starts.
+      </p>
+
+      {% if submissionError %}
+        <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary">
+          <h2 class="govuk-error-summary__title" id="error-summary-title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              <li><a href="#guidanceType">{{ submissionError }}</a></li>
+            </ul>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if errorList and errorList.length %}
+        <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary">
+          <h2 class="govuk-error-summary__title" id="error-summary-title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              {% for error in errorList %}
+                <li><a href="{{ error.href }}">{{ error.text }}</a></li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      {% endif %}
+
+      <form method="post" action="/create-guidance/add-metadata" novalidate>
+        <div class="govuk-form-group{% if errors.guidanceType %} govuk-form-group--error{% endif %}">
+          <label class="govuk-label govuk-label--m" for="guidanceType">
+            Type of guidance
+          </label>
+          {% if errors.guidanceType %}
+            <p id="guidanceType-error" class="govuk-error-message">
+              <span class="govuk-visually-hidden">Error:</span> {{ errors.guidanceType }}
+            </p>
+          {% endif %}
+          <select class="govuk-select{% if errors.guidanceType %} govuk-select--error{% endif %}" id="guidanceType" name="guidanceType"{% if errors.guidanceType %} aria-describedby="guidanceType-error"{% endif %}>
+            <option value="" {% if not values.guidanceType %}selected{% endif %}>Select guidance type</option>
+            {% for option in guidanceTypeOptions %}
+              <option value="{{ option.value }}" {% if values.guidanceType == option.value %}selected{% endif %}>{{ option.text }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="govuk-form-group{% if errors.title %} govuk-form-group--error{% endif %}">
+          <label class="govuk-label govuk-label--m" for="title">
+            Guidance title
+          </label>
+          {% if errors.title %}
+            <p id="title-error" class="govuk-error-message">
+              <span class="govuk-visually-hidden">Error:</span> {{ errors.title }}
+            </p>
+          {% endif %}
+          <input class="govuk-input{% if errors.title %} govuk-input--error{% endif %}" id="title" name="title" type="text" value="{{ values.title }}"{% if errors.title %} aria-describedby="title-error"{% endif %}>
+        </div>
+
+        <div class="govuk-form-group{% if errors.intendedAudience %} govuk-form-group--error{% endif %}">
+          <label class="govuk-label govuk-label--m" for="intendedAudience">
+            Who is this guidance for?
+          </label>
+          {% if errors.intendedAudience %}
+            <p id="intendedAudience-error" class="govuk-error-message">
+              <span class="govuk-visually-hidden">Error:</span> {{ errors.intendedAudience }}
+            </p>
+          {% endif %}
+          <textarea class="govuk-textarea{% if errors.intendedAudience %} govuk-textarea--error{% endif %}" id="intendedAudience" name="intendedAudience" rows="5"{% if errors.intendedAudience %} aria-describedby="intendedAudience-error"{% endif %}>{{ values.intendedAudience }}</textarea>
+        </div>
+
+        <div class="govuk-form-group{% if errors.intendedOutcome %} govuk-form-group--error{% endif %}">
+          <label class="govuk-label govuk-label--m" for="intendedOutcome">
+            What does this guidance aim to achieve?
+          </label>
+          {% if errors.intendedOutcome %}
+            <p id="intendedOutcome-error" class="govuk-error-message">
+              <span class="govuk-visually-hidden">Error:</span> {{ errors.intendedOutcome }}
+            </p>
+          {% endif %}
+          <textarea class="govuk-textarea{% if errors.intendedOutcome %} govuk-textarea--error{% endif %}" id="intendedOutcome" name="intendedOutcome" rows="5"{% if errors.intendedOutcome %} aria-describedby="intendedOutcome-error"{% endif %}>{{ values.intendedOutcome }}</textarea>
+        </div>
+
+        <div class="govuk-form-group{% if errors.userPrerequisites %} govuk-form-group--error{% endif %}">
+          <label class="govuk-label govuk-label--m" for="userPrerequisites">
+            What do users need to perform or understand?
+          </label>
+          {% if errors.userPrerequisites %}
+            <p id="userPrerequisites-error" class="govuk-error-message">
+              <span class="govuk-visually-hidden">Error:</span> {{ errors.userPrerequisites }}
+            </p>
+          {% endif %}
+          <textarea class="govuk-textarea{% if errors.userPrerequisites %} govuk-textarea--error{% endif %}" id="userPrerequisites" name="userPrerequisites" rows="5"{% if errors.userPrerequisites %} aria-describedby="userPrerequisites-error"{% endif %}>{{ values.userPrerequisites }}</textarea>
+        </div>
+
+        <div class="govuk-form-group{% if errors.requiresSystemAccess %} govuk-form-group--error{% endif %}">
+          <fieldset class="govuk-fieldset" aria-describedby="{% if errors.requiresSystemAccess %}requiresSystemAccess-error{% endif %}">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+              Do users need access to any systems?
+            </legend>
+            {% if errors.requiresSystemAccess %}
+              <p id="requiresSystemAccess-error" class="govuk-error-message">
+                <span class="govuk-visually-hidden">Error:</span> {{ errors.requiresSystemAccess }}
+              </p>
+            {% endif %}
+
+            <div class="govuk-radios" data-module="govuk-radios">
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="requiresSystemAccess-yes" name="requiresSystemAccess" type="radio" value="yes" {% if values.requiresSystemAccess == "yes" %}checked{% endif %} data-aria-controls="conditional-systemAccessDetails">
+                <label class="govuk-label govuk-radios__label" for="requiresSystemAccess-yes">
+                  Yes
+                </label>
+              </div>
+
+              <div class="govuk-radios__conditional{% if values.requiresSystemAccess != "yes" %} govuk-radios__conditional--hidden{% endif %}" id="conditional-systemAccessDetails">
+                <div class="govuk-form-group{% if errors.systemAccessDetails %} govuk-form-group--error{% endif %}">
+                  <label class="govuk-label" for="systemAccessDetails">
+                    Which systems do users need access to?
+                  </label>
+                  {% if errors.systemAccessDetails %}
+                    <p id="systemAccessDetails-error" class="govuk-error-message">
+                      <span class="govuk-visually-hidden">Error:</span> {{ errors.systemAccessDetails }}
+                    </p>
+                  {% endif %}
+                  <textarea class="govuk-textarea{% if errors.systemAccessDetails %} govuk-textarea--error{% endif %}" id="systemAccessDetails" name="systemAccessDetails" rows="5"{% if errors.systemAccessDetails %} aria-describedby="systemAccessDetails-error"{% endif %}>{{ values.systemAccessDetails }}</textarea>
+                </div>
+              </div>
+
+              <div class="govuk-radios__item">
+                <input class="govuk-radios__input" id="requiresSystemAccess-no" name="requiresSystemAccess" type="radio" value="no" {% if values.requiresSystemAccess == "no" %}checked{% endif %}>
+                <label class="govuk-label govuk-radios__label" for="requiresSystemAccess-no">
+                  No
+                </label>
+              </div>
+            </div>
+          </fieldset>
+        </div>
+
+        <button class="govuk-button" data-module="govuk-button" type="submit">Save and continue</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

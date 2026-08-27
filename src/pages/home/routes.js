@@ -8,13 +8,6 @@ const routes = [
   }
 ]
 
-const homeRouter = {
-  plugin: {
-    name: 'homeRouter',
-    register (server) {
-      server.route(routes)
-    }
-  }
+export {
+  routes
 }
-
-export { homeRouter }
