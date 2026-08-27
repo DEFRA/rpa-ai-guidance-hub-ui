@@ -13,23 +13,6 @@ const logger = createLogger()
 const AUTH_FAIL_MESSAGE = 'Authentication failed. Please try again.'
 
 /**
- * GET /login — renders the sign-in page.
- *
- * @param {Hapi.Request} request
- * @param {Hapi.ResponseToolkit} h
- * @returns {Promise<any>}
- */
-async function getLogin (request, h) {
-  if (request.auth.isAuthenticated) {
-    return h.redirect('/')
-  }
-
-  return h.view('login/login.njk', {
-    pageTitle: 'Sign in'
-  })
-}
-
-/**
  * GET /login/callback (Redirect URI) — shared by both auth providers.
  *
  * For the 'entra' provider this is a genuine OIDC redirect URI: Bell
@@ -55,7 +38,7 @@ async function handleLoginCallback (request, h) {
 
   request.cookieAuth.set({ sessionId })
 
-  return h.redirect('/')
+  return h.redirect('/designer/dashboard')
 }
 
 /**
@@ -134,7 +117,6 @@ function _getDevSession () {
 }
 
 export {
-  getLogin,
   handleLoginCallback,
   logout
 }

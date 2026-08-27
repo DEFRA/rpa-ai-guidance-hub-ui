@@ -176,11 +176,11 @@ describe('#loginController', () => {
         })
       })
 
-      test('redirects to the home page', () => {
+      test('redirects to the designer dashboard', () => {
         expect(h.redirect).toHaveBeenCalledOnce()
-        expect(h.redirect).toHaveBeenCalledWith('/')
+        expect(h.redirect).toHaveBeenCalledWith('/designer/dashboard')
         expect(result).toEqual({
-          redirectedTo: '/'
+          redirectedTo: '/designer/dashboard'
         })
       })
     })
