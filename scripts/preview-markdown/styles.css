@@ -1,0 +1,291 @@
+/* Styles for the preview harness only. The application's own stylesheets are
+   deliberately not reused: they are SCSS built through the application's Vite
+   config, and govuk-frontend's compiled CSS expects its fonts and images under
+   the asset path the hapi server publishes, which this page does not have. */
+
+:root {
+  --ink: #0b0c0c;
+  --muted: #505a5f;
+  --line: #b1b4b6;
+  --paper: #ffffff;
+  --canvas: #f3f2f1;
+  --removed: #f6d7d2;
+  --removed-ink: #942514;
+  --added: #cce2d8;
+  --added-ink: #005a30;
+  --mono: ui-monospace, "Cascadia Mono", "Source Code Pro", Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: arial, helvetica, sans-serif;
+}
+
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  background: var(--ink);
+  color: var(--paper);
+  border-bottom: 4px solid #1d70b8;
+}
+
+.masthead__title {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.masthead__path {
+  margin: 0.15rem 0 0;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: #b1b4b6;
+}
+
+.stats {
+  display: flex;
+  gap: 1.75rem;
+  margin: 0;
+}
+
+.stat dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #b1b4b6;
+}
+
+.stat dd {
+  margin: 0.15rem 0 0;
+  font-family: var(--mono);
+  font-size: 0.95rem;
+}
+
+.stat dd .delta {
+  font-size: 0.75rem;
+}
+
+.stat dd .delta--loss {
+  color: #f4b3a8;
+}
+
+.stat dd .delta--none {
+  color: #97d7b3;
+}
+
+.layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.column {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.pane {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+
+.pane__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--canvas);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pane__note {
+  font-size: 0.7rem;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.toggle {
+  display: flex;
+  margin-left: auto;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.toggle__button {
+  padding: 0.25rem 0.6rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.7rem;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.toggle__button + .toggle__button {
+  border-left: 1px solid var(--line);
+}
+
+.toggle__button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.pane__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.pane__body--editor {
+  font-family: arial, helvetica, sans-serif;
+  font-size: 0.95rem;
+  white-space: normal;
+}
+
+/* Diff lines. The marker is a pseudo-element so that selecting the pane and
+   copying it yields the Markdown, not a column of + and - signs. */
+.line {
+  display: block;
+  padding-left: 1.25rem;
+  text-indent: -1.25rem;
+}
+
+.line::before {
+  display: inline-block;
+  width: 1.25rem;
+  text-indent: 0;
+  color: var(--muted);
+  content: "\00a0";
+}
+
+.line--removed {
+  background: var(--removed);
+  color: var(--removed-ink);
+}
+
+.line--removed::before {
+  color: var(--removed-ink);
+  content: "-";
+}
+
+.line--added {
+  background: var(--added);
+  color: var(--added-ink);
+}
+
+.line--added::before {
+  color: var(--added-ink);
+  content: "+";
+}
+
+.error {
+  margin: 0;
+  padding: 0.75rem 1.25rem;
+  background: #d4351c;
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+/* The editor surface. ProseMirror's own base stylesheet is imported by main.js;
+   these are the presentational choices on top of it. */
+.ProseMirror {
+  min-height: 100%;
+  outline: none;
+}
+
+.ProseMirror > * {
+  margin: 0 0 0.75rem;
+}
+
+.ProseMirror h1 {
+  font-size: 1.6rem;
+}
+
+.ProseMirror h2 {
+  font-size: 1.3rem;
+}
+
+.ProseMirror h3 {
+  font-size: 1.1rem;
+}
+
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6 {
+  font-size: 1rem;
+}
+
+.ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  border: 1px solid var(--line);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.ProseMirror th {
+  background: var(--canvas);
+}
+
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+}
+
+.ProseMirror pre {
+  padding: 0.5rem 0.75rem;
+  background: var(--canvas);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  overflow-x: auto;
+}
+
+.ProseMirror blockquote {
+  margin-left: 0;
+  padding-left: 0.75rem;
+  border-left: 4px solid var(--line);
+  color: var(--muted);
+}

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Markdown preview</title>
+    <link rel="icon" href="data:,">
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="masthead__identity">
+        <h1 class="masthead__title" id="document-name">Loading&hellip;</h1>
+        <p class="masthead__path" id="document-path"></p>
+      </div>
+      <dl class="stats" id="stats" hidden>
+        <div class="stat"><dt>Words</dt><dd id="stat-words"></dd></div>
+        <div class="stat"><dt>Characters</dt><dd id="stat-characters"></dd></div>
+        <div class="stat"><dt>Lines changed</dt><dd id="stat-lines"></dd></div>
+      </dl>
+    </header>
+
+    <main class="layout">
+      <div class="column">
+        <section class="pane">
+          <h2 class="pane__title">Source Markdown<span class="pane__note">as the parser wrote it</span></h2>
+          <pre class="pane__body" id="source"></pre>
+        </section>
+
+        <section class="pane">
+          <h2 class="pane__title">
+            Normalising to TipTap
+            <span class="pane__note">what the schema drops on the way through</span>
+          </h2>
+          <pre class="pane__body" id="losses"></pre>
+        </section>
+      </div>
+
+      <section class="pane">
+        <h2 class="pane__title">
+          TipTap
+          <span class="pane__note">read-only</span>
+          <div class="toggle" role="group" aria-label="Markdown to render">
+            <button type="button" class="toggle__button" data-view="original" aria-pressed="true">
+              Original
+            </button>
+            <button type="button" class="toggle__button" data-view="roundTrip" aria-pressed="false">
+              After round trip
+            </button>
+          </div>
+        </h2>
+        <div class="pane__body pane__body--editor" id="editor"></div>
+      </section>
+    </main>
+
+    <p class="error" id="error" hidden></p>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
