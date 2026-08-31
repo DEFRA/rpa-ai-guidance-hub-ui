@@ -172,6 +172,18 @@ function readArguments () {
 
   const document = path.resolve(positionals[0])
 
+  // Nothing downstream would object: a .docx is a readable file, its zip bytes
+  // decode to a string, and the Markdown parser accepts that string and renders
+  // it as line noise. Only reachable when this script is run by hand -- the
+  // orchestrator resolves a document to converted Markdown before calling it.
+  if (path.extname(document).toLowerCase() !== '.md') {
+    throw new Error(
+      `Not a Markdown file: ${document}\n` +
+      'This renders the Markdown a document was converted to. Run it through ' +
+      '`uv run task view`, which finds that Markdown for you.'
+    )
+  }
+
   if (!fs.existsSync(document)) {
     throw new Error(`Document not found: ${document}`)
   }
