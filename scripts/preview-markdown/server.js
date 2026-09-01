@@ -60,6 +60,21 @@ function imagesDirFor (document) {
 }
 
 /**
+ * A document's Markdown, without the newline that terminates the file.
+ *
+ * The page diffs this against what the editor serialises back, and a serialiser
+ * emits no trailing newline. Left on, the file's terminator is reported as a
+ * removed last line -- a convention of files reading as a loss of content. Only
+ * that one newline goes; a blank line before it is content.
+ *
+ * @param {string} document Absolute path to the Markdown file.
+ * @returns {string}
+ */
+function markdownOf (document) {
+  return fs.readFileSync(document, 'utf8').replace(/\n$/, '')
+}
+
+/**
  * Serve the document itself, plus its images, and reload the page when it changes.
  *
  * The document is read per request rather than at startup: re-running
@@ -84,7 +99,7 @@ function documentPlugin (document) {
           response.end(JSON.stringify({
             name: path.basename(document),
             path: document,
-            markdown: fs.readFileSync(document, 'utf8')
+            markdown: markdownOf(document)
           }))
         } catch (error) {
           response.statusCode = 404

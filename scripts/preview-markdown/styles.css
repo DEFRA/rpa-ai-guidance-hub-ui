@@ -289,3 +289,18 @@ body {
   border-left: 4px solid var(--line);
   color: var(--muted);
 }
+
+/*
+ * The palette a converted document can carry. Declared here rather than left to the
+ * inline style the Color extension writes, because the application serves pages under
+ * `style-src 'self'` with no `'unsafe-inline'` -- so in the real editor the class is
+ * the only half that paints anything, and the preview should show what that looks
+ * like rather than something better. The hexes are the ones `text-colours.js` names.
+ */
+.markdown-preview__text--red {
+  color: #d4351c;
+}
+
+.markdown-preview__text--blue {
+  color: #1d70b8;
+}

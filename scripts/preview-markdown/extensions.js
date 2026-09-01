@@ -1,9 +1,11 @@
 import { Highlight } from '@tiptap/extension-highlight'
 import { Image } from '@tiptap/extension-image'
-import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table'
-import { Color, TextStyle } from '@tiptap/extension-text-style'
+import { TableCell, TableHeader, TableRow } from '@tiptap/extension-table'
 import { Markdown } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
+
+import { ClassColor, MarkdownTextStyle } from './coloured-text.js'
+import { IdempotentTable } from './tables.js'
 
 // The extension list is the schema, and the schema decides what the preview can
 // show: anything it cannot model is dropped as the document is read in. So a
@@ -22,18 +24,21 @@ import StarterKit from '@tiptap/starter-kit'
 const EXTENSIONS = [
   StarterKit.configure({ underline: false }),
   Image,
-  Table,
+  // The stock Table pads its Markdown with a blank line at each end, which two
+  // adjacent tables turn into a document that grows on every save. See `tables.js`.
+  IdempotentTable,
   TableRow,
   TableCell,
   TableHeader,
   Markdown,
-  // Colour has no Markdown syntax, so it only ever arrives as inline HTML from the
-  // converted Word document. Included so that those runs still show up coloured.
-  // The real editor will need a variant of Color that renders a class as well,
-  // because the application's `style-src 'self'` would strip the inline style
-  // attribute; there is no CSP in front of this page, so the stock one is enough.
-  TextStyle,
-  Color,
+  // Colour has no Markdown syntax of its own, so it is carried as a bracketed span
+  // -- `[text]{.red}` -- which these two halves define between them: the mark owns
+  // the Markdown, and the Color variant owns what the browser paints. Both are the
+  // real thing rather than a preview stand-in, because the stock pair loses a
+  // coloured run on the first save and could not render it under the application's
+  // CSP anyway. See `coloured-text.js`.
+  MarkdownTextStyle,
+  ClassColor,
   Highlight
 ]
 
