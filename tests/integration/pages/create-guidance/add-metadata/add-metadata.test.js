@@ -75,7 +75,7 @@ describe('#addMetadataController', () => {
       expect(payload).toContain('Enter which systems users need access to')
     })
 
-    test('POST /create-guidance/add-metadata saves metadata to session and redirects to the upload step', async () => {
+    test('POST /create-guidance/add-metadata saves metadata to session and redirects to the dashboard', async () => {
       const cookie = await loginAsDevUser(server)
 
       const { statusCode, headers } = await server.inject({

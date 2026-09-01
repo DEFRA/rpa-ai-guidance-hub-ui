@@ -227,7 +227,7 @@ const config = convict({
     baseUrl: {
       doc: 'Backend API base URL for guidance operations',
       format: String,
-      default: 'http://localhost:3001',
+      default: null,
       nullable: !isProduction,
       env: 'GUIDANCE_API_BASE_URL'
     },
