@@ -4,6 +4,9 @@ const routes = [
   {
     method: 'GET',
     path: '/',
+    options: {
+      auth: false
+    },
     handler: registryController.getHomepage
   }
 ]

@@ -94,14 +94,14 @@ describe('#addMetadataController', () => {
   })
 
   describe('When not logged in', () => {
-    test('GET /create-guidance/add-metadata redirects to login', async () => {
+    test('GET /create-guidance/add-metadata redirects to the home page', async () => {
       const { statusCode, headers } = await server.inject({
         method: 'GET',
         url: '/create-guidance/add-metadata'
       })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(headers.location).toBe('/login')
+      expect(headers.location).toBe('/')
     })
   })
 })

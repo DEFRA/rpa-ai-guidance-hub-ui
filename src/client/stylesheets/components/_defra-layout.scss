@@ -43,16 +43,59 @@ body {
   background-color: $defra-green;
   color: $govuk-white;
   padding: 40px 15px;
-  margin-top: 0;
+  // Cancel out .govuk-main-wrapper's padding-top so the hero sits flush
+  // below the header/nav instead of leaving a visible white gap above it.
+  margin-top: -20px;
   margin-bottom: 0;
   box-sizing: border-box;
+
+  @media (min-width: 40.0625em) {
+    margin-top: -40px;
+  }
 }
 
 .defra-hero .govuk-heading-xl,
-.defra-hero .govuk-body-l {
+.defra-hero .govuk-body-l,
+.defra-hero .govuk-body {
   color: $govuk-white;
   margin-left: 0;
   padding-left: 0;
+}
+
+.defra-hero .govuk-caption-xl {
+  color: rgb(255, 255, 255, 0.8);
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.defra-hero__button {
+  background-color: $govuk-white;
+  color: $defra-green-aa;
+  box-shadow: 0 2px 0 $govuk-mid-grey;
+
+  &:link,
+  &:visited {
+    color: $defra-green-aa;
+  }
+
+  &:hover {
+    background-color: $govuk-light-grey;
+    color: $defra-green-aa;
+  }
+
+  &:active {
+    box-shadow: none;
+  }
+
+  &:focus {
+    outline: 3px solid transparent;
+    color: $govuk-black;
+    background-color: $govuk-yellow;
+    box-shadow:
+      0 -2px $govuk-yellow,
+      0 4px $govuk-black;
+    text-decoration: none;
+  }
 }
 
 .defra-hero__whats-new {
