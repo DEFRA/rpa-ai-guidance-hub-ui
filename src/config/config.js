@@ -223,6 +223,21 @@ const config = convict({
       env: 'TRACING_HEADER'
     }
   },
+  guidanceApi: {
+    baseUrl: {
+      doc: 'Backend API base URL for guidance operations',
+      format: String,
+      default: null,
+      nullable: !isProduction,
+      env: 'GUIDANCE_API_BASE_URL'
+    },
+    timeout: {
+      doc: 'Timeout in milliseconds for guidance API requests',
+      format: Number,
+      default: 5000,
+      env: 'GUIDANCE_API_TIMEOUT'
+    }
+  },
   auth: {
     provider: {
       doc: 'Authentication provider to use',
