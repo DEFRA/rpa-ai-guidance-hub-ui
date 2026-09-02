@@ -1,0 +1,64 @@
+{% extends "common/layout.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      <h1 class="govuk-heading-l">Choose what you want to do</h1>
+
+      <p class="govuk-body">Select an action to continue.</p>
+
+      {% if submissionError %}
+        <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary">
+          <h2 class="govuk-error-summary__title" id="error-summary-title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              <li><a href="#action">{{ submissionError }}</a></li>
+            </ul>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if errorList and errorList.length %}
+        <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary">
+          <h2 class="govuk-error-summary__title" id="error-summary-title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              {% for error in errorList %}
+                <li><a href="{{ error.href }}">{{ error.text }}</a></li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      {% endif %}
+
+      <form method="post" action="/create-guidance/action-type" novalidate>
+        <div class="govuk-form-group{% if errors.action %} govuk-form-group--error{% endif %}">
+          <fieldset class="govuk-fieldset" aria-describedby="action-hint">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+              What would you like to do?
+            </legend>
+
+            <span id="action-hint" class="govuk-hint">Choose one of the actions below.</span>
+
+            <div class="govuk-radios" data-module="govuk-radios">
+              {% for option in actionOptions %}
+                <div class="govuk-radios__item">
+                  <input class="govuk-radios__input" id="action-{{ option.value }}" name="action" type="radio" value="{{ option.value }}" {% if values.action == option.value %}checked{% endif %}>
+                  <label class="govuk-label govuk-radios__label" for="action-{{ option.value }}">{{ option.text }}</label>
+                </div>
+              {% endfor %}
+            </div>
+
+            {% if errors.action %}
+              <p id="action-error" class="govuk-error-message">
+                <span class="govuk-visually-hidden">Error:</span> {{ errors.action }}
+              </p>
+            {% endif %}
+          </fieldset>
+        </div>
+
+        <button class="govuk-button" data-module="govuk-button" type="submit">Continue</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}
