@@ -5,6 +5,9 @@ import './styles.css'
 
 import { countWords, diffLines } from './diff.js'
 import { EXTENSIONS } from './extensions.js'
+// Shared with the audit rather than kept here, so that what the audit measures and
+// what this page shows cannot come apart. See `roundtrip.js`.
+import { roundTrip } from './roundtrip.js'
 
 const elements = {
   documentName: document.getElementById('document-name'),
@@ -68,30 +71,6 @@ function render (markdown) {
   // Reachable from the console, which is the quickest way to interrogate what the
   // schema made of a document (`editor.getJSON()`, `editor.getHTML()`).
   window.editor = editor
-}
-
-/**
- * Put the given Markdown through the editor and ask for it back.
- *
- * Done in a detached instance so the visible viewer is never briefly showing a
- * document nobody asked for.
- *
- * @param {string} markdown
- * @returns {string}
- */
-function roundTrip (markdown) {
-  const scratch = new Editor({
-    element: document.createElement('div'),
-    extensions: EXTENSIONS,
-    content: markdown,
-    contentType: 'markdown',
-    editable: false
-  })
-
-  const serialised = scratch.getMarkdown()
-  scratch.destroy()
-
-  return serialised
 }
 
 /**
