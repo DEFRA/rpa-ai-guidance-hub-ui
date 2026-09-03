@@ -5,7 +5,7 @@ import { Markdown } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
 
 import { ClassColor, MarkdownTextStyle } from './coloured-text.js'
-import { IdempotentTable } from './tables.js'
+import { FaithfulTable } from './tables.js'
 
 // The extension list is the schema, and the schema decides what the preview can
 // show: anything it cannot model is dropped as the document is read in. So a
@@ -24,9 +24,10 @@ import { IdempotentTable } from './tables.js'
 const EXTENSIONS = [
   StarterKit.configure({ underline: false }),
   Image,
-  // The stock Table pads its Markdown with a blank line at each end, which two
-  // adjacent tables turn into a document that grows on every save. See `tables.js`.
-  IdempotentTable,
+  // The stock Table pads its Markdown with a blank line at each end, welds the
+  // blocks of a multi-block cell together, and reads a cell's list back as a
+  // paragraph wearing hyphens. See `tables.js`.
+  FaithfulTable,
   TableRow,
   TableCell,
   TableHeader,
