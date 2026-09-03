@@ -1,0 +1,9 @@
+// Caps the two-thirds content column to a comfortable reading measure.
+// $govuk-page-width is set wide (1920px) so pages that need the extra room
+// (dashboards, tables) can use it, but that makes an uncapped
+// govuk-grid-column-two-thirds too wide for body text. Add this class
+// alongside govuk-grid-column-two-thirds on content pages rather than
+// overriding the govuk-* class directly.
+.app-content {
+  max-width: 800px;
+}

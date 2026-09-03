@@ -1,4 +1,4 @@
-import { MigrateMetadataViewModel } from '../../../../../src/pages/create-guidance/add-metadata/view-models.js'
+import { MigrateMetadataViewModel } from '../../../../../src/pages/create-guidance/metadata/view-models.js'
 
 describe('#MigrateMetadataViewModel', () => {
   test('empty() creates a view model with no values, errors or submission error', () => {
@@ -8,21 +8,34 @@ describe('#MigrateMetadataViewModel', () => {
     expect(viewModel.errors).toEqual({})
     expect(viewModel.errorList).toEqual([])
     expect(viewModel.submissionError).toBeNull()
+    expect(viewModel.notification).toBeNull()
   })
 
   test('fromSession() populates values from saved session metadata', () => {
     const savedMetadata = { guidanceType: 'process', title: 'Submit your claim' }
 
-    const viewModel = MigrateMetadataViewModel.fromSession(savedMetadata)
+    const viewModel = MigrateMetadataViewModel.fromSession(null, savedMetadata)
 
     expect(viewModel.values).toEqual(savedMetadata)
     expect(viewModel.errors).toEqual({})
   })
 
   test('fromSession() defaults to an empty object when no metadata is saved', () => {
-    const viewModel = MigrateMetadataViewModel.fromSession()
+    const viewModel = MigrateMetadataViewModel.fromSession(null)
 
     expect(viewModel.values).toEqual({})
+  })
+
+  test('fromSession() carries through a notification message when given one', () => {
+    const viewModel = MigrateMetadataViewModel.fromSession('You have already uploaded a document for this guide', {})
+
+    expect(viewModel.notification).toBe('You have already uploaded a document for this guide')
+  })
+
+  test('fromSession() defaults notification to null when none is given', () => {
+    const viewModel = MigrateMetadataViewModel.fromSession(null, {})
+
+    expect(viewModel.notification).toBeNull()
   })
 
   test('fromValidationError() builds structured errors and errorList from Joi error details', () => {

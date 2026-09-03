@@ -1,6 +1,6 @@
 import {
   metadataSchema
-} from '../../../../../src/pages/create-guidance/add-metadata/schemas/metadata-schema.js'
+} from '../../../../../src/pages/create-guidance/metadata/schemas/metadata-schema.js'
 
 function validPayload (overrides = {}) {
   return {

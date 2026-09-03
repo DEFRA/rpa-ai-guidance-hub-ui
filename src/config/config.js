@@ -238,6 +238,40 @@ const config = convict({
       env: 'GUIDANCE_API_TIMEOUT'
     }
   },
+  cdpUploader: {
+    baseUrl: {
+      doc: 'CDP uploader service URL',
+      format: String,
+      default: null,
+      env: 'CDP_UPLOADER_BASE_URL'
+    },
+    browserUrl: {
+      doc: 'CDP uploader browser URL (only allowed in non-production)',
+      format: function (val) {
+        if (isProduction && val !== null) {
+          throw new Error('CDP_UPLOADER_BROWSER_URL must not be set in production')
+        }
+        if (val !== null && typeof val !== 'string') {
+          throw new Error('must be a string or null')
+        }
+      },
+      default: null,
+      nullable: true,
+      env: 'CDP_UPLOADER_BROWSER_URL'
+    },
+    sourceDocsBucket: {
+      doc: 'Source documents S3 bucket name',
+      format: String,
+      default: null,
+      env: 'SOURCE_DOCS_S3_BUCKET'
+    },
+    requestTimeout: {
+      doc: 'Timeout in milliseconds for requests to the CDP uploader service',
+      format: Number,
+      default: 5000,
+      env: 'CDP_UPLOADER_REQUEST_TIMEOUT'
+    }
+  },
   auth: {
     provider: {
       doc: 'Authentication provider to use',

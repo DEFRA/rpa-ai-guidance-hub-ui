@@ -82,13 +82,18 @@ async function createServer () {
     sessionCache,
     HapiCookie,
     Scooter,
-    contentSecurityPolicy,
     HapiInert,
     serveStaticFiles,
     viewPlugin,
     auth,
     router
   ]
+
+  // Disable the content security policy plugin if the CDP Uploader browser URL
+  // is configured for local development (browser posts directly to an external origin)
+  if (!config.get('cdpUploader.browserUrl')) {
+    plugins.push(contentSecurityPolicy)
+  }
 
   server.app.cache = server.cache({
     cache: config.get('session.cache.name'),

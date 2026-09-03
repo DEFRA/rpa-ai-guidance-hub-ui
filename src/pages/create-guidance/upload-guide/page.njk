@@ -1,0 +1,37 @@
+{% extends "common/layout.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds app-content">
+      <h1 class="govuk-heading-l">Upload guidance</h1>
+
+      <p class="govuk-body">
+        Upload a Word document and the hub will convert it into a guide. The file is scanned for viruses before it is accepted.
+      </p>
+
+      <form
+        action="{{ uploadUrl }}"
+        method="post"
+        enctype="multipart/form-data"
+      >
+        <div class="govuk-form-group">
+          <label class="govuk-label govuk-label--s" for="guidanceDocumentUpload">
+            Word document
+          </label>
+          <p class="govuk-hint">Must be a .docx file</p>
+          <input
+            class="govuk-file-upload"
+            id="guidanceDocumentUpload"
+            name="guidanceDocument"
+            type="file"
+            accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          >
+        </div>
+
+        <button class="govuk-button" data-module="govuk-button" type="submit">
+          Upload
+        </button>
+      </form>
+    </div>
+  </div>
+{% endblock %}
