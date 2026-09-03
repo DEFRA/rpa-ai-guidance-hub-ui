@@ -1,5 +1,5 @@
 import { statusCodes } from '../../../constants/status-codes.js'
-import { checkUploadSession } from '../service.js'
+import { RESULTS, checkUploadSession } from '../service.js'
 import { getGuideUpload } from '../session.js'
 import { UploadGuidanceViewModel } from './view-models.js'
 
@@ -18,16 +18,16 @@ async function getUploadForm (request, h) {
   const upload = getGuideUpload(request)
   const result = await checkUploadSession(upload)
 
-  if (result.code === 'noMigrationStarted') {
+  if (result.code === RESULTS.NO_MIGRATION) {
     request.yar.flash('uploadNotification', 'No guide migration has been started')
 
     return h.redirect('/create-guidance/action-type')
   }
 
-  if (result.code === 'uploadExpended') {
+  if (result.code === RESULTS.UPLOAD_EXPENDED) {
     request.yar.flash('uploadNotification', 'You have already uploaded a document for this guide')
 
-    return h.redirect('/create-guidance/add-metadata')
+    return h.redirect('/create-guidance/metadata')
   }
 
   const viewModel = new UploadGuidanceViewModel({

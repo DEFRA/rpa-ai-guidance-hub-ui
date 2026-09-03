@@ -45,9 +45,13 @@ async function checkUploadSession (upload) {
     }
   }
 
-  const { uploadStatus } = await getUploadStatus(upload.activeUploadId)
+  const status = await getUploadStatus(upload.activeUploadId)
 
-  if (uploadStatus === 'initiated') {
+  if (!status) {
+    throw new Error('Failed to retrieve upload status')
+  }
+
+  if (status.uploadStatus === 'initiated') {
     return { code: RESULTS.UPLOAD_AVAILABLE }
   }
 
@@ -71,9 +75,13 @@ async function startMigration (upload) {
     }
   }
 
-  const { uploadStatus } = await getUploadStatus(upload.activeUploadId)
+  const status = await getUploadStatus(upload.activeUploadId)
 
-  if (uploadStatus === 'initiated') {
+  if (!status) {
+    throw new Error('Failed to retrieve upload status')
+  }
+
+  if (status.uploadStatus === 'initiated') {
     return { code: RESULTS.UPLOAD_AVAILABLE }
   }
 
@@ -81,6 +89,7 @@ async function startMigration (upload) {
 }
 
 export {
+  RESULTS,
   checkUploadSession,
   startMigration
 }

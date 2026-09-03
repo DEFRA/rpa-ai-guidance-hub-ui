@@ -1,21 +1,19 @@
 import { statusCodes } from '../../../../../src/constants/status-codes.js'
 
-vi.mock('../../../../../src/pages/create-guidance/service.js', () => ({
-  checkUploadSession: vi.fn()
-}))
+vi.mock('../../../../../src/pages/create-guidance/service.js', async () => {
+  const { RESULTS } = await import('../../../../../src/pages/create-guidance/service.js')
+  return {
+    RESULTS,
+    checkUploadSession: vi.fn()
+  }
+})
 
 vi.mock('../../../../../src/pages/create-guidance/session.js', () => ({
   getGuideUpload: vi.fn()
 }))
 
-vi.mock('../../../../../src/pages/create-guidance/upload-guide/view-models.js', () => ({
-  // a real function, not an arrow, so it stays usable as a constructor
-  UploadGuidanceViewModel: vi.fn().mockImplementation(function (data) { return { page: 'upload single guidance document', ...data } })
-}))
-
 import { checkUploadSession } from '../../../../../src/pages/create-guidance/service.js'
 import { getGuideUpload } from '../../../../../src/pages/create-guidance/session.js'
-import { UploadGuidanceViewModel } from '../../../../../src/pages/create-guidance/upload-guide/view-models.js'
 import { getUploadForm } from '../../../../../src/pages/create-guidance/upload-guide/controller.js'
 
 const UPLOAD_GUIDANCE_VIEW = 'create-guidance/upload-guide/page.njk'
@@ -67,7 +65,7 @@ describe('getUploadForm', () => {
     test('redirects to add-metadata', async () => {
       const result = await getUploadForm(request, h)
 
-      expect(h.redirect).toHaveBeenCalledWith('/create-guidance/add-metadata')
+      expect(h.redirect).toHaveBeenCalledWith('/create-guidance/metadata')
       expect(result).toEqual(h.redirect())
     })
   })
@@ -81,8 +79,11 @@ describe('getUploadForm', () => {
     test('renders the upload form with a view model built from the active upload', async () => {
       await getUploadForm(request, h)
 
-      expect(UploadGuidanceViewModel).toHaveBeenCalledWith({ uploadId: 'u-1' })
-      expect(h.view).toHaveBeenCalledWith(UPLOAD_GUIDANCE_VIEW, expect.objectContaining({ uploadId: 'u-1' }))
+      expect(h.view).toHaveBeenCalledWith(UPLOAD_GUIDANCE_VIEW, expect.objectContaining({
+        page: 'upload single guidance document',
+        pageTitle: 'Upload a single guidance document',
+        uploadUrl: expect.stringContaining('/u-1')
+      }))
     })
 
     test('responds with 200', async () => {

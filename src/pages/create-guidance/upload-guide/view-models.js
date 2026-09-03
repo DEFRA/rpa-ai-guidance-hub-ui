@@ -1,4 +1,4 @@
-import { CDP_UPLOADER_BROWSER_URL } from './constants.js'
+import { CDP_UPLOADER_BROWSER_URL } from '../../../constants/uploader.js'
 
 /**
  * View model for the upload guidance page

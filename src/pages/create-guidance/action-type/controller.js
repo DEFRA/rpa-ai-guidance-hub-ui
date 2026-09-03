@@ -1,6 +1,6 @@
 import { statusCodes } from '../../../constants/status-codes.js'
 import { getGuideUpload, createGuideUpload, addGuideUpload } from '../session.js'
-import { startMigration } from '../service.js'
+import { RESULTS, startMigration } from '../service.js'
 import { ActionTypeViewModel } from './view-models.js'
 
 const ACTION_TYPE_VIEW = 'create-guidance/action-type/page.njk'
@@ -68,11 +68,11 @@ async function _handleMigrateSelect (request, h) {
 
   const result = await startMigration(upload)
 
-  if (result.code === 'uploadExpended') {
-    return h.redirect('/create-guidance/add-metadata')
+  if (result.code === RESULTS.UPLOAD_EXPENDED) {
+    return h.redirect('/create-guidance/metadata')
   }
 
-  if (result.code === 'migrationStarted') {
+  if (result.code === RESULTS.MIGRATION_STARTED) {
     addGuideUpload(request, result.uploadId)
   }
 

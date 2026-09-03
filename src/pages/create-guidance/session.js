@@ -103,6 +103,7 @@ function addGuideUpload (request, uploadId) {
 }
 
 export {
+  SESSION_KEY,
   getGuideUpload,
   createGuideUpload,
   addGuideUpload

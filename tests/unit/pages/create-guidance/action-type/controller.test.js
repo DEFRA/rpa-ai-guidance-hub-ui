@@ -6,14 +6,13 @@ vi.mock('../../../../../src/pages/create-guidance/session.js', () => ({
   addGuideUpload: vi.fn()
 }))
 
-vi.mock('../../../../../src/pages/create-guidance/service.js', () => ({
-  startMigration: vi.fn()
-}))
-
-vi.mock('../../../../../src/pages/create-guidance/action-type/view-models.js', () => ({
-  // a real function, not an arrow, so it stays usable as a constructor
-  ActionTypeViewModel: vi.fn().mockImplementation(function () { return { page: 'action chooser' } })
-}))
+vi.mock('../../../../../src/pages/create-guidance/service.js', async () => {
+  const { RESULTS } = await import('../../../../../src/pages/create-guidance/service.js')
+  return {
+    RESULTS,
+    startMigration: vi.fn()
+  }
+})
 
 import { getGuideUpload, createGuideUpload, addGuideUpload } from '../../../../../src/pages/create-guidance/session.js'
 import { startMigration } from '../../../../../src/pages/create-guidance/service.js'
@@ -36,7 +35,13 @@ describe('action-type controller', () => {
     test('renders the action chooser view model', async () => {
       await getActionForm({}, h)
 
-      expect(h.view).toHaveBeenCalledWith(ACTION_TYPE_VIEW, { page: 'action chooser' })
+      expect(h.view).toHaveBeenCalledWith(ACTION_TYPE_VIEW, expect.objectContaining({
+        page: 'action chooser',
+        pageTitle: 'Choose an action',
+        actionOptions: expect.arrayContaining([
+          expect.objectContaining({ value: 'migrate', text: 'Migrate an existing guide' })
+        ])
+      }))
     })
 
     test('responds with 200', async () => {
@@ -98,7 +103,7 @@ describe('action-type controller', () => {
       test('redirects to add-metadata rather than starting a new upload', async () => {
         const result = await postAction(request, h)
 
-        expect(h.redirect).toHaveBeenCalledWith('/create-guidance/add-metadata')
+        expect(h.redirect).toHaveBeenCalledWith('/create-guidance/metadata')
         expect(result).toEqual(h.redirect())
         expect(addGuideUpload).not.toHaveBeenCalled()
       })

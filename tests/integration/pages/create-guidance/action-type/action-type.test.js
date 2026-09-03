@@ -27,7 +27,7 @@ describe('#actionTypeController', () => {
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(payload).toContain('Choose what you want to do')
-      expect(payload).toContain('Migrate an existing guidance')
+      expect(payload).toContain('Migrate an existing guide')
     })
 
     test('POST /create-guidance/action-type re-renders with errors for invalid form data', async () => {
@@ -45,7 +45,7 @@ describe('#actionTypeController', () => {
       expect(payload).toContain('Select an action')
     })
 
-    test('POST /create-guidance/action-type with migrate redirects to start-upload', async () => {
+    test('POST /create-guidance/action-type with migrate redirects to guide-upload', async () => {
       const cookie = await loginAsDevUser(server)
 
       const { statusCode, headers } = await server.inject({
@@ -56,7 +56,7 @@ describe('#actionTypeController', () => {
       })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(headers.location).toBe('/create-guidance/start-upload')
+      expect(headers.location).toBe('/create-guidance/upload-guide')
     })
   })
 

@@ -93,7 +93,7 @@ describe('#uploadGuideController', () => {
       })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(headers.location).toBe('/create-guidance/add-metadata')
+      expect(headers.location).toBe('/create-guidance/metadata')
     })
   })
 })

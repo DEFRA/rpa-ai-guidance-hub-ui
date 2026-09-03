@@ -1,5 +1,5 @@
-import { sessionCache } from '../../../src/server/plugins/session-cache/session-cache.js'
-import { config } from '../../../src/config/config.js'
+import { sessionCache } from '../../../../../src/server/plugins/session-cache/session-cache.js'
+import { config } from '../../../../../src/config/config.js'
 
 describe('sessionCache plugin', () => {
   test('always uses server-side storage by setting maxCookieSize to 0', () => {

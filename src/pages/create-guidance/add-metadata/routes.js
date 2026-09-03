@@ -4,12 +4,12 @@ import { metadataSchema } from './schemas/metadata-schema.js'
 const routes = [
   {
     method: 'GET',
-    path: '/create-guidance/add-metadata',
+    path: '/create-guidance/metadata',
     handler: startNewGuide.getMetadataForm
   },
   {
     method: 'POST',
-    path: '/create-guidance/add-metadata',
+    path: '/create-guidance/metadata',
     options: {
       validate: {
         payload: metadataSchema,
