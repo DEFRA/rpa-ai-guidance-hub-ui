@@ -1,6 +1,15 @@
 import { createActions } from './constants.js'
 
 class ActionTypeViewModel {
+  /**
+   * Construct the ActionTypeViewModel.
+   *
+   * @param {Object} [data={}] - Initial values for the view model
+   * @param {Object} [data.values] - Initial form values
+   * @param {Object} [data.errors] - Field-level error map
+   * @param {Array} [data.errorList] - Ordered error list for summary
+   * @param {string} [data.submissionError] - General submission error message
+   */
   constructor (data = {}) {
     this.values = data.values || {}
     this.errors = data.errors || {}
@@ -14,10 +23,17 @@ class ActionTypeViewModel {
     }))
   }
 
+  /**
+   * Map an internal action key to a user-facing label.
+   *
+   * @private
+   * @param {string} action - Action key
+   * @returns {string} Human-friendly label for the radio option
+   */
   _optionText (action) {
     // Map action keys to human-friendly labels
     const map = {
-      migrate: 'Migrate an existing guidance'
+      migrate: 'Migrate an existing guide'
     }
 
     return map[action] || action
@@ -56,7 +72,7 @@ class ActionTypeViewModel {
 
       errors[field] = detail.message
 
-      let href = `#${field}`
+      const href = `#${field}`
 
       errorList.push({
         text: detail.message,
@@ -82,7 +98,7 @@ class ActionTypeViewModel {
   }
 
   pageTitle = 'Choose an action'
-  page = 'designer'
+  page = 'action chooser'
 }
 
 export {

@@ -238,6 +238,27 @@ const config = convict({
       env: 'GUIDANCE_API_TIMEOUT'
     }
   },
+  cdpUploader: {
+    baseUrl: {
+      doc: 'CDP uploader service URL',
+      format: String,
+      default: null,
+      env: 'CDP_UPLOADER_BASE_URL'
+    },
+    browserUrl: {
+      doc: 'CDP uploader browser URL',
+      format: String,
+      default: null,
+      nullable: true,
+      env: 'CDP_UPLOADER_BROWSER_URL'
+    },
+    sourceDocsBucket: {
+      doc: 'Source documents S3 bucket name',
+      format: String,
+      default: null,
+      env: 'SOURCE_DOCS_S3_BUCKET'
+    }
+  },
   auth: {
     provider: {
       doc: 'Authentication provider to use',
