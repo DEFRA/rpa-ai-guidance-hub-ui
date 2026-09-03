@@ -14,6 +14,7 @@
   --added: #cce2d8;
   --added-ink: #005a30;
   --mono: ui-monospace, "Cascadia Mono", "Source Code Pro", Menlo, Consolas, monospace;
+  --gutter: 0.75rem;
 }
 
 * {
@@ -86,23 +87,95 @@ body {
   color: #97d7b3;
 }
 
+/* Each split is a bare fraction that `panes.js` moves, and the track arithmetic is
+   done here so the panes stay proportional through a window resize. The fraction is
+   of the space the two panes share, hence the gutter coming off the total before it
+   is applied: without that, dragging a split would slowly drift from the cursor.
+   The grids have no `gap` because the gutter is the gap -- a gap cannot be grabbed. */
+
 .layout {
+  --split-columns: 0.5;
+
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0.75rem;
+  grid-template-columns:
+    calc(var(--split-columns) * (100% - var(--gutter)))
+    var(--gutter)
+    minmax(0, 1fr);
   padding: 0.75rem;
 }
 
 .column {
+  --split-rows: 0.5;
+
+  min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0.75rem;
+  grid-template-rows:
+    calc(var(--split-rows) * (100% - var(--gutter)))
+    var(--gutter)
+    minmax(0, 1fr);
+}
+
+.gutter {
+  position: relative;
+  background: var(--canvas);
+  /* Or a drag on a touch screen scrolls the page instead of moving the split. */
+  touch-action: none;
+}
+
+.gutter:focus-visible {
+  outline: 3px solid #ffdd00;
+  outline-offset: -3px;
+}
+
+/* A grip, so the space between two panes reads as something to take hold of. */
+.gutter::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.gutter:hover::after {
+  background: var(--muted);
+}
+
+.gutter--vertical {
+  cursor: col-resize;
+}
+
+.gutter--vertical::after {
+  width: 3px;
+  height: 2rem;
+}
+
+.gutter--horizontal {
+  cursor: row-resize;
+}
+
+.gutter--horizontal::after {
+  width: 2rem;
+  height: 3px;
+}
+
+/* While a split is moving, the pointer is over the panes rather than the gutter it
+   is dragging, so both the cursor and the text selection have to be held off there
+   instead. `panes.js` sets which cursor on the body. */
+body.is-dragging {
+  user-select: none;
+}
+
+body.is-dragging * {
+  cursor: inherit;
 }
 
 .pane {
+  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;

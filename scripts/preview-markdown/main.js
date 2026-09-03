@@ -5,6 +5,7 @@ import './styles.css'
 
 import { countWords, diffLines } from './diff.js'
 import { EXTENSIONS } from './extensions.js'
+import { makeResizable } from './panes.js'
 // Shared with the audit rather than kept here, so that what the audit measures and
 // what this page shows cannot come apart. See `roundtrip.js`.
 import { roundTrip } from './roundtrip.js'
@@ -167,6 +168,10 @@ function reportLosses (original, normalised) {
 }
 
 async function main () {
+  // Before the document is fetched, so that the panes can still be arranged when
+  // the fetch is what failed and the page is showing an error.
+  makeResizable()
+
   const response = await fetch('/document.json')
 
   if (!response.ok) {
