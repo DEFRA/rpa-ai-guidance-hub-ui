@@ -8,7 +8,7 @@ async function getMetadataForm (request, h) {
 
   const [notification] = request.yar.flash('uploadNotification')
 
-  const viewModel = MigrateMetadataViewModel.fromSession(saved?.metadata, notification)
+  const viewModel = MigrateMetadataViewModel.fromSession(notification, saved?.metadata)
 
   return h
     .view(MIGRATE_METADATA_VIEW, viewModel)

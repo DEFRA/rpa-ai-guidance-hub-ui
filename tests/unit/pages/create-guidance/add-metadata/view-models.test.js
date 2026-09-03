@@ -14,26 +14,26 @@ describe('#MigrateMetadataViewModel', () => {
   test('fromSession() populates values from saved session metadata', () => {
     const savedMetadata = { guidanceType: 'process', title: 'Submit your claim' }
 
-    const viewModel = MigrateMetadataViewModel.fromSession(savedMetadata)
+    const viewModel = MigrateMetadataViewModel.fromSession(null, savedMetadata)
 
     expect(viewModel.values).toEqual(savedMetadata)
     expect(viewModel.errors).toEqual({})
   })
 
   test('fromSession() defaults to an empty object when no metadata is saved', () => {
-    const viewModel = MigrateMetadataViewModel.fromSession()
+    const viewModel = MigrateMetadataViewModel.fromSession(null)
 
     expect(viewModel.values).toEqual({})
   })
 
   test('fromSession() carries through a notification message when given one', () => {
-    const viewModel = MigrateMetadataViewModel.fromSession({}, 'You have already uploaded a document for this guide')
+    const viewModel = MigrateMetadataViewModel.fromSession('You have already uploaded a document for this guide', {})
 
     expect(viewModel.notification).toBe('You have already uploaded a document for this guide')
   })
 
   test('fromSession() defaults notification to null when none is given', () => {
-    const viewModel = MigrateMetadataViewModel.fromSession({})
+    const viewModel = MigrateMetadataViewModel.fromSession(null, {})
 
     expect(viewModel.notification).toBeNull()
   })

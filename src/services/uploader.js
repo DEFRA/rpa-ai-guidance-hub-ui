@@ -51,7 +51,7 @@ async function initiateUpload (initiateRequest) {
     }
   }
 
-  throw _unexpectedStatus(res.status)
+  throw _unexpectedStatus(res.status, 'initiate')
 }
 
 /**
@@ -60,10 +60,11 @@ async function initiateUpload (initiateRequest) {
  * service doesn't otherwise handle.
  *
  * @param {number} status
+ * @param {string} context - Which cdp-uploader endpoint returned the status
  * @returns {Error & {statusCode: number}}
  */
-function _unexpectedStatus (status) {
-  const error = new Error(`Unexpected status ${status} from cdp-uploader initiate`)
+function _unexpectedStatus (status, context) {
+  const error = new Error(`Unexpected status ${status} from cdp-uploader ${context}`)
   error.statusCode = status
 
   return error
@@ -75,12 +76,18 @@ function _unexpectedStatus (status) {
  * @param {string} uploadId
  * @param {{debug?: boolean}} [options]
  * @returns {Promise<UploadStatusModel|null>} Shaped status, or null if uploadId is not found
+ * @throws {CdpUploaderError} - If the infra layer reports a non-404 failure,
+ *   or an ok response carries no usable JSON body
  */
 async function getUploadStatus (uploadId, options = {}) {
   const res = await uploaderApi.getUploadStatus(uploadId, options)
 
   if (res.status === statusCodes.HTTP_STATUS_NOT_FOUND) {
     return null
+  }
+
+  if (!res.ok) {
+    throw _unexpectedStatus(res.status, 'status')
   }
 
   return _projectUploadStatus(res.data)

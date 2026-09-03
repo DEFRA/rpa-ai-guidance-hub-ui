@@ -264,6 +264,12 @@ const config = convict({
       format: String,
       default: null,
       env: 'SOURCE_DOCS_S3_BUCKET'
+    },
+    requestTimeout: {
+      doc: 'Timeout in milliseconds for requests to the CDP uploader service',
+      format: Number,
+      default: 5000,
+      env: 'CDP_UPLOADER_REQUEST_TIMEOUT'
     }
   },
   auth: {

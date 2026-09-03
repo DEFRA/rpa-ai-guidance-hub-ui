@@ -50,9 +50,18 @@ describe('uploaderService', () => {
 
   describe('getUploadStatus', () => {
     test('returns null when the upload id is not found', async () => {
-      uploaderApi.getUploadStatus.mockResolvedValue({ status: statusCodes.HTTP_STATUS_NOT_FOUND })
+      uploaderApi.getUploadStatus.mockResolvedValue({ ok: false, status: statusCodes.HTTP_STATUS_NOT_FOUND, data: null })
 
       expect(await getUploadStatus('nope')).toBeNull()
+    })
+
+    test('throws with the status code on an unexpected non-ok status', async () => {
+      uploaderApi.getUploadStatus.mockResolvedValue({ ok: false, status: statusCodes.HTTP_STATUS_INTERNAL_SERVER_ERROR, data: null })
+
+      await expect(getUploadStatus('u-1')).rejects.toMatchObject({
+        message: 'Unexpected status 500 from cdp-uploader status',
+        statusCode: statusCodes.HTTP_STATUS_INTERNAL_SERVER_ERROR
+      })
     })
 
     test('projects a ready upload, including its non-file form fields', async () => {
@@ -62,7 +71,7 @@ describe('uploaderService', () => {
         form: { title: 'Submit your claim', file: completeFile({ s3Bucket: 'bucket', s3Key: 'key1' }) },
         numberOfRejectedFiles: 0
       })
-      uploaderApi.getUploadStatus.mockResolvedValue({ status: statusCodes.HTTP_STATUS_OK, data: raw })
+      uploaderApi.getUploadStatus.mockResolvedValue({ ok: true, status: statusCodes.HTTP_STATUS_OK, data: raw })
 
       const result = await getUploadStatus('u-1')
 
@@ -76,7 +85,7 @@ describe('uploaderService', () => {
       const raw = uploadStatusResponse({
         form: { file: completeFile({ s3Bucket: 'bucket', s3Key: 'key1' }) }
       })
-      uploaderApi.getUploadStatus.mockResolvedValue({ status: statusCodes.HTTP_STATUS_OK, data: raw })
+      uploaderApi.getUploadStatus.mockResolvedValue({ ok: true, status: statusCodes.HTTP_STATUS_OK, data: raw })
 
       const result = await getUploadStatus('u-1')
 
@@ -90,7 +99,7 @@ describe('uploaderService', () => {
         form: { file: rejectedFile({ errorCode: 'E1', errorMessage: 'bad file' }) },
         numberOfRejectedFiles: 1
       })
-      uploaderApi.getUploadStatus.mockResolvedValue({ status: statusCodes.HTTP_STATUS_OK, data: raw })
+      uploaderApi.getUploadStatus.mockResolvedValue({ ok: true, status: statusCodes.HTTP_STATUS_OK, data: raw })
 
       const result = await getUploadStatus('u-1')
 
@@ -109,7 +118,7 @@ describe('uploaderService', () => {
         },
         numberOfRejectedFiles: 1
       })
-      uploaderApi.getUploadStatus.mockResolvedValue({ status: statusCodes.HTTP_STATUS_OK, data: raw })
+      uploaderApi.getUploadStatus.mockResolvedValue({ ok: true, status: statusCodes.HTTP_STATUS_OK, data: raw })
 
       const result = await getUploadStatus('u-1')
 

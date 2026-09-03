@@ -45,17 +45,15 @@ describe('CdpUploaderClient', () => {
       expect(response).toEqual({ ok: true, status: statusCodes.HTTP_STATUS_OK, data: { uploadId: 'u1' } })
     })
 
-    test('returns null data when the response body is not JSON', async () => {
+    test('throws when an ok response has no valid JSON body', async () => {
       const client = new CdpUploaderClient(TEST_BASE_URL)
 
       nock(TEST_BASE_URL).get('/status/x').reply(statusCodes.HTTP_STATUS_OK, 'not json')
 
-      const response = await client.request('/status/x')
-
-      expect(response).toEqual({ ok: true, status: statusCodes.HTTP_STATUS_OK, data: null })
+      await expect(client.request('/status/x')).rejects.toThrow(SyntaxError)
     })
 
-    test('returns ok:false with null data for a status in the expected list', async () => {
+    test('returns ok:false for a status in the expected list', async () => {
       const client = new CdpUploaderClient(TEST_BASE_URL)
 
       nock(TEST_BASE_URL).get('/status/xxx').reply(statusCodes.HTTP_STATUS_NOT_FOUND)

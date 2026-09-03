@@ -2,8 +2,12 @@
 
 {% block content %}
   <div class="govuk-grid-row">
-    <div class="govuk-grid-column-full-width">
+    <div class="govuk-grid-column-two-thirds app-content">
       <h1 class="govuk-heading-l">Upload guidance</h1>
+
+      <p class="govuk-body">
+        Upload a Word document and the hub will convert it into a guide. The file is scanned for viruses before it is accepted.
+      </p>
 
       <form
         action="{{ uploadUrl }}"
@@ -11,9 +15,10 @@
         enctype="multipart/form-data"
       >
         <div class="govuk-form-group">
-          <label class="govuk-label" for="guidanceDocumentUpload">
+          <label class="govuk-label govuk-label--s" for="guidanceDocumentUpload">
             Word document
           </label>
+          <p class="govuk-hint">Must be a .docx file</p>
           <input
             class="govuk-file-upload"
             id="guidanceDocumentUpload"

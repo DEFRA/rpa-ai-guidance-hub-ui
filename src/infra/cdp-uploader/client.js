@@ -46,6 +46,7 @@ class CdpUploaderClient {
    * @param {RequestOptions} [options] - The request options
    * @returns {Promise<{ok: boolean, status: number, data: any}>} - The response object
    * @throws {CdpUploaderError} - When response is not ok and status is not in expected list
+   * @throws {SyntaxError} - When an ok response body isn't valid JSON
    */
   async request (path, options = {}) {
     const method = options.method || 'GET'
@@ -63,18 +64,13 @@ class CdpUploaderClient {
         ...(options.body ? { 'Content-Type': 'application/json' } : {}),
         ...options.headers
       },
+      signal: AbortSignal.timeout(config.get('cdpUploader.requestTimeout')),
       body: options.body ? JSON.stringify(options.body) : undefined
     })
 
-    let data = null
-
-    try {
-      data = await response.json()
-    } catch {
-      data = null
-    }
-
     if (response.ok) {
+      const data = await response.json()
+
       return { ok: true, status: response.status, data }
     }
 
