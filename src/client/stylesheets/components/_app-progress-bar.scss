@@ -1,0 +1,20 @@
+@use '../variables/colours' as *;
+
+.app-progress-bar {
+  display: block;
+  width: 100%;
+  height: 16px;
+  background-color: $govuk-light-grey;
+  border: 1px solid $govuk-mid-grey;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  margin-top: 20px;
+  margin-bottom: 20px;
+
+  &__inner {
+    height: 100%;
+    background-color: $defra-green;
+    transition: width 0.4s ease-in-out;
+  }
+}

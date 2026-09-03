@@ -21,7 +21,7 @@ const RESULTS = {
  */
 async function _initiateGuideUpload () {
   const initiateRequest = {
-    redirect: '/create-guidance/metadata',
+    redirect: '/create-guidance/upload-guide/status',
     s3Bucket: config.get('cdpUploader.sourceDocsBucket')
   }
 
