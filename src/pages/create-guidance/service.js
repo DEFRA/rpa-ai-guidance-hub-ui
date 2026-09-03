@@ -8,7 +8,6 @@ import { getUploadStatus, initiateUpload } from '../../services/uploader.js'
  * @enum {string}
  */
 const RESULTS = {
-  NO_MIGRATION: 'noMigrationStarted',
   MIGRATION_STARTED: 'migrationStarted',
   UPLOAD_AVAILABLE: 'uploadAvailable',
   UPLOAD_EXPENDED: 'uploadExpended'
@@ -29,33 +28,6 @@ async function _initiateGuideUpload () {
   const { uploadId } = await initiateUpload(initiateRequest)
 
   return uploadId
-}
-
-/**
- * Check the given GuideUpload session wrapper and return a result code
- * describing whether a migration/upload has been started and its state.
- *
- * @param {Object|null} upload - The GuideUpload instance from session (or null)
- * @returns {Promise<{code: string}>} Result code describing the upload state
- */
-async function checkUploadSession (upload) {
-  if (!upload?.hasUpload()) {
-    return {
-      code: RESULTS.NO_MIGRATION
-    }
-  }
-
-  const status = await getUploadStatus(upload.activeUploadId)
-
-  if (!status) {
-    throw new Error('Failed to retrieve upload status')
-  }
-
-  if (status.uploadStatus === 'initiated') {
-    return { code: RESULTS.UPLOAD_AVAILABLE }
-  }
-
-  return { code: RESULTS.UPLOAD_EXPENDED }
 }
 
 /**
@@ -90,6 +62,5 @@ async function startMigration (upload) {
 
 export {
   RESULTS,
-  checkUploadSession,
   startMigration
 }

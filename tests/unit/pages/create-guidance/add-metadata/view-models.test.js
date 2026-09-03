@@ -8,6 +8,7 @@ describe('#MigrateMetadataViewModel', () => {
     expect(viewModel.errors).toEqual({})
     expect(viewModel.errorList).toEqual([])
     expect(viewModel.submissionError).toBeNull()
+    expect(viewModel.notification).toBeNull()
   })
 
   test('fromSession() populates values from saved session metadata', () => {
@@ -23,6 +24,18 @@ describe('#MigrateMetadataViewModel', () => {
     const viewModel = MigrateMetadataViewModel.fromSession()
 
     expect(viewModel.values).toEqual({})
+  })
+
+  test('fromSession() carries through a notification message when given one', () => {
+    const viewModel = MigrateMetadataViewModel.fromSession({}, 'You have already uploaded a document for this guide')
+
+    expect(viewModel.notification).toBe('You have already uploaded a document for this guide')
+  })
+
+  test('fromSession() defaults notification to null when none is given', () => {
+    const viewModel = MigrateMetadataViewModel.fromSession({})
+
+    expect(viewModel.notification).toBeNull()
   })
 
   test('fromValidationError() builds structured errors and errorList from Joi error details', () => {

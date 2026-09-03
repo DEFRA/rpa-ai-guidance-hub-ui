@@ -4,54 +4,11 @@ vi.mock('../../../../src/services/uploader.js', () => ({
 }))
 
 import { getUploadStatus, initiateUpload } from '../../../../src/services/uploader.js'
-import { RESULTS, checkUploadSession, startMigration } from '../../../../src/pages/create-guidance/service.js'
+import { RESULTS, startMigration } from '../../../../src/pages/create-guidance/service.js'
 
 describe('create-guidance service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  describe('checkUploadSession', () => {
-    test('returns NO_MIGRATION when there is no upload', async () => {
-      const result = await checkUploadSession(null)
-
-      expect(result).toEqual({ code: RESULTS.NO_MIGRATION })
-      expect(getUploadStatus).not.toHaveBeenCalled()
-    })
-
-    test('returns NO_MIGRATION when the upload wrapper has no active upload', async () => {
-      const upload = { hasUpload: () => false }
-
-      const result = await checkUploadSession(upload)
-
-      expect(result).toEqual({ code: RESULTS.NO_MIGRATION })
-    })
-
-    test('throws when the upload status cannot be retrieved', async () => {
-      const upload = { hasUpload: () => true, activeUploadId: 'u-1' }
-      getUploadStatus.mockResolvedValue(null)
-
-      await expect(checkUploadSession(upload)).rejects.toThrow('Failed to retrieve upload status')
-    })
-
-    test('returns UPLOAD_AVAILABLE when the status is initiated', async () => {
-      const upload = { hasUpload: () => true, activeUploadId: 'u-1' }
-      getUploadStatus.mockResolvedValue({ uploadStatus: 'initiated' })
-
-      const result = await checkUploadSession(upload)
-
-      expect(result).toEqual({ code: RESULTS.UPLOAD_AVAILABLE })
-      expect(getUploadStatus).toHaveBeenCalledWith('u-1')
-    })
-
-    test('returns UPLOAD_EXPENDED when the status is anything other than initiated', async () => {
-      const upload = { hasUpload: () => true, activeUploadId: 'u-1' }
-      getUploadStatus.mockResolvedValue({ uploadStatus: 'ready' })
-
-      const result = await checkUploadSession(upload)
-
-      expect(result).toEqual({ code: RESULTS.UPLOAD_EXPENDED })
-    })
   })
 
   describe('startMigration', () => {

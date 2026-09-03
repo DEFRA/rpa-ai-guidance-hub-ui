@@ -11,6 +11,7 @@ class MigrateMetadataViewModel {
     this.errors = data?.errors || {}
     this.errorList = data?.errorList || []
     this.submissionError = data?.submissionError || null
+    this.notification = data?.notification || null
   }
 
   /**
@@ -23,9 +24,10 @@ class MigrateMetadataViewModel {
   /**
    * Create a form view model from saved session data
    */
-  static fromSession (savedMetadata = {}) {
+  static fromSession (savedMetadata = {}, notification) {
     return new MigrateMetadataViewModel({
-      values: savedMetadata
+      values: savedMetadata,
+      notification
     })
   }
 

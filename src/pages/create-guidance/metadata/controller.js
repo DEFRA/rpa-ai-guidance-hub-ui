@@ -6,7 +6,9 @@ const MIGRATE_METADATA_VIEW = 'create-guidance/metadata/page.njk'
 async function getMetadataForm (request, h) {
   const saved = request.yar.get('guidance')
 
-  const viewModel = MigrateMetadataViewModel.fromSession(saved?.metadata)
+  const [notification] = request.yar.flash('uploadNotification')
+
+  const viewModel = MigrateMetadataViewModel.fromSession(saved?.metadata, notification)
 
   return h
     .view(MIGRATE_METADATA_VIEW, viewModel)
@@ -26,6 +28,8 @@ async function addMetadata (request, h) {
   request.yar.set('guidance', {
     metadata: request.payload
   })
+
+  request.yar.reset()
 
   return h.redirect('/designer/dashboard')
 }
