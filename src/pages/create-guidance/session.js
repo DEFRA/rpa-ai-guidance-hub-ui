@@ -22,7 +22,8 @@ class GuideUpload {
   }
 
   /**
-   * The most recent active upload id (or null if none)
+   * The active upload id - null if none
+   *
    * @returns {string|null}
    */
   get activeUploadId () {

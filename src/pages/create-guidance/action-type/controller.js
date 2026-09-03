@@ -48,7 +48,7 @@ async function postAction (request, h) {
   const { action } = request.payload || {}
 
   if (action === 'migrate') {
-    return await _handleMigrateSelect(request, h)
+    await _handleMigrateSelect(request, h)
   }
 
   return h.redirect('/designer/dashboard')

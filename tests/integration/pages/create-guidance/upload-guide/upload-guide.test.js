@@ -81,7 +81,7 @@ describe('#uploadGuideController', () => {
       expect(payload).toContain('Upload guidance')
     })
 
-    test('redirects to add-metadata once the upload has already been used', async () => {
+    test('redirects to metadata once the upload has already been used', async () => {
       const { uploadId, cookie } = await startMigration(server, await loginAsDevUser(server))
 
       nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))

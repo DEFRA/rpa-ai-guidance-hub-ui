@@ -246,8 +246,15 @@ const config = convict({
       env: 'CDP_UPLOADER_BASE_URL'
     },
     browserUrl: {
-      doc: 'CDP uploader browser URL',
-      format: String,
+      doc: 'CDP uploader browser URL (only allowed in non-production)',
+      format: function (val) {
+        if (isProduction && val !== null) {
+          throw new Error('CDP_UPLOADER_BROWSER_URL must not be set in production')
+        }
+        if (val !== null && typeof val !== 'string') {
+          throw new Error('must be a string or null')
+        }
+      },
       default: null,
       nullable: true,
       env: 'CDP_UPLOADER_BROWSER_URL'

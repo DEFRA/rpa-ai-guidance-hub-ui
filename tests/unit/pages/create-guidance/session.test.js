@@ -59,6 +59,17 @@ describe('GuideUpload session helpers', () => {
     expect(value).toEqual({ uploads: [{ uploadId: 'u-1' }, { uploadId: 'u-2' }] })
   })
 
+  test('addGuideUpload creates a new wrapper and persists when no existing session data is present', () => {
+    yar.get.mockReturnValue(undefined)
+
+    addGuideUpload(request, 'u-1')
+
+    expect(yar.set).toHaveBeenCalled()
+    const [key, value] = yar.set.mock.calls[0]
+    expect(key).toBe('guide-upload')
+    expect(value).toEqual({ uploads: [{ uploadId: 'u-1' }] })
+  })
+
   test('GuideUpload instance addUpload and toPlainObject produce correct shape', () => {
     const upload = createGuideUpload(request)
 

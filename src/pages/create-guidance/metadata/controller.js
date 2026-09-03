@@ -1,7 +1,7 @@
 import { statusCodes } from '../../../constants/status-codes.js'
 import { MigrateMetadataViewModel } from './view-models.js'
 
-const MIGRATE_METADATA_VIEW = 'create-guidance/add-metadata/page.njk'
+const MIGRATE_METADATA_VIEW = 'create-guidance/metadata/page.njk'
 
 async function getMetadataForm (request, h) {
   const saved = request.yar.get('guidance')

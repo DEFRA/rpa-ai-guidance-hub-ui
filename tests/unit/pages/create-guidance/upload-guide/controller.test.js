@@ -62,7 +62,7 @@ describe('getUploadForm', () => {
       expect(request.yar.flash).toHaveBeenCalledWith('uploadNotification', 'You have already uploaded a document for this guide')
     })
 
-    test('redirects to add-metadata', async () => {
+    test('redirects to metadata', async () => {
       const result = await getUploadForm(request, h)
 
       expect(h.redirect).toHaveBeenCalledWith('/create-guidance/metadata')

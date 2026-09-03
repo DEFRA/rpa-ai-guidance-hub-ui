@@ -59,6 +59,13 @@ describe('action-type controller', () => {
       expect(result).toEqual(h.redirect())
     })
 
+    test('redirects to the designer dashboard when there is no payload at all', async () => {
+      const result = await postAction({ payload: undefined }, h)
+
+      expect(h.redirect).toHaveBeenCalledWith('/designer/dashboard')
+      expect(result).toEqual(h.redirect())
+    })
+
     describe('when migrate is selected and no upload exists yet', () => {
       let request
 
@@ -100,10 +107,29 @@ describe('action-type controller', () => {
         startMigration.mockResolvedValue({ code: 'uploadExpended' })
       })
 
-      test('redirects to add-metadata rather than starting a new upload', async () => {
+      test('redirects to metadata rather than starting a new upload', async () => {
         const result = await postAction(request, h)
 
         expect(h.redirect).toHaveBeenCalledWith('/create-guidance/metadata')
+        expect(result).toEqual(h.redirect())
+        expect(addGuideUpload).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('when migrate is selected and an existing upload is still available', () => {
+      let request
+
+      beforeEach(() => {
+        request = { payload: { action: 'migrate' }, yar: { get: vi.fn(), set: vi.fn(), flash: vi.fn() } }
+
+        getGuideUpload.mockReturnValue({ hasUpload: () => true, activeUploadId: 'u-1' })
+        startMigration.mockResolvedValue({ code: 'uploadAvailable' })
+      })
+
+      test('redirects to upload-guide without recording a new upload id', async () => {
+        const result = await postAction(request, h)
+
+        expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide')
         expect(result).toEqual(h.redirect())
         expect(addGuideUpload).not.toHaveBeenCalled()
       })

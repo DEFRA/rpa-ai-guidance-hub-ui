@@ -1,4 +1,4 @@
-import { MigrateMetadataViewModel } from '../../../../../src/pages/create-guidance/add-metadata/view-models.js'
+import { MigrateMetadataViewModel } from '../../../../../src/pages/create-guidance/metadata/view-models.js'
 
 describe('#MigrateMetadataViewModel', () => {
   test('empty() creates a view model with no values, errors or submission error', () => {
