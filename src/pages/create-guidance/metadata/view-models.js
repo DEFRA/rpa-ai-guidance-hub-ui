@@ -24,7 +24,7 @@ class MigrateMetadataViewModel {
   /**
    * Create a form view model from saved session data
    */
-  static fromSession (savedMetadata = {}, notification) {
+  static fromSession (notification, savedMetadata = {}) {
     return new MigrateMetadataViewModel({
       values: savedMetadata,
       notification
