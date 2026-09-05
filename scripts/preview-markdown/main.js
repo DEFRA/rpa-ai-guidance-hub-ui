@@ -9,6 +9,8 @@ import { makeResizable } from './panes.js'
 // Shared with the audit rather than kept here, so that what the audit measures and
 // what this page shows cannot come apart. See `roundtrip.js`.
 import { roundTrip } from './roundtrip.js'
+import { markdownSections, markEditorSections } from './sections.js'
+import { linkPanes } from './sync.js'
 
 const elements = {
   documentName: document.getElementById('document-name'),
@@ -32,6 +34,7 @@ const toggleButtons = document.querySelectorAll('.toggle__button')
 const documents = { original: '', roundTrip: '' }
 
 let editor = null
+let panes = null
 
 /**
  * Show a failure in the page rather than only in the console, since the console
@@ -69,6 +72,11 @@ function render (markdown) {
     editable: false
   })
 
+  // The headings are the only thing holding the panes together, and this rendering
+  // is a new set of them. See `sync.js`.
+  markEditorSections(elements.editor)
+  panes?.refresh()
+
   // Reachable from the console, which is the quickest way to interrogate what the
   // schema made of a document (`editor.getJSON()`, `editor.getHTML()`).
   window.editor = editor
@@ -81,6 +89,10 @@ function render (markdown) {
  */
 function show (view) {
   render(documents[view])
+  // A fresh rendering starts at the top of the document, which would throw away the
+  // place the reader is comparing the two views at -- the one thing the toggle is
+  // for.
+  panes?.alignFrom(elements.source)
 
   for (const button of toggleButtons) {
     button.setAttribute('aria-pressed', String(button.dataset.view === view))
@@ -98,12 +110,18 @@ function show (view) {
  */
 function renderDiff (target, lines) {
   const fragment = document.createDocumentFragment()
+  const sections = markdownSections(lines)
 
-  for (const line of lines) {
+  for (const [index, line] of lines.entries()) {
     const element = document.createElement('span')
     element.className = line.type === 'same'
       ? 'line'
       : `line line--${line.type}`
+
+    if (sections[index]) {
+      element.dataset.section = sections[index]
+    }
+
     // A blank line still needs to occupy a row.
     element.textContent = line.text === '' ? ' ' : line.text
     fragment.append(element)
@@ -191,6 +209,10 @@ async function main () {
   documents.roundTrip = roundTrip(markdown)
 
   reportLosses(documents.original, documents.roundTrip)
+
+  // After both text panes are keyed and before the first rendering, so that every
+  // pane is linked from the moment it has something in it.
+  panes = linkPanes([elements.source, elements.losses, elements.editor])
 
   for (const button of toggleButtons) {
     button.addEventListener('click', () => show(button.dataset.view))
