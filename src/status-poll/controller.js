@@ -1,17 +1,20 @@
 import { statusCodes } from '../constants/status-codes.js'
 import { getGuideUpload } from '../pages/create-guidance/session.js'
-import { getUploadStatus } from '../services/uploader.js'
+import { getGuideUploadProgress } from '../pages/create-guidance/service.js'
 
 /**
- * Controller for retrieving upload status for polling
+ * Controller for retrieving upload progress for polling.
+ *
+ * Returns minimal payload needed for client-side progress bar updates:
+ * percentage, label, isComplete, and isError.
  *
  * @param {import('@hapi/hapi').Request} request - Hapi request object
  * @param {import('@hapi/hapi').ResponseToolkit} h - Hapi response toolkit
  * @returns {Promise<import('@hapi/hapi').ResponseObject>}
  */
 async function getStatus (request, h) {
-  const uploadId = request.params.uploadId ||
-    request.query?.uploadId ||
+  const uploadId = request.params.uploadId ??
+    request.query?.uploadId ??
     getGuideUpload(request)?.activeUploadId
 
   if (!uploadId) {
@@ -19,24 +22,13 @@ async function getStatus (request, h) {
       .code(statusCodes.HTTP_STATUS_BAD_REQUEST)
   }
 
-  const status = await getUploadStatus(uploadId)
-
-  if (!status) {
-    return h.response({ message: 'Upload not found' })
-      .code(statusCodes.HTTP_STATUS_NOT_FOUND)
-  }
-
-  const redirectUrl = status.isReady && !status.hasRejectedFiles
-    ? '/create-guidance/metadata'
-    : null
+  const progress = await getGuideUploadProgress(request, uploadId)
 
   return h.response({
-    uploadId,
-    uploadStatus: status.uploadStatus,
-    isReady: status.isReady,
-    hasRejectedFiles: status.hasRejectedFiles,
-    files: status.files,
-    redirectUrl
+    percentage: progress.percentage,
+    label: progress.label,
+    isComplete: progress.isComplete,
+    isError: progress.isError
   }).code(statusCodes.HTTP_STATUS_OK)
 }
 

@@ -1,0 +1,46 @@
+@use '../variables/colours' as *;
+
+.app-progress {
+  padding: 20px;
+  margin-bottom: 30px;
+  border-left: 5px solid $defra-green;
+  background-color: $govuk-light-grey;
+  transition: width 800ms ease-in-out, background-color 300ms ease-in-out;
+
+  &--error {
+    border-left: 5px solid $govuk-red;
+  }
+}
+
+.app-progress__status {
+  margin: 0 0 15px;
+  font-family: Arial, sans-serif;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.app-progress__track {
+  height: 8px;
+  background-color: $govuk-mid-grey;
+}
+
+.app-progress__bar {
+  width: 0;
+  height: 100%;
+  background-color: $defra-green;
+  transition: width 800ms ease-in-out, background-color 300ms ease-in-out;
+  
+  &--error {
+    background-color: $govuk-red
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-progress, .app-progress__bar {
+    transition: none;
+  }
+}
+
+.app-start-checks {
+  display: contents;
+}

@@ -4,12 +4,12 @@ vi.mock('../../../src/pages/create-guidance/session.js', () => ({
   getGuideUpload: vi.fn()
 }))
 
-vi.mock('../../../src/services/uploader.js', () => ({
-  getUploadStatus: vi.fn()
+vi.mock('../../../src/pages/create-guidance/service.js', () => ({
+  getGuideUploadProgress: vi.fn()
 }))
 
 import { getGuideUpload } from '../../../src/pages/create-guidance/session.js'
-import { getUploadStatus } from '../../../src/services/uploader.js'
+import { getGuideUploadProgress } from '../../../src/pages/create-guidance/service.js'
 import { getStatus } from '../../../src/status-poll/controller.js'
 
 describe('statusPollController', () => {
@@ -36,79 +36,80 @@ describe('statusPollController', () => {
     expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
   })
 
-  test('returns 404 when upload status cannot be found', async () => {
+  test('returns 200 with progress when upload is in progress', async () => {
     request.params.uploadId = 'u-123'
-    getUploadStatus.mockResolvedValue(null)
-
-    await getStatus(request, h)
-
-    expect(getUploadStatus).toHaveBeenCalledWith('u-123')
-    expect(h.response).toHaveBeenCalledWith({ message: 'Upload not found' })
-    expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_NOT_FOUND)
-  })
-
-  test('returns 200 with pending status when upload is in progress', async () => {
-    request.params.uploadId = 'u-123'
-    getUploadStatus.mockResolvedValue({
-      uploadStatus: 'pending',
-      isReady: false,
-      hasRejectedFiles: false,
-      files: []
+    getGuideUploadProgress.mockResolvedValue({
+      statusId: 'uploader:pending',
+      label: 'Scanning for viruses',
+      percentage: 50,
+      isComplete: false,
+      isError: false
     })
 
     await getStatus(request, h)
 
     expect(h.response).toHaveBeenCalledWith({
-      uploadId: 'u-123',
-      uploadStatus: 'pending',
-      isReady: false,
-      hasRejectedFiles: false,
-      files: [],
-      redirectUrl: null
+      percentage: 50,
+      label: 'Scanning for viruses',
+      isComplete: false,
+      isError: false
     })
     expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
   })
 
-  test('returns 200 with ready status and redirectUrl when upload is complete', async () => {
+  test('returns 200 with complete status when upload is ready', async () => {
     request.params.uploadId = 'u-123'
-    getUploadStatus.mockResolvedValue({
-      uploadStatus: 'ready',
-      isReady: true,
-      hasRejectedFiles: false,
-      files: [{ fileStatus: 'complete' }]
+    getGuideUploadProgress.mockResolvedValue({
+      statusId: 'uploader:pending',
+      label: 'Guide ready',
+      percentage: 100,
+      isComplete: true,
+      isError: false
     })
 
     await getStatus(request, h)
 
     expect(h.response).toHaveBeenCalledWith({
-      uploadId: 'u-123',
-      uploadStatus: 'ready',
-      isReady: true,
-      hasRejectedFiles: false,
-      files: [{ fileStatus: 'complete' }],
-      redirectUrl: '/create-guidance/metadata'
+      percentage: 100,
+      label: 'Guide ready',
+      isComplete: true,
+      isError: false
     })
     expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
   })
 
-  test('returns 200 with redirectUrl null when upload is ready but has rejected files', async () => {
+  test('uses session upload id when no param is provided', async () => {
     getGuideUpload.mockReturnValue({ activeUploadId: 'u-123' })
-    getUploadStatus.mockResolvedValue({
-      uploadStatus: 'ready',
-      isReady: true,
-      hasRejectedFiles: true,
-      files: [{ fileStatus: 'rejected', error: { message: 'Virus detected' } }]
+    getGuideUploadProgress.mockResolvedValue({
+      statusId: 'uploader:pending',
+      label: 'Scanning for viruses',
+      percentage: 50,
+      isComplete: false,
+      isError: false
+    })
+
+    await getStatus(request, h)
+
+    expect(getGuideUploadProgress).toHaveBeenCalledWith(request, 'u-123')
+  })
+
+  test('returns error state when upload fails', async () => {
+    request.params.uploadId = 'u-123'
+    getGuideUploadProgress.mockResolvedValue({
+      statusId: 'uploader:failed',
+      label: 'Scan failed',
+      percentage: 50,
+      isComplete: false,
+      isError: true
     })
 
     await getStatus(request, h)
 
     expect(h.response).toHaveBeenCalledWith({
-      uploadId: 'u-123',
-      uploadStatus: 'ready',
-      isReady: true,
-      hasRejectedFiles: true,
-      files: [{ fileStatus: 'rejected', error: { message: 'Virus detected' } }],
-      redirectUrl: null
+      percentage: 50,
+      label: 'Scan failed',
+      isComplete: false,
+      isError: true
     })
     expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
   })

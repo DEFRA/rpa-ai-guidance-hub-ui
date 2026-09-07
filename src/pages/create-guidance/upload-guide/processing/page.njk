@@ -1,0 +1,31 @@
+{% extends "common/layout.njk" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds app-content">
+      <h1 class="govuk-heading-l" id="upload-status-heading">{{ pageTitle }}</h1>
+
+      <p class="govuk-body">We scan every file for viruses before it goes into the hub. This usually takes a few seconds.</p>
+
+      <noscript>
+        <p class="govuk-inset-text">
+          JavaScript is not available in your browser or has been disabled.
+          This page will not update automatically.<br><br>
+          Refresh the page to see the latest upload progress.
+        </p>
+      </noscript>
+
+      <div class="app-progress{{ ' app-progress--error' if isError }}"
+        data-module="app-progress"
+        data-poll-url="{{ pollUrl }}"
+        data-redirect-url="{{ redirectUrl }}">
+        <p class="app-progress__status" data-progress-label="" role="status">{{ label }}</p>
+        <div class="app-progress__track">
+          <div class="app-progress__bar{{ ' app-progress__bar--error' if isError }}" style="width: {{ percentage }}%;"></div>
+        </div>
+      </div>
+
+      <p class="govuk-body">Do not close this page. If nothing happens, <a class="govuk-link" href="{{ redirectUrl }}">continue to the guide's details</a>.</p>
+    </div>
+  </div>
+{% endblock %}

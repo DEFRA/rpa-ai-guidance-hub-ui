@@ -1,113 +1,105 @@
 /**
- * Initializes polling and progressive enhancement for the upload status page.
+ * Client-side polling for upload processing status.
  *
- * @param {HTMLElement} [container] - The container element for the upload status
+ * Polls `/status-poll/{uploadId}` on a fixed interval, updating the progress bar
+ * and label until the upload is complete or an error occurs. Uses setTimeout
+ * chaining (not setInterval) to avoid overlapping requests if a call is slow or
+ * the tab was backgrounded.
  */
-function initStatusPoll (container = document.getElementById('upload-status-container')) {
-  if (!container) {
+
+const START_DELAY_MS = 2000
+const POLL_INTERVAL_MS = 5000
+const REDIRECT_DELAY_MS = 1500
+
+/**
+ * Setups up polling for any element with a [data-poll-url] attribute
+ *
+ * @returns {void}
+ */
+function initPolling () {
+  const pollingElements = document.querySelectorAll('[data-poll-url]')
+
+  for (const element of pollingElements) {
+    _setupPolling(element)
+  }
+}
+
+/**
+ * Start polling for upload status.
+ *
+ * Reads `pollUrl` and `redirectUrl` from `data-*` attributes on the progress-bar
+ * element (populated by the view model / nunjucks template). Updates the bar width
+ * and label on each poll tick, and redirects when complete.
+ *
+ * @param {HTMLElement} progressBar - The element with data-poll-url and data-redirect-url
+ * @returns {void}
+ */
+function _setupPolling (progressBar) {
+  const pollUrl = progressBar.getAttribute('data-poll-url')
+  const redirectUrl = progressBar.getAttribute('data-redirect-url')
+
+  if (!pollUrl) {
     return
   }
 
-  const pollUrl = container.dataset.pollUrl
-  const redirectUrl = container.dataset.redirectUrl || '/create-guidance/metadata'
-  const isReady = container.dataset.isReady === 'true'
-  const isError = container.dataset.isError === 'true'
+  setTimeout(function () {
+    _doPoll(pollUrl, redirectUrl)
+  }, START_DELAY_MS)
+}
 
-  if (isReady || isError || !pollUrl) {
-    return
-  }
+/**
+ * @private
+ * Recursively poll for status updates
+ *
+ * @param {string} pollUrl
+ * @param {string} redirectUrl
+ * @returns {void}
+ */
+function _doPoll (pollUrl, redirectUrl) {
+  fetch(pollUrl)
+    .then(function (res) {
+      return res.json()
+    })
+    .then(function (state) {
+      const panel = document.querySelector('.app-progress')
+      const bar = document.querySelector('.app-progress__bar')
 
-  // Remove meta refresh if present to prevent page reload during JS polling
-  const metaRefresh = document.getElementById('meta-refresh')
-  if (metaRefresh) {
-    metaRefresh.remove()
-  }
+      if (bar) {
+        bar.style.width = state.percentage + '%'
+      }
 
-  const progressBar = container.querySelector('.app-progress-bar')
-  const progressInner = container.querySelector('.app-progress-bar__inner')
-  const messageElement = document.getElementById('upload-status-message')
+      const label = document.querySelector('[data-progress-label]')
 
-  let currentProgress = 50
-  let pollTimer = null
+      if (label) {
+        label.textContent = state.label
+      }
 
-  /**
-   * Update the progress bar visually and accessibly
-   *
-   * @param {number} percentage
-   * @param {string} [message]
-   */
-  function updateProgress (percentage, message) {
-    currentProgress = Math.min(100, Math.max(0, percentage))
+      if (state.isComplete) {
+        setTimeout(function () {
+          window.location.href = redirectUrl
+        }, REDIRECT_DELAY_MS)
 
-    if (progressBar) {
-      progressBar.setAttribute('aria-valuenow', String(currentProgress))
-    }
-
-    if (progressInner) {
-      progressInner.style.width = `${currentProgress}%`
-    }
-
-    if (message && messageElement) {
-      messageElement.textContent = message
-    }
-  }
-
-  /**
-   * Stop polling
-   */
-  function stopPolling () {
-    if (pollTimer) {
-      clearInterval(pollTimer)
-      pollTimer = null
-    }
-  }
-
-  /**
-   * Check status via the JSON polling endpoint
-   */
-  async function checkStatus () {
-    try {
-      const response = await fetch(pollUrl, {
-        headers: {
-          Accept: 'application/json'
-        }
-      })
-
-      if (!response.ok) {
         return
       }
 
-      const data = await response.json()
+      if (state.isError) {
+        panel.classList.add('app-progress--error')
+        bar.classList.add('app-progress__bar--error')
 
-      if (data.isReady && !data.hasRejectedFiles) {
-        stopPolling()
-        updateProgress(100, 'Your document has been verified. Redirecting...')
-        window.location.href = data.redirectUrl || redirectUrl
         return
       }
 
-      if (data.hasRejectedFiles || data.uploadStatus === 'rejected') {
-        stopPolling()
-        const errorMsg = data.files?.find((f) => f.error)?.error?.message ||
-          'The uploaded file failed verification checks'
-        updateProgress(100, errorMsg)
-
-        // Reload page to display full error summary and retry button
-        window.location.reload()
-        return
-      }
-
-      if (currentProgress < 90) {
-        updateProgress(currentProgress + 5)
-      }
-    } catch {
-      // Keep polling on transient network failure
-    }
-  }
-
-  pollTimer = setInterval(checkStatus, 2000)
+      setTimeout(function () {
+        _doPoll(pollUrl, redirectUrl)
+      }, POLL_INTERVAL_MS)
+    })
+    .catch(function () {
+      setTimeout(function () {
+        _doPoll(pollUrl, redirectUrl)
+      }, POLL_INTERVAL_MS)
+    })
 }
 
 export {
-  initStatusPoll
+  initPolling
 }

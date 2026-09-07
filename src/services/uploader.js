@@ -55,22 +55,6 @@ async function initiateUpload (initiateRequest) {
 }
 
 /**
- * @private
- * Build the error thrown when the cdp-uploader API returns a status this
- * service doesn't otherwise handle.
- *
- * @param {number} status
- * @param {string} context - Which cdp-uploader endpoint returned the status
- * @returns {Error & {statusCode: number}}
- */
-function _unexpectedStatus (status, context) {
-  const error = new Error(`Unexpected status ${status} from cdp-uploader ${context}`)
-  error.statusCode = status
-
-  return error
-}
-
-/**
  * Get the status of an upload by its ID.
  *
  * @param {string} uploadId
@@ -155,6 +139,22 @@ function _projectFile (field, file) {
   }
 
   return projected
+}
+
+/**
+ * @private
+ * Build the error thrown when the cdp-uploader API returns a status this
+ * service doesn't otherwise handle.
+ *
+ * @param {number} status
+ * @param {string} context - Which cdp-uploader endpoint returned the status
+ * @returns {Error & {statusCode: number}}
+ */
+function _unexpectedStatus (status, context) {
+  const error = new Error(`Unexpected status ${status} from cdp-uploader ${context}`)
+  error.statusCode = status
+
+  return error
 }
 
 export {
