@@ -15,42 +15,15 @@ describe('#loginController', () => {
     await server.stop({ timeout: 0 })
   })
 
-  describe('When logged in as a dev user', () => {
-    test('Should respond with 302 and redirect to home page', async () => {
-      const cookie = await loginAsDevUser(server)
-
-      const { headers, statusCode } = await server.inject({
-        method: 'GET',
-        url: '/login',
-        headers: { cookie }
-      })
-
-      expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(headers.location).toBe('/')
-    })
-  })
-
-  describe('When not logged in', () => {
-    test('Should respond with 200 and render the login page', async () => {
-      const { statusCode, payload } = await server.inject({
-        method: 'GET',
-        url: '/login'
-      })
-
-      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(payload).toContain('Sign in to the RPA AI Guidance Hub')
-    })
-  })
-
   describe('#handleLoginCallback', () => {
-    test('Should establish a dev-session and redirect to / when hitting the callback under the local provider', async () => {
+    test('Should establish a dev-session and redirect to /designer/dashboard when hitting the callback under the local provider', async () => {
       const callback = await server.inject({
         method: 'GET',
         url: '/login/callback'
       })
 
       expect(callback.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(callback.headers.location).toBe('/')
+      expect(callback.headers.location).toBe('/designer/dashboard')
 
       const cookie = (callback.headers['set-cookie'] ?? [])
         .map((c) => c.split(';')[0])
@@ -62,7 +35,7 @@ describe('#loginController', () => {
       // shared layout's header on the next request.
       const { statusCode, payload } = await server.inject({
         method: 'GET',
-        url: '/',
+        url: '/designer/dashboard',
         headers: { cookie }
       })
 
@@ -85,16 +58,16 @@ describe('#loginController', () => {
       expect(headers.location).toBe('/')
 
       // Confirms the cached session was actually dropped, not just the
-      // cookie cleared client-side - reusing the original cookie should now
-      // be treated as unauthenticated.
+      // cookie cleared client-side - reusing the original cookie against a
+      // protected route should now be treated as unauthenticated.
       const reuse = await server.inject({
         method: 'GET',
-        url: '/',
+        url: '/designer/dashboard',
         headers: { cookie }
       })
 
       expect(reuse.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(reuse.headers.location).toBe('/login')
+      expect(reuse.headers.location).toBe('/')
     })
 
     test('Should redirect to / without requiring a session when not authenticated', async () => {

@@ -17,6 +17,7 @@ const sessionCache = {
     },
     storeBlank: false,
     errorOnCacheNotReady: true,
+    maxCookieSize: 0,
     cookieOptions: {
       password: sessionConfig.cookie.password,
       ttl: sessionConfig.cookie.ttl,

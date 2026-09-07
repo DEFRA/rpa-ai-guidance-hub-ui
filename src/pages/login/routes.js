@@ -8,17 +8,6 @@ const callbackAuth = config.get('auth.provider') === 'entra'
 const routes = [
   {
     method: 'GET',
-    path: '/login',
-    options: {
-      auth: {
-        mode: 'try',
-        strategy: 'session'
-      }
-    },
-    handler: controller.getLogin
-  },
-  {
-    method: 'GET',
     path: '/login/callback',
     options: {
       auth: callbackAuth
@@ -38,15 +27,6 @@ const routes = [
   }
 ]
 
-const loginRouter = {
-  plugin: {
-    name: 'loginRouter',
-    register (server) {
-      server.route(routes)
-    }
-  }
-}
-
 export {
-  loginRouter
+  routes
 }

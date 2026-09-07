@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
-import { createServer, startServer } from '../../../../src/server/server.js'
+import { vi } from 'vitest'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -16,13 +16,21 @@ describe('#serveStaticFiles', () => {
   const faviconSvgHash = manifest['node_modules/govuk-frontend/dist/govuk/assets/images/favicon.svg'].file.split('/').pop()
 
   describe('When secure context is disabled', () => {
-    beforeEach(async () => {
-      server = await createServer()
-      await startServer(server)
+    beforeAll(async () => {
+      vi.stubEnv('PORT', '3098')
+      vi.resetModules()
+
+      const { createServer: createServerWithCustomPort, startServer: startServerWithCustomPort } =
+        await import('../../../../src/server/server.js')
+
+      server = await createServerWithCustomPort()
+      await startServerWithCustomPort(server)
     })
 
-    afterEach(async () => {
+    afterAll(async () => {
       await server.stop({ timeout: 0 })
+      vi.unstubAllEnvs()
+      vi.resetModules()
     })
 
     test('Should serve favicon as expected', async () => {

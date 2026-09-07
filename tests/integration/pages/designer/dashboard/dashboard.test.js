@@ -31,14 +31,14 @@ describe('#designerDashboardController', () => {
   })
 
   describe('When not logged in', () => {
-    test('Should respond with 302 and redirect to the login page', async () => {
+    test('Should respond with 302 and redirect to the home page', async () => {
       const { statusCode, headers } = await server.inject({
         method: 'GET',
         url: '/designer/dashboard'
       })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(headers.location).toBe('/login')
+      expect(headers.location).toBe('/')
     })
   })
 })

@@ -374,17 +374,17 @@ describe('#auth', () => {
       await server.stop({ timeout: 0 })
     })
 
-    test('Should redirect to /login when the request has no session', async () => {
+    test('Should redirect to / when the request has no session', async () => {
       const { statusCode, headers } = await server.inject({
         method: 'GET',
         url: '/protected'
       })
 
       expect(statusCode).toBe(302)
-      expect(headers.location).toBe('/login')
+      expect(headers.location).toBe('/')
     })
 
-    test('Should redirect to /login when the session cookie is valid but has no stored userAuth', async () => {
+    test('Should redirect to / when the session cookie is valid but has no stored userAuth', async () => {
       const cookie = await loginWithToken(server)
 
       const { statusCode, headers } = await server.inject({
@@ -394,7 +394,7 @@ describe('#auth', () => {
       })
 
       expect(statusCode).toBe(302)
-      expect(headers.location).toBe('/login')
+      expect(headers.location).toBe('/')
     })
 
     test('Should authenticate the request when the session holds a non-expired token', async () => {
@@ -415,7 +415,7 @@ describe('#auth', () => {
       })
     })
 
-    test('Should redirect to /login and log when the session token has expired and refresh tokens are disabled', async () => {
+    test('Should redirect to / and log when the session token has expired and refresh tokens are disabled', async () => {
       const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
       const cookie = await loginWithToken(server, expiredToken)
 
@@ -426,7 +426,7 @@ describe('#auth', () => {
       })
 
       expect(statusCode).toBe(302)
-      expect(headers.location).toBe('/login')
+      expect(headers.location).toBe('/')
       expect(mockLoggerWarn).toHaveBeenCalledWith(
         { type: 'entra_token_expired', error: expect.any(Error) },
         'Session token invalid and cannot be refreshed'
@@ -484,7 +484,7 @@ describe('#auth', () => {
       expect(refreshScope.isDone()).toBe(true)
     })
 
-    test('Should redirect to /login when refreshing the expired session token fails', async () => {
+    test('Should redirect to / when refreshing the expired session token fails', async () => {
       const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
       const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
 
@@ -499,10 +499,10 @@ describe('#auth', () => {
       })
 
       expect(statusCode).toBe(302)
-      expect(headers.location).toBe('/login')
+      expect(headers.location).toBe('/')
     })
 
-    test('Should redirect to /login without calling the token endpoint when the session has no refresh token', async () => {
+    test('Should redirect to / without calling the token endpoint when the session has no refresh token', async () => {
       const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
       const cookie = await loginWithToken(server, expiredToken)
 
@@ -517,7 +517,7 @@ describe('#auth', () => {
       })
 
       expect(statusCode).toBe(302)
-      expect(headers.location).toBe('/login')
+      expect(headers.location).toBe('/')
       expect(refreshScope.isDone()).toBe(false)
       expect(mockLoggerWarn).toHaveBeenCalledWith(
         { type: 'entra_token_expired', error: expect.any(Error) },
@@ -571,7 +571,7 @@ describe('#auth', () => {
       nock.enableNetConnect()
     })
 
-    test('Should redirect to /login without any outbound request when the session token has expired', async () => {
+    test('Should redirect to / without any outbound request when the session token has expired', async () => {
       const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
       const cookie = await loginWithToken(server, expiredToken)
 
@@ -588,7 +588,7 @@ describe('#auth', () => {
         })
 
         expect(statusCode).toBe(302)
-        expect(headers.location).toBe('/login')
+        expect(headers.location).toBe('/')
         expect(requests).toHaveLength(0)
       } finally {
         nock.emitter.removeListener('no match', onNoMatch)

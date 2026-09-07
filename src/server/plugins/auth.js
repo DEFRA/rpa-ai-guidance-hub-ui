@@ -201,7 +201,7 @@ function _getCookieOptions () {
       isSecure: config.get('session.cookie.secure'),
       ttl: config.get('session.cookie.ttl')
     },
-    redirectTo: '/login',
+    redirectTo: '/',
     validate: _validateSessionToken
   }
 }

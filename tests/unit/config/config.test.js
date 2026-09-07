@@ -8,6 +8,7 @@ describe('#config', () => {
       expect(config.get('log.format')).toBe('pino-pretty')
       expect(config.get('log.redact')).toEqual([])
       expect(config.get('session.cache.engine')).toBe('memory')
+      expect(config.get('guidanceApi.baseUrl')).toBe('http://localhost:3001')
     })
   })
 
@@ -78,6 +79,43 @@ describe('#config', () => {
       vi.resetModules()
 
       await expect(import('../../../src/config/config.js')).rejects.toThrow()
+    })
+  })
+
+  describe('#cdpUploader.browserUrl', () => {
+    const originalBrowser = process.env.CDP_UPLOADER_BROWSER_URL
+
+    afterEach(() => {
+      if (originalBrowser === undefined) delete process.env.CDP_UPLOADER_BROWSER_URL
+      else process.env.CDP_UPLOADER_BROWSER_URL = originalBrowser
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    })
+
+    test('Should reject when CDP_UPLOADER_BROWSER_URL is set in production', async () => {
+      vi.stubEnv('NODE_ENV', 'production')
+      vi.stubEnv('CDP_UPLOADER_BROWSER_URL', 'https://uploader.example')
+      vi.resetModules()
+
+      await expect(import('../../../src/config/config.js')).rejects.toThrow(/CDP_UPLOADER_BROWSER_URL must not be set/)
+    })
+
+    test('Should allow null CDP_UPLOADER_BROWSER_URL in production', async () => {
+      vi.stubEnv('NODE_ENV', 'production')
+      delete process.env.CDP_UPLOADER_BROWSER_URL
+      vi.resetModules()
+
+      const { config } = await import('../../../src/config/config.js')
+      expect(config).toBeDefined()
+    })
+
+    test('Should allow CDP_UPLOADER_BROWSER_URL in non-production', async () => {
+      vi.stubEnv('NODE_ENV', 'development')
+      vi.stubEnv('CDP_UPLOADER_BROWSER_URL', 'https://uploader.example')
+      vi.resetModules()
+
+      const { config } = await import('../../../src/config/config.js')
+      expect(config.get('cdpUploader.browserUrl')).toBe('https://uploader.example')
     })
   })
 })
