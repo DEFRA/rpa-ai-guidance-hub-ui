@@ -12,7 +12,7 @@ const POLL_INTERVAL_MS = 5000
 const REDIRECT_DELAY_MS = 1500
 
 /**
- * Setups up polling for any element with a [data-poll-url] attribute
+ * Sets up polling for any element with a [data-poll-url] attribute
  *
  * @returns {void}
  */
@@ -27,23 +27,24 @@ function initPolling () {
 /**
  * Start polling for upload status.
  *
- * Reads `pollUrl` and `redirectUrl` from `data-*` attributes on the progress-bar
+ * Reads `pollUrl` and `redirectUrl` from `data-*` attributes on the panel
  * element (populated by the view model / nunjucks template). Updates the bar width
  * and label on each poll tick, and redirects when complete.
  *
- * @param {HTMLElement} progressBar - The element with data-poll-url and data-redirect-url
+ * @param {HTMLElement} panel - The `.app-progress` element with data-poll-url and data-redirect-url
  * @returns {void}
  */
-function _setupPolling (progressBar) {
-  const pollUrl = progressBar.getAttribute('data-poll-url')
-  const redirectUrl = progressBar.getAttribute('data-redirect-url')
+function _setupPolling (panel) {
+  const pollUrl = panel.dataset.pollUrl
+  const redirectUrl = panel.dataset.redirectUrl
 
   if (!pollUrl) {
+    console.warn('No pollUrl found for progress panel', panel)
     return
   }
 
   setTimeout(function () {
-    _doPoll(pollUrl, redirectUrl)
+    _doPoll(panel, pollUrl, redirectUrl)
   }, START_DELAY_MS)
 }
 
@@ -51,24 +52,24 @@ function _setupPolling (progressBar) {
  * @private
  * Recursively poll for status updates
  *
+ * @param {HTMLElement} panel - The `.app-progress` element to update
  * @param {string} pollUrl
  * @param {string} redirectUrl
  * @returns {void}
  */
-function _doPoll (pollUrl, redirectUrl) {
+function _doPoll (panel, pollUrl, redirectUrl) {
   fetch(pollUrl)
     .then(function (res) {
       return res.json()
     })
     .then(function (state) {
-      const panel = document.querySelector('.app-progress')
-      const bar = document.querySelector('.app-progress__bar')
+      const bar = panel.querySelector('.app-progress__bar')
 
       if (bar) {
         bar.style.width = state.percentage + '%'
       }
 
-      const label = document.querySelector('[data-progress-label]')
+      const label = panel.querySelector('[data-progress-label]')
 
       if (label) {
         label.textContent = state.label
@@ -76,7 +77,7 @@ function _doPoll (pollUrl, redirectUrl) {
 
       if (state.isComplete) {
         setTimeout(function () {
-          window.location.href = redirectUrl
+          globalThis.location.href = redirectUrl
         }, REDIRECT_DELAY_MS)
 
         return
@@ -90,12 +91,12 @@ function _doPoll (pollUrl, redirectUrl) {
       }
 
       setTimeout(function () {
-        _doPoll(pollUrl, redirectUrl)
+        _doPoll(panel, pollUrl, redirectUrl)
       }, POLL_INTERVAL_MS)
     })
     .catch(function () {
       setTimeout(function () {
-        _doPoll(pollUrl, redirectUrl)
+        _doPoll(panel, pollUrl, redirectUrl)
       }, POLL_INTERVAL_MS)
     })
 }
