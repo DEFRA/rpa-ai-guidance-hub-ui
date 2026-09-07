@@ -5,9 +5,6 @@ import { getGuideUploadProgress } from '../pages/create-guidance/service.js'
 /**
  * Controller for retrieving upload progress for polling.
  *
- * Returns minimal payload needed for client-side progress bar updates:
- * percentage, label, isComplete, and isError.
- *
  * @param {import('@hapi/hapi').Request} request - Hapi request object
  * @param {import('@hapi/hapi').ResponseToolkit} h - Hapi response toolkit
  * @returns {Promise<import('@hapi/hapi').ResponseObject>}

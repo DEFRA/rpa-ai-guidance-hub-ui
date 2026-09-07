@@ -1,10 +1,9 @@
 /**
- * Client-side polling for upload processing status.
+ * Simple client polling for upload processing status.
  *
- * Polls `/status-poll/{uploadId}` on a fixed interval, updating the progress bar
- * and label until the upload is complete or an error occurs. Uses setTimeout
- * chaining (not setInterval) to avoid overlapping requests if a call is slow or
- * the tab was backgrounded.
+ * Periodically fetches the provided `pollUrl` and updates the progress bar
+ * and label until complete or an error occurs. Uses chained `setTimeout`
+ * calls to reduce the risk of overlapping requests.
  */
 
 const START_DELAY_MS = 2000
@@ -12,9 +11,7 @@ const POLL_INTERVAL_MS = 5000
 const REDIRECT_DELAY_MS = 1500
 
 /**
- * Sets up polling for any element with a [data-poll-url] attribute
- *
- * @returns {void}
+ * Initialize polling for elements with a `data-poll-url` attribute.
  */
 function initPolling () {
   const pollingElements = document.querySelectorAll('[data-poll-url]')
@@ -25,14 +22,13 @@ function initPolling () {
 }
 
 /**
- * Start polling for upload status.
+ * Start polling for a panel's upload status.
  *
- * Reads `pollUrl` and `redirectUrl` from `data-*` attributes on the panel
- * element (populated by the view model / nunjucks template). Updates the bar width
- * and label on each poll tick, and redirects when complete.
+ * Expects `data-poll-url` and optional `data-redirect-url` on `panel` (usually
+ * set by the server-side template). Redirects when the server reports
+ * completion.
  *
- * @param {HTMLElement} panel - The `.app-progress` element with data-poll-url and data-redirect-url
- * @returns {void}
+ * @param {HTMLElement} panel The `.app-progress` element to monitor.
  */
 function _setupPolling (panel) {
   const pollUrl = panel.dataset.pollUrl
@@ -49,13 +45,11 @@ function _setupPolling (panel) {
 }
 
 /**
- * @private
- * Recursively poll for status updates
+ * Poll `pollUrl` and update the UI in `panel`. Redirects when complete.
  *
- * @param {HTMLElement} panel - The `.app-progress` element to update
+ * @param {HTMLElement} panel The `.app-progress` element to update.
  * @param {string} pollUrl
  * @param {string} redirectUrl
- * @returns {void}
  */
 function _doPoll (panel, pollUrl, redirectUrl) {
   fetch(pollUrl)
