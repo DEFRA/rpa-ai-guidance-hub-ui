@@ -222,3 +222,35 @@ describe('ProgressTracker', () => {
     expect(status.completedStepIds).toEqual(['step-1', 'step-2'])
   })
 })
+
+describe('ProgressTracker failure details', () => {
+  test('hands back the failure a check reports on error', async () => {
+    const failure = { statusId: 'uploader:rejected', message: 'The selected file contains a virus' }
+    const steps = [
+      {
+        id: 'step-1',
+        label: 'First',
+        check: async function () { return { complete: false, error: true, failure } }
+      }
+    ]
+    const tracker = new ProgressTracker(steps)
+    const status = await tracker.getStatus('context')
+
+    expect(status.isError).toBe(true)
+    expect(status.failure).toBe(failure)
+  })
+
+  test('reports no failure when a check errors without one', async () => {
+    const steps = [
+      {
+        id: 'step-1',
+        label: 'First',
+        check: async function () { return { complete: false, error: true } }
+      }
+    ]
+    const tracker = new ProgressTracker(steps)
+    const status = await tracker.getStatus('context')
+
+    expect(status.failure).toBeUndefined()
+  })
+})

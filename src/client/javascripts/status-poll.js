@@ -1,98 +1,166 @@
 /**
- * Simple client polling for upload processing status.
+ * Client polling for upload processing status.
  *
- * Periodically fetches the provided `pollUrl` and updates the progress bar
- * and label until complete or an error occurs. Uses chained `setTimeout`
- * calls to reduce the risk of overlapping requests.
+ * Periodically fetches the panel's `data-poll-url` and updates the progress
+ * bar, label and messages until the server reports completion or an error,
+ * or the poll has run for longer than MAX_POLL_DURATION_MS. Uses chained
+ * `setTimeout` calls so requests never overlap.
+ *
+ * The page is fully usable without this script: the server renders the
+ * current state and a `<meta http-equiv="refresh">` keeps it current.
  */
 
 const START_DELAY_MS = 2000
 const POLL_INTERVAL_MS = 5000
 const REDIRECT_DELAY_MS = 1500
+const MAX_POLL_DURATION_MS = 2 * 60 * 1000
 
 /**
  * Initialize polling for elements with a `data-poll-url` attribute.
  */
 function initPolling () {
-  const pollingElements = document.querySelectorAll('[data-poll-url]')
+  const panels = document.querySelectorAll('[data-poll-url]')
 
-  for (const element of pollingElements) {
-    _setupPolling(element)
+  for (const panel of panels) {
+    _setupPolling(panel)
   }
 }
 
 /**
- * Start polling for a panel's upload status.
+ * Apply the server-rendered percentage and, unless the server already
+ * reported a failure, start polling.
  *
- * Expects `data-poll-url` and optional `data-redirect-url` on `panel` (usually
- * set by the server-side template). Redirects when the server reports
- * completion.
- *
- * @param {HTMLElement} panel The `.app-progress` element to monitor.
+ * @param {HTMLElement} panel - Element carrying `data-poll-url` and `data-redirect-url`
  */
 function _setupPolling (panel) {
-  const pollUrl = panel.dataset.pollUrl
-  const redirectUrl = panel.dataset.redirectUrl
+  const bar = panel.querySelector('[data-progress-bar]')
 
-  if (!pollUrl) {
-    console.warn('No pollUrl found for progress panel', panel)
+  if (bar) {
+    bar.style.width = `${bar.dataset.percentage}%`
+  }
+
+  if (panel.querySelector('.app-progress--error')) {
     return
   }
 
-  setTimeout(function () {
-    _doPoll(panel, pollUrl, redirectUrl)
-  }, START_DELAY_MS)
+  const deadline = Date.now() + MAX_POLL_DURATION_MS
+
+  setTimeout(() => _poll(panel, deadline), START_DELAY_MS)
 }
 
 /**
- * Poll `pollUrl` and update the UI in `panel`. Redirects when complete.
+ * Fetch the latest state once, render it, then decide whether to poll again.
  *
- * @param {HTMLElement} panel The `.app-progress` element to update.
- * @param {string} pollUrl
- * @param {string} redirectUrl
+ * @param {HTMLElement} panel
+ * @param {number} deadline - Epoch ms after which polling gives up
  */
-function _doPoll (panel, pollUrl, redirectUrl) {
-  fetch(pollUrl)
-    .then(function (res) {
-      return res.json()
-    })
-    .then(function (state) {
-      const bar = panel.querySelector('.app-progress__bar')
+async function _poll (panel, deadline) {
+  const state = await _fetchState(panel.dataset.pollUrl)
 
-      if (bar) {
-        bar.style.width = state.percentage + '%'
-      }
+  if (state) {
+    _render(panel, state)
+  }
 
-      const label = panel.querySelector('[data-progress-label]')
+  if (state?.isComplete) {
+    setTimeout(() => globalThis.location.assign(panel.dataset.redirectUrl), REDIRECT_DELAY_MS)
+    return
+  }
 
-      if (label) {
-        label.textContent = state.label
-      }
+  if (state?.isError) {
+    return
+  }
 
-      if (state.isComplete) {
-        setTimeout(function () {
-          globalThis.location.href = redirectUrl
-        }, REDIRECT_DELAY_MS)
+  if (Date.now() >= deadline) {
+    _show(panel, '[data-progress-timeout]')
+    _hide(panel, '[data-progress-waiting]')
+    return
+  }
 
-        return
-      }
+  setTimeout(() => _poll(panel, deadline), POLL_INTERVAL_MS)
+}
 
-      if (state.isError) {
-        panel.classList.add('app-progress--error')
-        bar.classList.add('app-progress__bar--error')
+/**
+ * @param {string} pollUrl
+ * @returns {Promise<Object|null>} The state, or null when the request failed
+ */
+async function _fetchState (pollUrl) {
+  try {
+    const response = await fetch(pollUrl, { headers: { accept: 'application/json' } })
 
-        return
-      }
+    return response.ok ? await response.json() : null
+  } catch {
+    return null
+  }
+}
 
-      setTimeout(function () {
-        _doPoll(panel, pollUrl, redirectUrl)
-      }, POLL_INTERVAL_MS)
-    })
-    .catch(function () {
-      setTimeout(function () {
-        _doPoll(panel, pollUrl, redirectUrl)
-      }, POLL_INTERVAL_MS)
-    })
+/**
+ * Update the panel to reflect a state returned by the poll endpoint.
+ *
+ * @param {HTMLElement} panel
+ * @param {{percentage: number, label: string, message?: string|null, isComplete: boolean, isError: boolean}} state
+ */
+function _render (panel, state) {
+  const bar = panel.querySelector('[data-progress-bar]')
+  const label = panel.querySelector('[data-progress-label]')
+  const track = panel.querySelector('[role="progressbar"]')
+
+  if (bar) {
+    bar.style.width = `${state.percentage}%`
+    bar.classList.toggle('app-progress__bar--error', state.isError)
+  }
+
+  if (track) {
+    track.setAttribute('aria-valuenow', String(state.percentage))
+  }
+
+  if (label) {
+    label.textContent = state.label
+  }
+
+  panel.querySelector('.app-progress')?.classList.toggle('app-progress--error', state.isError)
+
+  if (state.isError) {
+    _renderError(panel, state.message)
+  }
+
+  if (state.isComplete) {
+    _show(panel, '[data-progress-complete]')
+    _hide(panel, '[data-progress-waiting]')
+  }
+}
+
+/**
+ * @param {HTMLElement} panel
+ * @param {string|null} [message]
+ */
+function _renderError (panel, message) {
+  const errorMessage = panel.querySelector('[data-progress-error-message]')
+
+  if (errorMessage && message) {
+    errorMessage.textContent = message
+  }
+
+  _hide(panel, '[data-progress-waiting]')
+  _show(panel, '[data-progress-retry]')
+  _show(panel, '[data-progress-error]')
+
+  panel.querySelector('[data-progress-error]')?.focus()
+}
+
+function _show (panel, selector) {
+  const element = panel.querySelector(selector)
+
+  if (element) {
+    element.hidden = false
+  }
+}
+
+function _hide (panel, selector) {
+  const element = panel.querySelector(selector)
+
+  if (element) {
+    element.hidden = true
+  }
 }
 
 export {
