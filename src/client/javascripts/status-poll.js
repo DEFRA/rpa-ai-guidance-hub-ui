@@ -15,6 +15,25 @@ const POLL_INTERVAL_MS = 5000
 const REDIRECT_DELAY_MS = 1500
 const MAX_POLL_DURATION_MS = 2 * 60 * 1000
 
+const ERROR_CLASS = 'app-progress--error'
+const BAR_ERROR_CLASS = 'app-progress__bar--error'
+
+/**
+ * Selectors for the parts of the panel this script updates.
+ */
+const SELECTORS = {
+  panel: '.app-progress',
+  bar: '[data-progress-bar]',
+  label: '[data-progress-label]',
+  track: '[role="progressbar"]',
+  error: '[data-progress-error]',
+  errorMessage: '[data-progress-error-message]',
+  waiting: '[data-progress-waiting]',
+  retry: '[data-progress-retry]',
+  complete: '[data-progress-complete]',
+  timeout: '[data-progress-timeout]'
+}
+
 /**
  * Initialize polling for elements with a `data-poll-url` attribute.
  */
@@ -33,13 +52,13 @@ function initPolling () {
  * @param {HTMLElement} panel - Element carrying `data-poll-url` and `data-redirect-url`
  */
 function _setupPolling (panel) {
-  const bar = panel.querySelector('[data-progress-bar]')
+  const bar = panel.querySelector(SELECTORS.bar)
 
   if (bar) {
     bar.style.width = `${bar.dataset.percentage}%`
   }
 
-  if (panel.querySelector('.app-progress--error')) {
+  if (panel.querySelector(`.${ERROR_CLASS}`)) {
     return
   }
 
@@ -71,8 +90,8 @@ async function _poll (panel, deadline) {
   }
 
   if (Date.now() >= deadline) {
-    _show(panel, '[data-progress-timeout]')
-    _hide(panel, '[data-progress-waiting]')
+    _show(panel, SELECTORS.timeout)
+    _hide(panel, SELECTORS.waiting)
     return
   }
 
@@ -100,13 +119,13 @@ async function _fetchState (pollUrl) {
  * @param {{percentage: number, label: string, message?: string|null, isComplete: boolean, isError: boolean}} state
  */
 function _render (panel, state) {
-  const bar = panel.querySelector('[data-progress-bar]')
-  const label = panel.querySelector('[data-progress-label]')
-  const track = panel.querySelector('[role="progressbar"]')
+  const bar = panel.querySelector(SELECTORS.bar)
+  const label = panel.querySelector(SELECTORS.label)
+  const track = panel.querySelector(SELECTORS.track)
 
   if (bar) {
     bar.style.width = `${state.percentage}%`
-    bar.classList.toggle('app-progress__bar--error', state.isError)
+    bar.classList.toggle(BAR_ERROR_CLASS, state.isError)
   }
 
   if (track) {
@@ -117,15 +136,15 @@ function _render (panel, state) {
     label.textContent = state.label
   }
 
-  panel.querySelector('.app-progress')?.classList.toggle('app-progress--error', state.isError)
+  panel.querySelector(SELECTORS.panel)?.classList.toggle(ERROR_CLASS, state.isError)
 
   if (state.isError) {
     _renderError(panel, state.message)
   }
 
   if (state.isComplete) {
-    _show(panel, '[data-progress-complete]')
-    _hide(panel, '[data-progress-waiting]')
+    _show(panel, SELECTORS.complete)
+    _hide(panel, SELECTORS.waiting)
   }
 }
 
@@ -134,17 +153,17 @@ function _render (panel, state) {
  * @param {string|null} [message]
  */
 function _renderError (panel, message) {
-  const errorMessage = panel.querySelector('[data-progress-error-message]')
+  const errorMessage = panel.querySelector(SELECTORS.errorMessage)
 
   if (errorMessage && message) {
     errorMessage.textContent = message
   }
 
-  _hide(panel, '[data-progress-waiting]')
-  _show(panel, '[data-progress-retry]')
-  _show(panel, '[data-progress-error]')
+  _hide(panel, SELECTORS.waiting)
+  _show(panel, SELECTORS.retry)
+  _show(panel, SELECTORS.error)
 
-  panel.querySelector('[data-progress-error]')?.focus()
+  panel.querySelector(SELECTORS.error)?.focus()
 }
 
 function _show (panel, selector) {
