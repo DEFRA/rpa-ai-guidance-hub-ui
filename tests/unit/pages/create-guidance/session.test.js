@@ -1,6 +1,11 @@
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 
-import { getGuideUpload, createGuideUpload, addGuideUpload } from '../../../../src/pages/create-guidance/session.js'
+import {
+  getGuideUpload,
+  createGuideUpload,
+  addGuideUpload,
+  setGuideUploadCompletedSteps
+} from '../../../../src/pages/create-guidance/session.js'
 
 describe('GuideUpload session helpers', () => {
   let yar
@@ -26,7 +31,7 @@ describe('GuideUpload session helpers', () => {
     expect(yar.set).toHaveBeenCalled()
     const [key, value] = yar.set.mock.calls[0]
     expect(key).toBe('guide-upload')
-    expect(value).toEqual({ uploads: [] })
+    expect(value).toEqual({ uploads: [], completedStepIds: [] })
   })
 
   test('getGuideUpload returns null when no data present', () => {
@@ -38,7 +43,7 @@ describe('GuideUpload session helpers', () => {
   })
 
   test('getGuideUpload returns wrapper with activeUploadId and hasUpload true', () => {
-    yar.get.mockReturnValue({ uploads: [{ uploadId: 'u-1' }] })
+    yar.get.mockReturnValue({ uploads: [{ uploadId: 'u-1' }], completedStepIds: [] })
 
     const upload = getGuideUpload(request)
 
@@ -47,8 +52,22 @@ describe('GuideUpload session helpers', () => {
     expect(upload.hasUpload()).toBe(true)
   })
 
+  test('getGuideUpload hydrates completedStepIds from session', () => {
+    yar.get.mockReturnValue({
+      uploads: [{ uploadId: 'u-1' }],
+      completedStepIds: ['scanning']
+    })
+
+    const upload = getGuideUpload(request)
+
+    expect(upload.completedStepIds).toEqual(['scanning'])
+  })
+
   test('addGuideUpload appends to existing uploads and persists', () => {
-    yar.get.mockReturnValue({ uploads: [{ uploadId: 'u-1' }] })
+    yar.get.mockReturnValue({
+      uploads: [{ uploadId: 'u-1' }],
+      completedStepIds: []
+    })
 
     addGuideUpload(request, 'u-2')
 
@@ -56,7 +75,10 @@ describe('GuideUpload session helpers', () => {
     expect(yar.set).toHaveBeenCalled()
     const [key, value] = yar.set.mock.calls[0]
     expect(key).toBe('guide-upload')
-    expect(value).toEqual({ uploads: [{ uploadId: 'u-1' }, { uploadId: 'u-2' }] })
+    expect(value).toEqual({
+      uploads: [{ uploadId: 'u-1' }, { uploadId: 'u-2' }],
+      completedStepIds: []
+    })
   })
 
   test('addGuideUpload creates a new wrapper and persists when no existing session data is present', () => {
@@ -67,7 +89,29 @@ describe('GuideUpload session helpers', () => {
     expect(yar.set).toHaveBeenCalled()
     const [key, value] = yar.set.mock.calls[0]
     expect(key).toBe('guide-upload')
-    expect(value).toEqual({ uploads: [{ uploadId: 'u-1' }] })
+    expect(value).toEqual({ uploads: [{ uploadId: 'u-1' }], completedStepIds: [] })
+  })
+
+  test('setGuideUploadCompletedSteps persists updated step IDs', () => {
+    yar.get.mockReturnValue({
+      uploads: [{ uploadId: 'u-1' }],
+      completedStepIds: []
+    })
+
+    setGuideUploadCompletedSteps(request, ['scanning', 'converting'])
+
+    expect(yar.set).toHaveBeenCalled()
+    const [key, value] = yar.set.mock.calls[0]
+    expect(key).toBe('guide-upload')
+    expect(value.completedStepIds).toEqual(['scanning', 'converting'])
+  })
+
+  test('setGuideUploadCompletedSteps does nothing when no upload in session', () => {
+    yar.get.mockReturnValue(null)
+
+    setGuideUploadCompletedSteps(request, ['scanning'])
+
+    expect(yar.set).not.toHaveBeenCalled()
   })
 
   test('GuideUpload instance addUpload and toPlainObject produce correct shape', () => {
@@ -81,6 +125,18 @@ describe('GuideUpload session helpers', () => {
     expect(upload.activeUploadId).toBe('first')
 
     const plain = upload.toPlainObject()
-    expect(plain).toEqual({ uploads: [{ uploadId: 'first' }, { uploadId: 'second' }] })
+    expect(plain).toEqual({
+      uploads: [{ uploadId: 'first' }, { uploadId: 'second' }],
+      completedStepIds: []
+    })
+  })
+
+  test('GuideUpload tracks completedStepIds', () => {
+    const upload = createGuideUpload(request)
+
+    upload.setCompletedStepIds(['scanning'])
+
+    const plain = upload.toPlainObject()
+    expect(plain.completedStepIds).toEqual(['scanning'])
   })
 })
