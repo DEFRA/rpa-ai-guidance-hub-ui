@@ -43,20 +43,19 @@ const CONTENT_TYPES = {
 }
 
 /**
- * The directory the converter writes a document's images to.
+ * The directory a stored guide keeps its pictures in.
  *
- * Mirrors `images_dir_name` in the orchestrator's `scripts/convert_doc.py`: the
- * name is derived from the document's own so that several documents converted
- * into one directory cannot overwrite each other's images. The two must agree,
- * or the pictures in the preview are broken.
+ * Mirrors `ASSET_PREFIX` in the API repository's `app/guidance/documents/store.py`,
+ * which is what a stored document's image paths are written against. A guide is a
+ * directory of its own -- content.md and assets/ -- so the name no longer has to be
+ * derived from the document's to keep two guides apart. The two must agree, or the
+ * pictures in the preview are broken.
  *
  * @param {string} document Absolute path to the Markdown file.
  * @returns {string} Absolute path to its images directory, which may not exist.
  */
 function imagesDirFor (document) {
-  const stem = path.basename(document, path.extname(document))
-
-  return path.join(path.dirname(document), `${stem.replace(/\s+/g, '-')}-images`)
+  return path.join(path.dirname(document), 'assets')
 }
 
 /**
