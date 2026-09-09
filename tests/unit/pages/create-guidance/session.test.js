@@ -4,7 +4,9 @@ import {
   getGuideUpload,
   createGuideUpload,
   addGuideUpload,
-  setGuideUploadCompletedSteps
+  setGuideUploadCompletedSteps,
+  setGuideUploadMetadata,
+  getGuideUploadMetadata
 } from '../../../../src/pages/create-guidance/session.js'
 
 describe('GuideUpload session helpers', () => {
@@ -27,6 +29,7 @@ describe('GuideUpload session helpers', () => {
     expect(upload.hasUpload()).toBe(false)
     expect(upload.activeUploadId).toBeNull()
     expect(upload.completedStepIds).toEqual([])
+    expect(upload.metadata).toBeNull()
 
     expect(yar.set).toHaveBeenCalledWith('guide-upload', { uploads: [] })
   })
@@ -140,5 +143,60 @@ describe('GuideUpload session helpers', () => {
     ids.push('converting')
 
     expect(upload.completedStepIds).toEqual(['scanning'])
+  })
+
+  test('setMetadata is a no-op on a wrapper with no uploads', () => {
+    const upload = createGuideUpload(request)
+
+    upload.setMetadata({ title: 'Test' })
+
+    expect(upload.metadata).toBeNull()
+  })
+
+  test('setMetadata merges metadata onto the active upload', () => {
+    const upload = createGuideUpload(request)
+    upload.addUpload('u-1')
+
+    upload.setMetadata({ guideTitle: 'Initial Title' })
+    expect(upload.metadata).toEqual({ guideTitle: 'Initial Title' })
+
+    upload.setMetadata({ schemes: ['sfi'] })
+    expect(upload.metadata).toEqual({ guideTitle: 'Initial Title', schemes: ['sfi'] })
+  })
+
+  test('setGuideUploadMetadata persists metadata against the active upload in session', () => {
+    yar.get.mockReturnValue({
+      uploads: [{ uploadId: 'u-1', completedStepIds: [] }]
+    })
+
+    setGuideUploadMetadata(request, { guideTitle: 'New Guide' })
+
+    expect(yar.set).toHaveBeenCalledWith('guide-upload', {
+      uploads: [{ uploadId: 'u-1', completedStepIds: [], metadata: { guideTitle: 'New Guide' } }]
+    })
+  })
+
+  test('setGuideUploadMetadata does nothing when no upload in session', () => {
+    yar.get.mockReturnValue(null)
+
+    setGuideUploadMetadata(request, { guideTitle: 'New Guide' })
+
+    expect(yar.set).not.toHaveBeenCalled()
+  })
+
+  test('getGuideUploadMetadata returns metadata from active upload', () => {
+    yar.get.mockReturnValue({
+      uploads: [{ uploadId: 'u-1', metadata: { guideTitle: 'Found Guide' } }]
+    })
+
+    expect(getGuideUploadMetadata(request)).toEqual({ guideTitle: 'Found Guide' })
+  })
+
+  test('getGuideUploadMetadata returns null when no session data or no metadata', () => {
+    yar.get.mockReturnValue(null)
+    expect(getGuideUploadMetadata(request)).toBeNull()
+
+    yar.get.mockReturnValue({ uploads: [{ uploadId: 'u-1' }] })
+    expect(getGuideUploadMetadata(request)).toBeNull()
   })
 })

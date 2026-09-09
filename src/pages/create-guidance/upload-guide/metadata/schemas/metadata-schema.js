@@ -1,6 +1,7 @@
 import Joi from 'joi'
 
 const MAX_TITLE_LENGTH = 200
+const SCHEME_REQUIRED_MESSAGE = 'Select at least one scheme this guidance relates to'
 
 /**
  * Build the metadata form schema against a given set of valid scheme options.
@@ -15,8 +16,6 @@ const MAX_TITLE_LENGTH = 200
  */
 function buildMetadataSchema (schemeOptions) {
   const schemeValues = schemeOptions.map((option) => option.value)
-
-  console.log('Scheme values:', schemeValues)
 
   if (schemeValues.length === 0) {
     throw new Error('No valid scheme options provided')
@@ -38,10 +37,10 @@ function buildMetadataSchema (schemeOptions) {
       .min(1)
       .required()
       .messages({
-        'array.min': 'Select at least one scheme this guidance relates to',
-        'any.required': 'Select at least one scheme this guidance relates to',
-        'array.base': 'Select at least one scheme this guidance relates to',
-        'any.only': 'Select at least one scheme this guidance relates to'
+        'array.min': SCHEME_REQUIRED_MESSAGE,
+        'any.required': SCHEME_REQUIRED_MESSAGE,
+        'array.base': SCHEME_REQUIRED_MESSAGE,
+        'any.only': SCHEME_REQUIRED_MESSAGE
       })
   })
 }

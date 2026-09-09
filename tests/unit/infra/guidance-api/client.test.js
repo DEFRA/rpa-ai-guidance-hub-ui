@@ -36,7 +36,7 @@ describe('GuidanceApiClient', () => {
     })
 
     expect(global.fetch).toHaveBeenCalledWith(
-      'http://test-guidance-api/guides',
+      new URL('http://test-guidance-api/guides'),
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({

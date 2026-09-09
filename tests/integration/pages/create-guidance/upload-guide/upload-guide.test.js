@@ -141,7 +141,7 @@ describe('#uploadGuideController', () => {
 
       nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))
       vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([
-        { value: 'sfi', text: 'Sustainable Farming Incentive (SFI)' }
+        { value: 'sfi', label: 'Sustainable Farming Incentive (SFI)' }
       ])
 
       await server.inject({

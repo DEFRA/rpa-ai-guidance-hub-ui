@@ -65,4 +65,8 @@ describe('#buildMetadataSchema', () => {
     expect(result.error).toBeDefined()
     expect(result.error.details[0].message).toBe('Select at least one scheme this guidance relates to')
   })
+
+  test('throws an error when no valid scheme options are provided', () => {
+    expect(() => buildMetadataSchema([])).toThrow('No valid scheme options provided')
+  })
 })

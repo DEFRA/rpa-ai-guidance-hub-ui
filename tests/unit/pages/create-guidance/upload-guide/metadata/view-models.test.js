@@ -18,7 +18,10 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.values.schemes).toBe('sfi')
     expect(viewModel.versionNumber).toBe('1.2')
     expect(viewModel.lastModifiedDate).toBe('10 May 2026')
-    expect(viewModel.schemeOptions).toEqual(schemeOptions)
+    expect(viewModel.schemeOptions).toEqual([
+      { value: 'sfi', text: 'Sustainable Farming Incentive' },
+      { value: 'none', text: 'Not scheme-specific', divider: 'or' }
+    ])
     expect(viewModel.errors).toEqual({})
     expect(viewModel.errorList).toEqual([])
   })
@@ -36,11 +39,13 @@ describe('#GuideDetailsViewModel', () => {
   })
 
   test('fromValidationError() maps Joi error details to field errors and errorList with correct hrefs', () => {
-    const payload = { guideTitle: '', schemes: '' }
+    const payload = { guideTitle: '', schemes: '', otherField: '' }
     const err = {
       details: [
         { path: ['guideTitle'], message: 'Enter the guidance title' },
-        { path: ['schemes'], message: 'Select at least one scheme this guidance relates to' }
+        { path: ['guideTitle'], message: 'Duplicate error for title' },
+        { path: ['schemes'], message: 'Select at least one scheme this guidance relates to' },
+        { path: ['otherField'], message: 'Other error' }
       ]
     }
 
@@ -49,13 +54,29 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.values).toEqual(payload)
     expect(viewModel.errors).toEqual({
       guideTitle: 'Enter the guidance title',
-      schemes: 'Select at least one scheme this guidance relates to'
+      schemes: 'Select at least one scheme this guidance relates to',
+      otherField: 'Other error'
     })
     expect(viewModel.errorList).toEqual([
       { text: 'Enter the guidance title', href: '#guide-title' },
-      { text: 'Select at least one scheme this guidance relates to', href: '#schemes' }
+      { text: 'Select at least one scheme this guidance relates to', href: '#schemes' },
+      { text: 'Other error', href: '#otherField' }
     ])
     expect(viewModel.versionNumber).toBe('Not available')
     expect(viewModel.lastModifiedDate).toBe('Not available')
+  })
+
+  test('constructor defaults when initialized with no arguments', () => {
+    const viewModel = new GuideDetailsViewModel()
+
+    expect(viewModel.values).toEqual({})
+    expect(viewModel.errors).toEqual({})
+    expect(viewModel.errorList).toEqual([])
+    expect(viewModel.versionNumber).toBe('Not available')
+    expect(viewModel.lastModifiedDate).toBe('Not available')
+    expect(viewModel.schemeOptions).toEqual([
+      { value: 'none', text: 'Not scheme-specific', divider: 'or' }
+    ])
+    expect(viewModel.backUrl).toBe('/create-guidance/upload-guide')
   })
 })

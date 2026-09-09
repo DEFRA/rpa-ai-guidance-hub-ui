@@ -17,8 +17,6 @@ const routes = [
           const schemeOptions = await getSchemes()
           const schema = buildMetadataSchema(schemeOptions)
 
-          console.log(payload)
-
           return schema.validateAsync(payload, options)
         },
         failAction: metadataController.metadataFailAction

@@ -40,7 +40,7 @@ describe('upload-guide metadata controller', () => {
       }
       vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
       vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([
-        { value: 'sfi', text: 'Sustainable Farming Incentive' }
+        { value: 'sfi', label: 'Sustainable Farming Incentive' }
       ])
 
       request = { yar: { get: vi.fn() } }
@@ -48,7 +48,11 @@ describe('upload-guide metadata controller', () => {
       await getMetadataForm(request, h)
 
       expect(h.view).toHaveBeenCalledWith(METADATA_VIEW, expect.objectContaining({
-        values: expect.objectContaining({ guideTitle: 'Existing Title' })
+        values: expect.objectContaining({ guideTitle: 'Existing Title' }),
+        schemeOptions: [
+          { value: 'sfi', text: 'Sustainable Farming Incentive' },
+          { value: 'none', text: 'Not scheme-specific', divider: 'or' }
+        ]
       }))
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
     })
@@ -69,7 +73,10 @@ describe('upload-guide metadata controller', () => {
       await metadataFailAction(request, h, err)
 
       expect(h.view).toHaveBeenCalledWith(METADATA_VIEW, expect.objectContaining({
-        errors: { guideTitle: 'Enter the guidance title' }
+        errors: { guideTitle: 'Enter the guidance title' },
+        schemeOptions: [
+          { value: 'none', text: 'Not scheme-specific', divider: 'or' }
+        ]
       }))
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
       expect(takeover).toHaveBeenCalled()
@@ -77,6 +84,19 @@ describe('upload-guide metadata controller', () => {
   })
 
   describe('saveMetadata', () => {
+    test('redirects to upload form if no active upload in session', async () => {
+      vi.spyOn(session, 'getGuideUpload').mockReturnValue(null)
+
+      request = {
+        payload: { guideTitle: 'Title' },
+        yar: { get: vi.fn() }
+      }
+
+      await saveMetadata(request, h)
+
+      expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide')
+    })
+
     test('saves metadata to session and redirects to /create-guidance/upload-guide/metadata/purpose', async () => {
       const uploadMock = {
         hasUpload: vi.fn(() => true),

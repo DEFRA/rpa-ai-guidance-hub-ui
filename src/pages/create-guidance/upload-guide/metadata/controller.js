@@ -7,9 +7,6 @@ const METADATA_VIEW = 'create-guidance/upload-guide/metadata/page.njk'
 const UPLOAD_GUIDE_URL = '/create-guidance/upload-guide'
 const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
 
-/**
- * Render Screen 1: The guide's details
- */
 async function getMetadataForm (request, h) {
   const upload = getGuideUpload(request)
 
