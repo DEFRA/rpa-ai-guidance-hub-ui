@@ -1,7 +1,18 @@
 @use 'govuk-frontend' as *;
 
 body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   font-family: Helvetica, Arial, sans-serif;
+}
+
+.govuk-width-container {
+  flex: 1;
+}
+
+main {
+  flex: 1
 }
 
 .govuk-grid-column-two-thirds,

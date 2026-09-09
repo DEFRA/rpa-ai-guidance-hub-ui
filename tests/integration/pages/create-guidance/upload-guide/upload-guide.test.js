@@ -2,7 +2,7 @@ import { constants as statusCodes } from 'node:http2'
 
 import nock from 'nock'
 
-import { initiateUploadResponse, uploadStatusResponse } from '../../../../fixtures/cdp-uploader.js'
+import { initiateUploadResponse, rejectedFile, uploadStatusResponse } from '../../../../fixtures/cdp-uploader.js'
 import { createServer } from '../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../helpers/login.js'
 import { mergeCookies } from '../../../helpers/cookies.js'
@@ -67,7 +67,7 @@ describe('#uploadGuideController', () => {
   })
 
   describe('once a migration has been started', () => {
-    test('renders the upload page while the upload is still in progress', async () => {
+    test('renders the upload page while the upload form has not been submitted', async () => {
       const { uploadId, cookie } = await startMigration(server, await loginAsDevUser(server))
 
       nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'initiated' }))
@@ -80,6 +80,43 @@ describe('#uploadGuideController', () => {
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(payload).toContain('Upload guidance')
+      expect(payload).toContain(`/upload-and-scan/${uploadId}`)
+    })
+
+    test('redirects to the processing page while the upload is still being scanned', async () => {
+      const { uploadId, cookie } = await startMigration(server, await loginAsDevUser(server))
+
+      nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'pending' }))
+
+      const { statusCode, headers } = await server.inject({
+        method: 'GET',
+        url: '/create-guidance/upload-guide',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(headers.location).toBe('/create-guidance/upload-guide/processing')
+    })
+
+    test('starts a fresh upload when the previous file was rejected', async () => {
+      const { uploadId, cookie } = await startMigration(server, await loginAsDevUser(server))
+
+      nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({
+        uploadStatus: 'ready',
+        numberOfRejectedFiles: 1,
+        form: { file: rejectedFile() }
+      }))
+      nock(CDP_UPLOADER_URL).post('/initiate').reply(statusCodes.HTTP_STATUS_OK, initiateUploadResponse({ uploadId: 'u-456' }))
+
+      const { statusCode, payload } = await server.inject({
+        method: 'GET',
+        url: '/create-guidance/upload-guide',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(payload).toContain('/upload-and-scan/u-456')
+      expect(payload).not.toContain(`/upload-and-scan/${uploadId}`)
     })
 
     test('redirects to metadata once the upload has already been used', async () => {

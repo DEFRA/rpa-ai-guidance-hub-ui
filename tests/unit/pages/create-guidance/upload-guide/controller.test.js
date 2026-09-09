@@ -14,13 +14,13 @@ vi.mock('../../../../../src/pages/create-guidance/session.js', () => ({
   addGuideUpload: vi.fn()
 }))
 
-import { startMigration } from '../../../../../src/pages/create-guidance/service.js'
+import { RESULTS, startMigration } from '../../../../../src/pages/create-guidance/service.js'
 import { getGuideUpload, createGuideUpload, addGuideUpload } from '../../../../../src/pages/create-guidance/session.js'
 import { getUploadForm } from '../../../../../src/pages/create-guidance/upload-guide/controller.js'
 
 const UPLOAD_GUIDANCE_VIEW = 'create-guidance/upload-guide/page.njk'
 
-describe('getUploadForm', () => {
+describe('uploadGuideController', () => {
   let request, h, code
 
   beforeEach(() => {
@@ -30,97 +30,137 @@ describe('getUploadForm', () => {
       view: vi.fn(() => ({ code })),
       redirect: vi.fn(() => ({ redirected: true }))
     }
+    vi.clearAllMocks()
   })
 
-  describe('when no migration has been started', () => {
-    beforeEach(() => {
-      getGuideUpload.mockReturnValue(null)
-      createGuideUpload.mockReturnValue({ activeUploadId: null })
-      startMigration.mockResolvedValue({ code: 'migrationStarted', uploadId: 'new-upload-id' })
+  describe('getUploadForm', () => {
+    describe('when no migration has been started', () => {
+      beforeEach(() => {
+        getGuideUpload.mockReturnValue(null)
+        createGuideUpload.mockReturnValue({ activeUploadId: null })
+        startMigration.mockResolvedValue({ code: RESULTS.MIGRATION_STARTED, uploadId: 'new-upload-id' })
+      })
+
+      test('creates a new guide upload session', async () => {
+        await getUploadForm(request, h)
+
+        expect(createGuideUpload).toHaveBeenCalledWith(request)
+      })
+
+      test('records the newly started upload in session', async () => {
+        await getUploadForm(request, h)
+
+        expect(addGuideUpload).toHaveBeenCalledWith(request, 'new-upload-id')
+      })
+
+      test('renders the upload form with a view model built from the new upload', async () => {
+        await getUploadForm(request, h)
+
+        expect(h.view).toHaveBeenCalledWith(UPLOAD_GUIDANCE_VIEW, expect.objectContaining({
+          page: 'upload single guidance document',
+          pageTitle: 'Upload a single guidance document',
+          uploadUrl: expect.stringContaining('/new-upload-id')
+        }))
+      })
+
+      test('responds with 200', async () => {
+        await getUploadForm(request, h)
+
+        expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
+      })
     })
 
-    test('creates a new guide upload session', async () => {
-      await getUploadForm(request, h)
+    describe('when the upload has already scanned clean', () => {
+      beforeEach(() => {
+        getGuideUpload.mockReturnValue({ activeUploadId: 'u-1' })
+        startMigration.mockResolvedValue({ code: RESULTS.UPLOAD_COMPLETE })
+      })
 
-      expect(createGuideUpload).toHaveBeenCalledWith(request)
+      test('flashes a notification explaining why', async () => {
+        await getUploadForm(request, h)
+
+        expect(request.yar.flash).toHaveBeenCalledWith('uploadNotification', 'You have already uploaded a document for this guide')
+      })
+
+      test('redirects to metadata', async () => {
+        const result = await getUploadForm(request, h)
+
+        expect(h.redirect).toHaveBeenCalledWith('/create-guidance/metadata')
+        expect(result).toEqual(h.redirect())
+      })
+
+      test('does not record a new upload in session', async () => {
+        await getUploadForm(request, h)
+
+        expect(addGuideUpload).not.toHaveBeenCalled()
+      })
     })
 
-    test('records the newly started upload in session', async () => {
-      await getUploadForm(request, h)
+    describe('when the upload is still being scanned', () => {
+      beforeEach(() => {
+        getGuideUpload.mockReturnValue({ activeUploadId: 'u-1' })
+        startMigration.mockResolvedValue({ code: RESULTS.UPLOAD_PENDING })
+      })
 
-      expect(addGuideUpload).toHaveBeenCalledWith(request, 'new-upload-id')
+      test('redirects to the processing page', async () => {
+        const result = await getUploadForm(request, h)
+
+        expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/processing')
+        expect(result).toEqual(h.redirect())
+      })
+
+      test('does not flash a notification or record a new upload', async () => {
+        await getUploadForm(request, h)
+
+        expect(request.yar.flash).not.toHaveBeenCalled()
+        expect(addGuideUpload).not.toHaveBeenCalled()
+      })
     })
 
-    test('renders the upload form with a view model built from the new upload', async () => {
-      await getUploadForm(request, h)
+    describe('when the previous upload failed and a fresh one has been started', () => {
+      beforeEach(() => {
+        getGuideUpload.mockReturnValue({ activeUploadId: 'u-1' })
+        startMigration.mockResolvedValue({ code: RESULTS.MIGRATION_STARTED, uploadId: 'u-2' })
+      })
 
-      expect(h.view).toHaveBeenCalledWith(UPLOAD_GUIDANCE_VIEW, expect.objectContaining({
-        page: 'upload single guidance document',
-        pageTitle: 'Upload a single guidance document',
-        uploadUrl: expect.stringContaining('/new-upload-id')
-      }))
+      test('records the fresh upload and renders the form for it', async () => {
+        await getUploadForm(request, h)
+
+        expect(addGuideUpload).toHaveBeenCalledWith(request, 'u-2')
+        expect(h.view).toHaveBeenCalledWith(UPLOAD_GUIDANCE_VIEW, expect.objectContaining({
+          uploadUrl: expect.stringContaining('/u-2')
+        }))
+      })
     })
 
-    test('responds with 200', async () => {
-      await getUploadForm(request, h)
+    describe('when an upload is available to fill in', () => {
+      beforeEach(() => {
+        getGuideUpload.mockReturnValue({ activeUploadId: 'u-1' })
+        startMigration.mockResolvedValue({ code: RESULTS.UPLOAD_AVAILABLE })
+      })
 
-      expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
-    })
-  })
+      test('does not create or record a new upload in session', async () => {
+        await getUploadForm(request, h)
 
-  describe('when the upload has already been used', () => {
-    beforeEach(() => {
-      getGuideUpload.mockReturnValue({ activeUploadId: 'u-1' })
-      startMigration.mockResolvedValue({ code: 'uploadExpended' })
-    })
+        expect(createGuideUpload).not.toHaveBeenCalled()
+        expect(addGuideUpload).not.toHaveBeenCalled()
+      })
 
-    test('flashes a notification explaining why', async () => {
-      await getUploadForm(request, h)
+      test('renders the upload form with a view model built from the active upload', async () => {
+        await getUploadForm(request, h)
 
-      expect(request.yar.flash).toHaveBeenCalledWith('uploadNotification', 'You have already uploaded a document for this guide')
-    })
+        expect(h.view).toHaveBeenCalledWith(UPLOAD_GUIDANCE_VIEW, expect.objectContaining({
+          page: 'upload single guidance document',
+          pageTitle: 'Upload a single guidance document',
+          uploadUrl: expect.stringContaining('/u-1')
+        }))
+      })
 
-    test('redirects to metadata', async () => {
-      const result = await getUploadForm(request, h)
+      test('responds with 200', async () => {
+        await getUploadForm(request, h)
 
-      expect(h.redirect).toHaveBeenCalledWith('/create-guidance/metadata')
-      expect(result).toEqual(h.redirect())
-    })
-
-    test('does not record a new upload in session', async () => {
-      await getUploadForm(request, h)
-
-      expect(addGuideUpload).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('when an upload is available to fill in', () => {
-    beforeEach(() => {
-      getGuideUpload.mockReturnValue({ activeUploadId: 'u-1' })
-      startMigration.mockResolvedValue({ code: 'uploadAvailable' })
-    })
-
-    test('does not create or record a new upload in session', async () => {
-      await getUploadForm(request, h)
-
-      expect(createGuideUpload).not.toHaveBeenCalled()
-      expect(addGuideUpload).not.toHaveBeenCalled()
-    })
-
-    test('renders the upload form with a view model built from the active upload', async () => {
-      await getUploadForm(request, h)
-
-      expect(h.view).toHaveBeenCalledWith(UPLOAD_GUIDANCE_VIEW, expect.objectContaining({
-        page: 'upload single guidance document',
-        pageTitle: 'Upload a single guidance document',
-        uploadUrl: expect.stringContaining('/u-1')
-      }))
-    })
-
-    test('responds with 200', async () => {
-      await getUploadForm(request, h)
-
-      expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
+        expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
+      })
     })
   })
 })
