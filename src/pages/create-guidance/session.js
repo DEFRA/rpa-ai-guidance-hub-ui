@@ -7,41 +7,49 @@ const SESSION_KEY = 'guide-upload'
 /**
  * Wrapper around session-stored uploads providing a small API used by
  * create-guidance flows.
+ *
+ * Each upload carries its own progress (`completedStepIds`), so a re-upload
+ * after a rejected file starts from scratch rather than inheriting the
+ * previous upload's completed checks.
  */
 class GuideUpload {
   #uploads
-  #completedStepIds
 
   /**
    * Create a GuideUpload wrapper
    *
    * @param {Object} [data] - Plain object read from session storage
-   * @param {Array<Object>} [data.uploads] - Array of upload entries
-   * @param {Array<string>} [data.completedStepIds] - Array of step IDs already confirmed complete
+   * @param {Array<{uploadId: string, completedStepIds?: Array<string>}>} [data.uploads] - Upload entries, oldest first
    */
   constructor (data) {
     this.#uploads = data?.uploads ?? []
-    this.#completedStepIds = data?.completedStepIds ?? []
   }
 
   /**
-   * The active upload id - null if none
+   * The most recent upload entry - null if none
+   *
+   * @returns {{uploadId: string, completedStepIds?: Array<string>}|null}
+   */
+  get #activeUpload () {
+    return this.#uploads.at(-1) ?? null
+  }
+
+  /**
+   * The active (most recent) upload id - null if none
    *
    * @returns {string|null}
    */
   get activeUploadId () {
-    const uploadId = this.#uploads[0]?.uploadId
-
-    return uploadId ?? null
+    return this.#activeUpload?.uploadId ?? null
   }
 
   /**
-   * Steps that have been confirmed complete
+   * Steps confirmed complete for the active upload
    *
    * @returns {Array<string>}
    */
   get completedStepIds () {
-    return this.#completedStepIds
+    return this.#activeUpload?.completedStepIds ?? []
   }
 
   /**
@@ -53,31 +61,32 @@ class GuideUpload {
   }
 
   /**
-   * Record a new upload id in the session wrapper
+   * Record a new upload id, making it the active upload
    * @param {string} uploadId
    * @returns {void}
    */
   addUpload (uploadId) {
-    this.#uploads.push({ uploadId })
+    this.#uploads.push({ uploadId, completedStepIds: [] })
   }
 
   /**
-   * Update the list of completed step IDs
+   * Update the list of completed step IDs for the active upload
    * @param {Array<string>} completedStepIds
    * @returns {void}
    */
   setCompletedStepIds (completedStepIds) {
-    this.#completedStepIds = completedStepIds
+    if (this.#activeUpload) {
+      this.#activeUpload.completedStepIds = [...completedStepIds]
+    }
   }
 
   /**
    * Serialize to a plain object that can be saved into the yar session
-   * @returns {{uploads: Array<Object>, completedStepIds: Array<string>}}
+   * @returns {{uploads: Array<Object>}}
    */
   toPlainObject () {
     return {
-      uploads: this.#uploads,
-      completedStepIds: this.#completedStepIds
+      uploads: this.#uploads
     }
   }
 }
@@ -116,9 +125,7 @@ function getGuideUpload (request) {
  * @returns {void}
  */
 function addGuideUpload (request, uploadId) {
-  const existing = getGuideUpload(request)
-
-  const upload = existing || new GuideUpload()
+  const upload = getGuideUpload(request) ?? new GuideUpload()
 
   upload.addUpload(uploadId)
 
@@ -126,7 +133,7 @@ function addGuideUpload (request, uploadId) {
 }
 
 /**
- * Update the list of completed step IDs for the stored GuideUpload in session
+ * Update the completed step IDs of the active upload in session
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {Array<string>} completedStepIds

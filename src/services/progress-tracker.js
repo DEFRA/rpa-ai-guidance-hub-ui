@@ -13,8 +13,9 @@ class ProgressTracker {
    *
    * @param {Array<Object>} steps - Ordered list of step definitions
    * @param {string} steps[].id - Unique step identifier
-   * @param {string} steps[].label - User-facing step label
-   * @param {Function} steps[].check - Async status-check function: (context) => Promise<{complete: boolean, error?: boolean}>
+   * @param {Function} steps[].check - Async status-check function:
+   *   (context) => Promise<{complete: boolean, error?: boolean, failure?: Object}>.
+   *   `failure` is opaque to the tracker and handed back untouched on error.
    */
   constructor (steps) {
     this.#steps = steps
@@ -25,7 +26,7 @@ class ProgressTracker {
    *
    * @param {any} context - Passed directly to each step's check function
    * @param {Array<string>} [completedStepIds] - Step IDs already confirmed complete
-   * @returns {Promise<{stepId: string, currentIndex: number, isComplete: boolean, isError: boolean, completedStepIds: Array<string>}>}
+   * @returns {Promise<{stepId: string, currentIndex: number, isComplete: boolean, isError: boolean, failure?: Object, completedStepIds: Array<string>}>}
    */
   async getStatus (context, completedStepIds) {
     const completed = [...(completedStepIds ?? [])]
@@ -45,6 +46,7 @@ class ProgressTracker {
           currentIndex: index,
           isComplete: false,
           isError: true,
+          failure: result.failure,
           completedStepIds: completed
         }
       }

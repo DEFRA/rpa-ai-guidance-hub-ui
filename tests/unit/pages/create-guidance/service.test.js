@@ -11,11 +11,22 @@ vi.mock('../../../../src/pages/create-guidance/session.js', () => ({
 import { getUploadStatus, initiateUpload } from '../../../../src/services/uploader.js'
 import { getGuideUpload, setGuideUploadCompletedSteps } from '../../../../src/pages/create-guidance/session.js'
 import {
-  checkUploadHandleStatus,
+  getUploadOutcome,
   getGuideUploadProgress,
   RESULTS,
   startMigration
 } from '../../../../src/pages/create-guidance/service.js'
+
+const initiated = { uploadStatus: 'initiated', isReady: false, files: [], hasRejectedFiles: false }
+const pending = { uploadStatus: 'pending', isReady: false, files: [{ fileStatus: 'pending' }], hasRejectedFiles: false }
+const complete = { uploadStatus: 'ready', isReady: true, files: [{ fileStatus: 'complete' }], hasRejectedFiles: false }
+const noFile = { uploadStatus: 'ready', isReady: true, files: [], hasRejectedFiles: false }
+const rejected = {
+  uploadStatus: 'ready',
+  isReady: true,
+  hasRejectedFiles: true,
+  files: [{ fileStatus: 'rejected', error: { code: 'FILE_VIRUS', message: 'The selected file contains a virus' } }]
+}
 
 describe('create-guidance service', () => {
   let request
@@ -36,208 +47,210 @@ describe('create-guidance service', () => {
       expect(getUploadStatus).not.toHaveBeenCalled()
     })
 
-    test('throws when the existing upload status cannot be retrieved', async () => {
+    test('returns UPLOAD_AVAILABLE when the existing upload is still initiated', async () => {
       const upload = { hasUpload: () => true, activeUploadId: 'u-1' }
-      getUploadStatus.mockResolvedValue(null)
-
-      await expect(startMigration(upload)).rejects.toThrow('Failed to retrieve upload status')
-    })
-
-    test('returns UPLOAD_AVAILABLE when the existing upload status is initiated', async () => {
-      const upload = { hasUpload: () => true, activeUploadId: 'u-1' }
-      getUploadStatus.mockResolvedValue({ uploadStatus: 'initiated' })
+      getUploadStatus.mockResolvedValue(initiated)
 
       const result = await startMigration(upload)
 
       expect(result).toEqual({ code: RESULTS.UPLOAD_AVAILABLE })
       expect(getUploadStatus).toHaveBeenCalledWith('u-1')
+      expect(initiateUpload).not.toHaveBeenCalled()
     })
 
-    test('returns UPLOAD_EXPENDED when the existing upload status is anything other than initiated', async () => {
+    test('returns UPLOAD_PENDING while the existing upload is being scanned', async () => {
       const upload = { hasUpload: () => true, activeUploadId: 'u-1' }
-      getUploadStatus.mockResolvedValue({ uploadStatus: 'ready' })
+      getUploadStatus.mockResolvedValue(pending)
 
       const result = await startMigration(upload)
 
-      expect(result).toEqual({ code: RESULTS.UPLOAD_EXPENDED })
+      expect(result).toEqual({ code: RESULTS.UPLOAD_PENDING })
+    })
+
+    test('returns UPLOAD_COMPLETE when the existing upload scanned clean', async () => {
+      const upload = { hasUpload: () => true, activeUploadId: 'u-1' }
+      getUploadStatus.mockResolvedValue(complete)
+
+      const result = await startMigration(upload)
+
+      expect(result).toEqual({ code: RESULTS.UPLOAD_COMPLETE })
+    })
+
+    test.each([
+      ['was rejected', rejected],
+      ['had no file', noFile],
+      ['is no longer known to cdp-uploader', null]
+    ])('initiates a fresh upload when the existing one %s', async (_label, status) => {
+      const upload = { hasUpload: () => true, activeUploadId: 'u-1' }
+      getUploadStatus.mockResolvedValue(status)
+      initiateUpload.mockResolvedValue({ uploadId: 'u-2' })
+
+      const result = await startMigration(upload)
+
+      expect(result).toEqual({ code: RESULTS.MIGRATION_STARTED, uploadId: 'u-2' })
+    })
+
+    test('passes the redirect and destination bucket to cdp-uploader', async () => {
+      initiateUpload.mockResolvedValue({ uploadId: 'u-1' })
+
+      await startMigration({ hasUpload: () => false })
+
+      expect(initiateUpload).toHaveBeenCalledWith({
+        redirect: '/create-guidance/upload-guide/processing',
+        s3Bucket: 'rpa-ai-guidance-hub-source-docs'
+      })
     })
   })
 
-  describe('checkUploadHandleStatus', () => {
-    test('returns NO_UPLOAD when no upload exists', async () => {
+  describe('getUploadOutcome', () => {
+    test('returns NO_UPLOAD when the session has no upload', async () => {
       getGuideUpload.mockReturnValue(null)
 
-      const result = await checkUploadHandleStatus(request)
-
-      expect(result.code).toBe(RESULTS.NO_UPLOAD)
+      expect(await getUploadOutcome(request)).toEqual({ code: RESULTS.NO_UPLOAD })
+      expect(getUploadStatus).not.toHaveBeenCalled()
     })
 
-    test('returns UPLOAD_AVAILABLE when upload is still initiated', async () => {
+    test.each([
+      ['initiated', initiated, RESULTS.UPLOAD_AVAILABLE],
+      ['pending', pending, RESULTS.UPLOAD_PENDING],
+      ['ready with a clean file', complete, RESULTS.UPLOAD_COMPLETE]
+    ])('classifies a %s upload', async (_label, status, code) => {
       getGuideUpload.mockReturnValue({ activeUploadId: 'u-1', hasUpload: () => true })
-      getUploadStatus.mockResolvedValue({
-        uploadStatus: 'initiated',
-        isReady: false
-      })
+      getUploadStatus.mockResolvedValue(status)
 
-      const result = await checkUploadHandleStatus(request)
+      const outcome = await getUploadOutcome(request)
 
-      expect(result.code).toBe(RESULTS.UPLOAD_AVAILABLE)
+      expect(outcome.code).toBe(code)
+      expect(outcome.failure).toBeUndefined()
+      expect(outcome.status).toBe(status)
     })
 
-    test('returns UPLOAD_EXPENDED when upload has progressed', async () => {
+    test('reports a rejected file as failed with cdp-uploader\'s message', async () => {
       getGuideUpload.mockReturnValue({ activeUploadId: 'u-1', hasUpload: () => true })
-      getUploadStatus.mockResolvedValue({
-        uploadStatus: 'pending',
-        isReady: false
+      getUploadStatus.mockResolvedValue(rejected)
+
+      const outcome = await getUploadOutcome(request)
+
+      expect(outcome.code).toBe(RESULTS.UPLOAD_FAILED)
+      expect(outcome.failure).toEqual({
+        statusId: 'uploader:rejected',
+        message: 'The selected file contains a virus'
       })
-
-      const result = await checkUploadHandleStatus(request)
-
-      expect(result.code).toBe(RESULTS.UPLOAD_EXPENDED)
     })
 
-    test('returns UPLOAD_EXPENDED when upload status cannot be found', async () => {
+    test('reports a ready upload with no file as failed rather than complete', async () => {
+      getGuideUpload.mockReturnValue({ activeUploadId: 'u-1', hasUpload: () => true })
+      getUploadStatus.mockResolvedValue(noFile)
+
+      const outcome = await getUploadOutcome(request)
+
+      expect(outcome.code).toBe(RESULTS.UPLOAD_FAILED)
+      expect(outcome.failure.statusId).toBe('uploader:no-file')
+    })
+
+    test('reports an upload cdp-uploader no longer knows as failed', async () => {
       getGuideUpload.mockReturnValue({ activeUploadId: 'u-1', hasUpload: () => true })
       getUploadStatus.mockResolvedValue(null)
 
-      const result = await checkUploadHandleStatus(request)
+      const outcome = await getUploadOutcome(request)
 
-      expect(result.code).toBe(RESULTS.UPLOAD_EXPENDED)
+      expect(outcome.code).toBe(RESULTS.UPLOAD_FAILED)
+      expect(outcome.failure.statusId).toBe('uploader:missing')
     })
   })
 
   describe('getGuideUploadProgress', () => {
-    test('reports the synthetic initial status on the very first call, without checking anything', async () => {
-      getGuideUpload.mockReturnValue({ completedStepIds: [] })
-
-      const progress = await getGuideUploadProgress(request, 'u-1')
-
-      expect(progress.statusId).toBe('initial')
-      expect(progress.label).toBe('Checking your file')
-      expect(progress.percentage).toBe(25)
-      expect(progress.isComplete).toBe(false)
-      expect(progress.isError).toBe(false)
-      expect(getUploadStatus).not.toHaveBeenCalled()
+    beforeEach(() => {
+      getGuideUpload.mockReturnValue({ activeUploadId: 'u-1', hasUpload: () => true, completedStepIds: [] })
     })
 
-    test('persists initial as complete after reporting it once', async () => {
-      const originalCompletedStepIds = []
-      getGuideUpload.mockReturnValue({ completedStepIds: originalCompletedStepIds })
+    test('reports scanning in progress', async () => {
+      getUploadStatus.mockResolvedValue(pending)
 
-      await getGuideUploadProgress(request, 'u-1')
+      const progress = await getGuideUploadProgress(request)
 
-      expect(setGuideUploadCompletedSteps).toHaveBeenCalledWith(request, ['initial'])
-
-      expect(originalCompletedStepIds).toEqual([])
-    })
-
-    test('does not re-report initial once it has been persisted as complete', async () => {
-      getGuideUpload.mockReturnValue({ completedStepIds: ['initial'] })
-      getUploadStatus.mockResolvedValue({
-        uploadStatus: 'pending',
-        isReady: false
+      expect(progress).toEqual({
+        statusId: 'uploader:pending',
+        label: 'Scanning for viruses',
+        percentage: 50,
+        isComplete: false,
+        isError: false,
+        message: null
       })
-
-      const progress = await getGuideUploadProgress(request, 'u-1')
-
-      expect(progress.statusId).toBe('uploader:pending')
-      expect(progress.label).toBe('Scanning for viruses')
-      expect(progress.percentage).toBe(50)
-      expect(progress.isComplete).toBe(false)
-      expect(progress.isError).toBe(false)
+      expect(getUploadStatus).toHaveBeenCalledWith('u-1')
     })
 
-    test('returns error state when upload has failed', async () => {
-      getGuideUpload.mockReturnValue({ completedStepIds: ['initial'] })
-      getUploadStatus.mockResolvedValue({
-        uploadStatus: 'ready',
-        isReady: true,
-        hasRejectedFiles: true
-      })
+    test('reports completion once the file has scanned clean', async () => {
+      getUploadStatus.mockResolvedValue(complete)
 
-      const progress = await getGuideUploadProgress(request, 'u-1')
+      const progress = await getGuideUploadProgress(request)
+
+      expect(progress.statusId).toBe('uploader:complete')
+      expect(progress.isComplete).toBe(true)
+      expect(progress.percentage).toBe(100)
+    })
+
+    test('reports a rejected file with cdp-uploader\'s message', async () => {
+      getUploadStatus.mockResolvedValue(rejected)
+
+      const progress = await getGuideUploadProgress(request)
+
+      expect(progress.statusId).toBe('uploader:rejected')
+      expect(progress.isError).toBe(true)
+      expect(progress.label).toBe('File rejected')
+      expect(progress.message).toBe('The selected file contains a virus')
+    })
+
+    test('falls back to the step\'s own message when the failure has none', async () => {
+      getUploadStatus.mockResolvedValue(noFile)
+
+      const progress = await getGuideUploadProgress(request)
+
+      expect(progress.statusId).toBe('uploader:no-file')
+      expect(progress.message).toBe('Select a Word document to upload.')
+    })
+
+    test('reports a generic failure when cdp-uploader cannot be reached', async () => {
+      getUploadStatus.mockRejectedValue(new Error('boom'))
+
+      const progress = await getGuideUploadProgress(request)
 
       expect(progress.statusId).toBe('uploader:failed')
       expect(progress.isError).toBe(true)
+      expect(progress.message).toBe('The selected file could not be checked. Upload it again.')
     })
 
-    test('returns ready state when upload is ready', async () => {
-      getGuideUpload.mockReturnValue({ completedStepIds: ['initial'] })
-      getUploadStatus.mockResolvedValue({
-        uploadStatus: 'ready',
-        isReady: true
-      })
-
-      const progress = await getGuideUploadProgress(request, 'u-1')
+    test('uses an already-fetched status instead of calling cdp-uploader again', async () => {
+      const progress = await getGuideUploadProgress(request, { status: complete })
 
       expect(progress.isComplete).toBe(true)
-    })
-
-    test('skips re-checking completed steps', async () => {
-      const mockUpload = {
-        completedStepIds: ['initial', 'scanning']
-      }
-
-      getGuideUpload.mockReturnValue(mockUpload)
-      getUploadStatus.mockResolvedValue({
-        uploadStatus: 'ready',
-        isReady: true
-      })
-
-      await getGuideUploadProgress(request, 'u-1')
-
       expect(getUploadStatus).not.toHaveBeenCalled()
     })
 
     test('persists newly completed steps to session', async () => {
-      const originalCompletedStepIds = ['initial']
-      getGuideUpload.mockReturnValue({ completedStepIds: originalCompletedStepIds })
-      getUploadStatus.mockResolvedValue({
-        uploadStatus: 'ready',
-        isReady: true
-      })
+      getUploadStatus.mockResolvedValue(complete)
 
-      await getGuideUploadProgress(request, 'u-1')
+      await getGuideUploadProgress(request)
 
-      expect(setGuideUploadCompletedSteps).toHaveBeenCalled()
-
-      const call = setGuideUploadCompletedSteps.mock.calls[0]
-
-      expect(call[0]).toBe(request)
-      expect(call[1]).toContain('scanning')
-
-      expect(originalCompletedStepIds).toEqual(['initial'])
+      expect(setGuideUploadCompletedSteps).toHaveBeenCalledWith(request, ['scanning'])
     })
 
-    test('does not persist when the completed steps have not changed', async () => {
-      getGuideUpload.mockReturnValue({ completedStepIds: ['initial', 'scanning'] })
-      getUploadStatus.mockResolvedValue({
-        uploadStatus: 'ready',
-        isReady: true
-      })
+    test('does not persist or re-check steps already completed in session', async () => {
+      getGuideUpload.mockReturnValue({ activeUploadId: 'u-1', hasUpload: () => true, completedStepIds: ['scanning'] })
 
-      await getGuideUploadProgress(request, 'u-1')
+      const progress = await getGuideUploadProgress(request)
 
+      expect(progress.isComplete).toBe(true)
+      expect(getUploadStatus).not.toHaveBeenCalled()
       expect(setGuideUploadCompletedSteps).not.toHaveBeenCalled()
     })
 
-    test('handles missing upload gracefully', async () => {
-      getGuideUpload.mockReturnValue(null)
+    test('does not persist anything while a step is still pending', async () => {
+      getUploadStatus.mockResolvedValue(pending)
 
-      const progress = await getGuideUploadProgress(request, 'u-1')
+      await getGuideUploadProgress(request)
 
-      expect(progress).toBeDefined()
-      expect(progress.statusId).toBe('initial')
-      expect(progress.isError).toBe(false)
-    })
-  })
-
-  describe('RESULTS', () => {
-    test('defines all expected result codes', () => {
-      expect(RESULTS.MIGRATION_STARTED).toBeDefined()
-      expect(RESULTS.NO_UPLOAD).toBeDefined()
-      expect(RESULTS.UPLOAD_AVAILABLE).toBeDefined()
-      expect(RESULTS.UPLOAD_EXPENDED).toBeDefined()
+      expect(setGuideUploadCompletedSteps).not.toHaveBeenCalled()
     })
   })
 })

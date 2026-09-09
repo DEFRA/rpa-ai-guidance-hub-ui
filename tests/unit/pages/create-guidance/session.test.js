@@ -24,60 +24,66 @@ describe('GuideUpload session helpers', () => {
     const upload = createGuideUpload(request)
 
     expect(upload).toBeTruthy()
-    expect(typeof upload.hasUpload).toBe('function')
     expect(upload.hasUpload()).toBe(false)
+    expect(upload.activeUploadId).toBeNull()
+    expect(upload.completedStepIds).toEqual([])
 
-    // createGuideUpload should set the session key 'guide-upload'
-    expect(yar.set).toHaveBeenCalled()
-    const [key, value] = yar.set.mock.calls[0]
-    expect(key).toBe('guide-upload')
-    expect(value).toEqual({ uploads: [], completedStepIds: [] })
+    expect(yar.set).toHaveBeenCalledWith('guide-upload', { uploads: [] })
   })
 
   test('getGuideUpload returns null when no data present', () => {
     yar.get.mockReturnValue(undefined)
 
-    const res = getGuideUpload(request)
-
-    expect(res).toBeNull()
+    expect(getGuideUpload(request)).toBeNull()
   })
 
   test('getGuideUpload returns wrapper with activeUploadId and hasUpload true', () => {
-    yar.get.mockReturnValue({ uploads: [{ uploadId: 'u-1' }], completedStepIds: [] })
+    yar.get.mockReturnValue({ uploads: [{ uploadId: 'u-1', completedStepIds: [] }] })
 
     const upload = getGuideUpload(request)
 
-    expect(upload).toBeTruthy()
     expect(upload.activeUploadId).toBe('u-1')
     expect(upload.hasUpload()).toBe(true)
   })
 
-  test('getGuideUpload hydrates completedStepIds from session', () => {
+  test('the most recent upload is the active one', () => {
     yar.get.mockReturnValue({
-      uploads: [{ uploadId: 'u-1' }],
-      completedStepIds: ['scanning']
+      uploads: [
+        { uploadId: 'rejected', completedStepIds: [] },
+        { uploadId: 'retry', completedStepIds: [] }
+      ]
     })
 
-    const upload = getGuideUpload(request)
-
-    expect(upload.completedStepIds).toEqual(['scanning'])
+    expect(getGuideUpload(request).activeUploadId).toBe('retry')
   })
 
-  test('addGuideUpload appends to existing uploads and persists', () => {
+  test('completedStepIds belong to the active upload only', () => {
     yar.get.mockReturnValue({
-      uploads: [{ uploadId: 'u-1' }],
-      completedStepIds: []
+      uploads: [
+        { uploadId: 'rejected', completedStepIds: ['scanning'] },
+        { uploadId: 'retry', completedStepIds: [] }
+      ]
     })
+
+    expect(getGuideUpload(request).completedStepIds).toEqual([])
+  })
+
+  test('tolerates upload entries saved without completedStepIds', () => {
+    yar.get.mockReturnValue({ uploads: [{ uploadId: 'u-1' }] })
+
+    expect(getGuideUpload(request).completedStepIds).toEqual([])
+  })
+
+  test('addGuideUpload appends a fresh upload and persists', () => {
+    yar.get.mockReturnValue({ uploads: [{ uploadId: 'u-1', completedStepIds: ['scanning'] }] })
 
     addGuideUpload(request, 'u-2')
 
-    // Should have set the session with both uploads
-    expect(yar.set).toHaveBeenCalled()
-    const [key, value] = yar.set.mock.calls[0]
-    expect(key).toBe('guide-upload')
-    expect(value).toEqual({
-      uploads: [{ uploadId: 'u-1' }, { uploadId: 'u-2' }],
-      completedStepIds: []
+    expect(yar.set).toHaveBeenCalledWith('guide-upload', {
+      uploads: [
+        { uploadId: 'u-1', completedStepIds: ['scanning'] },
+        { uploadId: 'u-2', completedStepIds: [] }
+      ]
     })
   })
 
@@ -86,24 +92,27 @@ describe('GuideUpload session helpers', () => {
 
     addGuideUpload(request, 'u-1')
 
-    expect(yar.set).toHaveBeenCalled()
-    const [key, value] = yar.set.mock.calls[0]
-    expect(key).toBe('guide-upload')
-    expect(value).toEqual({ uploads: [{ uploadId: 'u-1' }], completedStepIds: [] })
+    expect(yar.set).toHaveBeenCalledWith('guide-upload', {
+      uploads: [{ uploadId: 'u-1', completedStepIds: [] }]
+    })
   })
 
-  test('setGuideUploadCompletedSteps persists updated step IDs', () => {
+  test('setGuideUploadCompletedSteps persists step IDs against the active upload', () => {
     yar.get.mockReturnValue({
-      uploads: [{ uploadId: 'u-1' }],
-      completedStepIds: []
+      uploads: [
+        { uploadId: 'u-1', completedStepIds: [] },
+        { uploadId: 'u-2', completedStepIds: [] }
+      ]
     })
 
     setGuideUploadCompletedSteps(request, ['scanning', 'converting'])
 
-    expect(yar.set).toHaveBeenCalled()
-    const [key, value] = yar.set.mock.calls[0]
-    expect(key).toBe('guide-upload')
-    expect(value.completedStepIds).toEqual(['scanning', 'converting'])
+    expect(yar.set).toHaveBeenCalledWith('guide-upload', {
+      uploads: [
+        { uploadId: 'u-1', completedStepIds: [] },
+        { uploadId: 'u-2', completedStepIds: ['scanning', 'converting'] }
+      ]
+    })
   })
 
   test('setGuideUploadCompletedSteps does nothing when no upload in session', () => {
@@ -114,29 +123,22 @@ describe('GuideUpload session helpers', () => {
     expect(yar.set).not.toHaveBeenCalled()
   })
 
-  test('GuideUpload instance addUpload and toPlainObject produce correct shape', () => {
-    const upload = createGuideUpload(request)
-
-    upload.addUpload('first')
-    expect(upload.hasUpload()).toBe(true)
-    expect(upload.activeUploadId).toBe('first')
-
-    upload.addUpload('second')
-    expect(upload.activeUploadId).toBe('first')
-
-    const plain = upload.toPlainObject()
-    expect(plain).toEqual({
-      uploads: [{ uploadId: 'first' }, { uploadId: 'second' }],
-      completedStepIds: []
-    })
-  })
-
-  test('GuideUpload tracks completedStepIds', () => {
+  test('setCompletedStepIds is a no-op on a wrapper with no uploads', () => {
     const upload = createGuideUpload(request)
 
     upload.setCompletedStepIds(['scanning'])
 
-    const plain = upload.toPlainObject()
-    expect(plain.completedStepIds).toEqual(['scanning'])
+    expect(upload.completedStepIds).toEqual([])
+  })
+
+  test('setCompletedStepIds copies the array it is given', () => {
+    const upload = createGuideUpload(request)
+    const ids = ['scanning']
+
+    upload.addUpload('u-1')
+    upload.setCompletedStepIds(ids)
+    ids.push('converting')
+
+    expect(upload.completedStepIds).toEqual(['scanning'])
   })
 })
