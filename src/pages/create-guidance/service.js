@@ -1,4 +1,4 @@
-import { config } from './../../config/config.js'
+import { config } from '../../config/config.js'
 
 import * as session from './session.js'
 import * as steps from './upload-guide/steps.js'
@@ -16,48 +16,36 @@ import { ProgressTracker } from '../../services/progress-tracker.js'
 const RESULTS = {
   MIGRATION_STARTED: 'migrationStarted',
   NO_UPLOAD: 'noUpload',
-  UPLOAD_AVAILABLE: 'uploadAvailable',
-  UPLOAD_EXPENDED: 'uploadExpended'
+  UPLOAD_AVAILABLE: 'uploadAvailable', // initiated - the upload form can still be used
+  UPLOAD_PENDING: 'uploadPending', // file received, scan in progress
+  UPLOAD_COMPLETE: 'uploadComplete', // scanned clean and delivered
+  UPLOAD_FAILED: 'uploadFailed' // rejected, empty, or unknown to cdp-uploader
 }
 
 /**
  * Upload progress steps mapped onto ProgressTracker.
  *
- * 'initial' is a synthetic first status shown once before real checks run.
  * Steps only define pending/failed statuses; completion is handled by the
- * overall flow status.
+ * overall flow status. A check may return a `failure` naming a more specific
+ * failed status and message.
  *
  * @type {Array<{id: string, pendingStatusId: string, failedStatusId: string, check: Function}>}
  */
 const STEP_CHECKS = [
   {
-    id: steps.STEP_IDS.INITIAL,
-    pendingStatusId: steps.STATUS_IDS.INITIAL,
-    failedStatusId: steps.STATUS_IDS.INITIAL,
-    check: async function () {
-      return { complete: false }
-    }
-  },
-  {
     id: steps.STEP_IDS.SCANNING,
     pendingStatusId: steps.STATUS_IDS.UPLOADER_PENDING,
     failedStatusId: steps.STATUS_IDS.UPLOADER_FAILED,
-    check: async function (uploadId) {
-      return _checkScanningStatus(uploadId)
-    }
+    check: _checkScanningStatus
   }
 ]
 
-const STEP_CHECKS_BY_ID = {}
-
-for (const stepCheck of STEP_CHECKS) {
-  STEP_CHECKS_BY_ID[stepCheck.id] = stepCheck
-}
+const STEP_CHECKS_BY_ID = Object.fromEntries(STEP_CHECKS.map((stepCheck) => [stepCheck.id, stepCheck]))
 
 /**
  * StatusId reported once every step has completed.
-
-* @type {string}
+ *
+ * @type {string}
  */
 const FINAL_STATUS_ID = steps.STATUS_IDS.UPLOADER_COMPLETE
 
@@ -70,83 +58,73 @@ const tracker = new ProgressTracker(STEP_CHECKS)
 
 /**
  * Ensure a migration/upload flow is started for the provided session wrapper.
- * If none exists, initiate a new upload and return the started code + id.
  *
- * @param {Object} upload - The GuideUpload instance from session
+ * Reuses an upload whose form has not been submitted yet, reports one that
+ * is in progress or complete, and starts a fresh upload when there is none
+ * or the last one failed (rejected, empty or no longer known to cdp-uploader).
+ *
+ * @param {import('./session.js').GuideUpload} upload - The GuideUpload instance from session
  * @returns {Promise<{code: string, uploadId?: string}>}
  */
 async function startMigration (upload) {
-  if (!upload.hasUpload()) {
-    const uploadId = await _initiateGuideUpload()
+  if (upload.hasUpload()) {
+    const status = await getUploadStatus(upload.activeUploadId)
+    const { code } = _evaluateUploadStatus(status)
 
-    return {
-      code: RESULTS.MIGRATION_STARTED,
-      uploadId
+    if (code !== RESULTS.UPLOAD_FAILED) {
+      return { code }
     }
   }
 
-  const status = await getUploadStatus(upload.activeUploadId)
+  const uploadId = await _initiateGuideUpload()
 
-  if (!status) {
-    throw new Error('Failed to retrieve upload status')
+  return {
+    code: RESULTS.MIGRATION_STARTED,
+    uploadId
   }
-
-  if (status.uploadStatus === 'initiated') {
-    return { code: RESULTS.UPLOAD_AVAILABLE }
-  }
-
-  return { code: RESULTS.UPLOAD_EXPENDED }
 }
 
 /**
- * Check whether an upload handle has been used (has progressed beyond 'initiated').
+ * Report where the session's active upload has got to with cdp-uploader.
  *
  * @param {import('@hapi/hapi').Request} request
- * @returns {Promise<{code: string}>} - NO_UPLOAD | UPLOAD_AVAILABLE | UPLOAD_EXPENDED
+ * @returns {Promise<{code: string, failure?: {statusId: string, message?: string}, status?: import('../../services/uploader.js').UploadStatusModel|null}>}
+ *   `status` is the cdp-uploader status just fetched, so callers can hand it
+ *   to `getGuideUploadProgress` rather than fetching it twice.
  */
-async function checkUploadHandleStatus (request) {
+async function getUploadOutcome (request) {
   const upload = session.getGuideUpload(request)
 
   if (!upload?.hasUpload()) {
     return { code: RESULTS.NO_UPLOAD }
   }
 
-  const uploadId = upload.activeUploadId
-  const status = await getUploadStatus(uploadId)
+  const status = await getUploadStatus(upload.activeUploadId)
 
-  if (!status) {
-    return { code: RESULTS.UPLOAD_EXPENDED }
-  }
-
-  if (status.uploadStatus === 'initiated') {
-    return { code: RESULTS.UPLOAD_AVAILABLE }
-  }
-
-  return { code: RESULTS.UPLOAD_EXPENDED }
+  return { ..._evaluateUploadStatus(status), status }
 }
 
 /**
- * Get current progress for a guide upload, checking downstream systems as needed.
+ * Get current progress for the session's active upload, checking downstream
+ * systems as needed.
  *
  * Skips re-checks of steps already confirmed complete (cached in session) to
  * avoid unnecessary API calls.
  *
  * @param {import('@hapi/hapi').Request} request
- * @param {string} uploadId
- * @returns {Promise<{statusId: string, label: string, percentage: number, isComplete: boolean, isError: boolean}>}
+ * @param {{status?: Object|null}} [options] - A cdp-uploader status already
+ *   fetched for this upload, to save the scanning check fetching it again
+ * @returns {Promise<{statusId: string, label: string, percentage: number, isComplete: boolean, isError: boolean, message: string|null}>}
  */
-async function getGuideUploadProgress (request, uploadId) {
+async function getGuideUploadProgress (request, options = {}) {
   const upload = session.getGuideUpload(request)
   const completedStepIds = upload?.completedStepIds ?? []
+  const context = { uploadId: upload?.activeUploadId ?? null, status: options.status }
 
-  const trackerStatus = await tracker.getStatus(uploadId, completedStepIds)
+  const trackerStatus = await tracker.getStatus(context, completedStepIds)
 
-  const nextCompletedStepIds = trackerStatus.stepId === steps.STEP_IDS.INITIAL && !trackerStatus.isComplete
-    ? [...trackerStatus.completedStepIds, steps.STEP_IDS.INITIAL]
-    : trackerStatus.completedStepIds
-
-  if (nextCompletedStepIds.length !== completedStepIds.length) {
-    session.setGuideUploadCompletedSteps(request, nextCompletedStepIds)
+  if (trackerStatus.completedStepIds.length !== completedStepIds.length) {
+    session.setGuideUploadCompletedSteps(request, trackerStatus.completedStepIds)
   }
 
   const statusId = _resolveStatusId(trackerStatus)
@@ -157,7 +135,8 @@ async function getGuideUploadProgress (request, uploadId) {
     label: stepState.label,
     percentage: stepState.percentage,
     isComplete: trackerStatus.isComplete,
-    isError: trackerStatus.isError
+    isError: trackerStatus.isError,
+    message: trackerStatus.failure?.message ?? stepState.message ?? null
   }
 }
 
@@ -166,7 +145,7 @@ async function getGuideUploadProgress (request, uploadId) {
  * STEP_CHECKS config rather than hardcoded conditionals per step.
  *
  * @private
- * @param {{stepId: string, isComplete: boolean, isError: boolean}} trackerStatus
+ * @param {{stepId: string, isComplete: boolean, isError: boolean, failure?: {statusId?: string}}} trackerStatus
  * @returns {string}
  */
 function _resolveStatusId (trackerStatus) {
@@ -176,9 +155,11 @@ function _resolveStatusId (trackerStatus) {
 
   const stepCheck = STEP_CHECKS_BY_ID[trackerStatus.stepId]
 
-  return trackerStatus.isError
-    ? stepCheck.failedStatusId
-    : stepCheck.pendingStatusId
+  if (!trackerStatus.isError) {
+    return stepCheck.pendingStatusId
+  }
+
+  return trackerStatus.failure?.statusId ?? stepCheck.failedStatusId
 }
 
 /**
@@ -199,28 +180,78 @@ async function _initiateGuideUpload () {
 }
 
 /**
+ * @private
+ * Classify a cdp-uploader status for this journey, which expects exactly one
+ * clean file.
+ *
+ * cdp-uploader marks an upload `ready` with no files when the form was
+ * submitted empty, and forgets uploads after a while (404, projected as
+ * null) - both are failures here, not successes.
+ *
+ * @param {import('../../services/uploader.js').UploadStatusModel|null} status
+ * @returns {{code: string, failure?: {statusId: string, message?: string}}}
+ */
+function _evaluateUploadStatus (status) {
+  if (!status) {
+    return _failed(steps.STATUS_IDS.UPLOADER_MISSING)
+  }
+
+  if (status.uploadStatus === 'initiated') {
+    return { code: RESULTS.UPLOAD_AVAILABLE }
+  }
+
+  if (!status.isReady) {
+    return { code: RESULTS.UPLOAD_PENDING }
+  }
+
+  const [file] = status.files
+
+  if (!file) {
+    return _failed(steps.STATUS_IDS.UPLOADER_NO_FILE)
+  }
+
+  if (status.hasRejectedFiles) {
+    return _failed(steps.STATUS_IDS.UPLOADER_REJECTED, file.error?.message)
+  }
+
+  return { code: RESULTS.UPLOAD_COMPLETE }
+}
+
+/**
+ * @private
+ * @param {string} statusId
+ * @param {string} [message] - User-facing reason, when the source supplies one
+ * @returns {{code: string, failure: {statusId: string, message?: string}}}
+ */
+function _failed (statusId, message) {
+  return {
+    code: RESULTS.UPLOAD_FAILED,
+    failure: { statusId, message }
+  }
+}
+
+/**
  * Check scanning/virus-check status via uploader
  *
  * @private
- * @param {string} uploadId
- * @returns {Promise<{complete: boolean, error?: boolean}>}
+ * @param {{uploadId: string|null, status?: Object|null}} context - The upload
+ *   to check, and optionally its already-fetched cdp-uploader status (null
+ *   meaning cdp-uploader returned 404, so not refetched)
+ * @returns {Promise<{complete: boolean, error?: boolean, failure?: {statusId: string, message?: string}}>}
  */
-async function _checkScanningStatus (uploadId) {
+async function _checkScanningStatus ({ uploadId, status: knownStatus }) {
   try {
-    const status = await getUploadStatus(uploadId)
+    const status = knownStatus === undefined
+      ? await getUploadStatus(uploadId)
+      : knownStatus
+    const { code, failure } = _evaluateUploadStatus(status)
 
-    if (!status) {
-      return { complete: false, error: true }
-    }
-
-    const { isReady, hasRejectedFiles } = status
-
-    if (isReady && !hasRejectedFiles) {
+    if (code === RESULTS.UPLOAD_COMPLETE) {
       return { complete: true }
     }
 
-    if (isReady && hasRejectedFiles) {
-      return { complete: false, error: true }
+    if (code === RESULTS.UPLOAD_FAILED) {
+      return { complete: false, error: true, failure }
     }
 
     return { complete: false }
@@ -272,7 +303,7 @@ async function captureGuide (uploadId, metadata, createdBy) {
 export {
   RESULTS,
   captureGuide,
-  checkUploadHandleStatus,
+  getUploadOutcome,
   getGuideUploadProgress,
   startMigration
 }

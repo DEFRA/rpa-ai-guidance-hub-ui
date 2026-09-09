@@ -1,31 +1,62 @@
 {% extends "common/layout.njk" %}
 
+{% block head %}
+  {{ super() }}
+  {% if refreshSeconds %}
+    <noscript>
+      <meta http-equiv="refresh" content="{{ refreshSeconds }}">
+    </noscript>
+  {% endif %}
+{% endblock %}
+
 {% block content %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds app-content">
-      <h1 class="govuk-heading-l" id="upload-status-heading">{{ pageTitle }}</h1>
-
-      <p class="govuk-body">We scan every file for viruses before it goes into the hub. This usually takes a few seconds.</p>
-
-      <noscript>
-        <p class="govuk-inset-text">
-          JavaScript is not available in your browser or has been disabled.
-          This page will not update automatically.<br><br>
-          Refresh the page to see the latest upload progress.
-        </p>
-      </noscript>
-
-      <div class="app-progress{{ ' app-progress--error' if isError }}"
-        data-module="app-progress"
+      <div data-module="app-progress"
         data-poll-url="{{ pollUrl }}"
         data-redirect-url="{{ redirectUrl }}">
-        <p class="app-progress__status" data-progress-label="" role="status">{{ label }}</p>
-        <div class="app-progress__track">
-          <div class="app-progress__bar{{ ' app-progress__bar--error' if isError }}" style="width: {{ percentage }}%;"></div>
-        </div>
-      </div>
 
-      <p class="govuk-body">Do not close this page. If nothing happens, <a class="govuk-link" href="{{ redirectUrl }}">continue to the guide's details</a>.</p>
+        <div class="govuk-error-summary" data-progress-error aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary"{% if not isError %} hidden{% endif %}>
+          <h2 class="govuk-error-summary__title" id="error-summary-title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              <li><a href="{{ retryUrl }}" data-progress-error-message>{{ errorMessage }}</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <h1 class="govuk-heading-l" id="upload-status-heading">Checking your file</h1>
+
+        <p class="govuk-body">We scan every file for viruses before it goes into the hub. This usually takes a few seconds.</p>
+
+        {% if refreshSeconds %}
+          <noscript>
+            <p class="govuk-inset-text">This page refreshes every {{ refreshSeconds }} seconds until your file has been checked.</p>
+          </noscript>
+        {% endif %}
+
+        <div class="app-progress{{ ' app-progress--error' if isError }}">
+          <p class="app-progress__status" id="upload-status-label" data-progress-label role="status">{{ label }}</p>
+          <div class="app-progress__track" role="progressbar" aria-labelledby="upload-status-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ percentage }}">
+            {# Width is applied by status-poll.js from data-percentage: an inline style attribute would be blocked by the content security policy. #}
+            <div class="app-progress__bar{{ ' app-progress__bar--error' if isError }}" data-progress-bar data-percentage="{{ percentage }}"></div>
+          </div>
+        </div>
+
+        <p class="govuk-body" data-progress-waiting{% if isError %} hidden{% endif %}>Do not close this page.</p>
+
+        <p class="govuk-body" data-progress-retry{% if not isError %} hidden{% endif %}>
+          <a class="govuk-link" href="{{ retryUrl }}">Upload a different file</a>
+        </p>
+
+        <p class="govuk-body" data-progress-complete hidden>
+          Your file has been checked. <a class="govuk-link" href="{{ redirectUrl }}">Continue to the guide's details</a>.
+        </p>
+
+        <p class="govuk-body" data-progress-timeout hidden>
+          This is taking longer than expected. <a class="govuk-link" href="">Refresh the page</a> to check again.
+        </p>
+      </div>
     </div>
   </div>
 {% endblock %}

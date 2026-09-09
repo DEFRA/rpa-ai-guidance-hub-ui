@@ -14,7 +14,7 @@ vi.mock('../../../../../src/pages/create-guidance/session.js', () => ({
   addGuideUpload: vi.fn()
 }))
 
-import { startMigration } from '../../../../../src/pages/create-guidance/service.js'
+import { RESULTS, startMigration } from '../../../../../src/pages/create-guidance/service.js'
 import { getGuideUpload, createGuideUpload, addGuideUpload } from '../../../../../src/pages/create-guidance/session.js'
 import { getUploadForm } from '../../../../../src/pages/create-guidance/upload-guide/controller.js'
 
@@ -38,7 +38,7 @@ describe('uploadGuideController', () => {
       beforeEach(() => {
         getGuideUpload.mockReturnValue(null)
         createGuideUpload.mockReturnValue({ activeUploadId: null })
-        startMigration.mockResolvedValue({ code: 'migrationStarted', uploadId: 'new-upload-id' })
+        startMigration.mockResolvedValue({ code: RESULTS.MIGRATION_STARTED, uploadId: 'new-upload-id' })
       })
 
       test('creates a new guide upload session', async () => {
@@ -70,10 +70,10 @@ describe('uploadGuideController', () => {
       })
     })
 
-    describe('when the upload has already been used', () => {
+    describe('when the upload has already scanned clean', () => {
       beforeEach(() => {
         getGuideUpload.mockReturnValue({ activeUploadId: 'u-1' })
-        startMigration.mockResolvedValue({ code: 'uploadExpended' })
+        startMigration.mockResolvedValue({ code: RESULTS.UPLOAD_COMPLETE })
       })
 
       test('flashes a notification explaining why', async () => {
@@ -96,10 +96,47 @@ describe('uploadGuideController', () => {
       })
     })
 
+    describe('when the upload is still being scanned', () => {
+      beforeEach(() => {
+        getGuideUpload.mockReturnValue({ activeUploadId: 'u-1' })
+        startMigration.mockResolvedValue({ code: RESULTS.UPLOAD_PENDING })
+      })
+
+      test('redirects to the processing page', async () => {
+        const result = await getUploadForm(request, h)
+
+        expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/processing')
+        expect(result).toEqual(h.redirect())
+      })
+
+      test('does not flash a notification or record a new upload', async () => {
+        await getUploadForm(request, h)
+
+        expect(request.yar.flash).not.toHaveBeenCalled()
+        expect(addGuideUpload).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('when the previous upload failed and a fresh one has been started', () => {
+      beforeEach(() => {
+        getGuideUpload.mockReturnValue({ activeUploadId: 'u-1' })
+        startMigration.mockResolvedValue({ code: RESULTS.MIGRATION_STARTED, uploadId: 'u-2' })
+      })
+
+      test('records the fresh upload and renders the form for it', async () => {
+        await getUploadForm(request, h)
+
+        expect(addGuideUpload).toHaveBeenCalledWith(request, 'u-2')
+        expect(h.view).toHaveBeenCalledWith(UPLOAD_GUIDANCE_VIEW, expect.objectContaining({
+          uploadUrl: expect.stringContaining('/u-2')
+        }))
+      })
+    })
+
     describe('when an upload is available to fill in', () => {
       beforeEach(() => {
         getGuideUpload.mockReturnValue({ activeUploadId: 'u-1' })
-        startMigration.mockResolvedValue({ code: 'uploadAvailable' })
+        startMigration.mockResolvedValue({ code: RESULTS.UPLOAD_AVAILABLE })
       })
 
       test('does not create or record a new upload in session', async () => {
