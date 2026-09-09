@@ -9,7 +9,7 @@ import { UploadProcessingViewModel } from './view-models.js'
 
 const PROCESSING_VIEW = 'create-guidance/upload-guide/processing/page.njk'
 const UPLOAD_GUIDE_URL = '/create-guidance/upload-guide'
-const METADATA_URL = '/create-guidance/metadata'
+const METADATA_URL = '/create-guidance/upload-guide/metadata'
 
 /**
  * Render the "Checking your file" page while an upload is being processed.

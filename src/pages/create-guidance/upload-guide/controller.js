@@ -5,7 +5,7 @@ import { UploadGuidanceViewModel } from './view-models.js'
 
 const UPLOAD_GUIDANCE_VIEW = 'create-guidance/upload-guide/page.njk'
 const PROCESSING_URL = '/create-guidance/upload-guide/processing'
-const METADATA_URL = '/create-guidance/metadata'
+const METADATA_URL = '/create-guidance/upload-guide/metadata'
 
 /**
  * Render the upload form for a guide migration, initiating one if none has

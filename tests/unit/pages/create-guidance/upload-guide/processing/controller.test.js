@@ -69,7 +69,7 @@ describe('processingController', () => {
 
       await getStatusPage(request, h)
 
-      expect(h.redirect).toHaveBeenCalledWith('/create-guidance/metadata')
+      expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/metadata')
       expect(h.view).not.toHaveBeenCalled()
     })
 
@@ -82,7 +82,7 @@ describe('processingController', () => {
 
       expect(h.view).toHaveBeenCalledWith(PROCESSING_VIEW, expect.objectContaining({
         pollUrl: '/create-guidance/upload-guide/processing/status',
-        redirectUrl: '/create-guidance/metadata',
+        redirectUrl: '/create-guidance/upload-guide/metadata',
         label: 'Scanning for viruses',
         percentage: 50,
         isError: false,

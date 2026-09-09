@@ -1,0 +1,120 @@
+{% extends "common/layout.njk" %}
+
+{% block beforeContent %}
+  <a class="govuk-back-link" href="{{ backUrl }}">Back</a>
+{% endblock %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds app-content">
+
+      {% if errorList and errorList.length %}
+        <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary">
+          <h2 class="govuk-error-summary__title" id="error-summary-title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              {% for error in errorList %}
+                <li><a href="{{ error.href }}">{{ error.text }}</a></li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      {% endif %}
+
+      <h1 class="govuk-heading-l">The guide's details</h1>
+
+      <p class="govuk-body">
+        We have read the title, version and date from the document. Check the title and choose the schemes this guidance relates to.
+      </p>
+
+      <form method="post" action="/create-guidance/upload-guide/metadata" novalidate>
+
+        <div class="govuk-form-group{% if errors.guideTitle %} govuk-form-group--error{% endif %}">
+          <label class="govuk-label govuk-label--s" for="guide-title">
+            Guidance title
+          </label>
+          <div id="guide-title-hint" class="govuk-hint">
+            If the guidance relates to a scheme, include the scheme name in the title.
+          </div>
+          {% if errors.guideTitle %}
+            <p id="guide-title-error" class="govuk-error-message">
+              <span class="govuk-visually-hidden">Error:</span> {{ errors.guideTitle }}
+            </p>
+          {% endif %}
+          <input
+            class="govuk-input{% if errors.guideTitle %} govuk-input--error{% endif %}"
+            id="guide-title"
+            name="guideTitle"
+            type="text"
+            value="{{ values.guideTitle }}"
+            aria-describedby="guide-title-hint{% if errors.guideTitle %} guide-title-error{% endif %}"
+          >
+        </div>
+
+        <dl class="govuk-summary-list">
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">
+              Version number
+            </dt>
+            <dd class="govuk-summary-list__value">
+              {{ versionNumber }}
+            </dd>
+          </div>
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">
+              Last modified date
+            </dt>
+            <dd class="govuk-summary-list__value">
+              {{ lastModifiedDate }}
+            </dd>
+          </div>
+        </dl>
+
+        <div class="govuk-form-group{% if errors.schemes %} govuk-form-group--error{% endif %}">
+          <fieldset class="govuk-fieldset" aria-describedby="scheme-hint{% if errors.schemes %} scheme-error{% endif %}">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">
+              Which scheme does this guidance relate to?
+            </legend>
+            <div id="scheme-hint" class="govuk-hint">
+              Select the scheme this guidance relates to.
+            </div>
+            {% if errors.schemes %}
+              <p id="scheme-error" class="govuk-error-message">
+                <span class="govuk-visually-hidden">Error:</span> {{ errors.schemes }}
+              </p>
+            {% endif %}
+
+            <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+              {% for option in schemeOptions %}
+                {% if option.divider %}
+                  <div class="govuk-checkboxes__divider">{{ option.divider }}</div>
+                {% endif %}
+                <div class="govuk-checkboxes__item">
+                  <input
+                    class="govuk-checkboxes__input"
+                    id="schemes{% if loop.index > 1 %}-{{ loop.index }}{% endif %}"
+                    name="schemes"
+                    type="checkbox"
+                    value="{{ option.value }}"
+                    {% if values.schemes and values.schemes.indexOf(option.value) !== -1 %}checked{% endif %}
+                    {% if option.hint %}aria-describedby="schemes{% if loop.index > 1 %}-{{ loop.index }}{% endif %}-item-hint"{% endif %}
+                  >
+                  <label class="govuk-label govuk-checkboxes__label" for="schemes{% if loop.index > 1 %}-{{ loop.index }}{% endif %}">
+                    {{ option.text }}
+                  </label>
+                  {% if option.hint %}
+                    <div id="schemes{% if loop.index > 1 %}-{{ loop.index }}{% endif %}-item-hint" class="govuk-hint govuk-checkboxes__hint">
+                      {{ option.hint }}
+                    </div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          </fieldset>
+        </div>
+
+        <button class="govuk-button" data-module="govuk-button" type="submit">Continue</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

@@ -10,7 +10,7 @@ describe('UploadProcessingViewModel', () => {
   test('points at the metadata page as the redirect target and the upload form for retries', () => {
     const viewModel = new UploadProcessingViewModel()
 
-    expect(viewModel.redirectUrl).toBe('/create-guidance/metadata')
+    expect(viewModel.redirectUrl).toBe('/create-guidance/upload-guide/metadata')
     expect(viewModel.retryUrl).toBe('/create-guidance/upload-guide')
   })
 
