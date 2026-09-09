@@ -4,6 +4,7 @@ import * as session from './session.js'
 import * as steps from './upload-guide/steps.js'
 
 import { getUploadStatus, initiateUpload } from '../../services/uploader.js'
+import { createGuide } from '../../infra/guidance-api/guides.js'
 import { ProgressTracker } from '../../services/progress-tracker.js'
 
 /**
@@ -259,8 +260,49 @@ async function _checkScanningStatus ({ uploadId, status: knownStatus }) {
   }
 }
 
+/**
+ * Capture the uploaded document and what its author said about it as one guide.
+ *
+ * The end of the journey, and the only place the two halves are both in hand: the
+ * upload knows where the document went and the form says what it is. The API is
+ * given where the document is rather than the id of the upload, because
+ * cdp-uploader's status reports the location and this is the only thing that can
+ * read it.
+ *
+ * Sending the same upload twice answers the guide it made the first time, so a
+ * resubmitted form is safe.
+ *
+ * @param {string} uploadId - The upload the document arrived under
+ * @param {Object<string, any>} metadata - The validated form fields
+ * @param {string} [createdBy] - Who submitted it
+ * @returns {Promise<{id: string, content: string, assets: string}>}
+ * @throws {Error} - If the upload holds no delivered file
+ * @throws {GuidanceApiError} - If the API refuses or fails
+ */
+async function captureGuide (uploadId, metadata, createdBy) {
+  const status = await getUploadStatus(uploadId)
+  const file = status?.files?.find((candidate) => candidate.location)
+
+  if (!file) {
+    throw new Error(`Upload ${uploadId} has no delivered file to convert`)
+  }
+
+  const { data } = await createGuide({
+    source: {
+      uploadId,
+      url: file.location,
+      filename: file.filename
+    },
+    metadata,
+    createdBy
+  })
+
+  return data
+}
+
 export {
   RESULTS,
+  captureGuide,
   getUploadOutcome,
   getGuideUploadProgress,
   startMigration
