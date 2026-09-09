@@ -5,6 +5,29 @@ import { MigrateMetadataViewModel } from './view-models.js'
 
 const MIGRATE_METADATA_VIEW = 'create-guidance/metadata/page.njk'
 
+/**
+ * Who is signed in, as the API records the creator of a version.
+ *
+ * `profile.id` is the identifier the auth provider minted - Entra's object id, and
+ * `dev-user-123` under local auth - and is the only field here that survives someone
+ * being renamed or changing their email, which is why it and not the display name is
+ * what anything matches on. The display name travels with it so that a listing can
+ * say who made a version without asking a directory.
+ *
+ * This is *not* who owns the document. Owners are metadata an author supplies, may
+ * be a team rather than a person, and are not derived from who pressed the button.
+ *
+ * @param {object} request
+ * @returns {{ id: string, displayName: string | undefined } | undefined}
+ */
+function signedInUser (request) {
+  const profile = request.auth?.credentials?.profile
+
+  return profile?.id
+    ? { id: profile.id, displayName: profile.displayName }
+    : undefined
+}
+
 async function getMetadataForm (request, h) {
   const saved = request.yar.get('guidance')
 
@@ -42,9 +65,9 @@ async function addMetadata (request, h) {
   }
 
   try {
-    const guide = await captureGuide(uploadId, request.payload, request.auth?.credentials?.id)
+    const guide = await captureGuide(uploadId, request.payload, signedInUser(request))
 
-    request.logger.info({ guideId: guide.id }, 'Captured guide')
+    request.logger.info({ documentId: guide.id }, 'Captured guide')
   } catch (error) {
     // The document is uploaded and the metadata is in session, so the journey can
     // be retried without repeating either. Sending the same upload again answers

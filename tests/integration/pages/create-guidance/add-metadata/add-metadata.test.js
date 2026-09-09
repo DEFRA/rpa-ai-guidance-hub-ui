@@ -167,6 +167,31 @@ describe('#addMetadataController', () => {
       expect(sent.metadata.title).toBe('Submit your claim')
     })
 
+    test('POST /create-guidance/metadata tells the API who was signed in', async () => {
+      // The identity that made this version, which is not who owns the document:
+      // owners are metadata an author supplies and may be a team. The id is the
+      // one field that survives a rename, so it is what the API records.
+      const cookie = await withUploadInSession(server)
+      uploaderReportsADeliveredFile()
+
+      let sent
+      nock(GUIDANCE_API_URL)
+        .post('/guides', (body) => {
+          sent = body
+          return true
+        })
+        .reply(statusCodes.HTTP_STATUS_CREATED, { id: 'g-1', versions: [] })
+
+      await server.inject({
+        method: 'POST',
+        url: '/create-guidance/metadata',
+        payload: validFormPayload(),
+        headers: { cookie }
+      })
+
+      expect(sent.createdBy).toEqual({ id: 'dev-user-123', displayName: 'Dev User' })
+    })
+
     test('POST /create-guidance/metadata with no upload in session sends the user back to upload one', async () => {
       const cookie = await loginAsDevUser(server)
 
