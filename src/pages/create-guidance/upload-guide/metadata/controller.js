@@ -1,6 +1,6 @@
 import { statusCodes } from '../../../../constants/status-codes.js'
 import { getGuideUpload, setGuideUploadMetadata } from '../../session.js'
-import { getSchemes } from '../../../../services/reference-data.js'
+import { getSchemes, normalizeSchemes } from '../../../../services/reference-data.js'
 import { GuideDetailsViewModel } from './view-models.js'
 
 const METADATA_VIEW = 'create-guidance/upload-guide/metadata/page.njk'
@@ -33,8 +33,13 @@ async function getMetadataForm (request, h) {
 async function metadataFailAction (request, h, err) {
   const schemeOptions = await getSchemes()
 
+  const payload = {
+    ...request.payload,
+    schemes: normalizeSchemes(request.payload.schemes)
+  }
+
   const viewModel = GuideDetailsViewModel.fromValidationError(
-    request.payload,
+    payload,
     err,
     { schemeOptions }
   )
@@ -57,7 +62,7 @@ async function saveMetadata (request, h) {
 
   setGuideUploadMetadata(request, {
     guideTitle: request.payload.guideTitle,
-    schemes: request.payload.schemes
+    schemes: normalizeSchemes(request.payload.schemes)
   })
 
   return h.redirect(PURPOSE_URL)

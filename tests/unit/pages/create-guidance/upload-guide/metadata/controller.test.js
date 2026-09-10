@@ -40,7 +40,8 @@ describe('upload-guide metadata controller', () => {
       }
       vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
       vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([
-        { value: 'sfi', label: 'Sustainable Farming Incentive' }
+        { value: 'sfi', label: 'Sustainable Farming Incentive' },
+        { value: 'none', label: 'Not scheme-specific' }
       ])
 
       request = { yar: { get: vi.fn() } }
@@ -60,7 +61,9 @@ describe('upload-guide metadata controller', () => {
 
   describe('metadataFailAction', () => {
     test('returns 400 with validation errors on the view', async () => {
-      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
+      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([
+        { value: 'none', label: 'Not scheme-specific' }
+      ])
 
       request = {
         payload: { guideTitle: '' },
@@ -80,6 +83,24 @@ describe('upload-guide metadata controller', () => {
       }))
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
       expect(takeover).toHaveBeenCalled()
+    })
+
+    test('redisplays a normalized scheme selection when "none" is submitted alongside another scheme', async () => {
+      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
+
+      request = {
+        payload: { guideTitle: '', schemes: ['none', 'sfi'] },
+        yar: { get: vi.fn() }
+      }
+      const err = {
+        details: [{ path: ['guideTitle'], message: 'Enter the guidance title' }]
+      }
+
+      await metadataFailAction(request, h, err)
+
+      expect(h.view).toHaveBeenCalledWith(METADATA_VIEW, expect.objectContaining({
+        values: expect.objectContaining({ schemes: ['sfi'] })
+      }))
     })
   })
 
@@ -120,6 +141,30 @@ describe('upload-guide metadata controller', () => {
         schemes: ['sfi']
       })
       expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/metadata/purpose')
+    })
+
+    test('normalizes "none" out when submitted alongside another scheme', async () => {
+      const uploadMock = {
+        hasUpload: vi.fn(() => true),
+        activeUploadId: 'test-upload-id'
+      }
+      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
+      const setMetadataSpy = vi.spyOn(session, 'setGuideUploadMetadata').mockImplementation(() => {})
+
+      request = {
+        payload: {
+          guideTitle: 'Updated Guide Title',
+          schemes: ['none', 'sfi']
+        },
+        yar: { get: vi.fn(), set: vi.fn() }
+      }
+
+      await saveMetadata(request, h)
+
+      expect(setMetadataSpy).toHaveBeenCalledWith(request, {
+        guideTitle: 'Updated Guide Title',
+        schemes: ['sfi']
+      })
     })
   })
 })

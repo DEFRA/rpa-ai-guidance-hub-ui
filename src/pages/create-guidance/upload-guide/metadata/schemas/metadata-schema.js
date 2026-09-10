@@ -9,7 +9,10 @@ const SCHEME_REQUIRED_MESSAGE = 'Select at least one scheme this guidance relate
  * Valid scheme values come from the reference data service and can change
  * without a deploy, so they can't be baked into a schema built once at
  * import time - the schema has to be built fresh per request from whatever
- * options are current.
+ * options are current. `schemeOptions` is expected to already include the
+ * "None" opt-out choice (see `getSchemes` in services/reference-data.js) -
+ * this schema just trusts whatever valid values it's given, same as any
+ * other scheme.
  *
  * @param {Array<{value: string}>} schemeOptions - Valid scheme reference options
  * @returns {Joi.ObjectSchema}

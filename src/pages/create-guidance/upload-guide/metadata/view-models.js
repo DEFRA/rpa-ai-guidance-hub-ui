@@ -1,3 +1,5 @@
+import { NONE_SCHEME_VALUE } from '../../../../services/reference-data.js'
+
 const BACK_URL = '/create-guidance/upload-guide'
 const NOT_AVAILABLE = 'Not available'
 
@@ -5,21 +7,6 @@ const FIELD_HREF_MAP = {
   guideTitle: '#guide-title',
   schemes: '#schemes'
 }
-
-/**
- * "Not scheme-specific" is an opt-out choice for the "which scheme does this
- * guidance relate to?" question, not a scheme - it doesn't belong in the
- * guidance API's scheme reference data. The divider is purely a GOV.UK
- * checkboxes display concern too, so both live here rather than the
- * reference-data service.
- */
-const NOT_SCHEME_SPECIFIC_OPTION = {
-  value: 'none',
-  text: 'Not scheme-specific',
-  divider: 'or'
-}
-
-const defaultSchemeOptions = [NOT_SCHEME_SPECIFIC_OPTION]
 
 /**
  * GuideDetailsViewModel - Form state and page data for screen 1 of metadata capture
@@ -38,7 +25,12 @@ class GuideDetailsViewModel {
   constructor (data = {}) {
     const schemeOptions = (data.schemeOptions || []).map((option) => ({
       value: option.value,
-      text: option.text || option.label
+      text: option.text || option.label,
+      // "Not scheme-specific" is an opt-out choice rather than a real
+      // scheme (see NONE_SCHEME_VALUE in services/reference-data.js, the
+      // source of truth for which value that is) - the divider above it in
+      // the checkbox list is purely a display concern, so it's added here.
+      ...(option.value === NONE_SCHEME_VALUE ? { divider: 'or' } : {})
     }))
 
     this.values = data.values || {}
@@ -46,7 +38,7 @@ class GuideDetailsViewModel {
     this.errorList = data.errorList || []
     this.versionNumber = data.versionNumber || NOT_AVAILABLE
     this.lastModifiedDate = data.lastModifiedDate || NOT_AVAILABLE
-    this.schemeOptions = [...schemeOptions, ...defaultSchemeOptions]
+    this.schemeOptions = schemeOptions
     this.backUrl = data.backUrl || BACK_URL
   }
 

@@ -2,7 +2,10 @@ import { GuideDetailsViewModel } from '../../../../../../src/pages/create-guidan
 
 describe('#GuideDetailsViewModel', () => {
   test('fromSession() populates values from session metadata', () => {
-    const schemeOptions = [{ value: 'sfi', text: 'Sustainable Farming Incentive' }]
+    const schemeOptions = [
+      { value: 'sfi', text: 'Sustainable Farming Incentive' },
+      { value: 'none', text: 'Not scheme-specific' }
+    ]
 
     const viewModel = GuideDetailsViewModel.fromSession({
       values: {
@@ -74,9 +77,7 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.errorList).toEqual([])
     expect(viewModel.versionNumber).toBe('Not available')
     expect(viewModel.lastModifiedDate).toBe('Not available')
-    expect(viewModel.schemeOptions).toEqual([
-      { value: 'none', text: 'Not scheme-specific', divider: 'or' }
-    ])
+    expect(viewModel.schemeOptions).toEqual([])
     expect(viewModel.backUrl).toBe('/create-guidance/upload-guide')
   })
 })
