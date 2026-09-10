@@ -1,0 +1,77 @@
+# Keeps this repo's copy of the AICE team skills (used by Copilot code review)
+# in sync with the source of truth in DEFRA/aice-team.
+#
+# How it works, in short:
+#   - The skills were originally installed with the official GitHub CLI:
+#       gh skill install DEFRA/aice-team plugins/javascript/skills/style-guide \
+#         --dir .github/skills
+#       gh skill install DEFRA/aice-team plugins/javascript/skills/aice-design-language \
+#         --dir .github/skills
+#     `gh skill install` writes each skill's source repo + git tree SHA into
+#     the SKILL.md frontmatter, so the skill "remembers" where it came from.
+#   - `gh skill update` reads that frontmatter, compares the recorded tree SHA
+#     against the current one in DEFRA/aice-team, and only touches files when
+#     the upstream content has actually changed.
+#   - This workflow runs that check on a schedule and, exactly like Dependabot,
+#     opens a PR only when there's something to review. No drift, no PR.
+#
+# One-time setup: run the two `gh skill install` commands above locally (or in
+# a throwaway workflow run) and commit the resulting .github/skills/ folder
+# before this workflow is useful - it has nothing to update otherwise.
+
+name: Sync AICE team skills
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-skills:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Confirm the runner's gh CLI supports `gh skill`
+        run: |
+          gh --version
+          gh skill --help >/dev/null || {
+            echo "::error::This runner's gh CLI does not have the 'skill' command yet." \
+                 "Add a step to upgrade gh (see https://github.com/cli/cli/blob/trunk/docs/install_linux.md) before this one."
+            exit 1
+          }
+
+      - name: Check installed skills against DEFRA/aice-team
+        id: update
+        run: |
+          gh skill update --all --dir .github/skills
+          if [ -n "$(git status --porcelain -- .github/skills)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open a PR with the update
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          branch="chore/sync-aice-skills-$(date +%Y%m%d%H%M)"
+          git checkout -b "$branch"
+          git add .github/skills
+          git commit -m "chore(skills): sync AICE team skills from DEFRA/aice-team"
+          git push origin "$branch"
+
+          gh pr create \
+            --title "chore(skills): sync AICE team skills" \
+            --body "Automated sync of Copilot agent skills from [DEFRA/aice-team](https://github.com/DEFRA/aice-team), run by \`gh skill update\`.
+
+          Please review the diff under \`.github/skills/\` before merging - Copilot code review will start using the updated guidance as soon as this lands on the default branch." \
+            --head "$branch"
