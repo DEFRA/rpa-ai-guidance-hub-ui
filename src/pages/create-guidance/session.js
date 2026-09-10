@@ -19,7 +19,7 @@ class GuideUpload {
    * Create a GuideUpload wrapper
    *
    * @param {Object} [data] - Plain object read from session storage
-   * @param {Array<{uploadId: string, completedStepIds?: Array<string>}>} [data.uploads] - Upload entries, oldest first
+   * @param {Array<{uploadId: string, completedStepIds?: Array<string>, metadata?: Object}>} [data.uploads] - Upload entries, oldest first
    */
   constructor (data) {
     this.#uploads = data?.uploads ?? []
@@ -28,7 +28,7 @@ class GuideUpload {
   /**
    * The most recent upload entry - null if none
    *
-   * @returns {{uploadId: string, completedStepIds?: Array<string>}|null}
+   * @returns {{uploadId: string, completedStepIds?: Array<string>, metadata?: Object}|null}
    */
   get #activeUpload () {
     return this.#uploads.at(-1) ?? null
@@ -50,6 +50,15 @@ class GuideUpload {
    */
   get completedStepIds () {
     return this.#activeUpload?.completedStepIds ?? []
+  }
+
+  /**
+   * Metadata captured for the active upload
+   *
+   * @returns {Object|null}
+   */
+  get metadata () {
+    return this.#activeUpload?.metadata ?? null
   }
 
   /**
@@ -77,6 +86,34 @@ class GuideUpload {
   setCompletedStepIds (completedStepIds) {
     if (this.#activeUpload) {
       this.#activeUpload.completedStepIds = [...completedStepIds]
+    }
+  }
+
+  /**
+   * Update or set metadata for the active upload
+   *
+   * Performs a shallow merge onto any metadata already captured, so
+   * successive calls from different create-guidance screens build up one
+   * combined object rather than replacing it - pass only the keys owned by
+   * the current step. `undefined` values are dropped rather than merged, so
+   * a step can't accidentally null out a key set by an earlier step. Note
+   * this merge is shallow: an object-valued key is replaced wholesale, not
+   * deep-merged, so two screens should not both write into the same
+   * nested key.
+   *
+   * @param {Object} metadata
+   * @returns {void}
+   */
+  setMetadata (metadata) {
+    if (this.#activeUpload) {
+      const providedEntries = Object.entries(metadata).filter(
+        ([, value]) => value !== undefined
+      )
+
+      this.#activeUpload.metadata = {
+        ...(this.#activeUpload.metadata),
+        ...Object.fromEntries(providedEntries)
+      }
     }
   }
 
@@ -148,10 +185,41 @@ function setGuideUploadCompletedSteps (request, completedStepIds) {
   }
 }
 
+/**
+ * Update the metadata of the active upload in session
+ *
+ * @param {import('@hapi/hapi').Request} request
+ * @param {Object} metadata
+ * @returns {void}
+ */
+function setGuideUploadMetadata (request, metadata) {
+  const upload = getGuideUpload(request)
+
+  if (upload) {
+    upload.setMetadata(metadata)
+    request.yar.set(SESSION_KEY, upload.toPlainObject())
+  }
+}
+
+/**
+ * Get the metadata of the active upload from session
+ *
+ * @param {import('@hapi/hapi').Request} request
+ * @returns {Object|null}
+ */
+function getGuideUploadMetadata (request) {
+  const upload = getGuideUpload(request)
+
+  return upload?.metadata ?? null
+}
+
 export {
   SESSION_KEY,
+  GuideUpload,
   getGuideUpload,
   createGuideUpload,
   addGuideUpload,
-  setGuideUploadCompletedSteps
+  setGuideUploadCompletedSteps,
+  setGuideUploadMetadata,
+  getGuideUploadMetadata
 }

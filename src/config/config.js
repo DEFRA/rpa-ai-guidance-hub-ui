@@ -228,7 +228,6 @@ const config = convict({
       doc: 'Backend API base URL for guidance operations',
       format: String,
       default: null,
-      nullable: !isProduction,
       env: 'GUIDANCE_API_BASE_URL'
     },
     timeout: {

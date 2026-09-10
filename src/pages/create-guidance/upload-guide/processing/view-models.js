@@ -1,5 +1,5 @@
 const POLL_URL = '/create-guidance/upload-guide/processing/status'
-const REDIRECT_URL = '/create-guidance/metadata'
+const REDIRECT_URL = '/create-guidance/upload-guide/metadata'
 const RETRY_URL = '/create-guidance/upload-guide'
 
 /**

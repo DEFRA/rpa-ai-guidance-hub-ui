@@ -7,6 +7,7 @@ import { createServer } from '../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../helpers/login.js'
 import { mergeCookies } from '../../../helpers/cookies.js'
 import { config } from '../../../../../src/config/config.js'
+import * as referenceDataService from '../../../../../src/services/reference-data.js'
 
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
 
@@ -49,6 +50,7 @@ describe('#uploadGuideController', () => {
 
   afterEach(() => {
     nock.cleanAll()
+    vi.restoreAllMocks()
   })
 
   test('GET /create-guidance/upload-guide when no migration started initiates one and renders the upload form', async () => {
@@ -131,13 +133,16 @@ describe('#uploadGuideController', () => {
       })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(headers.location).toBe('/create-guidance/metadata')
+      expect(headers.location).toBe('/create-guidance/upload-guide/metadata')
     })
 
     test('shows a notification on the metadata page explaining why, once only', async () => {
       const { uploadId, cookie } = await startMigration(server, await loginAsDevUser(server))
 
       nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))
+      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([
+        { value: 'sfi', label: 'Sustainable Farming Incentive (SFI)' }
+      ])
 
       await server.inject({
         method: 'GET',
@@ -147,7 +152,7 @@ describe('#uploadGuideController', () => {
 
       const first = await server.inject({
         method: 'GET',
-        url: '/create-guidance/metadata',
+        url: '/create-guidance/upload-guide/metadata',
         headers: { cookie }
       })
 
@@ -156,10 +161,11 @@ describe('#uploadGuideController', () => {
 
       const second = await server.inject({
         method: 'GET',
-        url: '/create-guidance/metadata',
-        headers: { cookie }
+        url: '/create-guidance/upload-guide/metadata',
+        headers: { cookie: mergeCookies(cookie, first.headers['set-cookie']) }
       })
 
+      expect(second.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(second.payload).not.toContain('You have already uploaded a document for this guide')
     })
   })

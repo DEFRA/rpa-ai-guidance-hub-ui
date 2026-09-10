@@ -93,7 +93,7 @@ describe('upload guide processing page', () => {
       expect(res.payload).toContain('Checking your file')
       expect(res.payload).toContain('Scanning for viruses')
       expect(res.payload).toContain(`data-poll-url="${STATUS_URL}"`)
-      expect(res.payload).toContain('data-redirect-url="/create-guidance/metadata"')
+      expect(res.payload).toContain('data-redirect-url="/create-guidance/upload-guide/metadata"')
       expect(res.payload).toContain('data-percentage="50"')
       expect(res.payload).toContain('<meta http-equiv="refresh" content="5">')
       expect(res.payload).not.toContain('style="width')
@@ -109,7 +109,7 @@ describe('upload guide processing page', () => {
       const res = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
 
       expect(res.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(res.headers.location).toBe('/create-guidance/metadata')
+      expect(res.headers.location).toBe('/create-guidance/upload-guide/metadata')
     })
 
     test('shows cdp-uploader\'s reason and a way to try again when the file was rejected', async () => {

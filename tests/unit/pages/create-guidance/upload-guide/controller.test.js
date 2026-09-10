@@ -85,7 +85,7 @@ describe('uploadGuideController', () => {
       test('redirects to metadata', async () => {
         const result = await getUploadForm(request, h)
 
-        expect(h.redirect).toHaveBeenCalledWith('/create-guidance/metadata')
+        expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/metadata')
         expect(result).toEqual(h.redirect())
       })
 
