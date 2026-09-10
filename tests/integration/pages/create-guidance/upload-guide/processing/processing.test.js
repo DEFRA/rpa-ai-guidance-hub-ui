@@ -7,6 +7,7 @@ import {
   uploadStatusResponse,
   rejectedFile
 } from '../../../../../fixtures/cdp-uploader.js'
+import { draftResponse } from '../../../../../fixtures/guidance-api.js'
 
 import { createServer } from '../../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../../helpers/login.js'
@@ -14,6 +15,7 @@ import { mergeCookies } from '../../../../helpers/cookies.js'
 import { config } from '../../../../../../src/config/config.js'
 
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
+const GUIDANCE_API_URL = config.get('guidanceApi.baseUrl')
 const PROCESSING_URL = '/create-guidance/upload-guide/processing'
 const STATUS_URL = '/create-guidance/upload-guide/processing/status'
 
@@ -95,21 +97,32 @@ describe('upload guide processing page', () => {
       expect(res.payload).toContain(`data-poll-url="${STATUS_URL}"`)
       expect(res.payload).toContain('data-redirect-url="/create-guidance/upload-guide/metadata"')
       expect(res.payload).toContain('data-percentage="50"')
-      expect(res.payload).toContain('<meta http-equiv="refresh" content="5">')
       expect(res.payload).not.toContain('style="width')
       expect(scope.isDone()).toBe(true)
       expect(nock.pendingMocks()).toEqual([])
     })
 
-    test('redirects straight to metadata when the file has already scanned clean', async () => {
+    test('shows the parsing stage once scanning is clean, then redirects to metadata once parsing completes', async () => {
       const { uploadId, cookie } = await startMigration(server, await loginAsDevUser(server))
 
-      nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))
+      nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).times(2).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))
 
-      const res = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
+      const first = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
 
-      expect(res.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(res.headers.location).toBe('/create-guidance/upload-guide/metadata')
+      expect(first.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(first.payload).toContain('Parsing document')
+
+      nock(GUIDANCE_API_URL).get('/guidance/drafts/file-1').once().reply(statusCodes.HTTP_STATUS_OK, draftResponse({ parsingStatus: 'complete' }))
+
+      const second = await server.inject({
+        method: 'GET',
+        url: PROCESSING_URL,
+        headers: { cookie: mergeCookies(cookie, first.headers['set-cookie']) }
+      })
+
+      expect(second.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(second.headers.location).toBe('/create-guidance/upload-guide/metadata')
+      expect(nock.pendingMocks()).toEqual([])
     })
 
     test('shows cdp-uploader\'s reason and a way to try again when the file was rejected', async () => {
@@ -186,14 +199,16 @@ describe('upload guide processing page', () => {
       })
     })
 
-    test('returns complete once the file has scanned clean, and stops calling cdp-uploader', async () => {
+    test('reports parsing in progress once scanning completes, then complete once parsing does too - each on its own poll', async () => {
       const { uploadId, cookie } = await startMigration(server, await loginAsDevUser(server))
 
       nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).once().reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))
 
       const first = await server.inject({ method: 'GET', url: STATUS_URL, headers: { cookie } })
 
-      expect(JSON.parse(first.payload)).toMatchObject({ isComplete: true, percentage: 100, label: 'File scanned successfully' })
+      expect(JSON.parse(first.payload)).toMatchObject({ isComplete: false, label: 'Parsing document' })
+
+      nock(GUIDANCE_API_URL).get('/guidance/drafts/file-1').once().reply(statusCodes.HTTP_STATUS_OK, draftResponse({ parsingStatus: 'complete' }))
 
       const second = await server.inject({
         method: 'GET',
@@ -201,7 +216,15 @@ describe('upload guide processing page', () => {
         headers: { cookie: mergeCookies(cookie, first.headers['set-cookie']) }
       })
 
-      expect(JSON.parse(second.payload)).toMatchObject({ isComplete: true })
+      expect(JSON.parse(second.payload)).toMatchObject({ isComplete: true, percentage: 100 })
+
+      const third = await server.inject({
+        method: 'GET',
+        url: STATUS_URL,
+        headers: { cookie: mergeCookies(cookie, second.headers['set-cookie']) }
+      })
+
+      expect(JSON.parse(third.payload)).toMatchObject({ isComplete: true })
       expect(nock.pendingMocks()).toEqual([])
     })
 

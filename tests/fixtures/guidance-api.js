@@ -25,6 +25,29 @@ function schemesResponse (overrides) {
   ]
 }
 
+/**
+ * Body of `GET /guidance/drafts/{fileId}` on 200.
+ *
+ * Verified against `src/services/drafts.js#getDraftById`: the guidance API
+ * returns raw (Python StrEnum) parsingStatus values - 'pending' |
+ * 'in_progress' | 'complete' | 'failed' - not UI-style enum strings.
+ *
+ * @param {Object} [overrides]
+ * @returns {{fileId: string, parsingStatus: string, parsingError: string|null, title: string|null, version: string|null, lastModified: string|null}}
+ */
+function draftResponse (overrides = {}) {
+  return {
+    fileId: 'file-1',
+    parsingStatus: 'pending',
+    parsingError: null,
+    title: null,
+    version: null,
+    lastModified: null,
+    ...overrides
+  }
+}
+
 export {
-  schemesResponse
+  schemesResponse,
+  draftResponse
 }

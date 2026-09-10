@@ -64,13 +64,35 @@ describe('processingController', () => {
       expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide')
     })
 
-    test('redirects straight to metadata when the file has already scanned clean', async () => {
-      getUploadOutcome.mockResolvedValue({ code: RESULTS.UPLOAD_COMPLETE })
+    test('redirects straight to metadata when all steps are complete', async () => {
+      getUploadOutcome.mockResolvedValue({ code: RESULTS.UPLOAD_COMPLETE, status: null })
+      getGuideUploadProgress.mockResolvedValue({ isComplete: true })
 
       await getStatusPage(request, h)
 
       expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/metadata')
       expect(h.view).not.toHaveBeenCalled()
+    })
+
+    test('renders the processing view when scanning is complete but parsing is still in progress', async () => {
+      const status = { uploadStatus: 'ready' }
+      getUploadOutcome.mockResolvedValue({ code: RESULTS.UPLOAD_COMPLETE, status })
+      getGuideUploadProgress.mockResolvedValue({
+        ...pendingProgress,
+        statusId: 'minimal-parse:in-progress',
+        label: 'Parsing document',
+        percentage: 50,
+        isComplete: false
+      })
+
+      await getStatusPage(request, h)
+
+      expect(h.view).toHaveBeenCalledWith(PROCESSING_VIEW, expect.objectContaining({
+        label: 'Parsing document',
+        percentage: 50,
+        isError: false
+      }))
+      expect(h.redirect).not.toHaveBeenCalled()
     })
 
     test('renders the processing view with progress while the scan is pending', async () => {

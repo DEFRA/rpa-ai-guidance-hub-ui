@@ -5,7 +5,8 @@
  * @enum {string}
  */
 const STEP_IDS = {
-  SCANNING: 'scanning'
+  SCANNING: 'scanning',
+  MINIMAL_PARSE: 'minimalParse'
 }
 
 /**
@@ -22,7 +23,11 @@ const STATUS_IDS = {
   UPLOADER_FAILED: 'uploader:failed',
   UPLOADER_REJECTED: 'uploader:rejected',
   UPLOADER_NO_FILE: 'uploader:no-file',
-  UPLOADER_MISSING: 'uploader:missing'
+  UPLOADER_MISSING: 'uploader:missing',
+  MINIMAL_PARSE_STARTED: 'minimal-parse:started',
+  MINIMAL_PARSE_PENDING: 'minimal-parse:in-progress',
+  MINIMAL_PARSE_COMPLETE: 'minimal-parse:complete',
+  MINIMAL_PARSE_FAILED: 'minimal-parse:failed'
 }
 
 /**
@@ -31,7 +36,8 @@ const STATUS_IDS = {
  * @type {Array<{id: string, label: string}>}
  */
 const STEPS = [
-  { id: STEP_IDS.SCANNING, label: 'Scanning for viruses' }
+  { id: STEP_IDS.SCANNING, label: 'Scanning for viruses' },
+  { id: STEP_IDS.MINIMAL_PARSE, label: 'Parsing document' }
 ]
 
 /**
@@ -81,6 +87,31 @@ const STEP_STATE_BY_STATUS = {
     percentage: 50,
     isError: true,
     message: 'Your upload could not be found. Upload the document again.'
+  },
+  [STATUS_IDS.MINIMAL_PARSE_STARTED]: {
+    stepId: STEP_IDS.MINIMAL_PARSE,
+    label: 'Parsing document',
+    percentage: 60,
+    isError: false
+  },
+  [STATUS_IDS.MINIMAL_PARSE_PENDING]: {
+    stepId: STEP_IDS.MINIMAL_PARSE,
+    label: 'Parsing document',
+    percentage: 75,
+    isError: false
+  },
+  [STATUS_IDS.MINIMAL_PARSE_COMPLETE]: {
+    stepId: STEP_IDS.MINIMAL_PARSE,
+    label: 'Document parsed successfully',
+    percentage: 100,
+    isError: false
+  },
+  [STATUS_IDS.MINIMAL_PARSE_FAILED]: {
+    stepId: STEP_IDS.MINIMAL_PARSE,
+    label: 'Parsing failed',
+    percentage: 75,
+    isError: true,
+    message: 'The document could not be parsed. Upload it again.'
   }
 }
 
