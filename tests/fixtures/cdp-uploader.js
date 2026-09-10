@@ -50,6 +50,7 @@ function completeFile (overrides = {}) {
     contentType:
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     fileStatus: 'complete',
+    fileId: 'file-1',
     s3Bucket: 'rpa-ai-guidance-hub-source-docs',
     s3Key: 'up-1/guide.docx',
     ...overrides

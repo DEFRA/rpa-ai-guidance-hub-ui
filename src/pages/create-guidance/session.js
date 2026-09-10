@@ -19,7 +19,7 @@ class GuideUpload {
    * Create a GuideUpload wrapper
    *
    * @param {Object} [data] - Plain object read from session storage
-   * @param {Array<{uploadId: string, completedStepIds?: Array<string>, metadata?: Object}>} [data.uploads] - Upload entries, oldest first
+   * @param {Array<{uploadId: string, completedStepIds?: Array<string>, fileId?: string|null, metadata?: Object}>} [data.uploads] - Upload entries, oldest first
    */
   constructor (data) {
     this.#uploads = data?.uploads ?? []
@@ -62,6 +62,15 @@ class GuideUpload {
   }
 
   /**
+   * The fileId captured for the active upload once cdp-uploader reports the
+   * scanned file - null if not yet known
+   * @returns {string|null}
+   */
+  get fileId () {
+    return this.#activeUpload?.fileId ?? null
+  }
+
+  /**
    * Does the session wrapper contain at least one upload
    * @returns {boolean}
    */
@@ -86,6 +95,17 @@ class GuideUpload {
   setCompletedStepIds (completedStepIds) {
     if (this.#activeUpload) {
       this.#activeUpload.completedStepIds = [...completedStepIds]
+    }
+  }
+
+  /**
+   * Set the fileId captured for the active upload
+   * @param {string} fileId
+   * @returns {void}
+   */
+  setFileId (fileId) {
+    if (this.#activeUpload) {
+      this.#activeUpload.fileId = fileId
     }
   }
 
@@ -186,6 +206,21 @@ function setGuideUploadCompletedSteps (request, completedStepIds) {
 }
 
 /**
+ * Record the fileId captured for the active upload in session
+ * @param {import('@hapi/hapi').Request} request
+ * @param {string} fileId
+ * @returns {void}
+ */
+function setGuideUploadFileId (request, fileId) {
+  const upload = getGuideUpload(request)
+
+  if (upload) {
+    upload.setFileId(fileId)
+    request.yar.set(SESSION_KEY, upload.toPlainObject())
+  }
+}
+
+/**
  * Update the metadata of the active upload in session
  *
  * @param {import('@hapi/hapi').Request} request
@@ -220,6 +255,7 @@ export {
   createGuideUpload,
   addGuideUpload,
   setGuideUploadCompletedSteps,
+  setGuideUploadFileId,
   setGuideUploadMetadata,
   getGuideUploadMetadata
 }

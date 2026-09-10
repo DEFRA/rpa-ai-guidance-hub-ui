@@ -4,6 +4,7 @@ import * as session from './session.js'
 import * as steps from './upload-guide/steps.js'
 
 import { getUploadStatus, initiateUpload } from '../../services/uploader.js'
+import { getDraftById } from '../../services/drafts.js'
 import { ProgressTracker } from '../../services/progress-tracker.js'
 
 /**
@@ -36,6 +37,12 @@ const STEP_CHECKS = [
     pendingStatusId: steps.STATUS_IDS.UPLOADER_PENDING,
     failedStatusId: steps.STATUS_IDS.UPLOADER_FAILED,
     check: _checkScanningStatus
+  },
+  {
+    id: steps.STEP_IDS.MINIMAL_PARSE,
+    pendingStatusId: steps.STATUS_IDS.MINIMAL_PARSE_PENDING,
+    failedStatusId: steps.STATUS_IDS.MINIMAL_PARSE_FAILED,
+    check: _checkMinimalParseStatus
   }
 ]
 
@@ -118,7 +125,11 @@ async function getUploadOutcome (request) {
 async function getGuideUploadProgress (request, options = {}) {
   const upload = session.getGuideUpload(request)
   const completedStepIds = upload?.completedStepIds ?? []
-  const context = { uploadId: upload?.activeUploadId ?? null, status: options.status }
+  const context = {
+    uploadId: upload?.activeUploadId ?? null,
+    status: options.status,
+    fileId: upload?.fileId ?? null
+  }
 
   const trackerStatus = await tracker.getStatus(context, completedStepIds)
 
@@ -126,8 +137,14 @@ async function getGuideUploadProgress (request, options = {}) {
     session.setGuideUploadCompletedSteps(request, trackerStatus.completedStepIds)
   }
 
+  if (trackerStatus.data.fileId) {
+    session.setGuideUploadFileId(request, trackerStatus.data.fileId)
+  }
+
   const statusId = _resolveStatusId(trackerStatus)
   const stepState = steps.getStepState(statusId)
+
+  console.log({ statusId, stepState })
 
   return {
     statusId,
@@ -170,7 +187,8 @@ function _resolveStatusId (trackerStatus) {
 async function _initiateGuideUpload () {
   const initiateRequest = {
     redirect: '/create-guidance/upload-guide/processing',
-    s3Bucket: config.get('cdpUploader.sourceDocsBucket')
+    s3Bucket: config.get('cdpUploader.sourceDocsBucket'),
+    callback: `${config.get('guidanceApi.baseUrl')}/guidance/drafts/callback`
   }
 
   const { uploadId } = await initiateUpload(initiateRequest)
@@ -213,7 +231,7 @@ function _evaluateUploadStatus (status) {
     return _failed(steps.STATUS_IDS.UPLOADER_REJECTED, file.error?.message)
   }
 
-  return { code: RESULTS.UPLOAD_COMPLETE }
+  return { code: RESULTS.UPLOAD_COMPLETE, fileId: file.fileId }
 }
 
 /**
@@ -243,10 +261,11 @@ async function _checkScanningStatus ({ uploadId, status: knownStatus }) {
     const status = knownStatus === undefined
       ? await getUploadStatus(uploadId)
       : knownStatus
-    const { code, failure } = _evaluateUploadStatus(status)
+
+    const { code, failure, fileId } = _evaluateUploadStatus(status)
 
     if (code === RESULTS.UPLOAD_COMPLETE) {
-      return { complete: true }
+      return { complete: true, data: { fileId } }
     }
 
     if (code === RESULTS.UPLOAD_FAILED) {
@@ -254,6 +273,33 @@ async function _checkScanningStatus ({ uploadId, status: knownStatus }) {
     }
 
     return { complete: false }
+  } catch {
+    return { complete: false, error: true }
+  }
+}
+
+/**
+ * Check minimal-parse status via the guidance API.
+ *
+ * @private
+ * @param {{fileId: string|null}} context - fileId captured from the
+ *   scanning step, either just now (same poll) or from session (an earlier
+ *   poll, since a completed step's check never runs again)
+ * @returns {Promise<{complete: boolean, error?: boolean}>}
+ */
+async function _checkMinimalParseStatus ({ fileId }) {
+  try {
+    const draft = await getDraftById(fileId)
+
+    if (!draft || draft.parsingStatus === 'pending' || draft.parsingStatus === 'in_progress') {
+      return { complete: false }
+    }
+
+    if (draft.parsingStatus === 'complete') {
+      return { complete: true }
+    }
+
+    return { complete: false, error: true }
   } catch {
     return { complete: false, error: true }
   }

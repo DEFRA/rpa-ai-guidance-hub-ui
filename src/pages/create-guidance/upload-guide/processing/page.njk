@@ -2,11 +2,6 @@
 
 {% block head %}
   {{ super() }}
-  {% if refreshSeconds %}
-    <noscript>
-      <meta http-equiv="refresh" content="{{ refreshSeconds }}">
-    </noscript>
-  {% endif %}
 {% endblock %}
 
 {% block content %}

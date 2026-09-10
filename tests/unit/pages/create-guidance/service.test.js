@@ -3,13 +3,19 @@ vi.mock('../../../../src/services/uploader.js', () => ({
   initiateUpload: vi.fn()
 }))
 
+vi.mock('../../../../src/services/drafts.js', () => ({
+  getDraftById: vi.fn()
+}))
+
 vi.mock('../../../../src/pages/create-guidance/session.js', () => ({
   getGuideUpload: vi.fn(),
-  setGuideUploadCompletedSteps: vi.fn()
+  setGuideUploadCompletedSteps: vi.fn(),
+  setGuideUploadFileId: vi.fn()
 }))
 
 import { getUploadStatus, initiateUpload } from '../../../../src/services/uploader.js'
-import { getGuideUpload, setGuideUploadCompletedSteps } from '../../../../src/pages/create-guidance/session.js'
+import { getDraftById } from '../../../../src/services/drafts.js'
+import { getGuideUpload, setGuideUploadCompletedSteps, setGuideUploadFileId } from '../../../../src/pages/create-guidance/session.js'
 import {
   getUploadOutcome,
   getGuideUploadProgress,
@@ -19,7 +25,7 @@ import {
 
 const initiated = { uploadStatus: 'initiated', isReady: false, files: [], hasRejectedFiles: false }
 const pending = { uploadStatus: 'pending', isReady: false, files: [{ fileStatus: 'pending' }], hasRejectedFiles: false }
-const complete = { uploadStatus: 'ready', isReady: true, files: [{ fileStatus: 'complete' }], hasRejectedFiles: false }
+const complete = { uploadStatus: 'ready', isReady: true, files: [{ fileId: 'file-1', fileStatus: 'complete' }], hasRejectedFiles: false }
 const noFile = { uploadStatus: 'ready', isReady: true, files: [], hasRejectedFiles: false }
 const rejected = {
   uploadStatus: 'ready',
@@ -90,14 +96,15 @@ describe('create-guidance service', () => {
       expect(result).toEqual({ code: RESULTS.MIGRATION_STARTED, uploadId: 'u-2' })
     })
 
-    test('passes the redirect and destination bucket to cdp-uploader', async () => {
+    test('passes the redirect, destination bucket, and callback to cdp-uploader', async () => {
       initiateUpload.mockResolvedValue({ uploadId: 'u-1' })
 
       await startMigration({ hasUpload: () => false })
 
       expect(initiateUpload).toHaveBeenCalledWith({
         redirect: '/create-guidance/upload-guide/processing',
-        s3Bucket: 'rpa-ai-guidance-hub-source-docs'
+        s3Bucket: 'rpa-ai-guidance-hub-source-docs',
+        callback: expect.stringContaining('/guidance/drafts/callback')
       })
     })
   })
@@ -180,14 +187,68 @@ describe('create-guidance service', () => {
       expect(getUploadStatus).toHaveBeenCalledWith('u-1')
     })
 
-    test('reports completion once the file has scanned clean', async () => {
+    test('does not check minimal-parse in the same poll that scanning completes, so each stage gets its own poll', async () => {
       getUploadStatus.mockResolvedValue(complete)
 
       const progress = await getGuideUploadProgress(request)
 
-      expect(progress.statusId).toBe('uploader:complete')
-      expect(progress.isComplete).toBe(true)
-      expect(progress.percentage).toBe(100)
+      expect(progress.isComplete).toBe(false)
+      expect(progress.statusId).toBe('minimal-parse:in-progress')
+      expect(getDraftById).not.toHaveBeenCalled()
+    })
+
+    describe('once scanning has completed', () => {
+      beforeEach(() => {
+        getGuideUpload.mockReturnValue({ activeUploadId: 'u-1', fileId: 'file-1', hasUpload: () => true, completedStepIds: ['scanning'] })
+      })
+
+      test('reports completion once parsing is complete', async () => {
+        getDraftById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'complete', parsingError: null })
+
+        const progress = await getGuideUploadProgress(request)
+
+        expect(progress.statusId).toBe('uploader:complete')
+        expect(progress.isComplete).toBe(true)
+        expect(progress.percentage).toBe(100)
+        expect(getDraftById).toHaveBeenCalledWith('file-1')
+      })
+
+      test('does not report complete while parsing is still pending', async () => {
+        getDraftById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'pending', parsingError: null })
+
+        const progress = await getGuideUploadProgress(request)
+
+        expect(progress.isComplete).toBe(false)
+        expect(progress.statusId).toBe('minimal-parse:in-progress')
+      })
+
+      test('does not report complete while parsing is in_progress', async () => {
+        getDraftById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'in_progress', parsingError: null })
+
+        const progress = await getGuideUploadProgress(request)
+
+        expect(progress.isComplete).toBe(false)
+        expect(progress.statusId).toBe('minimal-parse:in-progress')
+      })
+
+      test('reports an error once parsing fails', async () => {
+        getDraftById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'failed', parsingError: 'boom' })
+
+        const progress = await getGuideUploadProgress(request)
+
+        expect(progress.isComplete).toBe(false)
+        expect(progress.isError).toBe(true)
+        expect(progress.statusId).toBe('minimal-parse:failed')
+      })
+
+      test('does not report complete or error while no draft has been claimed yet (404)', async () => {
+        getDraftById.mockResolvedValue(null)
+
+        const progress = await getGuideUploadProgress(request)
+
+        expect(progress.isComplete).toBe(false)
+        expect(progress.isError).toBe(false)
+      })
     })
 
     test('reports a rejected file with cdp-uploader\'s message', async () => {
@@ -223,7 +284,8 @@ describe('create-guidance service', () => {
     test('uses an already-fetched status instead of calling cdp-uploader again', async () => {
       const progress = await getGuideUploadProgress(request, { status: complete })
 
-      expect(progress.isComplete).toBe(true)
+      expect(progress.isComplete).toBe(false)
+      expect(progress.statusId).toBe('minimal-parse:in-progress')
       expect(getUploadStatus).not.toHaveBeenCalled()
     })
 
@@ -236,7 +298,8 @@ describe('create-guidance service', () => {
     })
 
     test('does not persist or re-check steps already completed in session', async () => {
-      getGuideUpload.mockReturnValue({ activeUploadId: 'u-1', hasUpload: () => true, completedStepIds: ['scanning'] })
+      getGuideUpload.mockReturnValue({ activeUploadId: 'u-1', fileId: 'file-1', hasUpload: () => true, completedStepIds: ['scanning', 'minimalParse'] })
+      getDraftById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'complete', parsingError: null })
 
       const progress = await getGuideUploadProgress(request)
 
@@ -251,6 +314,15 @@ describe('create-guidance service', () => {
       await getGuideUploadProgress(request)
 
       expect(setGuideUploadCompletedSteps).not.toHaveBeenCalled()
+    })
+
+    test('persists newly-discovered fileId to session', async () => {
+      getUploadStatus.mockResolvedValue(complete)
+      getDraftById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'complete', parsingError: null })
+
+      await getGuideUploadProgress(request)
+
+      expect(setGuideUploadFileId).toHaveBeenCalledWith(request, 'file-1')
     })
   })
 })
