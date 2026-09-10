@@ -16,10 +16,12 @@ async function getMetadataForm (request, h) {
 
   const savedMetadata = upload.metadata || {}
   const schemeOptions = await getSchemes()
+  const [notification] = request.yar.flash('uploadNotification')
 
   const viewModel = GuideDetailsViewModel.fromSession({
     values: savedMetadata,
-    schemeOptions
+    schemeOptions,
+    notification
   })
 
   return h

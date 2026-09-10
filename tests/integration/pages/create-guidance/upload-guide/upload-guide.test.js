@@ -157,14 +157,16 @@ describe('#uploadGuideController', () => {
       })
 
       expect(first.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(first.payload).toContain('You have already uploaded a document for this guide')
 
       const second = await server.inject({
         method: 'GET',
         url: '/create-guidance/upload-guide/metadata',
-        headers: { cookie }
+        headers: { cookie: mergeCookies(cookie, first.headers['set-cookie']) }
       })
 
       expect(second.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(second.payload).not.toContain('You have already uploaded a document for this guide')
     })
   })
 })

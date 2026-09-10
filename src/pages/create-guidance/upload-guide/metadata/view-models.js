@@ -21,6 +21,7 @@ class GuideDetailsViewModel {
    * @param {string} [data.lastModifiedDate='Not available']
    * @param {Array} [data.schemeOptions=[]]
    * @param {string|null} [data.backUrl]
+   * @param {string|null} [data.notification]
    */
   constructor (data = {}) {
     const schemeOptions = (data.schemeOptions || []).map((option) => ({
@@ -40,12 +41,13 @@ class GuideDetailsViewModel {
     this.lastModifiedDate = data.lastModifiedDate || NOT_AVAILABLE
     this.schemeOptions = schemeOptions
     this.backUrl = data.backUrl || BACK_URL
+    this.notification = data.notification || null
   }
 
   /**
    * Create a view model from session data and reference schemes
    */
-  static fromSession ({ values = {}, schemeOptions = [] } = {}) {
+  static fromSession ({ values = {}, schemeOptions = [], notification = null } = {}) {
     return new GuideDetailsViewModel({
       values: {
         guideTitle: values.guideTitle ?? '',
@@ -53,7 +55,8 @@ class GuideDetailsViewModel {
       },
       versionNumber: values.versionNumber || NOT_AVAILABLE,
       lastModifiedDate: values.lastModifiedDate || NOT_AVAILABLE,
-      schemeOptions
+      schemeOptions,
+      notification
     })
   }
 

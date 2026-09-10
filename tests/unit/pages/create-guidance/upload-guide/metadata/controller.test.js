@@ -44,7 +44,7 @@ describe('upload-guide metadata controller', () => {
         { value: 'none', label: 'Not scheme-specific' }
       ])
 
-      request = { yar: { get: vi.fn() } }
+      request = { yar: { get: vi.fn(), flash: vi.fn(() => []) } }
 
       await getMetadataForm(request, h)
 
@@ -53,9 +53,34 @@ describe('upload-guide metadata controller', () => {
         schemeOptions: [
           { value: 'sfi', text: 'Sustainable Farming Incentive' },
           { value: 'none', text: 'Not scheme-specific', divider: 'or' }
-        ]
+        ],
+        notification: null
       }))
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
+    })
+
+    test('renders a flashed upload notification when one is pending', async () => {
+      const uploadMock = {
+        hasUpload: vi.fn(() => true),
+        activeUploadId: 'test-upload-id',
+        metadata: {}
+      }
+      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
+      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
+
+      request = {
+        yar: {
+          get: vi.fn(),
+          flash: vi.fn(() => ['You have already uploaded a document for this guide'])
+        }
+      }
+
+      await getMetadataForm(request, h)
+
+      expect(request.yar.flash).toHaveBeenCalledWith('uploadNotification')
+      expect(h.view).toHaveBeenCalledWith(METADATA_VIEW, expect.objectContaining({
+        notification: 'You have already uploaded a document for this guide'
+      }))
     })
   })
 

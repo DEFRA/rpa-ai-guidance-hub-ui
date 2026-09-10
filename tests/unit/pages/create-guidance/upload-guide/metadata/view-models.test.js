@@ -27,6 +27,7 @@ describe('#GuideDetailsViewModel', () => {
     ])
     expect(viewModel.errors).toEqual({})
     expect(viewModel.errorList).toEqual([])
+    expect(viewModel.notification).toBeNull()
   })
 
   test('fromSession() defaults version and date to "Not available" when missing', () => {
@@ -39,6 +40,16 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.values.schemes).toBe('')
     expect(viewModel.versionNumber).toBe('Not available')
     expect(viewModel.lastModifiedDate).toBe('Not available')
+  })
+
+  test('fromSession() carries a flashed notification through to the view model', () => {
+    const viewModel = GuideDetailsViewModel.fromSession({
+      values: {},
+      schemeOptions: [],
+      notification: 'You have already uploaded a document for this guide'
+    })
+
+    expect(viewModel.notification).toBe('You have already uploaded a document for this guide')
   })
 
   test('fromValidationError() maps Joi error details to field errors and errorList with correct hrefs', () => {
@@ -79,5 +90,6 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.lastModifiedDate).toBe('Not available')
     expect(viewModel.schemeOptions).toEqual([])
     expect(viewModel.backUrl).toBe('/create-guidance/upload-guide')
+    expect(viewModel.notification).toBeNull()
   })
 })
