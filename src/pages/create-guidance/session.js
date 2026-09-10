@@ -91,14 +91,28 @@ class GuideUpload {
 
   /**
    * Update or set metadata for the active upload
+   *
+   * Performs a shallow merge onto any metadata already captured, so
+   * successive calls from different create-guidance screens build up one
+   * combined object rather than replacing it - pass only the keys owned by
+   * the current step. `undefined` values are dropped rather than merged, so
+   * a step can't accidentally null out a key set by an earlier step. Note
+   * this merge is shallow: an object-valued key is replaced wholesale, not
+   * deep-merged, so two screens should not both write into the same
+   * nested key.
+   *
    * @param {Object} metadata
    * @returns {void}
    */
   setMetadata (metadata) {
     if (this.#activeUpload) {
+      const providedEntries = Object.entries(metadata).filter(
+        ([, value]) => value !== undefined
+      )
+
       this.#activeUpload.metadata = {
         ...(this.#activeUpload.metadata),
-        ...metadata
+        ...Object.fromEntries(providedEntries)
       }
     }
   }

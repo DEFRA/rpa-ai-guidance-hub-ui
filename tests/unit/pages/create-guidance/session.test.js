@@ -164,6 +164,20 @@ describe('GuideUpload session helpers', () => {
     expect(upload.metadata).toEqual({ guideTitle: 'Initial Title', schemes: ['sfi'] })
   })
 
+  test('setMetadata drops undefined values instead of overwriting existing keys with them', () => {
+    const upload = createGuideUpload(request)
+    upload.addUpload('u-1')
+
+    upload.setMetadata({ guideTitle: 'Initial Title', schemes: ['sfi'] })
+    upload.setMetadata({ guideTitle: undefined, purpose: 'Onboarding' })
+
+    expect(upload.metadata).toEqual({
+      guideTitle: 'Initial Title',
+      schemes: ['sfi'],
+      purpose: 'Onboarding'
+    })
+  })
+
   test('setGuideUploadMetadata persists metadata against the active upload in session', () => {
     yar.get.mockReturnValue({
       uploads: [{ uploadId: 'u-1', completedStepIds: [] }]

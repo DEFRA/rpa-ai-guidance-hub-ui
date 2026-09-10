@@ -9,13 +9,10 @@ body {
 
 .govuk-width-container {
   flex: 1;
-  // Without an explicit width, this is a flex item (body is a flex column)
-  // that also has margin: 0 auto (from govuk-frontend) for centering.
-  // Flexbox spec: auto cross-axis margins cancel align-items: stretch, so
-  // without this the container shrinks to fit its content instead of
-  // filling the available width — on wide screens it collapses to a
-  // narrow, centred column instead of stretching up to $govuk-page-width.
-  width: 100%;
+
+  @media (min-width: #{$govuk-page-width + 60px}) {
+    width: 100%;
+  }
 }
 
 main {
