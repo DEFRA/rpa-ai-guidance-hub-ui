@@ -30,6 +30,8 @@ const STATUS_IDS = {
   MINIMAL_PARSE_FAILED: 'minimal-parse:failed'
 }
 
+const PARSING_DOCUMENT_LABEL = 'Parsing document'
+
 /**
  * Ordered list of all processing steps for guide uploads.
  *
@@ -37,7 +39,7 @@ const STATUS_IDS = {
  */
 const STEPS = [
   { id: STEP_IDS.SCANNING, label: 'Scanning for viruses' },
-  { id: STEP_IDS.MINIMAL_PARSE, label: 'Parsing document' }
+  { id: STEP_IDS.MINIMAL_PARSE, label: PARSING_DOCUMENT_LABEL }
 ]
 
 /**
@@ -90,13 +92,13 @@ const STEP_STATE_BY_STATUS = {
   },
   [STATUS_IDS.MINIMAL_PARSE_STARTED]: {
     stepId: STEP_IDS.MINIMAL_PARSE,
-    label: 'Parsing document',
+    label: PARSING_DOCUMENT_LABEL,
     percentage: 60,
     isError: false
   },
   [STATUS_IDS.MINIMAL_PARSE_PENDING]: {
     stepId: STEP_IDS.MINIMAL_PARSE,
-    label: 'Parsing document',
+    label: PARSING_DOCUMENT_LABEL,
     percentage: 75,
     isError: false
   },
