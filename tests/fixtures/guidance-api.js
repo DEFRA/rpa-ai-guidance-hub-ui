@@ -25,6 +25,36 @@ function schemesResponse (overrides) {
   ]
 }
 
+/**
+ * Body of `GET /reference/systems` on 200.
+ *
+ * @param {Array<{value: string, label: string}>} [overrides] - Replaces the
+ *   default option list entirely
+ * @returns {Array<{value: string, label: string}>}
+ */
+function systemsResponse (overrides) {
+  return overrides ?? [
+    { value: 'crm', label: 'CRM' },
+    { value: 'siti-agri', label: 'SITI Agri' }
+  ]
+}
+
+/**
+ * Body of `GET /reference/audiences` on 200.
+ *
+ * @param {Array<{value: string, label: string}>} [overrides] - Replaces the
+ *   default option list entirely
+ * @returns {Array<{value: string, label: string}>}
+ */
+function audiencesResponse (overrides) {
+  return overrides ?? [
+    { value: 'processor', label: 'Processor' },
+    { value: 'team-leader', label: 'Team leader' }
+  ]
+}
+
 export {
-  schemesResponse
+  schemesResponse,
+  systemsResponse,
+  audiencesResponse
 }
