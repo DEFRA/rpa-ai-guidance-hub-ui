@@ -1,7 +1,7 @@
 import { statusCodes } from '../../../../../../src/constants/status-codes.js'
-import * as session from '../../../../../../src/pages/create-guidance/session.js'
 import * as referenceDataService from '../../../../../../src/services/reference-data.js'
-import * as draftsService from '../../../../../../src/services/drafts.js'
+import * as session from '../../../../../../src/pages/create-guidance/session.js'
+import * as stagedDocumentsService from '../../../../../../src/services/staged-documents.js'
 import {
   getMetadataForm,
   metadataFailAction,
@@ -61,7 +61,7 @@ describe('upload-guide metadata controller', () => {
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
     })
 
-    test('does not fetch a draft when no fileId is known yet', async () => {
+    test('does not fetch a staged document when no fileId is known yet', async () => {
       const uploadMock = {
         hasUpload: vi.fn(() => true),
         activeUploadId: 'test-upload-id',
@@ -70,16 +70,19 @@ describe('upload-guide metadata controller', () => {
       }
       vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
       vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
-      const getDraftByIdSpy = vi.spyOn(draftsService, 'getDraftById')
+      const getStagedDocumentByIdSpy = vi.spyOn(
+        stagedDocumentsService,
+        'getStagedDocumentById'
+      )
 
       request = { yar: { get: vi.fn(), flash: vi.fn(() => []) } }
 
       await getMetadataForm(request, h)
 
-      expect(getDraftByIdSpy).not.toHaveBeenCalled()
+      expect(getStagedDocumentByIdSpy).not.toHaveBeenCalled()
     })
 
-    test('loads draft title, version and formatted last modified date into the view model', async () => {
+    test('loads staged document title, version and formatted last modified date into the view model', async () => {
       const uploadMock = {
         hasUpload: vi.fn(() => true),
         activeUploadId: 'test-upload-id',
@@ -88,18 +91,20 @@ describe('upload-guide metadata controller', () => {
       }
       vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
       vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
-      vi.spyOn(draftsService, 'getDraftById').mockResolvedValue({
-        fileId: 'file-1',
-        title: 'Parsed Title',
-        version: '2.0',
-        lastModified: '2026-05-10T12:00:00.000Z'
-      })
+      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById')
+        .mockResolvedValue({
+          fileId: 'file-1',
+          title: 'Parsed Title',
+          version: '2.0',
+          lastModified: '2026-05-10T12:00:00.000Z'
+        })
 
       request = { yar: { get: vi.fn(), flash: vi.fn(() => []) } }
 
       await getMetadataForm(request, h)
 
-      expect(draftsService.getDraftById).toHaveBeenCalledWith('file-1')
+      expect(stagedDocumentsService.getStagedDocumentById)
+        .toHaveBeenCalledWith('file-1')
       expect(h.view).toHaveBeenCalledWith(METADATA_VIEW, expect.objectContaining({
         values: expect.objectContaining({ guideTitle: 'Parsed Title' }),
         versionNumber: '2.0',
@@ -107,7 +112,7 @@ describe('upload-guide metadata controller', () => {
       }))
     })
 
-    test('a title already saved to session takes precedence over the parsed draft title', async () => {
+    test('a title already saved to session takes precedence over the parsed staged document title', async () => {
       const uploadMock = {
         hasUpload: vi.fn(() => true),
         activeUploadId: 'test-upload-id',
@@ -116,12 +121,13 @@ describe('upload-guide metadata controller', () => {
       }
       vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
       vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
-      vi.spyOn(draftsService, 'getDraftById').mockResolvedValue({
-        fileId: 'file-1',
-        title: 'Parsed Title',
-        version: '2.0',
-        lastModified: '2026-05-10T12:00:00.000Z'
-      })
+      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById')
+        .mockResolvedValue({
+          fileId: 'file-1',
+          title: 'Parsed Title',
+          version: '2.0',
+          lastModified: '2026-05-10T12:00:00.000Z'
+        })
 
       request = { yar: { get: vi.fn(), flash: vi.fn(() => []) } }
 
@@ -132,7 +138,7 @@ describe('upload-guide metadata controller', () => {
       }))
     })
 
-    test('falls back to "Not available" when no draft has been claimed yet for the fileId', async () => {
+    test('falls back to "Not available" when no staged document has been claimed yet for the fileId', async () => {
       const uploadMock = {
         hasUpload: vi.fn(() => true),
         activeUploadId: 'test-upload-id',
@@ -141,7 +147,8 @@ describe('upload-guide metadata controller', () => {
       }
       vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
       vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
-      vi.spyOn(draftsService, 'getDraftById').mockResolvedValue(null)
+      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById')
+        .mockResolvedValue(null)
 
       request = { yar: { get: vi.fn(), flash: vi.fn(() => []) } }
 
@@ -224,7 +231,7 @@ describe('upload-guide metadata controller', () => {
       }))
     })
 
-    test('preserves the draft version and formatted last modified date when redisplaying after a validation error', async () => {
+    test('preserves the staged document version and formatted last modified date when redisplaying after a validation error', async () => {
       const uploadMock = {
         hasUpload: vi.fn(() => true),
         activeUploadId: 'test-upload-id',
@@ -232,12 +239,13 @@ describe('upload-guide metadata controller', () => {
       }
       vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
       vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
-      vi.spyOn(draftsService, 'getDraftById').mockResolvedValue({
-        fileId: 'file-1',
-        title: 'Parsed Title',
-        version: '2.0',
-        lastModified: '2026-05-10T12:00:00.000Z'
-      })
+      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById')
+        .mockResolvedValue({
+          fileId: 'file-1',
+          title: 'Parsed Title',
+          version: '2.0',
+          lastModified: '2026-05-10T12:00:00.000Z'
+        })
 
       request = {
         payload: { guideTitle: '' },
@@ -249,7 +257,8 @@ describe('upload-guide metadata controller', () => {
 
       await metadataFailAction(request, h, err)
 
-      expect(draftsService.getDraftById).toHaveBeenCalledWith('file-1')
+      expect(stagedDocumentsService.getStagedDocumentById)
+        .toHaveBeenCalledWith('file-1')
       expect(h.view).toHaveBeenCalledWith(METADATA_VIEW, expect.objectContaining({
         versionNumber: '2.0',
         lastModifiedDate: '10 May 2026'

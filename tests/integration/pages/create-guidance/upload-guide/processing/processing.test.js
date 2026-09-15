@@ -7,7 +7,7 @@ import {
   uploadStatusResponse,
   rejectedFile
 } from '../../../../../fixtures/cdp-uploader.js'
-import { draftResponse } from '../../../../../fixtures/guidance-api.js'
+import { stagedDocumentResponse } from '../../../../../fixtures/guidance-api.js'
 
 import { createServer } from '../../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../../helpers/login.js'
@@ -112,7 +112,7 @@ describe('upload guide processing page', () => {
       expect(first.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(first.payload).toContain('Parsing document')
 
-      nock(GUIDANCE_API_URL).get('/guidance/drafts/file-1').once().reply(statusCodes.HTTP_STATUS_OK, draftResponse({ parsingStatus: 'complete' }))
+      nock(GUIDANCE_API_URL).get('/guides/staging/file-1').once().reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'complete' }))
 
       const second = await server.inject({
         method: 'GET',
@@ -208,7 +208,7 @@ describe('upload guide processing page', () => {
 
       expect(JSON.parse(first.payload)).toMatchObject({ isComplete: false, label: 'Parsing document' })
 
-      nock(GUIDANCE_API_URL).get('/guidance/drafts/file-1').once().reply(statusCodes.HTTP_STATUS_OK, draftResponse({ parsingStatus: 'complete' }))
+      nock(GUIDANCE_API_URL).get('/guides/staging/file-1').once().reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'complete' }))
 
       const second = await server.inject({
         method: 'GET',

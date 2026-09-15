@@ -1,7 +1,7 @@
 import { statusCodes } from '../../../../constants/status-codes.js'
 import { getGuideUpload, setGuideUploadMetadata } from '../../session.js'
-import { getDraftById } from '../../../../services/drafts.js'
 import { getSchemes, normalizeSchemes } from '../../../../services/reference-data.js'
+import { getStagedDocumentById } from '../../../../services/staged-documents.js'
 import { GuideDetailsViewModel } from './view-models.js'
 
 const METADATA_VIEW = 'create-guidance/upload-guide/metadata/page.njk'
@@ -15,14 +15,17 @@ async function getMetadataForm (request, h) {
     return h.redirect(UPLOAD_GUIDE_URL)
   }
 
-  const draft = upload.fileId ? await getDraftById(upload.fileId) : null
+  const stagedDocument = upload.fileId
+    ? await getStagedDocumentById(upload.fileId)
+    : null
+
   const savedMetadata = upload.metadata || {}
   const schemeOptions = await getSchemes()
   const [notification] = request.yar.flash('uploadNotification')
 
   const viewModel = GuideDetailsViewModel.fromSession({
     values: savedMetadata,
-    draft,
+    stagedDocument,
     schemeOptions,
     notification
   })
@@ -37,7 +40,9 @@ async function getMetadataForm (request, h) {
  */
 async function metadataFailAction (request, h, err) {
   const upload = getGuideUpload(request)
-  const draft = upload?.fileId ? await getDraftById(upload.fileId) : null
+  const stagedDocument = upload?.fileId
+    ? await getStagedDocumentById(upload.fileId)
+    : null
   const schemeOptions = await getSchemes()
 
   const payload = {
@@ -48,7 +53,7 @@ async function metadataFailAction (request, h, err) {
   const viewModel = GuideDetailsViewModel.fromValidationError(
     payload,
     err,
-    { schemeOptions, draft }
+    { schemeOptions, stagedDocument }
   )
 
   return h

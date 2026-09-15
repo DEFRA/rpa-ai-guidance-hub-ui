@@ -12,13 +12,13 @@ const FIELD_HREF_MAP = {
 }
 
 /**
- * Format a draft's raw (ISO) lastModified timestamp for display.
+ * Format a staged document's raw (ISO) lastModified timestamp for display.
  *
  * @param {string|null|undefined} dateString
  * @returns {string|null} - Formatted date, or null when missing/unparseable
  *   so callers can fall back to their own default
  */
-function formatDraftDate (dateString) {
+function formatStagedDocumentDate (dateString) {
   if (!dateString) {
     return null
   }
@@ -63,27 +63,39 @@ class GuideDetailsViewModel {
   /**
    * Create a view model from session data and reference schemes
    *
-   * When a draft's minimal-parse items are supplied, they are used to
-   * populate the title, version and last modified date - but a title the
+   * When a staged document's minimal-parse items are supplied, they are used
+   * to populate the title, version and last modified date - but a title the
    * user has already saved to session (`values.guideTitle`) always takes
-   * precedence over the parsed draft title, since it reflects a deliberate
+   * precedence over the parsed title, since it reflects a deliberate
    * user edit.
    *
    * @param {Object} [options]
    * @param {Object} [options.values={}] - Session-saved metadata
-   * @param {Object|null} [options.draft=null] - Minimal-parse draft status,
-   *   see DraftStatusModel in services/drafts.js
+   * @param {Object|null} [options.stagedDocument=null] - Minimal-parse staged
+   *   document status, see StagedDocumentStatusModel in
+   *   services/staged-documents.js
+   * @param {Object|null} [options.draft=null] - Legacy alias for stagedDocument
    * @param {Array} [options.schemeOptions=[]]
    * @param {string|null} [options.notification=null]
    */
-  static fromSession ({ values = {}, draft = null, schemeOptions = [], notification = null } = {}) {
+  static fromSession ({
+    values = {},
+    stagedDocument = null,
+    draft = null,
+    schemeOptions = [],
+    notification = null
+  } = {}) {
+    const document = stagedDocument ?? draft
+
     return new GuideDetailsViewModel({
       values: {
-        guideTitle: values.guideTitle ?? draft?.title ?? '',
+        guideTitle: values.guideTitle ?? document?.title ?? '',
         schemes: values.schemes ?? ''
       },
-      versionNumber: values.versionNumber || draft?.version || NOT_AVAILABLE,
-      lastModifiedDate: values.lastModifiedDate || formatDraftDate(draft?.lastModified) || NOT_AVAILABLE,
+      versionNumber: values.versionNumber || document?.version || NOT_AVAILABLE,
+      lastModifiedDate: values.lastModifiedDate ||
+        formatStagedDocumentDate(document?.lastModified) ||
+        NOT_AVAILABLE,
       schemeOptions,
       notification
     })
@@ -96,11 +108,17 @@ class GuideDetailsViewModel {
    * @param {Object} err - Joi validation error
    * @param {Object} [options]
    * @param {Array} [options.schemeOptions=[]]
-   * @param {Object|null} [options.draft=null] - Minimal-parse draft status,
-   *   used to keep the version/last modified summary populated when
-   *   redisplaying the form after a validation failure
+   * @param {Object|null} [options.stagedDocument=null] - Minimal-parse staged
+   *   document status, used to keep the version/last modified summary
+   *   populated when redisplaying the form after a validation failure
+   * @param {Object|null} [options.draft=null] - Legacy alias for stagedDocument
    */
-  static fromValidationError (payload, err, { schemeOptions = [], draft = null } = {}) {
+  static fromValidationError (
+    payload,
+    err,
+    { schemeOptions = [], stagedDocument = null, draft = null } = {}
+  ) {
+    const document = stagedDocument ?? draft
     const errors = {}
     const errorList = []
 
@@ -125,8 +143,9 @@ class GuideDetailsViewModel {
       values: payload,
       errors,
       errorList,
-      versionNumber: draft?.version || NOT_AVAILABLE,
-      lastModifiedDate: formatDraftDate(draft?.lastModified) || NOT_AVAILABLE,
+      versionNumber: document?.version || NOT_AVAILABLE,
+      lastModifiedDate: formatStagedDocumentDate(document?.lastModified) ||
+        NOT_AVAILABLE,
       schemeOptions
     })
   }

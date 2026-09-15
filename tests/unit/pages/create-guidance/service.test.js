@@ -3,8 +3,8 @@ vi.mock('../../../../src/services/uploader.js', () => ({
   initiateUpload: vi.fn()
 }))
 
-vi.mock('../../../../src/services/drafts.js', () => ({
-  getDraftById: vi.fn()
+vi.mock('../../../../src/services/staged-documents.js', () => ({
+  getStagedDocumentById: vi.fn()
 }))
 
 vi.mock('../../../../src/pages/create-guidance/session.js', () => ({
@@ -14,7 +14,7 @@ vi.mock('../../../../src/pages/create-guidance/session.js', () => ({
 }))
 
 import { getUploadStatus, initiateUpload } from '../../../../src/services/uploader.js'
-import { getDraftById } from '../../../../src/services/drafts.js'
+import { getStagedDocumentById } from '../../../../src/services/staged-documents.js'
 import { getGuideUpload, setGuideUploadCompletedSteps, setGuideUploadFileId } from '../../../../src/pages/create-guidance/session.js'
 import {
   getUploadOutcome,
@@ -104,7 +104,7 @@ describe('create-guidance service', () => {
       expect(initiateUpload).toHaveBeenCalledWith({
         redirect: '/create-guidance/upload-guide/processing',
         s3Bucket: 'rpa-ai-guidance-hub-source-docs',
-        callback: expect.stringContaining('/guidance/drafts/callback')
+        callback: expect.stringContaining('/guides/staging/callback')
       })
     })
   })
@@ -194,7 +194,7 @@ describe('create-guidance service', () => {
 
       expect(progress.isComplete).toBe(false)
       expect(progress.statusId).toBe('minimal-parse:in-progress')
-      expect(getDraftById).not.toHaveBeenCalled()
+      expect(getStagedDocumentById).not.toHaveBeenCalled()
     })
 
     describe('once scanning has completed', () => {
@@ -203,18 +203,18 @@ describe('create-guidance service', () => {
       })
 
       test('reports completion once parsing is complete', async () => {
-        getDraftById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'complete', parsingError: null })
+        getStagedDocumentById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'complete', parsingError: null })
 
         const progress = await getGuideUploadProgress(request)
 
         expect(progress.statusId).toBe('uploader:complete')
         expect(progress.isComplete).toBe(true)
         expect(progress.percentage).toBe(100)
-        expect(getDraftById).toHaveBeenCalledWith('file-1')
+        expect(getStagedDocumentById).toHaveBeenCalledWith('file-1')
       })
 
       test('does not report complete while parsing is still pending', async () => {
-        getDraftById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'pending', parsingError: null })
+        getStagedDocumentById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'pending', parsingError: null })
 
         const progress = await getGuideUploadProgress(request)
 
@@ -223,7 +223,7 @@ describe('create-guidance service', () => {
       })
 
       test('does not report complete while parsing is in_progress', async () => {
-        getDraftById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'in_progress', parsingError: null })
+        getStagedDocumentById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'in_progress', parsingError: null })
 
         const progress = await getGuideUploadProgress(request)
 
@@ -232,7 +232,7 @@ describe('create-guidance service', () => {
       })
 
       test('reports an error once parsing fails', async () => {
-        getDraftById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'failed', parsingError: 'boom' })
+        getStagedDocumentById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'failed', parsingError: 'boom' })
 
         const progress = await getGuideUploadProgress(request)
 
@@ -241,8 +241,8 @@ describe('create-guidance service', () => {
         expect(progress.statusId).toBe('minimal-parse:failed')
       })
 
-      test('does not report complete or error while no draft has been claimed yet (404)', async () => {
-        getDraftById.mockResolvedValue(null)
+      test('does not report complete or error while no staged document has been claimed yet (404)', async () => {
+        getStagedDocumentById.mockResolvedValue(null)
 
         const progress = await getGuideUploadProgress(request)
 
@@ -299,7 +299,7 @@ describe('create-guidance service', () => {
 
     test('does not persist or re-check steps already completed in session', async () => {
       getGuideUpload.mockReturnValue({ activeUploadId: 'u-1', fileId: 'file-1', hasUpload: () => true, completedStepIds: ['scanning', 'minimalParse'] })
-      getDraftById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'complete', parsingError: null })
+      getStagedDocumentById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'complete', parsingError: null })
 
       const progress = await getGuideUploadProgress(request)
 
@@ -318,7 +318,7 @@ describe('create-guidance service', () => {
 
     test('persists newly-discovered fileId to session', async () => {
       getUploadStatus.mockResolvedValue(complete)
-      getDraftById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'complete', parsingError: null })
+      getStagedDocumentById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'complete', parsingError: null })
 
       await getGuideUploadProgress(request)
 
