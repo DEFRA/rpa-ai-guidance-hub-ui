@@ -14,7 +14,7 @@ async function getStagedDocument (fileId) {
   return guidanceApiClient.request(
     `/guides/staged-document/${encodeURIComponent(fileId)}`,
     {
-    expected: [statusCodes.HTTP_STATUS_NOT_FOUND]
+      expected: [statusCodes.HTTP_STATUS_NOT_FOUND]
     }
   )
 }
