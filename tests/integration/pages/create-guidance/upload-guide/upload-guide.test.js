@@ -3,7 +3,7 @@ import { constants as statusCodes } from 'node:http2'
 import nock from 'nock'
 
 import { initiateUploadResponse, rejectedFile, uploadStatusResponse } from '../../../../fixtures/cdp-uploader.js'
-import { draftResponse } from '../../../../fixtures/guidance-api.js'
+import { stagedDocumentResponse } from '../../../../fixtures/guidance-api.js'
 import { createServer } from '../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../helpers/login.js'
 import { mergeCookies } from '../../../helpers/cookies.js'
@@ -127,7 +127,13 @@ describe('#uploadGuideController', () => {
       const { uploadId, cookie } = await startMigration(server, await loginAsDevUser(server))
 
       nock(CDP_UPLOADER_URL).persist().get(`/status/${uploadId}`).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))
-      nock(GUIDANCE_API_URL).persist().get('/guidance/drafts/file-1').reply(statusCodes.HTTP_STATUS_OK, draftResponse({ parsingStatus: 'complete' }))
+      nock(GUIDANCE_API_URL)
+        .persist()
+        .get('/guides/staged-document/file-1')
+        .reply(
+          statusCodes.HTTP_STATUS_OK,
+          stagedDocumentResponse({ parsingStatus: 'complete' })
+        )
 
       // Scanning is already done, but parsing hasn't been checked on a poll of
       // its own yet, so the user is sent to the processing page rather than
@@ -166,7 +172,13 @@ describe('#uploadGuideController', () => {
       const { uploadId, cookie } = await startMigration(server, await loginAsDevUser(server))
 
       nock(CDP_UPLOADER_URL).persist().get(`/status/${uploadId}`).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))
-      nock(GUIDANCE_API_URL).persist().get('/guidance/drafts/file-1').reply(statusCodes.HTTP_STATUS_OK, draftResponse({ parsingStatus: 'complete' }))
+      nock(GUIDANCE_API_URL)
+        .persist()
+        .get('/guides/staged-document/file-1')
+        .reply(
+          statusCodes.HTTP_STATUS_OK,
+          stagedDocumentResponse({ parsingStatus: 'complete' })
+        )
       vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([
         { value: 'sfi', label: 'Sustainable Farming Incentive (SFI)' }
       ])

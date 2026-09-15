@@ -26,16 +26,17 @@ function schemesResponse (overrides) {
 }
 
 /**
- * Body of `GET /guidance/drafts/{fileId}` on 200.
+ * Body of `GET /guides/staged-document/{fileId}` on 200.
  *
- * Verified against `src/services/drafts.js#getDraftById`: the guidance API
- * returns raw (Python StrEnum) parsingStatus values - 'pending' |
- * 'in_progress' | 'complete' | 'failed' - not UI-style enum strings.
+ * Verified against `src/services/staged-document.js#getStagedDocumentById`:
+ * the guidance API returns raw (Python StrEnum) parsingStatus values -
+ * 'pending' | 'in_progress' | 'complete' | 'failed' - not UI-style enum
+ * strings.
  *
  * @param {Object} [overrides]
  * @returns {{fileId: string, parsingStatus: string, parsingError: string|null, title: string|null, version: string|null, lastModified: string|null}}
  */
-function draftResponse (overrides = {}) {
+function stagedDocumentResponse (overrides = {}) {
   return {
     fileId: 'file-1',
     parsingStatus: 'pending',
@@ -49,5 +50,5 @@ function draftResponse (overrides = {}) {
 
 export {
   schemesResponse,
-  draftResponse
+  stagedDocumentResponse
 }

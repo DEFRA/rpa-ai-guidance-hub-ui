@@ -52,10 +52,10 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.notification).toBe('You have already uploaded a document for this guide')
   })
 
-  test('fromSession() populates title, version and formatted last modified date from a draft', () => {
+  test('fromSession() populates title, version and formatted last modified date from a staged document', () => {
     const viewModel = GuideDetailsViewModel.fromSession({
       values: {},
-      draft: {
+      stagedDocument: {
         title: 'Parsed Draft Title',
         version: '3.1',
         lastModified: '2026-05-10T12:00:00.000Z'
@@ -68,10 +68,10 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.lastModifiedDate).toBe('10 May 2026')
   })
 
-  test('fromSession() prefers a title already saved to session over the parsed draft title', () => {
+  test('fromSession() prefers a title already saved to session over the parsed staged document title', () => {
     const viewModel = GuideDetailsViewModel.fromSession({
       values: { guideTitle: 'User Overwritten Title' },
-      draft: {
+      stagedDocument: {
         title: 'Parsed Draft Title',
         version: '3.1',
         lastModified: '2026-05-10T12:00:00.000Z'
@@ -82,10 +82,10 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.values.guideTitle).toBe('User Overwritten Title')
   })
 
-  test('fromSession() falls back to "Not available" when the draft has an invalid last modified date', () => {
+  test('fromSession() falls back to "Not available" when the staged document has an invalid last modified date', () => {
     const viewModel = GuideDetailsViewModel.fromSession({
       values: {},
-      draft: {
+      stagedDocument: {
         title: 'Parsed Draft Title',
         version: '3.1',
         lastModified: 'not-a-real-date'
@@ -96,10 +96,10 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.lastModifiedDate).toBe('Not available')
   })
 
-  test('fromSession() defaults to "Not available" when no draft has been claimed yet', () => {
+  test('fromSession() defaults to "Not available" when no staged document has been claimed yet', () => {
     const viewModel = GuideDetailsViewModel.fromSession({
       values: {},
-      draft: null,
+      stagedDocument: null,
       schemeOptions: []
     })
 
@@ -136,14 +136,14 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.lastModifiedDate).toBe('Not available')
   })
 
-  test('fromValidationError() preserves the draft version and formatted last modified date', () => {
+  test('fromValidationError() preserves the staged document version and formatted last modified date', () => {
     const payload = { guideTitle: '' }
     const err = {
       details: [{ path: ['guideTitle'], message: 'Enter the guidance title' }]
     }
 
     const viewModel = GuideDetailsViewModel.fromValidationError(payload, err, {
-      draft: {
+      stagedDocument: {
         title: 'Parsed Draft Title',
         version: '3.1',
         lastModified: '2026-05-10T12:00:00.000Z'

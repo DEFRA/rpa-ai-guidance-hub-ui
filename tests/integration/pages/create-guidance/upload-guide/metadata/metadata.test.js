@@ -4,7 +4,10 @@ import { createServer } from '../../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../../helpers/login.js'
 import { mergeCookies } from '../../../../helpers/cookies.js'
 import { config } from '../../../../../../src/config/config.js'
-import { schemesResponse, draftResponse } from '../../../../../fixtures/guidance-api.js'
+import {
+  schemesResponse,
+  stagedDocumentResponse
+} from '../../../../../fixtures/guidance-api.js'
 import { initiateUploadResponse, uploadStatusResponse } from '../../../../../fixtures/cdp-uploader.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -40,7 +43,7 @@ async function startMigration (server, cookie, uploadId = 'u-metadata') {
  * Drive a migration all the way to a captured fileId (scan clean, minimal
  * parse complete), by following the same real processing flow that a
  * browser polling the processing page would - so the metadata page's own
- * draft fetch has a fileId to look up.
+ * staged document fetch has a fileId to look up.
  */
 async function completeMinimalParse (server, cookie, uploadId = 'u-metadata') {
   let sessionCookie = await startMigration(server, cookie, uploadId)
@@ -56,7 +59,13 @@ async function completeMinimalParse (server, cookie, uploadId = 'u-metadata') {
   expect(first.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
   sessionCookie = mergeCookies(sessionCookie, first.headers['set-cookie'])
 
-  nock(GUIDANCE_API_BASE_URL).get('/guidance/drafts/file-1').once().reply(statusCodes.HTTP_STATUS_OK, draftResponse({ parsingStatus: 'complete' }))
+  nock(GUIDANCE_API_BASE_URL)
+    .get('/guides/staged-document/file-1')
+    .once()
+    .reply(
+      statusCodes.HTTP_STATUS_OK,
+      stagedDocumentResponse({ parsingStatus: 'complete' })
+    )
 
   const second = await server.inject({
     method: 'GET',
@@ -139,17 +148,23 @@ describe('#metadataController Integration', () => {
       expect(response.headers.location).toBe('/create-guidance/upload-guide/metadata/purpose')
     })
 
-    test('GET /create-guidance/upload-guide/metadata loads the draft title, version and last modified date once minimal parse has captured a fileId', async () => {
+    test('GET /create-guidance/upload-guide/metadata loads the staged document title, version and last modified date once minimal parse has captured a fileId', async () => {
       const devCookie = await loginAsDevUser(server)
       const cookie = await completeMinimalParse(server, devCookie)
 
       mockSchemes()
-      nock(GUIDANCE_API_BASE_URL).get('/guidance/drafts/file-1').once().reply(statusCodes.HTTP_STATUS_OK, draftResponse({
-        parsingStatus: 'complete',
-        title: 'Parsed Draft Title',
-        version: '2.0',
-        lastModified: '2026-05-10T12:00:00.000Z'
-      }))
+      nock(GUIDANCE_API_BASE_URL)
+        .get('/guides/staged-document/file-1')
+        .once()
+        .reply(
+          statusCodes.HTTP_STATUS_OK,
+          stagedDocumentResponse({
+            parsingStatus: 'complete',
+            title: 'Parsed Draft Title',
+            version: '2.0',
+            lastModified: '2026-05-10T12:00:00.000Z'
+          })
+        )
 
       const response = await server.inject({
         method: 'GET',

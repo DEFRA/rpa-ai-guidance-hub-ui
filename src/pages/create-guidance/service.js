@@ -4,7 +4,7 @@ import * as session from './session.js'
 import * as steps from './upload-guide/steps.js'
 
 import { getUploadStatus, initiateUpload } from '../../services/uploader.js'
-import { getDraftById } from '../../services/drafts.js'
+import { getStagedDocumentById } from '../../services/staged-document.js'
 import { ProgressTracker } from '../../services/progress-tracker.js'
 
 /**
@@ -188,7 +188,7 @@ async function _initiateGuideUpload () {
   const initiateRequest = {
     redirect: '/create-guidance/upload-guide/processing',
     s3Bucket: config.get('cdpUploader.sourceDocsBucket'),
-    callback: `${config.get('guidanceApi.baseUrl')}/guidance/drafts/callback`
+    callback: `${config.get('guidanceApi.baseUrl')}/guides/staged-document/callback`
   }
 
   const { uploadId } = await initiateUpload(initiateRequest)
@@ -289,13 +289,17 @@ async function _checkScanningStatus ({ uploadId, status: knownStatus }) {
  */
 async function _checkMinimalParseStatus ({ fileId }) {
   try {
-    const draft = await getDraftById(fileId)
+    const stagedDocument = await getStagedDocumentById(fileId)
 
-    if (!draft || draft.parsingStatus === 'pending' || draft.parsingStatus === 'in_progress') {
+    if (
+      !stagedDocument ||
+      stagedDocument.parsingStatus === 'pending' ||
+      stagedDocument.parsingStatus === 'in_progress'
+    ) {
       return { complete: false }
     }
 
-    if (draft.parsingStatus === 'complete') {
+    if (stagedDocument.parsingStatus === 'complete') {
       return { complete: true }
     }
 
