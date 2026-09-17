@@ -1,8 +1,8 @@
 import { getStepState, STATUS_IDS, STEPS } from '../../../../../src/pages/create-guidance/upload-guide/steps.js'
 
 describe('upload guide steps', () => {
-  test('lists scanning as the only step', () => {
-    expect(STEPS.map((step) => step.id)).toEqual(['scanning'])
+  test('lists scanning and minimal-parse steps', () => {
+    expect(STEPS.map((step) => step.id)).toEqual(['scanning', 'minimalParse'])
   })
 
   describe('getStepState', () => {

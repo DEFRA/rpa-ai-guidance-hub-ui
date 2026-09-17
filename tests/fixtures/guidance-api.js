@@ -53,8 +53,35 @@ function audiencesResponse (overrides) {
   ]
 }
 
+/**
+ * Body of `GET /guides/staging/{fileId}` on 200.
+ *
+ * Verified against `src/services/staged-documents.js#getStagedDocumentById`:
+ * the guidance API returns raw (Python StrEnum) parsingStatus values -
+ * 'pending' | 'in_progress' | 'complete' | 'failed' - not UI-style enum
+ * strings.
+ *
+ * @param {Object} [overrides]
+ * @returns {{fileId: string, parsingStatus: string, parsingError: string|null, title: string|null, version: string|null, lastModified: string|null}}
+ */
+function stagedDocumentResponse (overrides = {}) {
+  return {
+    fileId: 'file-1',
+    parsingStatus: 'pending',
+    parsingError: null,
+    title: null,
+    version: null,
+    lastModified: null,
+    ...overrides
+  }
+}
+
+const draftResponse = stagedDocumentResponse
+
 export {
   schemesResponse,
   systemsResponse,
-  audiencesResponse
+  audiencesResponse,
+  stagedDocumentResponse,
+  draftResponse
 }
