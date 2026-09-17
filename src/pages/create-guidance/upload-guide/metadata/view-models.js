@@ -1,6 +1,7 @@
 import { format, isValid, parseISO } from 'date-fns'
 
 import { NONE_SCHEME_VALUE } from '../../../../services/reference-data.js'
+import { mapValidationError } from '../../form-errors.js'
 
 const BACK_URL = '/create-guidance/upload-guide'
 const NOT_AVAILABLE = 'Not available'
@@ -119,25 +120,7 @@ class GuideDetailsViewModel {
     { schemeOptions = [], stagedDocument = null, draft = null } = {}
   ) {
     const document = stagedDocument ?? draft
-    const errors = {}
-    const errorList = []
-
-    for (const detail of err.details) {
-      const field = detail.path[0]
-
-      if (errors[field]) {
-        continue
-      }
-
-      errors[field] = detail.message
-
-      const href = FIELD_HREF_MAP[field] || `#${field}`
-
-      errorList.push({
-        text: detail.message,
-        href
-      })
-    }
+    const { errors, errorList } = mapValidationError(err, FIELD_HREF_MAP)
 
     return new GuideDetailsViewModel({
       values: payload,

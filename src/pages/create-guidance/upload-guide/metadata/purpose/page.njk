@@ -1,0 +1,157 @@
+{% extends "common/layout.njk" %}
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/character-count/macro.njk" import govukCharacterCount %}
+{% from "govuk/components/textarea/macro.njk" import govukTextarea %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+
+{% block beforeContent %}
+  {{ govukBackLink({ href: backUrl }) }}
+{% endblock %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds app-content">
+
+      {% if errorList and errorList.length %}
+        <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary">
+          <h2 class="govuk-error-summary__title" id="error-summary-title">There is a problem</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              {% for error in errorList %}
+                <li><a href="{{ error.href }}">{{ error.text }}</a></li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      {% endif %}
+
+      <h1 class="govuk-heading-l">Owner and purpose</h1>
+
+      <p class="govuk-body">
+        Tell us who owns this guidance, what it covers, the knowledge required to follow it, which systems it uses, and who it is for.
+      </p>
+
+      <form method="post" action="/create-guidance/upload-guide/metadata/purpose" novalidate>
+
+        {{ govukInput({
+          id: "owner",
+          name: "owner",
+          type: "email",
+          autocomplete: "email",
+          spellcheck: false,
+          label: {
+            text: "Owner email",
+            classes: "govuk-label--s"
+          },
+          hint: {
+            text: "The email address of who approves and publishes this guide"
+          },
+          value: values.owner,
+          errorMessage: { text: errors.owner } if errors.owner
+        }) }}
+
+        {{ govukCharacterCount({
+          id: "goal",
+          name: "goal",
+          maxlength: 200,
+          rows: 5,
+          label: {
+            text: "What is the purpose of this guidance?",
+            classes: "govuk-label--s"
+          },
+          hint: {
+            text: "Provide a brief overview of what this guidance covers and when it should be used."
+          },
+          value: values.goal,
+          errorMessage: { text: errors.goal } if errors.goal
+        }) }}
+
+        {{ govukTextarea({
+          id: "requirements",
+          name: "requirements",
+          rows: 5,
+          label: {
+            text: "Required knowledge and training",
+            classes: "govuk-label--s"
+          },
+          hint: {
+            text: "List any prior knowledge, training or permissions users should have before following this guidance."
+          },
+          value: values.requirements,
+          errorMessage: { text: errors.requirements } if errors.requirements
+        }) }}
+
+        <div class="govuk-form-group{% if errors.systems %} govuk-form-group--error{% endif %}">
+          <fieldset class="govuk-fieldset" aria-describedby="systems-hint{% if errors.systems %} systems-error{% endif %}">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">
+              What systems will you use?
+            </legend>
+            <div id="systems-hint" class="govuk-hint">
+              Select all systems this guidance uses.
+            </div>
+            {% if errors.systems %}
+              <p id="systems-error" class="govuk-error-message">
+                <span class="govuk-visually-hidden">Error:</span> {{ errors.systems }}
+              </p>
+            {% endif %}
+
+            <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+              {% for option in systemOptions %}
+                <div class="govuk-checkboxes__item">
+                  <input
+                    class="govuk-checkboxes__input"
+                    id="systems{% if loop.index > 1 %}-{{ loop.index }}{% endif %}"
+                    name="systems"
+                    type="checkbox"
+                    value="{{ option.value }}"
+                    {% if values.systems and values.systems.indexOf(option.value) !== -1 %}checked{% endif %}
+                  >
+                  <label class="govuk-label govuk-checkboxes__label" for="systems{% if loop.index > 1 %}-{{ loop.index }}{% endif %}">
+                    {{ option.text }}
+                  </label>
+                </div>
+              {% endfor %}
+            </div>
+          </fieldset>
+        </div>
+
+        <div class="govuk-form-group{% if errors.audience %} govuk-form-group--error{% endif %}">
+          <fieldset class="govuk-fieldset" aria-describedby="audience-hint{% if errors.audience %} audience-error{% endif %}">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">
+              Who is this guidance for?
+            </legend>
+            <div id="audience-hint" class="govuk-hint">
+              Select all that apply.
+            </div>
+            {% if errors.audience %}
+              <p id="audience-error" class="govuk-error-message">
+                <span class="govuk-visually-hidden">Error:</span> {{ errors.audience }}
+              </p>
+            {% endif %}
+
+            <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+              {% for option in audienceOptions %}
+                <div class="govuk-checkboxes__item">
+                  <input
+                    class="govuk-checkboxes__input"
+                    id="audience{% if loop.index > 1 %}-{{ loop.index }}{% endif %}"
+                    name="audience"
+                    type="checkbox"
+                    value="{{ option.value }}"
+                    {% if values.audience and values.audience.indexOf(option.value) !== -1 %}checked{% endif %}
+                  >
+                  <label class="govuk-label govuk-checkboxes__label" for="audience{% if loop.index > 1 %}-{{ loop.index }}{% endif %}">
+                    {{ option.text }}
+                  </label>
+                </div>
+              {% endfor %}
+            </div>
+          </fieldset>
+        </div>
+
+        {{ govukButton({ text: "Continue" }) }}
+      </form>
+    </div>
+  </div>
+{% endblock %}
