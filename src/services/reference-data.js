@@ -73,17 +73,15 @@ async function getGuidanceTypes () {
  * scheme-specific business rule callers need, kept here because it depends
  * on the same `NONE_SCHEME_VALUE` this module owns.
  *
- * GOV.UK checkboxes submit differently depending on how many boxes are
- * checked (undefined when none, a bare string when exactly one, an array
- * when more than one) - this normalizes all three shapes to an array first,
- * so callers (session persistence, redisplay view model) always receive a
- * normalized array back regardless of submission shape or order.
+ * Submission shape is normalized first via `normalizeSelection`, so callers
+ * (session persistence, redisplay view model) always receive an array back
+ * regardless of how many boxes were checked or in what order.
  *
  * @param {undefined|string|Array<string>} rawSchemes
  * @returns {Array<string>}
  */
 function normalizeSchemes (rawSchemes) {
-  const schemes = _toArray(rawSchemes)
+  const schemes = normalizeSelection(rawSchemes)
   const nonNoneSchemes = schemes.filter((value) => value !== NONE_SCHEME_VALUE)
 
   if (nonNoneSchemes.length > 0) {
@@ -94,16 +92,22 @@ function normalizeSchemes (rawSchemes) {
 }
 
 /**
- * @private
- * @param {undefined|string|Array<string>} rawSchemes
+ * Normalize a submitted checkbox group to an array.
+ *
+ * GOV.UK checkboxes submit differently depending on how many boxes are
+ * checked (undefined when none, a bare string when exactly one, an array
+ * when more than one) - this normalizes all three shapes to an array so
+ * callers can treat every selection the same way.
+ *
+ * @param {undefined|null|string|Array<string>} rawSelection
  * @returns {Array<string>}
  */
-function _toArray (rawSchemes) {
-  if (rawSchemes === undefined || rawSchemes === null || rawSchemes === '') {
+function normalizeSelection (rawSelection) {
+  if (rawSelection === undefined || rawSelection === null || rawSelection === '') {
     return []
   }
 
-  return Array.isArray(rawSchemes) ? rawSchemes : [rawSchemes]
+  return Array.isArray(rawSelection) ? rawSelection : [rawSelection]
 }
 
 export {
@@ -112,5 +116,6 @@ export {
   getSystems,
   getGuidanceTypes,
   NONE_SCHEME_VALUE,
-  normalizeSchemes
+  normalizeSchemes,
+  normalizeSelection
 }

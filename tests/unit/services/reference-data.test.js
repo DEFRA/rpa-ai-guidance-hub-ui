@@ -4,7 +4,8 @@ import {
   getAudiences,
   getSystems,
   getGuidanceTypes,
-  normalizeSchemes
+  normalizeSchemes,
+  normalizeSelection
 } from '../../../src/services/reference-data.js'
 
 describe('reference-data service', () => {
@@ -101,5 +102,25 @@ describe('#normalizeSchemes', () => {
 
   test('returns [] for empty array selection', () => {
     expect(normalizeSchemes([])).toEqual([])
+  })
+})
+
+describe('#normalizeSelection', () => {
+  test('returns [] for undefined, null and empty string selections', () => {
+    expect(normalizeSelection(undefined)).toEqual([])
+    expect(normalizeSelection(null)).toEqual([])
+    expect(normalizeSelection('')).toEqual([])
+  })
+
+  test('wraps a single string value in an array', () => {
+    expect(normalizeSelection('crm')).toEqual(['crm'])
+  })
+
+  test('returns an array selection unchanged', () => {
+    expect(normalizeSelection(['crm', 'siti-agri'])).toEqual(['crm', 'siti-agri'])
+  })
+
+  test('returns an empty array unchanged', () => {
+    expect(normalizeSelection([])).toEqual([])
   })
 })

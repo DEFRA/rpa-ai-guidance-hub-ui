@@ -1,0 +1,49 @@
+{% extends "common/layout.njk" %}
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+
+{% block beforeContent %}
+  {{ govukBackLink({ href: backUrl }) }}
+{% endblock %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds app-content">
+
+      <h1 class="govuk-heading-l">Check your answers</h1>
+
+      <dl class="govuk-summary-list">
+        {% for row in rows %}
+          <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">
+              {{ row.key }}
+            </dt>
+            <dd class="govuk-summary-list__value">
+              {% if row.values %}
+                <ul class="govuk-list govuk-!-margin-bottom-0">
+                  {% for value in row.values %}
+                    <li>{{ value }}</li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                {{ row.value }}
+              {% endif %}
+            </dd>
+            <dd class="govuk-summary-list__actions">
+              <a class="govuk-link" href="{{ row.changeUrl }}">
+                Change<span class="govuk-visually-hidden"> {{ row.key | lower }}</span>
+              </a>
+            </dd>
+          </div>
+        {% endfor %}
+      </dl>
+
+      <p class="govuk-body">
+        Saving guidance to the hub is not available yet. Your answers are kept for this session.
+      </p>
+
+      <p class="govuk-body">
+        <a class="govuk-link" href="{{ dashboardUrl }}">Return to dashboard</a>
+      </p>
+    </div>
+  </div>
+{% endblock %}
