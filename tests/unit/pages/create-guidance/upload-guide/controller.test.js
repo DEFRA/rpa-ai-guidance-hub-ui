@@ -4,7 +4,8 @@ vi.mock('../../../../../src/pages/create-guidance/service.js', async () => {
   const { RESULTS } = await import('../../../../../src/pages/create-guidance/service.js')
   return {
     RESULTS,
-    startMigration: vi.fn()
+    startMigration: vi.fn(),
+    getGuideUploadProgress: vi.fn()
   }
 })
 
@@ -14,7 +15,7 @@ vi.mock('../../../../../src/pages/create-guidance/session.js', () => ({
   addGuideUpload: vi.fn()
 }))
 
-import { RESULTS, startMigration } from '../../../../../src/pages/create-guidance/service.js'
+import { RESULTS, startMigration, getGuideUploadProgress } from '../../../../../src/pages/create-guidance/service.js'
 import { getGuideUpload, createGuideUpload, addGuideUpload } from '../../../../../src/pages/create-guidance/session.js'
 import { getUploadForm } from '../../../../../src/pages/create-guidance/upload-guide/controller.js'
 
@@ -74,6 +75,7 @@ describe('uploadGuideController', () => {
       beforeEach(() => {
         getGuideUpload.mockReturnValue({ activeUploadId: 'u-1' })
         startMigration.mockResolvedValue({ code: RESULTS.UPLOAD_COMPLETE })
+        getGuideUploadProgress.mockResolvedValue({ isComplete: true })
       })
 
       test('flashes a notification explaining why', async () => {
@@ -93,6 +95,27 @@ describe('uploadGuideController', () => {
         await getUploadForm(request, h)
 
         expect(addGuideUpload).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('when the upload has scanned clean but parsing is still in progress', () => {
+      beforeEach(() => {
+        getGuideUpload.mockReturnValue({ activeUploadId: 'u-1' })
+        startMigration.mockResolvedValue({ code: RESULTS.UPLOAD_COMPLETE })
+        getGuideUploadProgress.mockResolvedValue({ isComplete: false })
+      })
+
+      test('redirects to the processing page instead of metadata', async () => {
+        const result = await getUploadForm(request, h)
+
+        expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/processing')
+        expect(result).toEqual(h.redirect())
+      })
+
+      test('does not flash a notification', async () => {
+        await getUploadForm(request, h)
+
+        expect(request.yar.flash).not.toHaveBeenCalled()
       })
     })
 

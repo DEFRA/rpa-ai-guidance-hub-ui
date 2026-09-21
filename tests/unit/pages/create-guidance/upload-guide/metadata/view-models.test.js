@@ -52,6 +52,78 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.notification).toBe('You have already uploaded a document for this guide')
   })
 
+  test('fromSession() populates title, version and formatted last modified date from a staged document', () => {
+    const viewModel = GuideDetailsViewModel.fromSession({
+      values: {},
+      stagedDocument: {
+        title: 'Parsed Document Title',
+        version: '3.1',
+        lastModified: '2026-05-10T12:00:00.000Z'
+      },
+      schemeOptions: []
+    })
+
+    expect(viewModel.values.guideTitle).toBe('Parsed Document Title')
+    expect(viewModel.versionNumber).toBe('3.1')
+    expect(viewModel.lastModifiedDate).toBe('10 May 2026')
+  })
+
+  test('fromSession() accepts draft as backwards-compatible alias for stagedDocument', () => {
+    const viewModel = GuideDetailsViewModel.fromSession({
+      values: {},
+      draft: {
+        title: 'Parsed Draft Title',
+        version: '3.1',
+        lastModified: '2026-05-10T12:00:00.000Z'
+      },
+      schemeOptions: []
+    })
+
+    expect(viewModel.values.guideTitle).toBe('Parsed Draft Title')
+    expect(viewModel.versionNumber).toBe('3.1')
+    expect(viewModel.lastModifiedDate).toBe('10 May 2026')
+  })
+
+  test('fromSession() prefers a title already saved to session over the parsed staged document title', () => {
+    const viewModel = GuideDetailsViewModel.fromSession({
+      values: { guideTitle: 'User Overwritten Title' },
+      stagedDocument: {
+        title: 'Parsed Document Title',
+        version: '3.1',
+        lastModified: '2026-05-10T12:00:00.000Z'
+      },
+      schemeOptions: []
+    })
+
+    expect(viewModel.values.guideTitle).toBe('User Overwritten Title')
+  })
+
+  test('fromSession() falls back to "Not available" when the staged document has an invalid last modified date', () => {
+    const viewModel = GuideDetailsViewModel.fromSession({
+      values: {},
+      stagedDocument: {
+        title: 'Parsed Document Title',
+        version: '3.1',
+        lastModified: 'not-a-real-date'
+      },
+      schemeOptions: []
+    })
+
+    expect(viewModel.lastModifiedDate).toBe('Not available')
+  })
+
+  test('fromSession() defaults to "Not available" when no staged document has been claimed yet', () => {
+    const viewModel = GuideDetailsViewModel.fromSession({
+      values: {},
+      stagedDocument: null,
+      schemeOptions: []
+    })
+
+    expect(viewModel.values.guideTitle).toBe('')
+    expect(viewModel.versionNumber).toBe('Not available')
+    expect(viewModel.lastModifiedDate).toBe('Not available')
+  })
+
   test('fromValidationError() maps Joi error details to field errors and errorList with correct hrefs', () => {
     const payload = { guideTitle: '', schemes: '', otherField: '' }
     const err = {
@@ -78,6 +150,42 @@ describe('#GuideDetailsViewModel', () => {
     ])
     expect(viewModel.versionNumber).toBe('Not available')
     expect(viewModel.lastModifiedDate).toBe('Not available')
+  })
+
+  test('fromValidationError() preserves the staged document version and formatted last modified date', () => {
+    const payload = { guideTitle: '' }
+    const err = {
+      details: [{ path: ['guideTitle'], message: 'Enter the guidance title' }]
+    }
+
+    const viewModel = GuideDetailsViewModel.fromValidationError(payload, err, {
+      stagedDocument: {
+        title: 'Parsed Document Title',
+        version: '3.1',
+        lastModified: '2026-05-10T12:00:00.000Z'
+      }
+    })
+
+    expect(viewModel.versionNumber).toBe('3.1')
+    expect(viewModel.lastModifiedDate).toBe('10 May 2026')
+  })
+
+  test('fromValidationError() accepts draft as backwards-compatible alias', () => {
+    const payload = { guideTitle: '' }
+    const err = {
+      details: [{ path: ['guideTitle'], message: 'Enter the guidance title' }]
+    }
+
+    const viewModel = GuideDetailsViewModel.fromValidationError(payload, err, {
+      draft: {
+        title: 'Parsed Draft Title',
+        version: '3.1',
+        lastModified: '2026-05-10T12:00:00.000Z'
+      }
+    })
+
+    expect(viewModel.versionNumber).toBe('3.1')
+    expect(viewModel.lastModifiedDate).toBe('10 May 2026')
   })
 
   test('constructor defaults when initialized with no arguments', () => {

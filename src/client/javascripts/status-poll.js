@@ -6,8 +6,6 @@
  * or the poll has run for longer than MAX_POLL_DURATION_MS. Uses chained
  * `setTimeout` calls so requests never overlap.
  *
- * The page is fully usable without this script: the server renders the
- * current state and a `<meta http-equiv="refresh">` keeps it current.
  */
 
 const START_DELAY_MS = 2000

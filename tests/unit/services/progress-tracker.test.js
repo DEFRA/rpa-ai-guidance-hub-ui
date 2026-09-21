@@ -150,7 +150,7 @@ describe('ProgressTracker', () => {
     expect(status.isComplete).toBe(false)
   })
 
-  test('stops checking after finding an incomplete step', async () => {
+  test('stops after completing a step, deferring the next step to a later call', async () => {
     const checks = {
       step1: vi.fn(async () => ({ complete: true })),
       step2: vi.fn(async () => ({ complete: false })),
@@ -176,11 +176,32 @@ describe('ProgressTracker', () => {
     ]
 
     const tracker = new ProgressTracker(steps)
-    await tracker.getStatus('context')
+    const status = await tracker.getStatus('context')
 
     expect(checks.step1).toHaveBeenCalled()
-    expect(checks.step2).toHaveBeenCalled()
+    expect(checks.step2).not.toHaveBeenCalled()
     expect(checks.step3).not.toHaveBeenCalled()
+    expect(status.stepId).toBe('step-2')
+    expect(status.isComplete).toBe(false)
+    expect(status.completedStepIds).toEqual(['step-1'])
+  })
+
+  test('checks the newly-current step for real on the next call', async () => {
+    const checks = {
+      step1: vi.fn(async () => ({ complete: true })),
+      step2: vi.fn(async () => ({ complete: false }))
+    }
+    const steps = [
+      { id: 'step-1', label: 'First', check: checks.step1 },
+      { id: 'step-2', label: 'Second', check: checks.step2 }
+    ]
+    const tracker = new ProgressTracker(steps)
+
+    const first = await tracker.getStatus('context')
+    expect(checks.step2).not.toHaveBeenCalled()
+
+    await tracker.getStatus('context', first.completedStepIds)
+    expect(checks.step2).toHaveBeenCalled()
   })
 
   test('passes the context parameter to step check functions', async () => {
@@ -200,7 +221,7 @@ describe('ProgressTracker', () => {
     expect(check).toHaveBeenCalledWith(context)
   })
 
-  test('returns complete and last step index when all steps are done', async () => {
+  test('returns complete and last step index once every step has been confirmed complete across calls', async () => {
     const steps = [
       {
         id: 'step-1',
@@ -214,12 +235,34 @@ describe('ProgressTracker', () => {
       }
     ]
     const tracker = new ProgressTracker(steps)
+
+    const first = await tracker.getStatus('context')
+
+    expect(first.isComplete).toBe(false)
+    expect(first.stepId).toBe('step-2')
+    expect(first.completedStepIds).toEqual(['step-1'])
+
+    const second = await tracker.getStatus('context', first.completedStepIds)
+
+    expect(second.isComplete).toBe(true)
+    expect(second.currentIndex).toBe(1)
+    expect(second.stepId).toBe('step-2')
+    expect(second.completedStepIds).toEqual(['step-1', 'step-2'])
+  })
+
+  test('does not defer when completing the only (and therefore last) step', async () => {
+    const steps = [
+      {
+        id: 'step-1',
+        label: 'Only',
+        check: async function () { return { complete: true } }
+      }
+    ]
+    const tracker = new ProgressTracker(steps)
     const status = await tracker.getStatus('context')
 
     expect(status.isComplete).toBe(true)
-    expect(status.currentIndex).toBe(1)
-    expect(status.stepId).toBe('step-2')
-    expect(status.completedStepIds).toEqual(['step-1', 'step-2'])
+    expect(status.completedStepIds).toEqual(['step-1'])
   })
 })
 

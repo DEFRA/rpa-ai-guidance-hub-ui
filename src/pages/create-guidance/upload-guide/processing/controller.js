@@ -15,8 +15,8 @@ const METADATA_URL = '/create-guidance/upload-guide/metadata'
  * Render the "Checking your file" page while an upload is being processed.
  *
  * Sends the user back to the upload form when there is nothing to check yet,
- * and straight on to metadata when the file has already been scanned clean,
- * so neither depends on client-side JavaScript.
+ * and straight on to metadata when every step, including minimal-parse,
+ * has completed, so neither depends on client-side JavaScript.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -29,11 +29,11 @@ async function getStatusPage (request, h) {
     return h.redirect(UPLOAD_GUIDE_URL)
   }
 
-  if (outcome.code === RESULTS.UPLOAD_COMPLETE) {
+  const progress = await getGuideUploadProgress(request, { status: outcome.status })
+
+  if (progress.isComplete) {
     return h.redirect(METADATA_URL)
   }
-
-  const progress = await getGuideUploadProgress(request, { status: outcome.status })
 
   const viewModel = new UploadProcessingViewModel(progress)
 

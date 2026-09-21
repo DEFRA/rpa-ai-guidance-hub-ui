@@ -8,6 +8,7 @@ import * as uploaderApi from '../infra/cdp-uploader/uploads.js'
  *
  * @typedef {Object} UploadFileModel
  * @property {string} field - The form field this file came from
+ * @property {string} [fileId] - Upstream file identifier, used to correlate with the guidance API's minimal-parse draft record
  * @property {string} [filename]
  * @property {string} [contentType]
  * @property {string} fileStatus - 'complete' | 'rejected' | 'pending'
@@ -122,6 +123,7 @@ function _projectUploadStatus (raw) {
 function _projectFile (field, file) {
   const projected = {
     field,
+    fileId: file.fileId,
     filename: file.filename,
     contentType: file.contentType,
     fileStatus: file.fileStatus
