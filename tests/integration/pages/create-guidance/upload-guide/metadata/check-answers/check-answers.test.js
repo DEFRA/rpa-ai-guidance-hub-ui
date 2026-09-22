@@ -28,7 +28,7 @@ function mockReferenceData () {
   nock(GUIDANCE_API_BASE_URL)
     .get('/reference/systems')
     .reply(statusCodes.HTTP_STATUS_OK, systemsResponse())
-  
+
   nock(GUIDANCE_API_BASE_URL)
     .get('/reference/audiences')
     .reply(statusCodes.HTTP_STATUS_OK, audiencesResponse())
