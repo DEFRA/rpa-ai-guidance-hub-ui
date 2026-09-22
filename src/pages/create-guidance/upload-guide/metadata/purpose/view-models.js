@@ -1,6 +1,7 @@
 import { mapValidationError } from '../../../form-errors.js'
 
 const BACK_URL = '/create-guidance/upload-guide/metadata'
+const FORM_ACTION = '/create-guidance/upload-guide/metadata/purpose'
 
 const FIELD_HREF_MAP = {
   owner: '#owner',
@@ -38,6 +39,7 @@ class OwnerAndPurposeViewModel {
    * @param {Array} [data.systemOptions=[]]
    * @param {Array} [data.audienceOptions=[]]
    * @param {string|null} [data.backUrl]
+   * @param {string|null} [data.formAction]
    */
   constructor (data = {}) {
     this.values = data.values || {}
@@ -46,6 +48,7 @@ class OwnerAndPurposeViewModel {
     this.systemOptions = _toCheckboxOptions(data.systemOptions)
     this.audienceOptions = _toCheckboxOptions(data.audienceOptions)
     this.backUrl = data.backUrl || BACK_URL
+    this.formAction = data.formAction || FORM_ACTION
   }
 
   /**
@@ -55,7 +58,13 @@ class OwnerAndPurposeViewModel {
    * string: the template tests membership with `indexOf`, which on a string
    * would do substring matching.
    */
-  static fromSession ({ values = {}, systemOptions = [], audienceOptions = [] } = {}) {
+  static fromSession ({
+    values = {},
+    systemOptions = [],
+    audienceOptions = [],
+    backUrl = null,
+    formAction = null
+  } = {}) {
     return new OwnerAndPurposeViewModel({
       values: {
         owner: values.owner ?? '',
@@ -65,14 +74,25 @@ class OwnerAndPurposeViewModel {
         audience: values.audience ?? []
       },
       systemOptions,
-      audienceOptions
+      audienceOptions,
+      backUrl,
+      formAction
     })
   }
 
   /**
    * Create a view model from a Joi validation error
    */
-  static fromValidationError (payload, err, { systemOptions = [], audienceOptions = [] } = {}) {
+  static fromValidationError (
+    payload,
+    err,
+    {
+      systemOptions = [],
+      audienceOptions = [],
+      backUrl = null,
+      formAction = null
+    } = {}
+  ) {
     const { errors, errorList } = mapValidationError(err, FIELD_HREF_MAP)
 
     return new OwnerAndPurposeViewModel({
@@ -80,7 +100,9 @@ class OwnerAndPurposeViewModel {
       errors,
       errorList,
       systemOptions,
-      audienceOptions
+      audienceOptions,
+      backUrl,
+      formAction
     })
   }
 

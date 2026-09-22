@@ -32,7 +32,7 @@
         We have read the title, version and date from the document. Check the title and choose the schemes this guidance relates to.
       </p>
 
-      <form method="post" action="/create-guidance/upload-guide/metadata" novalidate>
+      <form method="post" action="{{ formAction }}" novalidate>
 
         <div class="govuk-form-group{% if errors.guideTitle %} govuk-form-group--error{% endif %}">
           <label class="govuk-label govuk-label--s" for="guide-title">

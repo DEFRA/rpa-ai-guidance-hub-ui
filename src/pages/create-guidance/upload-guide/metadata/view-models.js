@@ -58,6 +58,7 @@ class GuideDetailsViewModel {
     this.lastModifiedDate = data.lastModifiedDate || NOT_AVAILABLE
     this.schemeOptions = schemeOptions
     this.backUrl = data.backUrl || BACK_URL
+    this.formAction = data.formAction || '/create-guidance/upload-guide/metadata'
     this.notification = data.notification || null
   }
 
@@ -78,13 +79,17 @@ class GuideDetailsViewModel {
    * @param {Object|null} [options.draft=null] - Legacy alias for stagedDocument
    * @param {Array} [options.schemeOptions=[]]
    * @param {string|null} [options.notification=null]
+   * @param {string|null} [options.backUrl=null]
+   * @param {string|null} [options.formAction=null]
    */
   static fromSession ({
     values = {},
     stagedDocument = null,
     draft = null,
     schemeOptions = [],
-    notification = null
+    notification = null,
+    backUrl = null,
+    formAction = null
   } = {}) {
     const document = stagedDocument ?? draft
 
@@ -98,7 +103,9 @@ class GuideDetailsViewModel {
         formatStagedDocumentDate(document?.lastModified) ||
         NOT_AVAILABLE,
       schemeOptions,
-      notification
+      notification,
+      backUrl,
+      formAction
     })
   }
 
@@ -117,7 +124,13 @@ class GuideDetailsViewModel {
   static fromValidationError (
     payload,
     err,
-    { schemeOptions = [], stagedDocument = null, draft = null } = {}
+    {
+      schemeOptions = [],
+      stagedDocument = null,
+      draft = null,
+      backUrl = null,
+      formAction = null
+    } = {}
   ) {
     const document = stagedDocument ?? draft
     const { errors, errorList } = mapValidationError(err, FIELD_HREF_MAP)
@@ -129,7 +142,9 @@ class GuideDetailsViewModel {
       versionNumber: document?.version || NOT_AVAILABLE,
       lastModifiedDate: formatStagedDocumentDate(document?.lastModified) ||
         NOT_AVAILABLE,
-      schemeOptions
+      schemeOptions,
+      backUrl,
+      formAction
     })
   }
 
@@ -138,5 +153,6 @@ class GuideDetailsViewModel {
 }
 
 export {
+  formatStagedDocumentDate,
   GuideDetailsViewModel
 }

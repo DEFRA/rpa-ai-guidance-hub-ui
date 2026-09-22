@@ -8,9 +8,14 @@ import {
 import { OwnerAndPurposeViewModel } from './view-models.js'
 
 const PURPOSE_VIEW = 'create-guidance/upload-guide/metadata/purpose/page.njk'
+const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
 const UPLOAD_GUIDE_URL = '/create-guidance/upload-guide'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
 const CHECK_ANSWERS_URL = '/create-guidance/upload-guide/metadata/check-answers'
+
+function isChangingFromCheck (request) {
+  return request.query?.from === 'check'
+}
 
 /**
  * Fetch both reference option lists this screen depends on.
@@ -64,7 +69,11 @@ async function getPurposeForm (request, h) {
 
   const viewModel = OwnerAndPurposeViewModel.fromSession({
     values: savedMetadata,
-    ...options
+    ...options,
+    backUrl: isChangingFromCheck(request) ? CHECK_ANSWERS_URL : null,
+    formAction: isChangingFromCheck(request)
+      ? `${PURPOSE_URL}?from=check`
+      : PURPOSE_URL
   })
 
   return h
@@ -84,7 +93,17 @@ async function purposeFailAction (request, h, err) {
     audience: normalizeSelection(request.payload.audience)
   }
 
-  const viewModel = OwnerAndPurposeViewModel.fromValidationError(payload, err, options)
+  const viewModel = OwnerAndPurposeViewModel.fromValidationError(
+    payload,
+    err,
+    {
+      ...options,
+      backUrl: isChangingFromCheck(request) ? CHECK_ANSWERS_URL : null,
+      formAction: isChangingFromCheck(request)
+        ? `${PURPOSE_URL}?from=check`
+        : PURPOSE_URL
+    }
+  )
 
   return h
     .view(PURPOSE_VIEW, viewModel)

@@ -1,5 +1,8 @@
 {% extends "common/layout.njk" %}
 {% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
 
 {% block beforeContent %}
   {{ govukBackLink({ href: backUrl }) }}
@@ -9,41 +12,27 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds app-content">
 
-      <h1 class="govuk-heading-l">Check your answers</h1>
+      {% if errorList.length %}
+        {{ govukErrorSummary({
+          titleText: "There is a problem",
+          errorList: errorList
+        }) }}
+      {% endif %}
 
-      <dl class="govuk-summary-list">
-        {% for row in rows %}
-          <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">
-              {{ row.key }}
-            </dt>
-            <dd class="govuk-summary-list__value">
-              {% if row.values %}
-                <ul class="govuk-list govuk-!-margin-bottom-0">
-                  {% for value in row.values %}
-                    <li>{{ value }}</li>
-                  {% endfor %}
-                </ul>
-              {% else %}
-                {{ row.value }}
-              {% endif %}
-            </dd>
-            <dd class="govuk-summary-list__actions">
-              <a class="govuk-link" href="{{ row.changeUrl }}">
-                Change<span class="govuk-visually-hidden"> {{ row.key | lower }}</span>
-              </a>
-            </dd>
-          </div>
-        {% endfor %}
-      </dl>
+      <h1 class="govuk-heading-l">Check the details before you convert</h1>
+
+      {{ govukSummaryList({ card: guideDetailsCard, rows: guideDetailsCard.rows }) }}
+      {{ govukSummaryList({ card: ownerPurposeCard, rows: ownerPurposeCard.rows }) }}
 
       <p class="govuk-body">
-        Saving guidance to the hub is not available yet. Your answers are kept for this session.
+        When you convert this document, it is saved as a draft that only you
+        can see until it is reviewed and published.
       </p>
 
-      <p class="govuk-body">
-        <a class="govuk-link" href="{{ dashboardUrl }}">Return to dashboard</a>
-      </p>
+      <form method="post">
+        <span id="conversion-error"></span>
+        {{ govukButton({ text: "Convert document" }) }}
+      </form>
     </div>
   </div>
 {% endblock %}
