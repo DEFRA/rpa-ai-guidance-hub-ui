@@ -1,5 +1,5 @@
 import { mapValidationError } from '../../../form-errors.js'
-import { formatStagedDocumentDate } from '../view-models.js'
+import { buildSummaryCard, buildSummaryRow, formatStagedDocumentDate, labelsFor } from '../view-helpers.js'
 
 const BACK_URL = '/create-guidance/upload-guide/metadata/purpose'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
@@ -16,29 +16,71 @@ const FIELD_HREF_MAP = {
   audience: `${PURPOSE_URL}?from=check`
 }
 
-/**
- * Resolve a list of selected reference values to their labels, falling
- * back to the raw value for anything the current option list doesn't know
- *
- * @private
- * @param {Array<string>} [values]
- * @param {Array<{value: string, label: string}>} [options]
- * @returns {Array<string>}
- */
-function _labelsFor (values = [], options = []) {
-  const labelByValue = new Map(options.map((option) => [option.value, option.label]))
-
-  return values.map((value) => labelByValue.get(value) ?? value)
-}
-
 function _valueOrNotProvided (value) {
   return value || NOT_PROVIDED
 }
 
 function _labelsOrNotProvided (values, options) {
-  const labels = _labelsFor(values, options)
+  const labels = labelsFor(values, options)
 
   return labels.length ? labels.join(', ') : NOT_PROVIDED
+}
+
+/**
+ * Build the "guide's details" summary card: title, version, last modified
+ * date and scheme, sourced from session metadata and the staged document.
+ *
+ * @private
+ * @param {Object} metadata
+ * @param {Object|null} stagedDocument
+ * @param {Array<{value: string, label: string}>} schemeOptions
+ */
+function _buildGuideDetailsCard ({ metadata, stagedDocument, schemeOptions }) {
+  return buildSummaryCard({
+    title: "The guide's details",
+    changeHref: `${METADATA_URL}?from=check`,
+    changeVisuallyHiddenText: "the guide's details",
+    rows: [
+      buildSummaryRow('Guidance title', _valueOrNotProvided(metadata.guideTitle)),
+      buildSummaryRow('Version number', _valueOrNotProvided(stagedDocument?.version)),
+      buildSummaryRow(
+        'Last modified date',
+        _valueOrNotProvided(formatStagedDocumentDate(stagedDocument?.lastModified))
+      ),
+      buildSummaryRow('Scheme', _labelsOrNotProvided(metadata.schemes, schemeOptions))
+    ]
+  })
+}
+
+/**
+ * Build the "owner and purpose" summary card, sourced from session
+ * metadata and the reference option lists needed to label checkbox
+ * answers.
+ *
+ * @private
+ * @param {Object} metadata
+ * @param {Array<{value: string, label: string}>} systemOptions
+ * @param {Array<{value: string, label: string}>} audienceOptions
+ */
+function _buildOwnerPurposeCard ({ metadata, systemOptions, audienceOptions }) {
+  return buildSummaryCard({
+    title: 'Owner and purpose',
+    changeHref: `${PURPOSE_URL}?from=check`,
+    changeVisuallyHiddenText: 'the owner and purpose',
+    rows: [
+      buildSummaryRow('Owner email', _valueOrNotProvided(metadata.owner)),
+      buildSummaryRow('Purpose of guidance', _valueOrNotProvided(metadata.goal)),
+      buildSummaryRow(
+        'Required knowledge and training',
+        _valueOrNotProvided(metadata.requirements)
+      ),
+      buildSummaryRow('Systems', _labelsOrNotProvided(metadata.systems, systemOptions)),
+      buildSummaryRow(
+        'Who is this guidance for?',
+        _labelsOrNotProvided(metadata.audience, audienceOptions)
+      )
+    ]
+  })
 }
 
 /**
@@ -72,76 +114,16 @@ class CheckAnswersViewModel {
     audienceOptions = []
   } = {}) {
     return new CheckAnswersViewModel({
-      guideDetailsCard: {
-        title: { text: "The guide's details" },
-        actions: {
-          items: [{
-            text: 'Change',
-            href: `${METADATA_URL}?from=check`,
-            visuallyHiddenText: "the guide's details"
-          }]
-        },
-        rows: [
-          {
-            key: { text: 'Guidance title' },
-            value: { text: _valueOrNotProvided(metadata.guideTitle) }
-          },
-          {
-            key: { text: 'Version number' },
-            value: { text: _valueOrNotProvided(stagedDocument?.version) }
-          },
-          {
-            key: { text: 'Last modified date' },
-            value: {
-              text: _valueOrNotProvided(
-                formatStagedDocumentDate(stagedDocument?.lastModified)
-              )
-            }
-          },
-          {
-            key: { text: 'Scheme' },
-            value: {
-              text: _labelsOrNotProvided(metadata.schemes, schemeOptions)
-            }
-          }
-        ]
-      },
-      ownerPurposeCard: {
-        title: { text: 'Owner and purpose' },
-        actions: {
-          items: [{
-            text: 'Change',
-            href: `${PURPOSE_URL}?from=check`,
-            visuallyHiddenText: 'the owner and purpose'
-          }]
-        },
-        rows: [
-          {
-            key: { text: 'Owner email' },
-            value: { text: _valueOrNotProvided(metadata.owner) }
-          },
-          {
-            key: { text: 'Purpose of guidance' },
-            value: { text: _valueOrNotProvided(metadata.goal) }
-          },
-          {
-            key: { text: 'Required knowledge and training' },
-            value: { text: _valueOrNotProvided(metadata.requirements) }
-          },
-          {
-            key: { text: 'Systems' },
-            value: {
-              text: _labelsOrNotProvided(metadata.systems, systemOptions)
-            }
-          },
-          {
-            key: { text: 'Who is this guidance for?' },
-            value: {
-              text: _labelsOrNotProvided(metadata.audience, audienceOptions)
-            }
-          }
-        ]
-      }
+      guideDetailsCard: _buildGuideDetailsCard({
+        metadata,
+        stagedDocument,
+        schemeOptions
+      }),
+      ownerPurposeCard: _buildOwnerPurposeCard({
+        metadata,
+        systemOptions,
+        audienceOptions
+      })
     })
   }
 
@@ -162,11 +144,9 @@ class CheckAnswersViewModel {
    */
   static fromValidationError (sessionData, err) {
     const { errorList } = mapValidationError(err, FIELD_HREF_MAP)
-    const viewModel = CheckAnswersViewModel.fromSession(sessionData)
+    const { guideDetailsCard, ownerPurposeCard } = CheckAnswersViewModel.fromSession(sessionData)
 
-    viewModel.errorList = errorList
-
-    return viewModel
+    return new CheckAnswersViewModel({ guideDetailsCard, ownerPurposeCard, errorList })
   }
 
   pageTitle = 'Check the details before you convert'
