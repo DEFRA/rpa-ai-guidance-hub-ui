@@ -1,25 +1,32 @@
+const TEXT_TITLE = 'Title'
+const TEXT_DOCUMENT_NAME = 'Document name'
+const TEXT_LAST_MODIFIED = 'Last modified'
+const TEXT_VERSION = 'Version'
+const TEXT_ACTION = 'Action'
+const CLASS_WIDTH_ONE_HALF = 'govuk-!-width-one-half'
+
 const HEADS = {
   recent: [
-    { text: 'Title', classes: 'govuk-!-width-one-half' },
-    { text: 'Last modified' },
-    { text: 'Version' },
-    { text: 'Action' }
+    { text: TEXT_TITLE, classes: CLASS_WIDTH_ONE_HALF },
+    { text: TEXT_LAST_MODIFIED },
+    { text: TEXT_VERSION },
+    { text: TEXT_ACTION }
   ],
   saved: [
-    { text: 'Title', classes: 'govuk-!-width-one-half' },
-    { text: 'Last modified' },
-    { text: 'Version' },
-    { text: 'Action' }
+    { text: TEXT_TITLE, classes: CLASS_WIDTH_ONE_HALF },
+    { text: TEXT_LAST_MODIFIED },
+    { text: TEXT_VERSION },
+    { text: TEXT_ACTION }
   ],
   editing: [
-    { text: 'Document name', classes: 'govuk-!-width-one-half' },
-    { text: 'Version' },
-    { text: 'Last modified' },
-    { html: '<span class="govuk-visually-hidden">Action</span>' }
+    { text: TEXT_DOCUMENT_NAME, classes: CLASS_WIDTH_ONE_HALF },
+    { text: TEXT_VERSION },
+    { text: TEXT_LAST_MODIFIED },
+    { html: `<span class="govuk-visually-hidden">${TEXT_ACTION}</span>` }
   ],
   'awaiting-approval': [
-    { text: 'Document name', classes: 'govuk-!-width-one-half' },
-    { text: 'Version' },
+    { text: TEXT_DOCUMENT_NAME, classes: CLASS_WIDTH_ONE_HALF },
+    { text: TEXT_VERSION },
     { text: 'Publishing checks' },
     { text: 'Changes requested' }
   ]
