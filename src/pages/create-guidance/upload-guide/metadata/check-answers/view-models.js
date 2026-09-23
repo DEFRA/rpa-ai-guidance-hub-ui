@@ -1,5 +1,5 @@
 const BACK_URL = '/create-guidance/upload-guide/metadata/purpose'
-const DASHBOARD_URL = '/designer/dashboard'
+const HUB_URL = '/hub'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
 const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
 
@@ -34,7 +34,7 @@ class CheckAnswersViewModel {
   constructor (data = {}) {
     this.rows = data.rows || []
     this.backUrl = data.backUrl || BACK_URL
-    this.dashboardUrl = DASHBOARD_URL
+    this.hubUrl = HUB_URL
   }
 
   /**

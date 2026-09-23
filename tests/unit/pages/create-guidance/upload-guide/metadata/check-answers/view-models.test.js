@@ -27,7 +27,7 @@ describe('#CheckAnswersViewModel', () => {
       { key: 'Audience', values: ['Processor'], changeUrl: '/create-guidance/upload-guide/metadata/purpose' }
     ])
     expect(viewModel.backUrl).toBe('/create-guidance/upload-guide/metadata/purpose')
-    expect(viewModel.dashboardUrl).toBe('/designer/dashboard')
+    expect(viewModel.hubUrl).toBe('/hub')
     expect(viewModel.pageTitle).toBe('Check your answers')
   })
 

@@ -1,0 +1,45 @@
+import { constants as statusCodes } from 'node:http2'
+
+import { createServer } from '../../../../src/server/server.js'
+import { loginAsDevUser } from '../../helpers/login.js'
+
+describe('#hubController', () => {
+  let server
+
+  beforeAll(async () => {
+    server = await createServer()
+    await server.initialize()
+  })
+
+  afterAll(async () => {
+    await server.stop({ timeout: 0 })
+  })
+
+  describe('When logged in as a dev user', () => {
+    test('Should respond with 200 and render the hub page', async () => {
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode, payload } = await server.inject({
+        method: 'GET',
+        url: '/hub',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(payload).toContain('RPA Guidance Hub')
+      expect(payload).toContain('No guidance has been published yet.')
+    })
+  })
+
+  describe('when not logged in', () => {
+    test('Should respond with 302 and redirect to the home page', async () => {
+      const { statusCode, headers } = await server.inject({
+        method: 'GET',
+        url: '/hub'
+      })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(headers.location).toBe('/')
+    })
+  })
+})
