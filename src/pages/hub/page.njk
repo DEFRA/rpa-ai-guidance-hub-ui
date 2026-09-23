@@ -2,30 +2,14 @@
 {% from "govuk/components/phase-banner/macro.njk" import govukPhaseBanner %}
 {% from "govuk/components/input/macro.njk" import govukInput %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
-{% from "govuk/components/tabs/macro.njk" import govukTabs %}
 {% from "govuk/components/table/macro.njk" import govukTable %}
 
 {% set pageTitle = 'RPA Guidance Hub' %}
 {% set page = 'hub' %}
-
-{% macro guidanceTablePanel(table, type) %}
-  {% if table.isEmpty %}
-    {% if type == 'all' and search is defined and search != '' %}
-      <p class="govuk-body">No guidance found for your search.</p>
-    {% elif type == 'all' %}
-      <p class="govuk-body">No guidance has been published yet.</p>
-    {% elif type == 'recent' %}
-      <p class="govuk-body">You haven't opened any guidance yet. Any guidance you open will appear here.</p>
-    {% elif type == 'saved' %}
-      <p class="govuk-body">You haven't saved any guidance yet. Select 'Save' on a guide to add it here.</p>
-    {% endif %}
-  {% else %}
-    {{ govukTable({ head: table.head, rows: table.rows }) }}
-  {% endif %}
-{% endmacro %}
+{% set showNav = false %}
 
 {% macro tabLabel(text, count) %}
-  {%- if count and count > 0 -%}
+  {%- if count is defined and count !== null -%}
     {{ text }} ({{ count }})
   {%- else -%}
     {{ text }}
@@ -33,15 +17,23 @@
 {% endmacro %}
 
 {% block content %}
+  <div class="defra-hero defra-hero--hub govuk-!-margin-bottom-6">
+    <div class="govuk-width-container">
+      <div class="govuk-grid-row">
+        <div class="govuk-grid-column-two-thirds">
+          <h1 class="govuk-heading-l govuk-!-margin-bottom-4">RPA Guidance hub</h1>
+
+          <p class="govuk-body govuk-!-margin-bottom-0">
+            Find guidance to help you review and process claims, or manage guidance documents if you're responsible for keeping them up to date.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="govuk-width-container">
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-two-thirds">
-        <h2 class="govuk-heading-l">Find and manage guidance</h2>
-
-        <p class="govuk-body">
-          Search for guidance, or browse everything that's published. Guidance owners and editors can also manage guidance from this page.
-        </p>
-
         <form action="/hub" method="get" role="search">
           <div class="app-search-form__group">
             {{ govukInput({
@@ -63,35 +55,77 @@
           </div>
         </form>
 
-        <h3 class="govuk-heading-m">Manage guidance</h3>
-
         <div class="govuk-button-group">
-          <a class="govuk-button" href="/create-guidance/upload-guide">Migrate guidance</a>
+          <a class="govuk-button" href="/create-guidance/upload-guide">Upload guidance</a>
         </div>
       </div>
     </div>
 
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-full">
-        {{ govukTabs({
-          items: [
-            {
-              label: tabLabel("All guidance", allGuidance.count),
-              id: "all-guidance",
-              panel: { html: guidanceTablePanel(allGuidance, 'all') }
-            },
-            {
-              label: tabLabel("Recently opened", recentlyOpened.count),
-              id: "recently-opened",
-              panel: { html: guidanceTablePanel(recentlyOpened, 'recent') }
-            },
-            {
-              label: tabLabel("Saved guidance", savedGuidance.count),
-              id: "saved-guidance",
-              panel: { html: guidanceTablePanel(savedGuidance, 'saved') }
-            }
-          ]
-        }) }}
+        <div class="govuk-tabs" data-module="govuk-tabs">
+          <h2 class="govuk-tabs__title">Contents</h2>
+          <ul class="govuk-tabs__list" role="tablist" aria-label="Guidance sections">
+            <li class="govuk-tabs__list-item {%- if activeTab == 'recently-opened' %} govuk-tabs__list-item--selected{% endif %}" role="presentation">
+              <a class="govuk-tabs__tab" href="#recently-opened" data-tab-button="recently-opened" id="tab-button-recently-opened" role="tab" aria-selected="{{ 'true' if activeTab == 'recently-opened' else 'false' }}" aria-controls="recently-opened">
+                {{ tabLabel("Recently opened", recentlyOpened.count) }}
+              </a>
+            </li>
+            <li class="govuk-tabs__list-item {%- if activeTab == 'saved-guidance' %} govuk-tabs__list-item--selected{% endif %}" role="presentation">
+              <a class="govuk-tabs__tab" href="#saved-guidance" data-tab-button="saved-guidance" id="tab-button-saved-guidance" role="tab" aria-selected="{{ 'true' if activeTab == 'saved-guidance' else 'false' }}" aria-controls="saved-guidance">
+                {{ tabLabel("Saved guidance", savedGuidance.count) }}
+              </a>
+            </li>
+            <li class="govuk-tabs__list-item {%- if activeTab == 'editing' %} govuk-tabs__list-item--selected{% endif %}" role="presentation">
+              <a class="govuk-tabs__tab" href="#editing" data-tab-button="editing" id="tab-button-editing" role="tab" aria-selected="{{ 'true' if activeTab == 'editing' else 'false' }}" aria-controls="editing">
+                {{ tabLabel("Editing", editing.count) }}
+              </a>
+            </li>
+            <li class="govuk-tabs__list-item {%- if activeTab == 'awaiting-approval' %} govuk-tabs__list-item--selected{% endif %}" role="presentation">
+              <a class="govuk-tabs__tab" href="#awaiting-approval" data-tab-button="awaiting-approval" id="tab-button-awaiting-approval" role="tab" aria-selected="{{ 'true' if activeTab == 'awaiting-approval' else 'false' }}" aria-controls="awaiting-approval">
+                {{ tabLabel("Awaiting approval", awaitingApproval.count) }}
+              </a>
+            </li>
+          </ul>
+
+          <div class="govuk-tabs__panel {%- if activeTab != 'recently-opened' %} govuk-tabs__panel--hidden{% endif %}" data-tab-panel="recently-opened" id="recently-opened" role="tabpanel" aria-labelledby="tab-button-recently-opened">
+            <h2 class="govuk-heading-m">Recently opened</h2>
+            {% if recentlyOpened.isEmpty %}
+              <p class="govuk-body">You haven't opened any guidance yet. Any guidance you open will appear here.</p>
+            {% else %}
+              <p class="govuk-hint">Your {{ recentlyOpened.count }} recently opened guidances</p>
+              {{ govukTable({ head: recentlyOpened.head, rows: recentlyOpened.rows }) }}
+            {% endif %}
+          </div>
+
+          <div class="govuk-tabs__panel {%- if activeTab != 'saved-guidance' %} govuk-tabs__panel--hidden{% endif %}" data-tab-panel="saved-guidance" id="saved-guidance" role="tabpanel" aria-labelledby="tab-button-saved-guidance">
+            <h2 class="govuk-heading-m">Saved guidance</h2>
+            {% if savedGuidance.isEmpty %}
+              <p class="govuk-body">You haven't saved any guidance yet. Select 'Save' on a guide to add it here.</p>
+            {% else %}
+              <p class="govuk-hint">Guidance you've saved for quick access.</p>
+              {{ govukTable({ head: savedGuidance.head, rows: savedGuidance.rows }) }}
+            {% endif %}
+          </div>
+
+          <div class="govuk-tabs__panel {%- if activeTab != 'editing' %} govuk-tabs__panel--hidden{% endif %}" data-tab-panel="editing" id="editing" role="tabpanel" aria-labelledby="tab-button-editing">
+            <h2 class="govuk-heading-m">Editing</h2>
+            {% if editing.isEmpty %}
+              <p class="govuk-body">You are not currently editing any guidance documents.</p>
+            {% else %}
+              {{ govukTable({ head: editing.head, rows: editing.rows }) }}
+            {% endif %}
+          </div>
+
+          <div class="govuk-tabs__panel {%- if activeTab != 'awaiting-approval' %} govuk-tabs__panel--hidden{% endif %}" data-tab-panel="awaiting-approval" id="awaiting-approval" role="tabpanel" aria-labelledby="tab-button-awaiting-approval">
+            <h2 class="govuk-heading-m">Awaiting approval</h2>
+            {% if awaitingApproval.isEmpty %}
+              <p class="govuk-body">There are no guidance documents awaiting approval.</p>
+            {% else %}
+              {{ govukTable({ head: awaitingApproval.head, rows: awaitingApproval.rows }) }}
+            {% endif %}
+          </div>
+        </div>
       </div>
     </div>
   </div>

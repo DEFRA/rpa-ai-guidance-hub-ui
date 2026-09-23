@@ -16,7 +16,7 @@ describe('#hubController', () => {
   })
 
   describe('When logged in as a dev user', () => {
-    test('Should respond with 200 and render the hub page', async () => {
+    test('Should respond with 200 and render the hub page with the 4 tabs and action button', async () => {
       const cookie = await loginAsDevUser(server)
 
       const { statusCode, payload } = await server.inject({
@@ -26,8 +26,28 @@ describe('#hubController', () => {
       })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(payload).toContain('RPA Guidance Hub')
-      expect(payload).toContain('No guidance has been published yet.')
+      expect(payload).toContain('RPA Guidance hub')
+      expect(payload).toContain('Recently opened')
+      expect(payload).toContain('Saved guidance')
+      expect(payload).toContain('Editing')
+      expect(payload).toContain('Awaiting approval')
+      expect(payload).not.toContain('All guidance')
+      expect(payload).toContain('Create or upload guidance')
+      expect(payload).toContain("You haven't opened any guidance yet.")
+      expect(payload).not.toContain('defra-service-navigation')
+    })
+
+    test('Should select the requested tab when ?tab=editing is provided', async () => {
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode, payload } = await server.inject({
+        method: 'GET',
+        url: '/hub?tab=editing',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(payload).toContain('href="#editing" data-tab-button="editing" id="tab-button-editing" role="tab" aria-selected="true"')
     })
   })
 

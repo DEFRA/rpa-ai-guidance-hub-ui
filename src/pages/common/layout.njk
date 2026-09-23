@@ -9,6 +9,10 @@
   {% set serviceNameLink = "/" %}
 {% endif %}
 
+{% if showNav is not defined %}
+  {% set showNav = true %}
+{% endif %}
+
 {% block head %}
   <link href="{{ getAssetPath('src/client/stylesheets/application.scss') }}" rel="stylesheet">
 {% endblock %}
@@ -44,7 +48,7 @@
     {% endif %}
     </div>
   </header>
-  {% if page != 'home' or isAuthenticated %}
+  {% if showNav and isAuthenticated %}
   <nav class="defra-service-navigation" aria-label="Service navigation">
     <div class="defra-service-navigation__inner">
       <ul class="defra-service-navigation__list">
