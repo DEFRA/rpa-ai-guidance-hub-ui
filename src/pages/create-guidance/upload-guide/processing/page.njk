@@ -1,7 +1,13 @@
 {% extends "common/layout.njk" %}
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
 
 {% block head %}
   {{ super() }}
+  <style nonce="{{ cspNonce.style }}">
+    #upload-progress-bar {
+      width: {{ percentage }}%
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
@@ -24,17 +30,17 @@
 
         <p class="govuk-body">We scan every file for viruses before it goes into the hub. This usually takes a few seconds.</p>
 
-        {% if refreshSeconds %}
-          <noscript>
-            <p class="govuk-inset-text">This page refreshes every {{ refreshSeconds }} seconds until your file has been checked.</p>
-          </noscript>
-        {% endif %}
+        <noscript>
+          {{ govukWarningText({
+            text: "JavaScript is required for this page to automatically refresh. Refresh manually to see updates.",
+            iconFallbackText: "Warning"
+          }) }}
+        </noscript>
 
         <div class="app-progress{{ ' app-progress--error' if isError }}">
           <p class="app-progress__status" id="upload-status-label" data-progress-label role="status">{{ label }}</p>
           <div class="app-progress__track" role="progressbar" aria-labelledby="upload-status-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ percentage }}">
-            {# Width is applied by status-poll.js from data-percentage: an inline style attribute would be blocked by the content security policy. #}
-            <div class="app-progress__bar{{ ' app-progress__bar--error' if isError }}" data-progress-bar data-percentage="{{ percentage }}"></div>
+            <div id="upload-progress-bar" class="app-progress__bar{{ ' app-progress__bar--error' if isError }}" style="width: {{ percentage }}" data-progress-bar data-percentage="{{ percentage }}"></div>
           </div>
         </div>
 
