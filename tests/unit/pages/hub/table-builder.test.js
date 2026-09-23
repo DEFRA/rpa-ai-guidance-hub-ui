@@ -45,6 +45,15 @@ describe('#buildGuidanceTable', () => {
       expect(result.head).toEqual(HEADS.recent)
     })
 
+    test('Should default to recent type when type parameter is omitted', () => {
+      const result = buildGuidanceTable(items)
+
+      expect(result.isEmpty).toBe(false)
+      expect(result.count).toBe(2)
+      expect(result.head).toEqual(HEADS.recent)
+      expect(result.rows).toHaveLength(2)
+    })
+
     test('Should build rows with published tag, title link, last modified, version tag and remove link', () => {
       const result = buildGuidanceTable(items, 'recent')
 
@@ -62,6 +71,57 @@ describe('#buildGuidanceTable', () => {
       expect(result.rows[1][2]).toEqual({
         html: '<strong class="govuk-tag govuk-tag--purple">2</strong>'
       })
+    })
+
+    test('Should use custom status when provided on item', () => {
+      const itemWithCustomStatus = [
+        {
+          title: 'Custom status item',
+          href: '/guidance/3',
+          lastModified: '1 January 2026',
+          version: '1',
+          removeHref: '/hub/remove/3',
+          status: 'Archived'
+        }
+      ]
+
+      const result = buildGuidanceTable(itemWithCustomStatus, 'recent')
+
+      expect(result.rows[0][0]).toEqual({
+        html: '<div class="govuk-!-margin-bottom-1"><strong class="govuk-tag govuk-tag--green">Archived</strong></div><a class="govuk-link" href="/guidance/3">Custom status item</a>'
+      })
+    })
+
+    test('Should return saved head columns and map rows when type is saved', () => {
+      const result = buildGuidanceTable(items, 'saved')
+
+      expect(result.head).toEqual(HEADS.saved)
+      expect(result.rows[0]).toEqual([
+        {
+          html: '<div class="govuk-!-margin-bottom-1"><strong class="govuk-tag govuk-tag--green">Published</strong></div><a class="govuk-link" href="/guidance/1">CS MA Claim - Revenue Options Claim Rule at Signoff 2026</a>'
+        },
+        { text: '20 July 2026' },
+        { html: '<strong class="govuk-tag govuk-tag--green">1</strong>' },
+        {
+          html: '<a class="govuk-link" href="/hub/remove/1">Remove<span class="govuk-visually-hidden"> CS MA Claim - Revenue Options Claim Rule at Signoff 2026</span></a>'
+        }
+      ])
+    })
+
+    test('Should fall back to recent head and default mapper when type is unrecognized', () => {
+      const result = buildGuidanceTable(items, 'unknown-type')
+
+      expect(result.head).toEqual(HEADS.recent)
+      expect(result.rows[0]).toEqual([
+        {
+          html: '<div class="govuk-!-margin-bottom-1"><strong class="govuk-tag govuk-tag--green">Published</strong></div><a class="govuk-link" href="/guidance/1">CS MA Claim - Revenue Options Claim Rule at Signoff 2026</a>'
+        },
+        { text: '20 July 2026' },
+        { html: '<strong class="govuk-tag govuk-tag--green">1</strong>' },
+        {
+          html: '<a class="govuk-link" href="/hub/remove/1">Remove<span class="govuk-visually-hidden"> CS MA Claim - Revenue Options Claim Rule at Signoff 2026</span></a>'
+        }
+      ])
     })
   })
 
@@ -125,6 +185,21 @@ describe('#buildGuidanceTable', () => {
       ])
       expect(result.rows[1][2]).toEqual({ text: '2 issues' })
       expect(result.rows[1][3]).toEqual({ text: '1 change requested' })
+    })
+
+    test('Should use fallback text when publishing checks and changes requested are missing', () => {
+      const itemWithDefaults = [
+        {
+          title: 'Countryside Stewardship: capital grants',
+          href: '/manage-guidance/cs',
+          version: '1'
+        }
+      ]
+
+      const result = buildGuidanceTable(itemWithDefaults, 'awaiting-approval')
+
+      expect(result.rows[0][2]).toEqual({ text: 'No issues' })
+      expect(result.rows[0][3]).toEqual({ text: 'None' })
     })
   })
 })
