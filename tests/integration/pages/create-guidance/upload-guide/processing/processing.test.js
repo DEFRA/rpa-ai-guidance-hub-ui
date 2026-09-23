@@ -92,7 +92,7 @@ describe('upload guide processing page', () => {
       const res = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
 
       expect(res.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(res.payload).toContain('Checking your file')
+      expect(res.payload).toContain('Document upload')
       expect(res.payload).toContain('Scanning for viruses')
       expect(res.payload).toContain(`data-poll-url="${STATUS_URL}"`)
       expect(res.payload).toContain('data-redirect-url="/create-guidance/upload-guide/metadata"')
@@ -138,8 +138,47 @@ describe('upload guide processing page', () => {
       expect(res.payload).toContain('File rejected')
       expect(res.payload).toContain('Upload a different file')
       expect(res.payload).toContain('<title>')
-      expect(res.payload).toContain('Error: Checking your file')
+      expect(res.payload).toContain('Error: Document upload')
       expect(res.payload).not.toContain('http-equiv="refresh"')
+    })
+
+    test('explains a validation failure, and retrying starts a genuinely fresh upload', async () => {
+      const { uploadId, cookie } = await startMigration(server, await loginAsDevUser(server))
+
+      nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).times(2).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))
+
+      const first = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
+
+      expect(first.payload).toContain('Parsing document')
+
+      nock(GUIDANCE_API_URL).get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'failed', parsingError: 'Not a Word document' }))
+
+      const failedCookie = mergeCookies(cookie, first.headers['set-cookie'])
+      const second = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie: failedCookie } })
+
+      expect(second.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(second.payload).toContain('This file cannot be opened')
+      expect(second.payload).toContain('Check you selected the correct file and that it has not been corrupted')
+      expect(second.payload).toContain('Upload a different file')
+
+      // cdp-uploader still reports this file as scanned clean - only the
+      // guidance API knows it failed - so both have to be checked before the
+      // retry link is allowed to reuse the same dead upload.
+      nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))
+      nock(GUIDANCE_API_URL).get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'failed', parsingError: 'Not a Word document' }))
+      nock(CDP_UPLOADER_URL).post('/initiate').reply(statusCodes.HTTP_STATUS_OK, initiateUploadResponse({ uploadId: 'u-fresh' }))
+
+      const retryCookie = mergeCookies(failedCookie, second.headers['set-cookie'])
+      const retry = await server.inject({
+        method: 'GET',
+        url: '/create-guidance/upload-guide',
+        headers: { cookie: retryCookie }
+      })
+
+      expect(retry.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(retry.payload).toContain('u-fresh')
+      expect(retry.payload).not.toContain('This file cannot be opened')
+      expect(nock.pendingMocks()).toEqual([])
     })
 
     test('treats a submission with no file as a failure, not a success', async () => {
@@ -194,6 +233,7 @@ describe('upload guide processing page', () => {
         percentage: 50,
         label: 'Scanning for viruses',
         message: null,
+        detail: null,
         isComplete: false,
         isError: false
       })
@@ -239,6 +279,7 @@ describe('upload guide processing page', () => {
         percentage: 50,
         label: 'File rejected',
         message: 'The selected file contains a virus',
+        detail: null,
         isComplete: false,
         isError: true
       })

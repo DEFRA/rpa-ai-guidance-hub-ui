@@ -1,5 +1,6 @@
 {% extends "common/layout.njk" %}
 {% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
 
 {% block head %}
   {{ super() }}
@@ -17,18 +18,21 @@
         data-poll-url="{{ pollUrl }}"
         data-redirect-url="{{ redirectUrl }}">
 
-        <div class="govuk-error-summary" data-progress-error aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary"{% if not isError %} hidden{% endif %}>
-          <h2 class="govuk-error-summary__title" id="error-summary-title">There is a problem</h2>
-          <div class="govuk-error-summary__body">
-            <ul class="govuk-list govuk-error-summary__list">
-              <li><a href="{{ retryUrl }}" data-progress-error-message>{{ errorMessage }}</a></li>
-            </ul>
-          </div>
+        <div data-progress-error{% if not isError %} hidden{% endif %}>
+          {% set errorSummaryHtml %}
+            <span data-progress-error-message>{{ errorMessage }}</span><br>
+            <span data-progress-error-detail{% if not errorDetail %} hidden{% endif %}>{{ errorDetail }}</span>
+          {% endset %}
+
+          {{ govukErrorSummary({
+            titleText: "There is a problem",
+            descriptionHtml: errorSummaryHtml
+          }) }}
         </div>
 
-        <h1 class="govuk-heading-l" id="upload-status-heading">Checking your file</h1>
+        <h1 class="govuk-heading-l" id="upload-status-heading">Document upload</h1>
 
-        <p class="govuk-body">We scan every file for viruses before it goes into the hub. This usually takes a few seconds.</p>
+        <p class="govuk-body" data-progress-intro{% if isError %} hidden{% endif %}>We scan every file for viruses before it goes into the hub. This usually takes a few seconds.</p>
 
         <noscript>
           {{ govukWarningText({

@@ -39,10 +39,10 @@ const STEP_CHECKS = [
     check: _checkScanningStatus
   },
   {
-    id: steps.STEP_IDS.MINIMAL_PARSE,
-    pendingStatusId: steps.STATUS_IDS.MINIMAL_PARSE_PENDING,
-    failedStatusId: steps.STATUS_IDS.MINIMAL_PARSE_FAILED,
-    check: _checkMinimalParseStatus
+    id: steps.STEP_IDS.PARSE,
+    pendingStatusId: steps.STATUS_IDS.PARSE_PENDING,
+    failedStatusId: steps.STATUS_IDS.PARSE_FAILED,
+    check: _checkParseStatus
   }
 ]
 
@@ -67,7 +67,11 @@ const tracker = new ProgressTracker(STEP_CHECKS)
  *
  * Reuses an upload whose form has not been submitted yet, reports one that
  * is in progress or complete, and starts a fresh upload when there is none
- * or the last one failed (rejected, empty or no longer known to cdp-uploader).
+ * or the last one failed. "Failed" includes both a cdp-uploader-level
+ * rejection and a file that scanned clean but was later found invalid by the
+ * guidance API - cdp-uploader has no idea about that second kind, and
+ * reports the file as complete forever, so it has to be checked separately
+ * or a retry would just loop back to the same failed file.
  *
  * @param {import('./session.js').GuideUpload} upload - The GuideUpload instance from session
  * @returns {Promise<{code: string, uploadId?: string}>}
@@ -75,9 +79,15 @@ const tracker = new ProgressTracker(STEP_CHECKS)
 async function startMigration (upload) {
   if (upload.hasUpload()) {
     const status = await getUploadStatus(upload.activeUploadId)
-    const { code } = _evaluateUploadStatus(status)
+    const { code, fileId } = _evaluateUploadStatus(status)
 
-    if (code !== RESULTS.UPLOAD_FAILED) {
+    if (code === RESULTS.UPLOAD_COMPLETE) {
+      const parseCheck = await _checkParseStatus({ fileId })
+
+      if (!parseCheck.error) {
+        return { code }
+      }
+    } else if (code !== RESULTS.UPLOAD_FAILED) {
       return { code }
     }
   }
@@ -120,7 +130,7 @@ async function getUploadOutcome (request) {
  * @param {import('@hapi/hapi').Request} request
  * @param {{status?: Object|null}} [options] - A cdp-uploader status already
  *   fetched for this upload, to save the scanning check fetching it again
- * @returns {Promise<{statusId: string, label: string, percentage: number, isComplete: boolean, isError: boolean, message: string|null}>}
+ * @returns {Promise<{statusId: string, label: string, percentage: number, isComplete: boolean, isError: boolean, message: string|null, detail: string|null}>}
  */
 async function getGuideUploadProgress (request, options = {}) {
   const upload = session.getGuideUpload(request)
@@ -150,7 +160,8 @@ async function getGuideUploadProgress (request, options = {}) {
     percentage: stepState.percentage,
     isComplete: trackerStatus.isComplete,
     isError: trackerStatus.isError,
-    message: trackerStatus.failure?.message ?? stepState.message ?? null
+    message: trackerStatus.failure?.message ?? stepState.message ?? null,
+    detail: trackerStatus.failure?.detail ?? stepState.detail ?? null
   }
 }
 
@@ -277,7 +288,7 @@ async function _checkScanningStatus ({ uploadId, status: knownStatus }) {
 }
 
 /**
- * Check minimal-parse status via the guidance API.
+ * Check parse status via the guidance API.
  *
  * @private
  * @param {{fileId: string|null}} context - fileId captured from the
@@ -285,7 +296,7 @@ async function _checkScanningStatus ({ uploadId, status: knownStatus }) {
  *   poll, since a completed step's check never runs again)
  * @returns {Promise<{complete: boolean, error?: boolean}>}
  */
-async function _checkMinimalParseStatus ({ fileId }) {
+async function _checkParseStatus ({ fileId }) {
   try {
     const stagedDocument = await getStagedDocumentById(fileId)
 

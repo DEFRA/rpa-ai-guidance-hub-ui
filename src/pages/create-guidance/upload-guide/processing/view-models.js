@@ -9,7 +9,7 @@ const RETRY_URL = '/create-guidance/upload-guide'
 const REFRESH_SECONDS = 5
 
 /**
- * View model for the "Checking your file" upload processing page.
+ * View model for the "Document upload" processing page.
  */
 class UploadProcessingViewModel {
   /**
@@ -21,6 +21,7 @@ class UploadProcessingViewModel {
    * @param {boolean} [data.isComplete] - Whether processing is complete
    * @param {boolean} [data.isError] - Whether processing encountered an error
    * @param {string|null} [data.message] - User-facing explanation of an error
+   * @param {string|null} [data.detail] - Optional supporting copy for an error
    */
   constructor (data = {}) {
     this.pollUrl = POLL_URL
@@ -32,11 +33,12 @@ class UploadProcessingViewModel {
     this.isComplete = data.isComplete ?? false
     this.isError = data.isError ?? false
     this.errorMessage = this.isError ? (data.message ?? null) : null
+    this.errorDetail = this.isError ? (data.detail ?? null) : null
 
     // Only keep refreshing while there is something to wait for.
     this.refreshSeconds = this.isComplete || this.isError ? null : REFRESH_SECONDS
 
-    this.pageTitle = this.isError ? 'Error: Checking your file' : 'Checking your file'
+    this.pageTitle = this.isError ? 'Error: Document upload' : 'Document upload'
   }
 
   page = 'upload processing'
