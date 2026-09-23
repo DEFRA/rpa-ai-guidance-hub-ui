@@ -263,7 +263,7 @@ describe('#checkAnswersController Integration', () => {
       expect(postChangeResponse.headers.location).toBe(CHECK_ANSWERS_URL)
     })
 
-    test('POST converts document and redirects to dashboard on success', async () => {
+    test('POST converts document and redirects to hub on success', async () => {
       const devCookie = await loginAsDevUser(server)
       const cookie = await completeAllMetadata(server, devCookie)
 
@@ -277,7 +277,7 @@ describe('#checkAnswersController Integration', () => {
       })
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(response.headers.location).toBe('/designer/dashboard')
+      expect(response.headers.location).toBe('/hub')
     })
 
     test('POST redisplays check answers with an error summary when a saved answer is no longer a valid reference option', async () => {
@@ -289,12 +289,15 @@ describe('#checkAnswersController Integration', () => {
         .reply(statusCodes.HTTP_STATUS_OK, schemesResponse([
           { value: 'other-scheme', label: 'Other scheme' }
         ]))
+
       nock(GUIDANCE_API_BASE_URL)
         .get('/reference/systems')
         .reply(statusCodes.HTTP_STATUS_OK, systemsResponse())
+
       nock(GUIDANCE_API_BASE_URL)
         .get('/reference/audiences')
         .reply(statusCodes.HTTP_STATUS_OK, audiencesResponse())
+
       nock(GUIDANCE_API_BASE_URL)
         .get('/guides/staging/file-1')
         .reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse())

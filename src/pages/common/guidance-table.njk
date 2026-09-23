@@ -1,0 +1,66 @@
+{% from "govuk/components/table/macro.njk" import govukTable %}
+
+{#
+  Fixed colour -> class lookup, rather than interpolating a colour straight
+  into `govuk-tag--{{ colour }}`, so an unrecognised colour can't produce an
+  arbitrary class name.
+#}
+{% set TAG_CLASSES = {
+  green: "govuk-tag govuk-tag--green",
+  grey: "govuk-tag govuk-tag--grey",
+  yellow: "govuk-tag govuk-tag--yellow",
+  purple: "govuk-tag govuk-tag--purple"
+} %}
+
+{% macro tag(text, colour) %}
+  <strong class="{{ TAG_CLASSES[colour] | default(TAG_CLASSES.grey) }}">{{ text }}</strong>
+{%- endmacro %}
+
+{#
+  Renders one govukTable cell from a cell descriptor built by
+  HubViewModel (src/pages/hub/view-models.js). Descriptors carry data only
+  - never pre-built HTML - so every dynamic value below is interpolated by
+  Nunjucks (auto-escaping) rather than assembled as an `html` string in JS,
+  which would risk unescaped user content (e.g. a guidance title).
+#}
+{% macro _cell(cell) %}
+  {%- if cell.type == "version" -%}
+    {%- set colour = "purple" if (cell.version | float > 1) else "green" -%}
+    {{ tag(cell.version, colour) }}
+  {%- elif cell.type == "title" -%}
+    <div class="govuk-!-margin-bottom-1">{{ tag(cell.statusText, cell.statusColour) }}</div><a class="govuk-link" href="{{ cell.href }}">{{ cell.text }}</a>
+  {%- elif cell.type == "removeAction" -%}
+    <a class="govuk-link" href="{{ cell.href }}">Remove<span class="govuk-visually-hidden"> {{ cell.text }}</span></a>
+  {%- endif -%}
+{% endmacro %}
+
+{#
+  Renders any of the hub's four guidance tables from a HubViewModel table
+  entry - {heading, emptyMessage, hintMessage, head, rows, isEmpty, count}.
+#}
+{% macro guidanceTablePanel(table) %}
+  <h2 class="govuk-heading-m">{{ table.heading }}</h2>
+  {% if table.isEmpty %}
+    <p class="govuk-body">{{ table.emptyMessage }}</p>
+  {% else %}
+    {% if table.hintMessage %}
+      <p class="govuk-hint">{{ table.hintMessage }}</p>
+    {% endif %}
+
+    {% set rows = [] %}
+    {% for cells in table.rows %}
+      {% set row = [] %}
+      {% for cell in cells %}
+        {% if cell.type == "text" %}
+          {% set _ = row.push({ text: cell.text }) %}
+        {% else %}
+          {% set cellHtml %}{{ _cell(cell) }}{% endset %}
+          {% set _ = row.push({ html: cellHtml }) %}
+        {% endif %}
+      {% endfor %}
+      {% set _ = rows.push(row) %}
+    {% endfor %}
+
+    {{ govukTable({ head: table.head, rows: rows }) }}
+  {% endif %}
+{% endmacro %}
