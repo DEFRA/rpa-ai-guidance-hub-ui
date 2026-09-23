@@ -1,6 +1,8 @@
 import { mapValidationError } from '../../../form-errors.js'
+import { toCheckboxOptions } from '../view-helpers.js'
 
 const BACK_URL = '/create-guidance/upload-guide/metadata'
+const FORM_ACTION = '/create-guidance/upload-guide/metadata/purpose'
 
 const FIELD_HREF_MAP = {
   owner: '#owner',
@@ -8,21 +10,6 @@ const FIELD_HREF_MAP = {
   requirements: '#requirements',
   systems: '#systems',
   audience: '#audience'
-}
-
-/**
- * Map reference options onto the `{value, text}` shape the checkbox
- * template renders
- *
- * @private
- * @param {Array<{value: string, label?: string, text?: string}>} [options]
- * @returns {Array<{value: string, text: string}>}
- */
-function _toCheckboxOptions (options = []) {
-  return options.map((option) => ({
-    value: option.value,
-    text: option.text || option.label
-  }))
 }
 
 /**
@@ -38,14 +25,16 @@ class OwnerAndPurposeViewModel {
    * @param {Array} [data.systemOptions=[]]
    * @param {Array} [data.audienceOptions=[]]
    * @param {string|null} [data.backUrl]
+   * @param {string|null} [data.formAction]
    */
   constructor (data = {}) {
     this.values = data.values || {}
     this.errors = data.errors || {}
     this.errorList = data.errorList || []
-    this.systemOptions = _toCheckboxOptions(data.systemOptions)
-    this.audienceOptions = _toCheckboxOptions(data.audienceOptions)
+    this.systemOptions = toCheckboxOptions(data.systemOptions)
+    this.audienceOptions = toCheckboxOptions(data.audienceOptions)
     this.backUrl = data.backUrl || BACK_URL
+    this.formAction = data.formAction || FORM_ACTION
   }
 
   /**
@@ -55,7 +44,13 @@ class OwnerAndPurposeViewModel {
    * string: the template tests membership with `indexOf`, which on a string
    * would do substring matching.
    */
-  static fromSession ({ values = {}, systemOptions = [], audienceOptions = [] } = {}) {
+  static fromSession ({
+    values = {},
+    systemOptions = [],
+    audienceOptions = [],
+    backUrl = null,
+    formAction = null
+  } = {}) {
     return new OwnerAndPurposeViewModel({
       values: {
         owner: values.owner ?? '',
@@ -65,14 +60,25 @@ class OwnerAndPurposeViewModel {
         audience: values.audience ?? []
       },
       systemOptions,
-      audienceOptions
+      audienceOptions,
+      backUrl,
+      formAction
     })
   }
 
   /**
    * Create a view model from a Joi validation error
    */
-  static fromValidationError (payload, err, { systemOptions = [], audienceOptions = [] } = {}) {
+  static fromValidationError (
+    payload,
+    err,
+    {
+      systemOptions = [],
+      audienceOptions = [],
+      backUrl = null,
+      formAction = null
+    } = {}
+  ) {
     const { errors, errorList } = mapValidationError(err, FIELD_HREF_MAP)
 
     return new OwnerAndPurposeViewModel({
@@ -80,7 +86,9 @@ class OwnerAndPurposeViewModel {
       errors,
       errorList,
       systemOptions,
-      audienceOptions
+      audienceOptions,
+      backUrl,
+      formAction
     })
   }
 

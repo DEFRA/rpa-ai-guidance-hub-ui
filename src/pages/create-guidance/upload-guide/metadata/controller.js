@@ -5,8 +5,14 @@ import { getStagedDocumentById } from '../../../../services/staged-documents.js'
 import { GuideDetailsViewModel } from './view-models.js'
 
 const METADATA_VIEW = 'create-guidance/upload-guide/metadata/page.njk'
+const METADATA_URL = '/create-guidance/upload-guide/metadata'
 const UPLOAD_GUIDE_URL = '/create-guidance/upload-guide'
 const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
+const CHECK_ANSWERS_URL = '/create-guidance/upload-guide/metadata/check-answers'
+
+function isChangingFromCheck (request) {
+  return request.query?.from === 'check'
+}
 
 async function getMetadataForm (request, h) {
   const upload = getGuideUpload(request)
@@ -27,7 +33,11 @@ async function getMetadataForm (request, h) {
     values: savedMetadata,
     stagedDocument,
     schemeOptions,
-    notification
+    notification,
+    backUrl: isChangingFromCheck(request) ? CHECK_ANSWERS_URL : null,
+    formAction: isChangingFromCheck(request)
+      ? `${METADATA_URL}?from=check`
+      : METADATA_URL
   })
 
   return h
@@ -53,7 +63,14 @@ async function metadataFailAction (request, h, err) {
   const viewModel = GuideDetailsViewModel.fromValidationError(
     payload,
     err,
-    { schemeOptions, stagedDocument }
+    {
+      schemeOptions,
+      stagedDocument,
+      backUrl: isChangingFromCheck(request) ? CHECK_ANSWERS_URL : null,
+      formAction: isChangingFromCheck(request)
+        ? `${METADATA_URL}?from=check`
+        : METADATA_URL
+    }
   )
 
   return h
@@ -77,7 +94,9 @@ async function saveMetadata (request, h) {
     schemes: normalizeSchemes(request.payload.schemes)
   })
 
-  return h.redirect(PURPOSE_URL)
+  return h.redirect(
+    isChangingFromCheck(request) ? CHECK_ANSWERS_URL : PURPOSE_URL
+  )
 }
 
 export {

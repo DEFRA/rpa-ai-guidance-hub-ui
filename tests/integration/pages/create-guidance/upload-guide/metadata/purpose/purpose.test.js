@@ -37,10 +37,6 @@ function validPayload (overrides = {}) {
   }
 }
 
-/**
- * Put an active upload in session by driving the real upload-initiation
- * flow, as the screen-1 tests do.
- */
 async function startMigration (server, cookie, uploadId = 'u-purpose') {
   nock(CDP_UPLOADER_URL)
     .post('/initiate')
@@ -57,9 +53,6 @@ async function startMigration (server, cookie, uploadId = 'u-purpose') {
   return mergeCookies(cookie, get.headers['set-cookie'])
 }
 
-/**
- * Complete screen 1 so that screen 2 is reachable.
- */
 async function completeGuideDetails (server, cookie) {
   mockSchemes()
 
@@ -112,7 +105,7 @@ describe('#purposeController Integration', () => {
       expect(response.headers.location).toBe('/create-guidance/upload-guide')
     })
 
-    test('GET redirects to screen 1 if its answers are missing', async () => {
+    test('GET redirects to the guide details form if its answers are missing', async () => {
       const devCookie = await loginAsDevUser(server)
       const cookie = await startMigration(server, devCookie)
 
@@ -122,7 +115,7 @@ describe('#purposeController Integration', () => {
       expect(response.headers.location).toBe('/create-guidance/upload-guide/metadata')
     })
 
-    test('GET renders the form with reference options once screen 1 is complete', async () => {
+    test('GET renders the form with reference options once the guide details are complete', async () => {
       const cookie = await reachPurposeScreen(server)
       mockReferenceOptions()
 
@@ -149,7 +142,6 @@ describe('#purposeController Integration', () => {
     test('POST with an empty payload re-renders 400 listing every error in page order', async () => {
       const cookie = await reachPurposeScreen(server)
 
-      // one fetch to build the validation schema, one to re-render the form on failure
       mockReferenceOptions(2)
 
       const response = await server.inject({ method: 'POST', url: PURPOSE_URL, payload: {}, headers: { cookie } })
@@ -205,7 +197,7 @@ describe('#purposeController Integration', () => {
       const checkAnswers = await server.inject({ method: 'GET', url: CHECK_ANSWERS_URL, headers: { cookie: savedCookie } })
 
       expect(checkAnswers.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(checkAnswers.payload).toContain('Check your answers')
+      expect(checkAnswers.payload).toContain('Check the details before you convert')
       expect(checkAnswers.payload).toContain('A valid title')
       expect(checkAnswers.payload).toContain('Sustainable Farming Incentive (SFI)')
       expect(checkAnswers.payload).toContain('owner@example.com')
@@ -213,22 +205,24 @@ describe('#purposeController Integration', () => {
       expect(checkAnswers.payload).toContain('Processor')
       expect(checkAnswers.payload).toContain('Team leader')
 
-      // Going back keeps screen 2's answers...
       mockReferenceOptions()
       const purpose = await server.inject({ method: 'GET', url: PURPOSE_URL, headers: { cookie: savedCookie } })
 
       expect(purpose.payload).toContain('value="owner@example.com"')
       expect(purpose.payload).toMatch(/value="crm"\s+checked/)
 
-      // ...and screen 1's, proving the two screens merged into one session object
+      // ...and the guide details, proving the two screens merged into one session object
       mockSchemes()
       const details = await server.inject({ method: 'GET', url: '/create-guidance/upload-guide/metadata', headers: { cookie: savedCookie } })
 
       expect(details.payload).toContain('value="A valid title"')
     })
 
-    test('GET check answers redirects to screen 2 if its answers are missing', async () => {
+    test('GET check answers redirects to the purpose form if its answers are missing', async () => {
       const cookie = await reachPurposeScreen(server)
+
+      mockSchemes()
+      mockReferenceOptions()
 
       const response = await server.inject({ method: 'GET', url: CHECK_ANSWERS_URL, headers: { cookie } })
 

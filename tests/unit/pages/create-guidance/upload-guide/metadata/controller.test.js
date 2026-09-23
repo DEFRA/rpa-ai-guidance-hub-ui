@@ -112,6 +112,32 @@ describe('upload-guide metadata controller', () => {
       }))
     })
 
+    test('sets backUrl and formAction with from=check when changing from check-answers', async () => {
+      const uploadMock = {
+        hasUpload: vi.fn(() => true),
+        activeUploadId: 'test-upload-id',
+        fileId: null,
+        metadata: {}
+      }
+      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
+      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
+
+      request = {
+        query: { from: 'check' },
+        yar: { get: vi.fn(), flash: vi.fn(() => []) }
+      }
+
+      await getMetadataForm(request, h)
+
+      expect(h.view).toHaveBeenCalledWith(
+        METADATA_VIEW,
+        expect.objectContaining({
+          backUrl: '/create-guidance/upload-guide/metadata/check-answers',
+          formAction: '/create-guidance/upload-guide/metadata?from=check'
+        })
+      )
+    })
+
     test('a title already saved to session takes precedence over the parsed staged document title', async () => {
       const uploadMock = {
         hasUpload: vi.fn(() => true),
@@ -264,6 +290,36 @@ describe('upload-guide metadata controller', () => {
         lastModifiedDate: '10 May 2026'
       }))
     })
+
+    test('sets backUrl and formAction with from=check when changing from check-answers', async () => {
+      const uploadMock = {
+        hasUpload: vi.fn(() => true),
+        activeUploadId: 'test-upload-id',
+        fileId: null,
+        metadata: {}
+      }
+      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
+      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
+
+      request = {
+        query: { from: 'check' },
+        payload: { guideTitle: '' },
+        yar: { get: vi.fn() }
+      }
+      const err = {
+        details: [{ path: ['guideTitle'], message: 'Enter the guidance title' }]
+      }
+
+      await metadataFailAction(request, h, err)
+
+      expect(h.view).toHaveBeenCalledWith(
+        METADATA_VIEW,
+        expect.objectContaining({
+          backUrl: '/create-guidance/upload-guide/metadata/check-answers',
+          formAction: '/create-guidance/upload-guide/metadata?from=check'
+        })
+      )
+    })
   })
 
   describe('saveMetadata', () => {
@@ -327,6 +383,30 @@ describe('upload-guide metadata controller', () => {
         guideTitle: 'Updated Guide Title',
         schemes: ['sfi']
       })
+    })
+
+    test('redirects to check-answers when from=check is present', async () => {
+      const uploadMock = {
+        hasUpload: vi.fn(() => true),
+        activeUploadId: 'test-upload-id'
+      }
+      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
+      vi.spyOn(session, 'setGuideUploadMetadata').mockImplementation(() => {})
+
+      request = {
+        query: { from: 'check' },
+        payload: {
+          guideTitle: 'Updated Guide Title',
+          schemes: ['sfi']
+        },
+        yar: { get: vi.fn(), set: vi.fn() }
+      }
+
+      await saveMetadata(request, h)
+
+      expect(h.redirect).toHaveBeenCalledWith(
+        '/create-guidance/upload-guide/metadata/check-answers'
+      )
     })
   })
 })

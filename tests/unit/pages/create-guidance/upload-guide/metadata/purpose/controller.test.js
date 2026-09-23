@@ -53,7 +53,7 @@ describe('upload-guide metadata purpose controller', () => {
       expect(h.view).not.toHaveBeenCalled()
     })
 
-    test('redirects to screen 1 if its answers are missing', async () => {
+    test('redirects to the guide details form if its answers are missing', async () => {
       mockUpload(null)
 
       await getPurposeForm(request, h)
@@ -74,6 +74,22 @@ describe('upload-guide metadata purpose controller', () => {
       }))
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
     })
+
+    test('sets backUrl and formAction with from=check when changing from check-answers', async () => {
+      mockUpload({ guideTitle: 'A title' })
+      mockReferenceData()
+      request.query = { from: 'check' }
+
+      await getPurposeForm(request, h)
+
+      expect(h.view).toHaveBeenCalledWith(
+        PURPOSE_VIEW,
+        expect.objectContaining({
+          backUrl: '/create-guidance/upload-guide/metadata/check-answers',
+          formAction: '/create-guidance/upload-guide/metadata/purpose?from=check'
+        })
+      )
+    })
   })
 
   describe('purposeFailAction', () => {
@@ -93,6 +109,23 @@ describe('upload-guide metadata purpose controller', () => {
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
       expect(takeover).toHaveBeenCalled()
     })
+
+    test('sets backUrl and formAction with from=check when validation fails from check-answers', async () => {
+      mockReferenceData()
+      request.query = { from: 'check' }
+      request.payload = { owner: '', systems: 'crm' }
+      const err = { details: [{ path: ['owner'], message: 'Enter an email address' }] }
+
+      await purposeFailAction(request, h, err)
+
+      expect(h.view).toHaveBeenCalledWith(
+        PURPOSE_VIEW,
+        expect.objectContaining({
+          backUrl: '/create-guidance/upload-guide/metadata/check-answers',
+          formAction: '/create-guidance/upload-guide/metadata/purpose?from=check'
+        })
+      )
+    })
   })
 
   describe('savePurpose', () => {
@@ -102,7 +135,7 @@ describe('upload-guide metadata purpose controller', () => {
       expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide')
     })
 
-    test('redirects to screen 1 if its answers are missing', async () => {
+    test('redirects to the guide details form if its answers are missing', async () => {
       mockUpload({})
 
       await savePurpose(request, h)
@@ -132,6 +165,25 @@ describe('upload-guide metadata purpose controller', () => {
         audience: ['processor', 'team-leader']
       })
       expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/metadata/check-answers')
+    })
+
+    test('redirects to check answers even when from=check query is provided', async () => {
+      mockUpload({ guideTitle: 'A title' })
+      vi.spyOn(session, 'setGuideUploadMetadata').mockImplementation(() => {})
+      request.query = { from: 'check' }
+      request.payload = {
+        owner: 'owner@example.com',
+        goal: 'A purpose',
+        requirements: 'Training',
+        systems: ['crm'],
+        audience: ['processor']
+      }
+
+      await savePurpose(request, h)
+
+      expect(h.redirect).toHaveBeenCalledWith(
+        '/create-guidance/upload-guide/metadata/check-answers'
+      )
     })
   })
 })

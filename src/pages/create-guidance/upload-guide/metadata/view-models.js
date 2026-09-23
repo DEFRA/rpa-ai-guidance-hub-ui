@@ -1,32 +1,13 @@
-import { format, isValid, parseISO } from 'date-fns'
-
 import { NONE_SCHEME_VALUE } from '../../../../services/reference-data.js'
 import { mapValidationError } from '../../form-errors.js'
+import { formatStagedDocumentDate } from './view-helpers.js'
 
 const BACK_URL = '/create-guidance/upload-guide'
 const NOT_AVAILABLE = 'Not available'
-const DATE_FORMAT = 'd MMMM yyyy'
 
 const FIELD_HREF_MAP = {
   guideTitle: '#guide-title',
   schemes: '#schemes'
-}
-
-/**
- * Format a staged document's raw (ISO) lastModified timestamp for display.
- *
- * @param {string|null|undefined} dateString
- * @returns {string|null} - Formatted date, or null when missing/unparseable
- *   so callers can fall back to their own default
- */
-function formatStagedDocumentDate (dateString) {
-  if (!dateString) {
-    return null
-  }
-
-  const parsed = parseISO(dateString)
-
-  return isValid(parsed) ? format(parsed, DATE_FORMAT) : null
 }
 
 /**
@@ -58,6 +39,7 @@ class GuideDetailsViewModel {
     this.lastModifiedDate = data.lastModifiedDate || NOT_AVAILABLE
     this.schemeOptions = schemeOptions
     this.backUrl = data.backUrl || BACK_URL
+    this.formAction = data.formAction || '/create-guidance/upload-guide/metadata'
     this.notification = data.notification || null
   }
 
@@ -75,30 +57,32 @@ class GuideDetailsViewModel {
    * @param {Object|null} [options.stagedDocument=null] - Minimal-parse staged
    *   document status, see StagedDocumentStatusModel in
    *   services/staged-documents.js
-   * @param {Object|null} [options.draft=null] - Legacy alias for stagedDocument
    * @param {Array} [options.schemeOptions=[]]
    * @param {string|null} [options.notification=null]
+   * @param {string|null} [options.backUrl=null]
+   * @param {string|null} [options.formAction=null]
    */
   static fromSession ({
     values = {},
     stagedDocument = null,
-    draft = null,
     schemeOptions = [],
-    notification = null
+    notification = null,
+    backUrl = null,
+    formAction = null
   } = {}) {
-    const document = stagedDocument ?? draft
-
     return new GuideDetailsViewModel({
       values: {
-        guideTitle: values.guideTitle ?? document?.title ?? '',
+        guideTitle: values.guideTitle ?? stagedDocument?.title ?? '',
         schemes: values.schemes ?? ''
       },
-      versionNumber: values.versionNumber || document?.version || NOT_AVAILABLE,
+      versionNumber: values.versionNumber || stagedDocument?.version || NOT_AVAILABLE,
       lastModifiedDate: values.lastModifiedDate ||
-        formatStagedDocumentDate(document?.lastModified) ||
+        formatStagedDocumentDate(stagedDocument?.lastModified) ||
         NOT_AVAILABLE,
       schemeOptions,
-      notification
+      notification,
+      backUrl,
+      formAction
     })
   }
 
@@ -112,24 +96,29 @@ class GuideDetailsViewModel {
    * @param {Object|null} [options.stagedDocument=null] - Minimal-parse staged
    *   document status, used to keep the version/last modified summary
    *   populated when redisplaying the form after a validation failure
-   * @param {Object|null} [options.draft=null] - Legacy alias for stagedDocument
    */
   static fromValidationError (
     payload,
     err,
-    { schemeOptions = [], stagedDocument = null, draft = null } = {}
+    {
+      schemeOptions = [],
+      stagedDocument = null,
+      backUrl = null,
+      formAction = null
+    } = {}
   ) {
-    const document = stagedDocument ?? draft
     const { errors, errorList } = mapValidationError(err, FIELD_HREF_MAP)
 
     return new GuideDetailsViewModel({
       values: payload,
       errors,
       errorList,
-      versionNumber: document?.version || NOT_AVAILABLE,
-      lastModifiedDate: formatStagedDocumentDate(document?.lastModified) ||
+      versionNumber: stagedDocument?.version || NOT_AVAILABLE,
+      lastModifiedDate: formatStagedDocumentDate(stagedDocument?.lastModified) ||
         NOT_AVAILABLE,
-      schemeOptions
+      schemeOptions,
+      backUrl,
+      formAction
     })
   }
 

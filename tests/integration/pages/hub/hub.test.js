@@ -32,7 +32,7 @@ describe('#hubController', () => {
       expect(payload).toContain('Editing')
       expect(payload).toContain('Awaiting approval')
       expect(payload).not.toContain('All guidance')
-      expect(payload).toContain('Create or upload guidance')
+      expect(payload).toContain('Upload guidance')
       expect(payload).toContain("You haven't opened any guidance yet.")
       expect(payload).not.toContain('defra-service-navigation')
     })
