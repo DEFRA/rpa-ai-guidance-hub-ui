@@ -32,7 +32,7 @@
         Tell us who owns this guidance, what it covers, the knowledge required to follow it, which systems it uses, and who it is for.
       </p>
 
-      <form method="post" action="/create-guidance/upload-guide/metadata/purpose" novalidate>
+      <form method="post" action="{{ formAction }}" novalidate>
 
         {{ govukInput({
           id: "owner",
