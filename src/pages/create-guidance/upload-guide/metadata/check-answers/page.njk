@@ -2,7 +2,6 @@
 {% from "govuk/components/back-link/macro.njk" import govukBackLink %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
-{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
 
 {% block beforeContent %}
   {{ govukBackLink({ href: backUrl }) }}
@@ -21,8 +20,7 @@
 
       <h1 class="govuk-heading-l">Check the details before you convert</h1>
 
-      {{ govukSummaryList({ card: guideDetailsCard, rows: guideDetailsCard.rows }) }}
-      {{ govukSummaryList({ card: ownerPurposeCard, rows: ownerPurposeCard.rows }) }}
+      {% include "create-guidance/common/guide-summary-cards.njk" %}
 
       <p class="govuk-body">
         When you convert this document, it is saved as a draft that only you
@@ -33,6 +31,8 @@
         <span id="conversion-error"></span>
         {{ govukButton({ text: "Convert document" }) }}
       </form>
+
+      {% include "create-guidance/common/start-over-link.njk" %}
     </div>
   </div>
 {% endblock %}

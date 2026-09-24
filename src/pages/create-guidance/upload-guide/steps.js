@@ -6,7 +6,7 @@
  */
 const STEP_IDS = {
   SCANNING: 'scanning',
-  MINIMAL_PARSE: 'minimalParse'
+  PARSE: 'parse'
 }
 
 /**
@@ -24,10 +24,10 @@ const STATUS_IDS = {
   UPLOADER_REJECTED: 'uploader:rejected',
   UPLOADER_NO_FILE: 'uploader:no-file',
   UPLOADER_MISSING: 'uploader:missing',
-  MINIMAL_PARSE_STARTED: 'minimal-parse:started',
-  MINIMAL_PARSE_PENDING: 'minimal-parse:in-progress',
-  MINIMAL_PARSE_COMPLETE: 'minimal-parse:complete',
-  MINIMAL_PARSE_FAILED: 'minimal-parse:failed'
+  PARSE_STARTED: 'parse:started',
+  PARSE_PENDING: 'parse:in-progress',
+  PARSE_COMPLETE: 'parse:complete',
+  PARSE_FAILED: 'parse:failed'
 }
 
 const PARSING_DOCUMENT_LABEL = 'Parsing document'
@@ -39,15 +39,17 @@ const PARSING_DOCUMENT_LABEL = 'Parsing document'
  */
 const STEPS = [
   { id: STEP_IDS.SCANNING, label: 'Scanning for viruses' },
-  { id: STEP_IDS.MINIMAL_PARSE, label: PARSING_DOCUMENT_LABEL }
+  { id: STEP_IDS.PARSE, label: PARSING_DOCUMENT_LABEL }
 ]
 
 /**
  * Maps status IDs to their step state. Error states carry a default,
  * user-facing `message`; cdp-uploader supplies a more specific one for
- * rejected files, which takes precedence.
+ * rejected files, which takes precedence. `detail` is optional supporting
+ * copy shown alongside `message`, for a failure that needs more explaining
+ * than a single line.
  *
- * @type {Object<string, {stepId: string, label: string, percentage: number, isError: boolean, message?: string}>}
+ * @type {Object<string, {stepId: string, label: string, percentage: number, isError: boolean, message?: string, detail?: string}>}
  */
 const STEP_STATE_BY_STATUS = {
   [STATUS_IDS.UPLOADER_PENDING]: {
@@ -90,30 +92,31 @@ const STEP_STATE_BY_STATUS = {
     isError: true,
     message: 'Your upload could not be found. Upload the document again.'
   },
-  [STATUS_IDS.MINIMAL_PARSE_STARTED]: {
-    stepId: STEP_IDS.MINIMAL_PARSE,
+  [STATUS_IDS.PARSE_STARTED]: {
+    stepId: STEP_IDS.PARSE,
     label: PARSING_DOCUMENT_LABEL,
     percentage: 60,
     isError: false
   },
-  [STATUS_IDS.MINIMAL_PARSE_PENDING]: {
-    stepId: STEP_IDS.MINIMAL_PARSE,
+  [STATUS_IDS.PARSE_PENDING]: {
+    stepId: STEP_IDS.PARSE,
     label: PARSING_DOCUMENT_LABEL,
     percentage: 75,
     isError: false
   },
-  [STATUS_IDS.MINIMAL_PARSE_COMPLETE]: {
-    stepId: STEP_IDS.MINIMAL_PARSE,
+  [STATUS_IDS.PARSE_COMPLETE]: {
+    stepId: STEP_IDS.PARSE,
     label: 'Document parsed successfully',
     percentage: 100,
     isError: false
   },
-  [STATUS_IDS.MINIMAL_PARSE_FAILED]: {
-    stepId: STEP_IDS.MINIMAL_PARSE,
-    label: 'Parsing failed',
+  [STATUS_IDS.PARSE_FAILED]: {
+    stepId: STEP_IDS.PARSE,
+    label: 'File could not be opened',
     percentage: 75,
     isError: true,
-    message: 'The document could not be parsed. Upload it again.'
+    message: 'This file cannot be opened',
+    detail: 'Check you selected the correct file and that it has not been corrupted, then upload it again. If this keeps happening, contact the support team.'
   }
 }
 
@@ -122,7 +125,7 @@ const STEP_STATE_BY_STATUS = {
  * Falls back to 'uploader:pending' for unknown statuses.
  *
  * @param {string} statusId
- * @returns {{stepId: string, label: string, percentage: number, isError: boolean, message?: string}}
+ * @returns {{stepId: string, label: string, percentage: number, isError: boolean, message?: string, detail?: string}}
  */
 function getStepState (statusId) {
   return STEP_STATE_BY_STATUS[statusId] ?? STEP_STATE_BY_STATUS[STATUS_IDS.UPLOADER_PENDING]

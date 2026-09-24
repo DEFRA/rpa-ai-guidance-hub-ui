@@ -39,10 +39,10 @@ const STEP_CHECKS = [
     check: _checkScanningStatus
   },
   {
-    id: steps.STEP_IDS.MINIMAL_PARSE,
-    pendingStatusId: steps.STATUS_IDS.MINIMAL_PARSE_PENDING,
-    failedStatusId: steps.STATUS_IDS.MINIMAL_PARSE_FAILED,
-    check: _checkMinimalParseStatus
+    id: steps.STEP_IDS.PARSE,
+    pendingStatusId: steps.STATUS_IDS.PARSE_PENDING,
+    failedStatusId: steps.STATUS_IDS.PARSE_FAILED,
+    check: _checkParseStatus
   }
 ]
 
@@ -67,7 +67,14 @@ const tracker = new ProgressTracker(STEP_CHECKS)
  *
  * Reuses an upload whose form has not been submitted yet, reports one that
  * is in progress or complete, and starts a fresh upload when there is none
- * or the last one failed (rejected, empty or no longer known to cdp-uploader).
+ * or the last one failed. "Failed" includes both a cdp-uploader-level
+ * rejection and a file that scanned clean but was later found invalid by the
+ * guidance API - cdp-uploader has no idea about that second kind, and
+ * reports the file as complete forever, so it has to be checked separately
+ * or a retry would just loop back to the same failed file. A transient
+ * guidance-API lookup error (as opposed to a real validation failure) is
+ * not treated as a failure here, so the existing upload is preserved rather
+ * than abandoned in favour of a duplicate new one.
  *
  * @param {import('./session.js').GuideUpload} upload - The GuideUpload instance from session
  * @returns {Promise<{code: string, uploadId?: string}>}
@@ -75,9 +82,23 @@ const tracker = new ProgressTracker(STEP_CHECKS)
 async function startMigration (upload) {
   if (upload.hasUpload()) {
     const status = await getUploadStatus(upload.activeUploadId)
-    const { code } = _evaluateUploadStatus(status)
+    const { code, fileId } = _evaluateUploadStatus(status)
 
-    if (code !== RESULTS.UPLOAD_FAILED) {
+    if (code === RESULTS.UPLOAD_FAILED) {
+      return { code }
+    }
+
+    if (code !== RESULTS.UPLOAD_COMPLETE) {
+      return { code }
+    }
+
+    const parseCheck = await _checkParseStatus({ fileId })
+
+    // Only a real validation failure (parsingStatus === 'failed') should
+    // trigger a fresh upload. A transient guidance-API lookup error must not
+    // abandon the existing upload - fall through and reuse it, letting a
+    // later poll re-check the parse status.
+    if (!parseCheck.error || !parseCheck.failed) {
       return { code }
     }
   }
@@ -120,11 +141,12 @@ async function getUploadOutcome (request) {
  * @param {import('@hapi/hapi').Request} request
  * @param {{status?: Object|null}} [options] - A cdp-uploader status already
  *   fetched for this upload, to save the scanning check fetching it again
- * @returns {Promise<{statusId: string, label: string, percentage: number, isComplete: boolean, isError: boolean, message: string|null}>}
+ * @returns {Promise<{statusId: string, label: string, percentage: number, isComplete: boolean, isError: boolean, message: string|null, detail: string|null}>}
  */
 async function getGuideUploadProgress (request, options = {}) {
   const upload = session.getGuideUpload(request)
   const completedStepIds = upload?.completedStepIds ?? []
+
   const context = {
     uploadId: upload?.activeUploadId ?? null,
     status: options.status,
@@ -150,7 +172,8 @@ async function getGuideUploadProgress (request, options = {}) {
     percentage: stepState.percentage,
     isComplete: trackerStatus.isComplete,
     isError: trackerStatus.isError,
-    message: trackerStatus.failure?.message ?? stepState.message ?? null
+    message: trackerStatus.failure?.message ?? stepState.message ?? null,
+    detail: trackerStatus.failure?.detail ?? stepState.detail ?? null
   }
 }
 
@@ -277,15 +300,21 @@ async function _checkScanningStatus ({ uploadId, status: knownStatus }) {
 }
 
 /**
- * Check minimal-parse status via the guidance API.
+ * Check parse status via the guidance API.
  *
  * @private
  * @param {{fileId: string|null}} context - fileId captured from the
  *   scanning step, either just now (same poll) or from session (an earlier
  *   poll, since a completed step's check never runs again)
- * @returns {Promise<{complete: boolean, error?: boolean}>}
+ * `failed` distinguishes a real validation failure (parsingStatus ===
+ * 'failed') from a transient guidance-API lookup error (thrown/unreachable):
+ * both set `error`, since either should surface as an error in progress
+ * reporting, but only `failed` should be treated as reason to abandon the
+ * existing upload and start a new one.
+ *
+ * @returns {Promise<{complete: boolean, error?: boolean, failed?: boolean}>}
  */
-async function _checkMinimalParseStatus ({ fileId }) {
+async function _checkParseStatus ({ fileId }) {
   try {
     const stagedDocument = await getStagedDocumentById(fileId)
 
@@ -301,7 +330,7 @@ async function _checkMinimalParseStatus ({ fileId }) {
       return { complete: true }
     }
 
-    return { complete: false, error: true }
+    return { complete: false, error: true, failed: true }
   } catch {
     return { complete: false, error: true }
   }

@@ -1,8 +1,8 @@
 import { getStepState, STATUS_IDS, STEPS } from '../../../../../src/pages/create-guidance/upload-guide/steps.js'
 
 describe('upload guide steps', () => {
-  test('lists scanning and minimal-parse steps', () => {
-    expect(STEPS.map((step) => step.id)).toEqual(['scanning', 'minimalParse'])
+  test('lists scanning and parse steps', () => {
+    expect(STEPS.map((step) => step.id)).toEqual(['scanning', 'parse'])
   })
 
   describe('getStepState', () => {
@@ -35,6 +35,15 @@ describe('upload guide steps', () => {
       expect(state.isError).toBe(true)
       expect(state.label).toBe(label)
       expect(state.message).toEqual(expect.any(String))
+    })
+
+    test('parse:failed explains the file could not be opened, with supporting detail', () => {
+      const state = getStepState(STATUS_IDS.PARSE_FAILED)
+
+      expect(state.isError).toBe(true)
+      expect(state.label).toBe('File could not be opened')
+      expect(state.message).toBe('This file cannot be opened')
+      expect(state.detail).toEqual(expect.any(String))
     })
 
     test('falls back to uploader:pending for unknown status', () => {

@@ -1,0 +1,9 @@
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
+
+{% if guideDetailsCard %}
+  {{ govukSummaryList({ card: guideDetailsCard, rows: guideDetailsCard.rows }) }}
+{% endif %}
+
+{% if ownerPurposeCard %}
+  {{ govukSummaryList({ card: ownerPurposeCard, rows: ownerPurposeCard.rows }) }}
+{% endif %}

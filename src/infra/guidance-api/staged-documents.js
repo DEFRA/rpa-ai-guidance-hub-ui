@@ -2,7 +2,7 @@ import { statusCodes } from '../../constants/status-codes.js'
 import { guidanceApiClient } from './client.js'
 
 /**
- * Fetch a staged document's minimal-parse status by the file ID captured
+ * Fetch a staged document's parse status by the file ID captured
  * from cdp-uploader.
  *
  * @param {string} fileId

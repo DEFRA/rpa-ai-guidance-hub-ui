@@ -79,7 +79,7 @@ describe('processingController', () => {
       getUploadOutcome.mockResolvedValue({ code: RESULTS.UPLOAD_COMPLETE, status })
       getGuideUploadProgress.mockResolvedValue({
         ...pendingProgress,
-        statusId: 'minimal-parse:in-progress',
+        statusId: 'parse:in-progress',
         label: 'Parsing document',
         percentage: 50,
         isComplete: false
@@ -108,7 +108,7 @@ describe('processingController', () => {
         label: 'Scanning for viruses',
         percentage: 50,
         isError: false,
-        pageTitle: 'Checking your file',
+        pageTitle: 'Document upload',
         page: 'upload processing'
       }))
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
@@ -186,6 +186,23 @@ describe('processingController', () => {
       expect(h.response).toHaveBeenCalledWith(expect.objectContaining({
         isError: true,
         message: 'The selected file contains a virus'
+      }))
+    })
+
+    test('includes supporting detail when the failure has one', async () => {
+      getGuideUpload.mockReturnValue({ hasUpload: () => true, activeUploadId: 'u-1' })
+      getGuideUploadProgress.mockResolvedValue({
+        ...pendingProgress,
+        isError: true,
+        label: 'File could not be opened',
+        message: 'This file cannot be opened',
+        detail: 'Check you selected the correct file.'
+      })
+
+      await getStatus(request, h)
+
+      expect(h.response).toHaveBeenCalledWith(expect.objectContaining({
+        detail: 'Check you selected the correct file.'
       }))
     })
   })

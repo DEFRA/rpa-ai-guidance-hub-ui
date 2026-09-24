@@ -24,8 +24,11 @@ const SELECTORS = {
   bar: '[data-progress-bar]',
   label: '[data-progress-label]',
   track: '[role="progressbar"]',
+  intro: '[data-progress-intro]',
   error: '[data-progress-error]',
+  errorSummary: '.govuk-error-summary',
   errorMessage: '[data-progress-error-message]',
+  errorDetail: '[data-progress-error-detail]',
   waiting: '[data-progress-waiting]',
   retry: '[data-progress-retry]',
   complete: '[data-progress-complete]',
@@ -114,7 +117,7 @@ async function _fetchState (pollUrl) {
  * Update the panel to reflect a state returned by the poll endpoint.
  *
  * @param {HTMLElement} panel
- * @param {{percentage: number, label: string, message?: string|null, isComplete: boolean, isError: boolean}} state
+ * @param {{percentage: number, label: string, message?: string|null, detail?: string|null, isComplete: boolean, isError: boolean}} state
  */
 function _render (panel, state) {
   const bar = panel.querySelector(SELECTORS.bar)
@@ -137,7 +140,7 @@ function _render (panel, state) {
   panel.querySelector(SELECTORS.panel)?.classList.toggle(ERROR_CLASS, state.isError)
 
   if (state.isError) {
-    _renderError(panel, state.message)
+    _renderError(panel, state.message, state.detail)
   }
 
   if (state.isComplete) {
@@ -149,19 +152,30 @@ function _render (panel, state) {
 /**
  * @param {HTMLElement} panel
  * @param {string|null} [message]
+ * @param {string|null} [detail] - Optional supporting copy shown below the message
  */
-function _renderError (panel, message) {
+function _renderError (panel, message, detail) {
   const errorMessage = panel.querySelector(SELECTORS.errorMessage)
 
   if (errorMessage && message) {
     errorMessage.textContent = message
   }
 
+  const errorDetail = panel.querySelector(SELECTORS.errorDetail)
+
+  if (errorDetail) {
+    if (detail) {
+      errorDetail.textContent = detail
+    }
+    errorDetail.hidden = !detail
+  }
+
+  _hide(panel, SELECTORS.intro)
   _hide(panel, SELECTORS.waiting)
   _show(panel, SELECTORS.retry)
   _show(panel, SELECTORS.error)
 
-  panel.querySelector(SELECTORS.error)?.focus()
+  panel.querySelector(SELECTORS.errorSummary)?.focus()
 }
 
 function _show (panel, selector) {

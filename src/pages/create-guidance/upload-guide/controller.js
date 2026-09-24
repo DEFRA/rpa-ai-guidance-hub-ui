@@ -11,7 +11,7 @@ const METADATA_URL = '/create-guidance/upload-guide/metadata'
  * Render the upload form for a guide migration, initiating one if none has
  * been started yet (or the last one failed). An upload still being scanned
  * sends the user back to the processing page; one where every step, including
- * minimal-parse, has completed sends them on to add metadata.
+ * parsing, has completed sends them on to add metadata.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
