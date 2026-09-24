@@ -38,54 +38,24 @@ const AWAITING_APPROVAL_TABLE_HEAD = [
 ]
 
 /**
- * A table cell built from trusted, pre-escaped data only - never a pre-built
- * HTML string - so the govuk-frontend table macro can render it without an
- * `html` cell risking unescaped user content (e.g. a guidance title).
- *
- * `type` tells `guidance-table.njk` how to render the cell: `text` cells go
- * straight into govukTable's `text` option (auto-escaped by Nunjucks);
- * every other type is markup the template builds itself from these
- * (also auto-escaped) fields.
- *
- * @private
- */
-
-/**
- * An arbitrary base for resolving `href` with the `URL` constructor - never
- * itself navigated to, just a fixed origin to compare `href`'s resolved
- * origin against.
- *
- * @private
- */
-const SAME_ORIGIN_BASE = 'http://same-origin.invalid'
-
-/**
  * Nunjucks auto-escaping only entity-encodes `href` values - it doesn't
  * stop a `javascript:`/`data:` scheme from executing on click. Guidance
  * items will eventually come from an API rather than this repo's own
  * code, so hrefs are treated as untrusted and restricted to same-origin
  * relative paths.
  *
- * A leading-slash regex isn't enough here: browsers normalise backslashes
- * in special URLs, so `/\evil.example` is navigated to as protocol-relative
- * (`//evil.example`) despite "looking" like a single-slash path. Resolving
- * `href` against `SAME_ORIGIN_BASE` with the `URL` constructor applies that
- * same normalisation, so comparing the resolved origin catches it.
+ * A leading `/` alone isn't enough: browsers normalise backslashes to
+ * forward slashes in special URLs, so `/\evil.example` is navigated to as
+ * protocol-relative (`//evil.example`) despite "looking" like a single-slash
+ * path. Rejecting any backslash, as well as a leading `//`, closes that off.
  *
  * @private
  * @param {string} href
  * @returns {string} `href`, or "#" when it isn't a safe relative path
  */
 function _relativeHref (href) {
-  if (typeof href !== 'string' || !href.startsWith('/')) {
-    return '#'
-  }
-
-  try {
-    return new URL(href, SAME_ORIGIN_BASE).origin === SAME_ORIGIN_BASE ? href : '#'
-  } catch {
-    return '#'
-  }
+  const isSafe = typeof href === 'string' && href.startsWith('/') && !href.startsWith('//') && !href.includes('\\')
+  return isSafe ? href : '#'
 }
 
 function _textCell (text) {
