@@ -136,7 +136,7 @@ describe('upload guide processing page', () => {
       expect(res.payload).toContain('There is a problem')
       expect(res.payload).toContain('The selected file contains a virus')
       expect(res.payload).toContain('File rejected')
-      expect(res.payload).toContain('Upload a different file')
+      expect(res.payload).toContain('Start over')
       expect(res.payload).toContain('<title>')
       expect(res.payload).toContain('Error: Document upload')
       expect(res.payload).not.toContain('http-equiv="refresh"')
@@ -159,7 +159,7 @@ describe('upload guide processing page', () => {
       expect(second.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(second.payload).toContain('This file cannot be opened')
       expect(second.payload).toContain('Check you selected the correct file and that it has not been corrupted')
-      expect(second.payload).toContain('Upload a different file')
+      expect(second.payload).toContain('Start over')
 
       // cdp-uploader still reports this file as scanned clean - only the
       // guidance API knows it failed - so both have to be checked before the
@@ -297,7 +297,7 @@ describe('upload guide processing page', () => {
       expect(nock.pendingMocks()).toEqual([])
     })
 
-    test('a rejected upload does not inherit progress from a later retry', async () => {
+    test('a rejected upload stays failed on reload - only starting over clears it', async () => {
       const first = await startMigration(server, await loginAsDevUser(server), 'u-rejected')
 
       nock(CDP_UPLOADER_URL).get('/status/u-rejected').reply(statusCodes.HTTP_STATUS_OK, rejectedStatus())
@@ -305,15 +305,18 @@ describe('upload guide processing page', () => {
       const failed = await server.inject({ method: 'GET', url: STATUS_URL, headers: { cookie: first.cookie } })
       expect(JSON.parse(failed.payload).isError).toBe(true)
 
-      // Returning to the upload form after a rejection starts a fresh upload
+      const cookie = mergeCookies(first.cookie, failed.headers['set-cookie'])
+
+      // Reloading the upload form reports the same rejection rather than
+      // silently starting a fresh upload - no /initiate mock is set up, so
+      // any attempt to reinitiate would fail the test via unmatched nock.
       nock(CDP_UPLOADER_URL).get('/status/u-rejected').reply(statusCodes.HTTP_STATUS_OK, rejectedStatus())
-      const retry = await startMigration(server, mergeCookies(first.cookie, failed.headers['set-cookie']), 'u-retry')
 
-      nock(CDP_UPLOADER_URL).get('/status/u-retry').reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'pending' }))
+      const reload = await server.inject({ method: 'GET', url: '/create-guidance/upload-guide', headers: { cookie } })
 
-      const res = await server.inject({ method: 'GET', url: STATUS_URL, headers: { cookie: retry.cookie } })
-
-      expect(JSON.parse(res.payload)).toMatchObject({ isComplete: false, isError: false, label: 'Scanning for viruses' })
+      expect(reload.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(reload.payload).toContain('u-rejected')
+      expect(nock.pendingMocks()).toEqual([])
     })
   })
 })

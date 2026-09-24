@@ -81,13 +81,17 @@ async function startMigration (upload) {
     const status = await getUploadStatus(upload.activeUploadId)
     const { code, fileId } = _evaluateUploadStatus(status)
 
-    if (code === RESULTS.UPLOAD_COMPLETE) {
-      const parseCheck = await _checkParseStatus({ fileId })
+    if (code === RESULTS.UPLOAD_FAILED) {
+      return { code }
+    }
 
-      if (!parseCheck.error) {
-        return { code }
-      }
-    } else if (code !== RESULTS.UPLOAD_FAILED) {
+    if (code !== RESULTS.UPLOAD_COMPLETE) {
+      return { code }
+    }
+
+    const parseCheck = await _checkParseStatus({ fileId })
+
+    if (!parseCheck.error) {
       return { code }
     }
   }
@@ -135,6 +139,7 @@ async function getUploadOutcome (request) {
 async function getGuideUploadProgress (request, options = {}) {
   const upload = session.getGuideUpload(request)
   const completedStepIds = upload?.completedStepIds ?? []
+
   const context = {
     uploadId: upload?.activeUploadId ?? null,
     status: options.status,

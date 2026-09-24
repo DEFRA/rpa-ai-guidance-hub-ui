@@ -107,14 +107,14 @@ describe('create-guidance service', () => {
       ['was rejected', rejected],
       ['had no file', noFile],
       ['is no longer known to cdp-uploader', null]
-    ])('initiates a fresh upload when the existing one %s', async (_label, status) => {
+    ])('reports UPLOAD_FAILED without starting a fresh upload when the existing one %s', async (_label, status) => {
       const upload = { hasUpload: () => true, activeUploadId: 'u-1' }
       getUploadStatus.mockResolvedValue(status)
-      initiateUpload.mockResolvedValue({ uploadId: 'u-2' })
 
       const result = await startMigration(upload)
 
-      expect(result).toEqual({ code: RESULTS.MIGRATION_STARTED, uploadId: 'u-2' })
+      expect(result).toEqual({ code: RESULTS.UPLOAD_FAILED })
+      expect(initiateUpload).not.toHaveBeenCalled()
     })
 
     test('passes the redirect, destination bucket, and callback to cdp-uploader', async () => {

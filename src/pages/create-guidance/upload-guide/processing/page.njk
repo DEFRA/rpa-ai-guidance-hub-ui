@@ -51,7 +51,7 @@
         <p class="govuk-body" data-progress-waiting{% if isError %} hidden{% endif %}>Do not close this page.</p>
 
         <p class="govuk-body" data-progress-retry{% if not isError %} hidden{% endif %}>
-          <a class="govuk-link" href="{{ retryUrl }}">Upload a different file</a>
+          {% include "create-guidance/common/start-over-link.njk" %}
         </p>
 
         <p class="govuk-body" data-progress-complete hidden>
