@@ -75,6 +75,7 @@ describe('#HubViewModel', () => {
       ['javascript: URI', 'javascript:alert(document.cookie)'],
       ['data: URI', 'data:text/html,<script>alert(1)</script>'],
       ['protocol-relative URL', '//evil.example.com'],
+      ['backslash protocol-relative URL', '/\\evil.example.com'],
       ['absolute URL', 'https://evil.example.com'],
       ['missing href', undefined]
     ])('Should replace a %s href with "#"', (_, href) => {

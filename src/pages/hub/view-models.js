@@ -51,19 +51,41 @@ const AWAITING_APPROVAL_TABLE_HEAD = [
  */
 
 /**
+ * An arbitrary base for resolving `href` with the `URL` constructor - never
+ * itself navigated to, just a fixed origin to compare `href`'s resolved
+ * origin against.
+ *
+ * @private
+ */
+const SAME_ORIGIN_BASE = 'http://same-origin.invalid'
+
+/**
  * Nunjucks auto-escaping only entity-encodes `href` values - it doesn't
  * stop a `javascript:`/`data:` scheme from executing on click. Guidance
  * items will eventually come from an API rather than this repo's own
  * code, so hrefs are treated as untrusted and restricted to same-origin
- * relative paths (`//evil.com` is also rejected, since browsers treat a
- * protocol-relative URL as cross-origin).
+ * relative paths.
+ *
+ * A leading-slash regex isn't enough here: browsers normalise backslashes
+ * in special URLs, so `/\evil.example` is navigated to as protocol-relative
+ * (`//evil.example`) despite "looking" like a single-slash path. Resolving
+ * `href` against `SAME_ORIGIN_BASE` with the `URL` constructor applies that
+ * same normalisation, so comparing the resolved origin catches it.
  *
  * @private
  * @param {string} href
  * @returns {string} `href`, or "#" when it isn't a safe relative path
  */
 function _relativeHref (href) {
-  return typeof href === 'string' && /^\/(?!\/)/.test(href) ? href : '#'
+  if (typeof href !== 'string' || !href.startsWith('/')) {
+    return '#'
+  }
+
+  try {
+    return new URL(href, SAME_ORIGIN_BASE).origin === SAME_ORIGIN_BASE ? href : '#'
+  } catch {
+    return '#'
+  }
 }
 
 function _textCell (text) {
