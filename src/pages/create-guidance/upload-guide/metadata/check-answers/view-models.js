@@ -2,6 +2,7 @@ import { mapValidationError } from '../../../form-errors.js'
 import { buildSummaryCard, buildSummaryRow, formatStagedDocumentDate, labelsFor } from '../view-helpers.js'
 
 const BACK_URL = '/create-guidance/upload-guide/metadata/purpose'
+const HUB_URL = '/hub'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
 const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
 const NOT_PROVIDED = 'Not provided'
@@ -99,6 +100,7 @@ class CheckAnswersViewModel {
     this.guideDetailsCard = data.guideDetailsCard || {}
     this.ownerPurposeCard = data.ownerPurposeCard || {}
     this.backUrl = data.backUrl || BACK_URL
+    this.hubUrl = HUB_URL
     this.errorList = data.errorList || []
   }
 

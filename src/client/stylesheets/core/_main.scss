@@ -15,6 +15,21 @@ body {
   }
 }
 
+.app-width-container--wide {
+  @include govuk-width-container(1920px);
+
+  @media (min-width: #{1920px + 60px}) {
+    width: 100%;
+  }
+}
+
+.app-width-container--full-width {
+  max-width: none;
+  margin-right: $govuk-gutter;
+  margin-left: $govuk-gutter;
+  width: auto;
+}
+
 main {
   flex: 1
 }

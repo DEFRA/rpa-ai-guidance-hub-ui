@@ -1,0 +1,11 @@
+{#
+  Label for a govukTabs item, with an optional trailing "(count)" - e.g.
+  "Recently opened (0)".
+#}
+{% macro tabLabel(text, count) %}
+  {%- if count is defined and count !== null -%}
+    {{ text }} ({{ count }})
+  {%- else -%}
+    {{ text }}
+  {%- endif -%}
+{% endmacro %}

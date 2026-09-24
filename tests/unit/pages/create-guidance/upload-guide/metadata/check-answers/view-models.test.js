@@ -68,6 +68,7 @@ describe('CheckAnswersViewModel', () => {
     })
 
     expect(viewModel.backUrl).toBe('/create-guidance/upload-guide/metadata/purpose')
+    expect(viewModel.hubUrl).toBe('/hub')
     expect(viewModel.pageTitle).toBe('Check the details before you convert')
   })
 

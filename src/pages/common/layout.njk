@@ -3,6 +3,16 @@
 
 {% set mainClasses = "app-main-wrapper" %}
 
+{% if isAuthenticated %}
+  {% set serviceNameLink = "/hub" %}
+{% else %}
+  {% set serviceNameLink = "/" %}
+{% endif %}
+
+{% if showNav is not defined %}
+  {% set showNav = true %}
+{% endif %}
+
 {% block head %}
   <link href="{{ getAssetPath('src/client/stylesheets/application.scss') }}" rel="stylesheet">
 {% endblock %}
@@ -16,9 +26,9 @@
         alt="Department for Environment, Food &amp; Rural Affairs"
         class="defra-header__logo"
       />
-      <a href="/" class="defra-header__service-name">{{ serviceName }}</a>
+      <a href="{{ serviceNameLink }}" class="defra-header__service-name">{{ serviceName }}</a>
     </div>
-    {% if page != 'home' or isAuthenticated %}
+    {% if page != 'hub' or isAuthenticated %}
     <div class="defra-header__account">
       {% if isAuthenticated %}
         <svg class="defra-header__account-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -38,12 +48,12 @@
     {% endif %}
     </div>
   </header>
-  {% if page != 'home' or isAuthenticated %}
+  {% if showNav and isAuthenticated %}
   <nav class="defra-service-navigation" aria-label="Service navigation">
     <div class="defra-service-navigation__inner">
       <ul class="defra-service-navigation__list">
         <li class="defra-service-navigation__item">
-          <a class="defra-service-navigation__link" href="/" {% if page == 'home' %}aria-current="page"{% endif %}>Home</a>
+          <a class="defra-service-navigation__link" href="/hub" {% if page == 'hub' %}aria-current="page"{% endif %}>Hub</a>
         </li>
       </ul>
     </div>
@@ -68,7 +78,7 @@
 
 {% block footer %}
   <footer class="defra-footer" role="contentinfo">
-    <div class="govuk-width-container">
+    <div class="govuk-width-container{% if containerClasses %} {{ containerClasses }}{% endif %}">
       {% if aceSlackChannel %}
         <p class="govuk-body-s govuk-!-margin-top-3 govuk-!-margin-bottom-0">
           Questions? Contact the AICE team on Slack <a class="defra-footer__link" href="{{ aceSlackChannel }}">#ask-ace</a>
