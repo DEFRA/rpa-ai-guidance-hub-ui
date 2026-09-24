@@ -97,7 +97,7 @@ describe('upload guide processing page', () => {
       expect(res.payload).toContain(`data-poll-url="${STATUS_URL}"`)
       expect(res.payload).toContain('data-redirect-url="/create-guidance/upload-guide/metadata"')
       expect(res.payload).toContain('data-percentage="50"')
-      expect(res.payload).toContain('style="width')
+      expect(res.payload).not.toContain('style="width')
       expect(scope.isDone()).toBe(true)
       expect(nock.pendingMocks()).toEqual([])
     })
@@ -105,14 +105,24 @@ describe('upload guide processing page', () => {
     test('shows the parsing stage once scanning is clean, then redirects to metadata once parsing completes', async () => {
       const { uploadId, cookie } = await startMigration(server, await loginAsDevUser(server))
 
-      nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).times(2).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))
+      nock(CDP_UPLOADER_URL)
+        .get(`/status/${uploadId}`)
+        .times(2)
+        .reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({
+          uploadStatus: 'ready'
+        }))
 
       const first = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
 
       expect(first.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(first.payload).toContain('Parsing document')
 
-      nock(GUIDANCE_API_URL).get('/guides/staging/file-1').once().reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'complete' }))
+      nock(GUIDANCE_API_URL)
+        .get('/guides/staging/file-1')
+        .once()
+        .reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({
+          parsingStatus: 'complete'
+        }))
 
       const second = await server.inject({
         method: 'GET',
@@ -145,13 +155,22 @@ describe('upload guide processing page', () => {
     test('explains a validation failure, and retrying starts a genuinely fresh upload', async () => {
       const { uploadId, cookie } = await startMigration(server, await loginAsDevUser(server))
 
-      nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).times(2).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))
+      nock(CDP_UPLOADER_URL)
+        .get(`/status/${uploadId}`)
+        .times(2)
+        .reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({
+          uploadStatus: 'ready'
+        }))
 
       const first = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
 
       expect(first.payload).toContain('Parsing document')
 
-      nock(GUIDANCE_API_URL).get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'failed', parsingError: 'Not a Word document' }))
+      nock(GUIDANCE_API_URL)
+        .get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({
+          parsingStatus: 'failed',
+          parsingError: 'Not a Word document'
+        }))
 
       const failedCookie = mergeCookies(cookie, first.headers['set-cookie'])
       const second = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie: failedCookie } })
@@ -164,9 +183,20 @@ describe('upload guide processing page', () => {
       // cdp-uploader still reports this file as scanned clean - only the
       // guidance API knows it failed - so both have to be checked before the
       // retry link is allowed to reuse the same dead upload.
-      nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))
-      nock(GUIDANCE_API_URL).get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'failed', parsingError: 'Not a Word document' }))
-      nock(CDP_UPLOADER_URL).post('/initiate').reply(statusCodes.HTTP_STATUS_OK, initiateUploadResponse({ uploadId: 'u-fresh' }))
+      nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`)
+        .reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({
+          uploadStatus: 'ready'
+        }))
+
+      nock(GUIDANCE_API_URL)
+        .get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({
+          parsingStatus: 'failed',
+          parsingError: 'Not a Word document'
+        }))
+
+      nock(CDP_UPLOADER_URL).post('/initiate').reply(statusCodes.HTTP_STATUS_OK, initiateUploadResponse({
+        uploadId: 'u-fresh'
+      }))
 
       const retryCookie = mergeCookies(failedCookie, second.headers['set-cookie'])
       const retry = await server.inject({

@@ -103,6 +103,17 @@ describe('create-guidance service', () => {
       expect(result).toEqual({ code: RESULTS.MIGRATION_STARTED, uploadId: 'u-2' })
     })
 
+    test('preserves the existing upload when the guidance API lookup errors transiently', async () => {
+      const upload = { hasUpload: () => true, activeUploadId: 'u-1' }
+      getUploadStatus.mockResolvedValue(complete)
+      getStagedDocumentById.mockRejectedValue(new Error('guidance API unavailable'))
+
+      const result = await startMigration(upload)
+
+      expect(result).toEqual({ code: RESULTS.UPLOAD_COMPLETE })
+      expect(initiateUpload).not.toHaveBeenCalled()
+    })
+
     test.each([
       ['was rejected', rejected],
       ['had no file', noFile],

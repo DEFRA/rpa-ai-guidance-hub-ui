@@ -44,22 +44,22 @@
         <div class="app-progress{{ ' app-progress--error' if isError }}">
           <p class="app-progress__status" id="upload-status-label" data-progress-label role="status">{{ label }}</p>
           <div class="app-progress__track" role="progressbar" aria-labelledby="upload-status-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ percentage }}">
-            <div id="upload-progress-bar" class="app-progress__bar{{ ' app-progress__bar--error' if isError }}" style="width: {{ percentage }}" data-progress-bar data-percentage="{{ percentage }}"></div>
+            <div id="upload-progress-bar" class="app-progress__bar{{ ' app-progress__bar--error' if isError }}" data-progress-bar data-percentage="{{ percentage }}"></div>
           </div>
         </div>
 
         <p class="govuk-body" data-progress-waiting{% if isError %} hidden{% endif %}>Do not close this page.</p>
 
-        <p class="govuk-body" data-progress-retry{% if not isError %} hidden{% endif %}>
+        <div data-progress-retry{% if not isError %} hidden{% endif %}>
           {% include "create-guidance/common/start-over-link.njk" %}
-        </p>
+        </div>
 
         <p class="govuk-body" data-progress-complete hidden>
           Your file has been checked. <a class="govuk-link" href="{{ redirectUrl }}">Continue to the guide's details</a>.
         </p>
 
         <p class="govuk-body" data-progress-timeout hidden>
-          This is taking longer than expected. <a class="govuk-link" href="">Refresh the page</a> to check again.
+          This is taking longer than expected. <a class="govuk-link" href="{{ processingUrl }}">Refresh the page</a> to check again.
         </p>
       </div>
     </div>

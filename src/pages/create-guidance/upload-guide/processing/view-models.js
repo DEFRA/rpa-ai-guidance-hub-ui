@@ -1,4 +1,5 @@
 const POLL_URL = '/create-guidance/upload-guide/processing/status'
+const PROCESSING_URL = '/create-guidance/upload-guide/processing'
 const REDIRECT_URL = '/create-guidance/upload-guide/metadata'
 const RETRY_URL = '/create-guidance/upload-guide'
 
@@ -34,6 +35,7 @@ class UploadProcessingViewModel {
     } = data
 
     this.pollUrl = POLL_URL
+    this.processingUrl = PROCESSING_URL
     this.redirectUrl = REDIRECT_URL
     this.retryUrl = RETRY_URL
 

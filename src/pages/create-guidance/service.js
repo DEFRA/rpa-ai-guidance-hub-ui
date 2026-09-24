@@ -71,7 +71,10 @@ const tracker = new ProgressTracker(STEP_CHECKS)
  * rejection and a file that scanned clean but was later found invalid by the
  * guidance API - cdp-uploader has no idea about that second kind, and
  * reports the file as complete forever, so it has to be checked separately
- * or a retry would just loop back to the same failed file.
+ * or a retry would just loop back to the same failed file. A transient
+ * guidance-API lookup error (as opposed to a real validation failure) is
+ * not treated as a failure here, so the existing upload is preserved rather
+ * than abandoned in favour of a duplicate new one.
  *
  * @param {import('./session.js').GuideUpload} upload - The GuideUpload instance from session
  * @returns {Promise<{code: string, uploadId?: string}>}
@@ -91,7 +94,11 @@ async function startMigration (upload) {
 
     const parseCheck = await _checkParseStatus({ fileId })
 
-    if (!parseCheck.error) {
+    // Only a real validation failure (parsingStatus === 'failed') should
+    // trigger a fresh upload. A transient guidance-API lookup error must not
+    // abandon the existing upload - fall through and reuse it, letting a
+    // later poll re-check the parse status.
+    if (!parseCheck.error || !parseCheck.failed) {
       return { code }
     }
   }
@@ -299,7 +306,13 @@ async function _checkScanningStatus ({ uploadId, status: knownStatus }) {
  * @param {{fileId: string|null}} context - fileId captured from the
  *   scanning step, either just now (same poll) or from session (an earlier
  *   poll, since a completed step's check never runs again)
- * @returns {Promise<{complete: boolean, error?: boolean}>}
+ * `failed` distinguishes a real validation failure (parsingStatus ===
+ * 'failed') from a transient guidance-API lookup error (thrown/unreachable):
+ * both set `error`, since either should surface as an error in progress
+ * reporting, but only `failed` should be treated as reason to abandon the
+ * existing upload and start a new one.
+ *
+ * @returns {Promise<{complete: boolean, error?: boolean, failed?: boolean}>}
  */
 async function _checkParseStatus ({ fileId }) {
   try {
@@ -317,7 +330,7 @@ async function _checkParseStatus ({ fileId }) {
       return { complete: true }
     }
 
-    return { complete: false, error: true }
+    return { complete: false, error: true, failed: true }
   } catch {
     return { complete: false, error: true }
   }
