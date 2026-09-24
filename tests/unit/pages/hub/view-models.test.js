@@ -39,7 +39,7 @@ describe('#HubViewModel', () => {
       expect(viewModel.recentlyOpened.rows).toEqual([[
         { type: 'title', text: item.title, href: item.href, statusText: 'Published', statusColour: 'green' },
         { type: 'text', text: item.lastModified },
-        { type: 'version', version: item.version },
+        { type: 'version', version: item.version, colour: 'green' },
         { type: 'removeAction', text: item.title, href: item.removeHref }
       ]])
     })
@@ -56,6 +56,17 @@ describe('#HubViewModel', () => {
       const viewModel = new HubViewModel({ recentlyOpened: [item, item] })
 
       expect(viewModel.recentlyOpened.hintMessage).toBe('Your 2 recently opened guidances')
+    })
+
+    test.each([
+      ['1', 'green'],
+      ['0.5', 'green'],
+      ['1.1', 'purple'],
+      ['2', 'purple']
+    ])('Should tag version %s as %s', (version, colour) => {
+      const viewModel = new HubViewModel({ recentlyOpened: [{ ...item, version }] })
+
+      expect(viewModel.recentlyOpened.rows[0][2]).toEqual({ type: 'version', version, colour })
     })
   })
 
@@ -87,7 +98,7 @@ describe('#HubViewModel', () => {
 
       expect(viewModel.editing.rows).toEqual([[
         { type: 'title', text: item.title, href: item.href, statusText: 'Draft', statusColour: 'grey' },
-        { type: 'version', version: item.version },
+        { type: 'version', version: item.version, colour: 'green' },
         { type: 'text', text: item.lastModified },
         { type: 'removeAction', text: item.title, href: item.removeHref }
       ]])
@@ -102,7 +113,7 @@ describe('#HubViewModel', () => {
 
       expect(viewModel.awaitingApproval.rows).toEqual([[
         { type: 'title', text: item.title, href: item.href, statusText: 'Awaiting approval', statusColour: 'yellow' },
-        { type: 'version', version: item.version },
+        { type: 'version', version: item.version, colour: 'green' },
         { type: 'text', text: 'Broken link' },
         { type: 'text', text: 'Fix heading' }
       ]])

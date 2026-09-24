@@ -1,19 +1,37 @@
+const tableHeadClasses = {
+  HALF_WIDTH: 'govuk-!-width-one-half',
+  VISUALLY_HIDDEN: 'govuk-visually-hidden'
+}
+
+/**
+ * Every `cell.type` a descriptor below can produce. `guidance-table.njk`'s
+ * `_cell` macro must handle each one - it can't import this file, so if you
+ * add or rename a type here, update that macro's branches too, otherwise
+ * the new cell type will silently render nothing.
+ */
+const CELL_TYPES = Object.freeze({
+  TEXT: 'text',
+  VERSION: 'version',
+  TITLE: 'title',
+  REMOVE_ACTION: 'removeAction'
+})
+
 const DOCUMENT_TABLE_HEAD = [
-  { text: 'Title', classes: 'govuk-!-width-one-half' },
+  { text: 'Title', classes: tableHeadClasses.HALF_WIDTH },
   { text: 'Last modified' },
   { text: 'Version' },
   { text: 'Action' }
 ]
 
 const EDITING_TABLE_HEAD = [
-  { text: 'Document name', classes: 'govuk-!-width-one-half' },
+  { text: 'Document name', classes: tableHeadClasses.HALF_WIDTH },
   { text: 'Version' },
   { text: 'Last modified' },
-  { text: 'Action', classes: 'govuk-visually-hidden' }
+  { text: 'Action', classes: tableHeadClasses.VISUALLY_HIDDEN }
 ]
 
 const AWAITING_APPROVAL_TABLE_HEAD = [
-  { text: 'Document name', classes: 'govuk-!-width-one-half' },
+  { text: 'Document name', classes: tableHeadClasses.HALF_WIDTH },
   { text: 'Version' },
   { text: 'Publishing checks' },
   { text: 'Changes requested' }
@@ -49,16 +67,25 @@ function _relativeHref (href) {
 }
 
 function _textCell (text) {
-  return { type: 'text', text }
+  return { type: CELL_TYPES.TEXT, text }
 }
 
+/**
+ * A version greater than 1 is a re-publish rather than a first release, so
+ * it's tagged purple instead of green - the colour is decided here, not in
+ * the template, so every cell type follows the same rule as `_titleCell`:
+ * the view model decides meaning, `guidance-table.njk` only renders it.
+ *
+ * @private
+ */
 function _versionCell (version) {
-  return { type: 'version', version }
+  const colour = Number.parseFloat(version) > 1 ? 'purple' : 'green'
+  return { type: CELL_TYPES.VERSION, version, colour }
 }
 
 function _titleCell (item, statusText, statusColour) {
   return {
-    type: 'title',
+    type: CELL_TYPES.TITLE,
     text: item.title,
     href: _relativeHref(item.href),
     statusText,
@@ -67,7 +94,7 @@ function _titleCell (item, statusText, statusColour) {
 }
 
 function _removeActionCell (item) {
-  return { type: 'removeAction', text: item.title, href: _relativeHref(item.removeHref) }
+  return { type: CELL_TYPES.REMOVE_ACTION, text: item.title, href: _relativeHref(item.removeHref) }
 }
 
 function _buildDocumentRows (items) {

@@ -22,11 +22,14 @@
   - never pre-built HTML - so every dynamic value below is interpolated by
   Nunjucks (auto-escaping) rather than assembled as an `html` string in JS,
   which would risk unescaped user content (e.g. a guidance title).
+
+  The `cell.type` branches below must cover every value in that file's
+  CELL_TYPES - this template can't import it, so an added/renamed type
+  there needs a matching branch here or it silently renders nothing.
 #}
 {% macro _cell(cell) %}
   {%- if cell.type == "version" -%}
-    {%- set colour = "purple" if (cell.version | float > 1) else "green" -%}
-    {{ tag(cell.version, colour) }}
+    {{ tag(cell.version, cell.colour) }}
   {%- elif cell.type == "title" -%}
     <div class="govuk-!-margin-bottom-1">{{ tag(cell.statusText, cell.statusColour) }}</div><a class="govuk-link" href="{{ cell.href }}">{{ cell.text }}</a>
   {%- elif cell.type == "removeAction" -%}
