@@ -7,3 +7,19 @@
 .app-content {
   max-width: 800px;
 }
+
+.app-search-form__group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: govuk-spacing(3);
+}
+
+.app-search-form__group .govuk-form-group {
+  flex: 1 1 auto;
+  min-width: 200px;
+}
+
+.app-search-form__label {
+  font-weight: normal;
+}

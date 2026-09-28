@@ -1,0 +1,102 @@
+{% extends "common/layout.njk" %}
+
+{% from "govuk/components/phase-banner/macro.njk" import govukPhaseBanner %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/tabs/macro.njk" import govukTabs %}
+{% from "common/guidance-table.njk" import guidanceTablePanel %}
+{% from "common/tab-label.njk" import tabLabel %}
+
+{% set pageTitle = 'RPA Guidance Hub' %}
+{% set page = 'hub' %}
+{% set showNav = false %}
+
+{% block content %}
+  <div class="defra-hero defra-hero--hub govuk-!-margin-bottom-6">
+    <div class="govuk-width-container">
+      <div class="govuk-grid-row">
+        <div class="govuk-grid-column-two-thirds">
+          <h1 class="govuk-heading-l govuk-!-margin-bottom-4">RPA Guidance hub</h1>
+
+          <p class="govuk-body govuk-!-margin-bottom-0">
+            Find guidance to help you review and process claims, or manage guidance documents if you're responsible for keeping them up to date.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="govuk-width-container">
+    <div class="govuk-grid-row">
+      <div class="govuk-grid-column-two-thirds">
+        <form action="/hub" method="get" role="search">
+          <div class="app-search-form__group">
+            {{ govukInput({
+              id: "search",
+              name: "search",
+              type: "search",
+              label: {
+                text: "Search guidance",
+                classes: "govuk-label--m"
+              },
+              formGroup: {
+                classes: "govuk-!-margin-right-3"
+              }
+            }) }}
+
+            {{ govukButton({
+              text: "Search"
+            }) }}
+          </div>
+        </form>
+
+        <div class="govuk-button-group">
+          <a class="govuk-button" href="/create-guidance/upload-guide">Upload guidance</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="govuk-grid-row">
+      <div class="govuk-grid-column-full">
+        {% set recentlyOpenedPanelHtml %}{{ guidanceTablePanel(recentlyOpened) }}{% endset %}
+        {% set savedGuidancePanelHtml %}{{ guidanceTablePanel(savedGuidance) }}{% endset %}
+        {% set editingPanelHtml %}{{ guidanceTablePanel(editing) }}{% endset %}
+        {% set awaitingApprovalPanelHtml %}{{ guidanceTablePanel(awaitingApproval) }}{% endset %}
+
+        {{ govukTabs({
+          title: "Contents",
+          items: [
+            {
+              label: tabLabel(recentlyOpened.heading, recentlyOpened.count),
+              id: "recently-opened",
+              panel: {
+                html: recentlyOpenedPanelHtml
+              }
+            },
+            {
+              label: tabLabel(savedGuidance.heading, savedGuidance.count),
+              id: "saved-guidance",
+              panel: {
+                html: savedGuidancePanelHtml
+              }
+            },
+            {
+              label: tabLabel(editing.heading, editing.count),
+              id: "editing",
+              panel: {
+                html: editingPanelHtml
+              }
+            },
+            {
+              label: tabLabel(awaitingApproval.heading, awaitingApproval.count),
+              id: "awaiting-approval",
+              panel: {
+                html: awaitingApprovalPanelHtml
+              }
+            }
+          ]
+        }) }}
+      </div>
+    </div>
+  </div>
+{% endblock %}

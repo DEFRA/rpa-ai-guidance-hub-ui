@@ -16,14 +16,14 @@ describe('#loginController', () => {
   })
 
   describe('#handleLoginCallback', () => {
-    test('Should establish a dev-session and redirect to /designer/dashboard when hitting the callback under the local provider', async () => {
+    test('Should establish a dev-session and redirect to /hub when hitting the callback under the local provider', async () => {
       const callback = await server.inject({
         method: 'GET',
         url: '/login/callback'
       })
 
       expect(callback.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(callback.headers.location).toBe('/designer/dashboard')
+      expect(callback.headers.location).toBe('/hub')
 
       const cookie = (callback.headers['set-cookie'] ?? [])
         .map((c) => c.split(';')[0])
@@ -35,7 +35,7 @@ describe('#loginController', () => {
       // shared layout's header on the next request.
       const { statusCode, payload } = await server.inject({
         method: 'GET',
-        url: '/designer/dashboard',
+        url: '/hub',
         headers: { cookie }
       })
 
@@ -62,7 +62,7 @@ describe('#loginController', () => {
       // protected route should now be treated as unauthenticated.
       const reuse = await server.inject({
         method: 'GET',
-        url: '/designer/dashboard',
+        url: '/hub',
         headers: { cookie }
       })
 

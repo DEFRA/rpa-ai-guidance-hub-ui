@@ -38,7 +38,7 @@ async function handleLoginCallback (request, h) {
 
   request.cookieAuth.set({ sessionId })
 
-  return h.redirect('/designer/dashboard')
+  return h.redirect('/hub')
 }
 
 /**

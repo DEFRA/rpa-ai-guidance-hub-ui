@@ -48,7 +48,25 @@
   }
 }
 
+.defra-hero--hub {
+  padding: 25px 15px;
+
+  @media (min-width: 40.0625em) {
+    padding-top: 30px;
+    padding-bottom: 30px;
+  }
+
+  .govuk-heading-l {
+    margin-bottom: 20px;
+  }
+
+  p:last-child {
+    margin-bottom: 0;
+  }
+}
+
 .defra-hero .govuk-heading-xl,
+.defra-hero .govuk-heading-l,
 .defra-hero .govuk-body-l,
 .defra-hero .govuk-body {
   color: $govuk-white;
@@ -102,8 +120,6 @@
 .defra-hero__whats-new * {
   color: $govuk-white;
 }
-
-// ===== Version banner =====
 
 .defra-version-banner {
   margin: 20px -15px 32px;
