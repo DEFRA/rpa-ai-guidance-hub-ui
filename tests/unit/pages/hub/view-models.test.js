@@ -76,6 +76,10 @@ describe('#HubViewModel', () => {
       ['data: URI', 'data:text/html,<script>alert(1)</script>'],
       ['protocol-relative URL', '//evil.example.com'],
       ['backslash protocol-relative URL', '/\\evil.example.com'],
+      ['newline protocol-relative URL', '/\n/evil.example.com'],
+      ['carriage return protocol-relative URL', '/\r/evil.example.com'],
+      ['tab protocol-relative URL', '/\t/evil.example.com'],
+      ['unparseable URL', '//['],
       ['absolute URL', 'https://evil.example.com'],
       ['missing href', undefined]
     ])('Should replace a %s href with "#"', (_, href) => {

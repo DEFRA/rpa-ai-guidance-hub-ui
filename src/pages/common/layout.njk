@@ -28,7 +28,6 @@
       />
       <a href="{{ serviceNameLink }}" class="defra-header__service-name">{{ serviceName }}</a>
     </div>
-    {% if page != 'hub' or isAuthenticated %}
     <div class="defra-header__account">
       {% if isAuthenticated %}
         <svg class="defra-header__account-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -45,7 +44,6 @@
         <a href="/login/callback" class="defra-header__account-link">Sign in</a>
       {% endif %}
     </div>
-    {% endif %}
     </div>
   </header>
   {% if showNav and isAuthenticated %}

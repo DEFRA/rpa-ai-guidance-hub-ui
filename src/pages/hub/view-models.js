@@ -16,6 +16,12 @@ const CELL_TYPES = Object.freeze({
   REMOVE_ACTION: 'removeAction'
 })
 
+/**
+ * Placeholder origin that relative hrefs are resolved against - `.invalid`
+ * is reserved, so it can never collide with a real host.
+ */
+const SAME_ORIGIN_BASE = 'https://same-origin.invalid'
+
 const DOCUMENT_TABLE_HEAD = [
   { text: 'Title', classes: tableHeadClasses.HALF_WIDTH },
   { text: 'Last modified' },
@@ -45,17 +51,27 @@ const AWAITING_APPROVAL_TABLE_HEAD = [
  * relative paths.
  *
  * A leading `/` alone isn't enough: browsers normalise backslashes to
- * forward slashes in special URLs, so `/\evil.example` is navigated to as
- * protocol-relative (`//evil.example`) despite "looking" like a single-slash
- * path. Rejecting any backslash, as well as a leading `//`, closes that off.
+ * forward slashes and strip tab/newline characters anywhere in a URL, so
+ * `/\evil.example` and `/\n/evil.example` are both navigated to as
+ * protocol-relative (`//evil.example`) despite "looking" like single-slash
+ * paths. Rather than chase each normalisation quirk, the href is parsed
+ * the same way a browser would and kept only if it resolves to our origin.
  *
  * @private
  * @param {string} href
  * @returns {string} `href`, or "#" when it isn't a safe relative path
  */
 function _relativeHref (href) {
-  const isSafe = typeof href === 'string' && href.startsWith('/') && !href.startsWith('//') && !href.includes('\\')
-  return isSafe ? href : '#'
+  if (typeof href !== 'string' || !href.startsWith('/')) {
+    return '#'
+  }
+
+  try {
+    return new URL(href, SAME_ORIGIN_BASE).origin === SAME_ORIGIN_BASE ? href : '#'
+  } catch {
+    // e.g. `//[` - a protocol-relative URL with an unparseable host
+    return '#'
+  }
 }
 
 function _textCell (text) {
