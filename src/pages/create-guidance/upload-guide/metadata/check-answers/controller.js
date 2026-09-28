@@ -9,7 +9,7 @@ const CHECK_ANSWERS_VIEW = 'create-guidance/upload-guide/metadata/check-answers/
 const UPLOAD_GUIDE_URL = '/create-guidance/upload-guide'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
 const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
-const DASHBOARD_URL = '/designer/dashboard'
+const HUB_URL = '/hub'
 
 // Which screen owns each field, so an incomplete/invalid answer sends the
 // user back to the screen that can fix it rather than a generic error.
@@ -130,7 +130,7 @@ async function convertDocument (request, h) {
       .code(statusCodes.HTTP_STATUS_BAD_REQUEST)
   }
 
-  return h.redirect(DASHBOARD_URL)
+  return h.redirect(HUB_URL)
 }
 
 export {

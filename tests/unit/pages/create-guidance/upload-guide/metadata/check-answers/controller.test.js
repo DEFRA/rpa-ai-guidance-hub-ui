@@ -139,13 +139,13 @@ describe('upload-guide metadata check-answers controller', () => {
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
     })
 
-    test('redirects to the dashboard when the metadata is valid against the current reference options', async () => {
+    test('redirects to the hub when the metadata is valid against the current reference options', async () => {
       mockUpload(validMetadata())
       mockReferenceData()
 
       await convertDocument(request, h)
 
-      expect(h.redirect).toHaveBeenCalledWith('/designer/dashboard')
+      expect(h.redirect).toHaveBeenCalledWith('/hub')
     })
 
     test('re-renders check answers with an error summary when a previously valid option is no longer current', async () => {

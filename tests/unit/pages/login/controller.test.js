@@ -176,11 +176,11 @@ describe('#loginController', () => {
         })
       })
 
-      test('redirects to the designer dashboard', () => {
+      test('redirects to the hub page', () => {
         expect(h.redirect).toHaveBeenCalledOnce()
-        expect(h.redirect).toHaveBeenCalledWith('/designer/dashboard')
+        expect(h.redirect).toHaveBeenCalledWith('/hub')
         expect(result).toEqual({
-          redirectedTo: '/designer/dashboard'
+          redirectedTo: '/hub'
         })
       })
     })
