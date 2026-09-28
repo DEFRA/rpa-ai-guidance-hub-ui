@@ -73,6 +73,7 @@ const viewPlugin = {
         return `${assetPath}/${viteAsset ?? asset}`
       },
       serviceName,
+      currentPath: request?.path,
       // Blankie generates nonces when configured with generateNonces: true
       // Returns { script, style } when enabled, undefined otherwise
       cspNonce: request?.plugins?.blankie?.nonces,

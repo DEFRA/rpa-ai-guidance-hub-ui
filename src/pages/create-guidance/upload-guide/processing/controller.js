@@ -12,10 +12,10 @@ const UPLOAD_GUIDE_URL = '/create-guidance/upload-guide'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
 
 /**
- * Render the "Checking your file" page while an upload is being processed.
+ * Render the document upload processing page while an upload is being checked.
  *
  * Sends the user back to the upload form when there is nothing to check yet,
- * and straight on to metadata when every step, including minimal-parse,
+ * and straight on to metadata when every step, including parsing,
  * has completed, so neither depends on client-side JavaScript.
  *
  * @param {import('@hapi/hapi').Request} request
@@ -62,6 +62,7 @@ async function getStatus (request, h) {
     percentage: progress.percentage,
     label: progress.label,
     message: progress.message,
+    detail: progress.detail,
     isComplete: progress.isComplete,
     isError: progress.isError
   }).code(statusCodes.HTTP_STATUS_OK)

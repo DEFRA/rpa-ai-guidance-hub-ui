@@ -50,7 +50,7 @@ async function startMigration (server, cookie, uploadId = 'u-check') {
   return mergeCookies(cookie, get.headers['set-cookie'])
 }
 
-async function completeMinimalParse (server, cookie, uploadId = 'u-check') {
+async function completeParse (server, cookie, uploadId = 'u-check') {
   let sessionCookie = await startMigration(server, cookie, uploadId)
 
   nock(CDP_UPLOADER_URL)
@@ -90,7 +90,7 @@ async function completeMinimalParse (server, cookie, uploadId = 'u-check') {
 }
 
 async function completeAllMetadata (server, cookie) {
-  let sessionCookie = await completeMinimalParse(server, cookie)
+  let sessionCookie = await completeParse(server, cookie)
 
   nock(GUIDANCE_API_BASE_URL)
     .get('/reference/schemes')

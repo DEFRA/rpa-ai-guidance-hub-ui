@@ -22,10 +22,14 @@ const BAR_ERROR_CLASS = 'app-progress__bar--error'
 const SELECTORS = {
   panel: '.app-progress',
   bar: '[data-progress-bar]',
+  style: '[data-progress-style]',
   label: '[data-progress-label]',
   track: '[role="progressbar"]',
+  intro: '[data-progress-intro]',
   error: '[data-progress-error]',
+  errorSummary: '.govuk-error-summary',
   errorMessage: '[data-progress-error-message]',
+  errorDetail: '[data-progress-error-detail]',
   waiting: '[data-progress-waiting]',
   retry: '[data-progress-retry]',
   complete: '[data-progress-complete]',
@@ -44,18 +48,13 @@ function initPolling () {
 }
 
 /**
- * Apply the server-rendered percentage and, unless the server already
- * reported a failure, start polling.
+ * Unless the server already reported a failure, start polling. The initial
+ * percentage is rendered server-side via a nonce-authorized stylesheet, so
+ * nothing to apply here.
  *
  * @param {HTMLElement} panel - Element carrying `data-poll-url` and `data-redirect-url`
  */
 function _setupPolling (panel) {
-  const bar = panel.querySelector(SELECTORS.bar)
-
-  if (bar) {
-    bar.style.width = `${bar.dataset.percentage}%`
-  }
-
   if (panel.querySelector(`.${ERROR_CLASS}`)) {
     return
   }
@@ -114,7 +113,7 @@ async function _fetchState (pollUrl) {
  * Update the panel to reflect a state returned by the poll endpoint.
  *
  * @param {HTMLElement} panel
- * @param {{percentage: number, label: string, message?: string|null, isComplete: boolean, isError: boolean}} state
+ * @param {{percentage: number, label: string, message?: string|null, detail?: string|null, isComplete: boolean, isError: boolean}} state
  */
 function _render (panel, state) {
   const bar = panel.querySelector(SELECTORS.bar)
@@ -122,7 +121,7 @@ function _render (panel, state) {
   const track = panel.querySelector(SELECTORS.track)
 
   if (bar) {
-    bar.style.width = `${state.percentage}%`
+    _setBarWidth(bar, state.percentage)
     bar.classList.toggle(BAR_ERROR_CLASS, state.isError)
   }
 
@@ -137,7 +136,7 @@ function _render (panel, state) {
   panel.querySelector(SELECTORS.panel)?.classList.toggle(ERROR_CLASS, state.isError)
 
   if (state.isError) {
-    _renderError(panel, state.message)
+    _renderError(panel, state.message, state.detail)
   }
 
   if (state.isComplete) {
@@ -147,21 +146,60 @@ function _render (panel, state) {
 }
 
 /**
+ * Update the bar's width by setting a custom property on the matching rule
+ * in the server-rendered, nonce-authorized stylesheet. The CSP here has no
+ * `unsafe-inline` for style attributes, and a nonce only authorizes `<style>`
+ * elements, not attribute or CSSOM writes to `bar.style` - so the width has
+ * to be changed through that stylesheet's own rules instead.
+ *
+ * @param {HTMLElement} bar
+ * @param {number} percentage
+ */
+function _setBarWidth (bar, percentage) {
+  const rule = _findBarRule(bar)
+
+  if (rule) {
+    rule.style.setProperty('--progress-width', `${percentage}%`)
+  }
+}
+
+/**
+ * @param {HTMLElement} bar
+ * @returns {CSSStyleRule|undefined}
+ */
+function _findBarRule (bar) {
+  const sheet = document.querySelector(SELECTORS.style)?.sheet
+
+  return [...(sheet?.cssRules ?? [])].find((rule) => rule.selectorText === `#${bar.id}`)
+}
+
+/**
  * @param {HTMLElement} panel
  * @param {string|null} [message]
+ * @param {string|null} [detail] - Optional supporting copy shown below the message
  */
-function _renderError (panel, message) {
+function _renderError (panel, message, detail) {
   const errorMessage = panel.querySelector(SELECTORS.errorMessage)
 
   if (errorMessage && message) {
     errorMessage.textContent = message
   }
 
+  const errorDetail = panel.querySelector(SELECTORS.errorDetail)
+
+  if (errorDetail) {
+    if (detail) {
+      errorDetail.textContent = detail
+    }
+    errorDetail.hidden = !detail
+  }
+
+  _hide(panel, SELECTORS.intro)
   _hide(panel, SELECTORS.waiting)
   _show(panel, SELECTORS.retry)
   _show(panel, SELECTORS.error)
 
-  panel.querySelector(SELECTORS.error)?.focus()
+  panel.querySelector(SELECTORS.errorSummary)?.focus()
 }
 
 function _show (panel, selector) {

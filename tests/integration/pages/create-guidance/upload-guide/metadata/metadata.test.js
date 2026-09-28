@@ -37,12 +37,12 @@ async function startMigration (server, cookie, uploadId = 'u-metadata') {
 }
 
 /**
- * Drive a migration all the way to a captured fileId (scan clean, minimal
- * parse complete), by following the same real processing flow that a
+ * Drive a migration all the way to a captured fileId (scan clean, parse
+ * complete), by following the same real processing flow that a
  * browser polling the processing page would - so the metadata page's own
  * draft fetch has a fileId to look up.
  */
-async function completeMinimalParse (server, cookie, uploadId = 'u-metadata') {
+async function completeParse (server, cookie, uploadId = 'u-metadata') {
   let sessionCookie = await startMigration(server, cookie, uploadId)
 
   nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).times(2).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))
@@ -139,9 +139,9 @@ describe('#metadataController Integration', () => {
       expect(response.headers.location).toBe('/create-guidance/upload-guide/metadata/purpose')
     })
 
-    test('GET /create-guidance/upload-guide/metadata loads the staged document title, version and last modified date once minimal parse has captured a fileId', async () => {
+    test('GET /create-guidance/upload-guide/metadata loads the staged document title, version and last modified date once parsing has captured a fileId', async () => {
       const devCookie = await loginAsDevUser(server)
-      const cookie = await completeMinimalParse(server, devCookie)
+      const cookie = await completeParse(server, devCookie)
 
       mockSchemes()
       nock(GUIDANCE_API_BASE_URL).get('/guides/staging/file-1').once().reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({

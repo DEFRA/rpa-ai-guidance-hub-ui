@@ -9,9 +9,10 @@ const METADATA_URL = '/create-guidance/upload-guide/metadata'
 
 /**
  * Render the upload form for a guide migration, initiating one if none has
- * been started yet (or the last one failed). An upload still being scanned
- * sends the user back to the processing page; one where every step, including
- * minimal-parse, has completed sends them on to add metadata.
+ * been started yet (or the last file failed parsing). An upload still being
+ * scanned, or one cdp-uploader reports as failed, sends the user back to the
+ * processing page; one where every step, including parsing, has completed
+ * sends them on to add metadata.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -21,7 +22,7 @@ async function getUploadForm (request, h) {
   const upload = getGuideUpload(request) ?? createGuideUpload(request)
   const result = await startMigration(upload)
 
-  if (result.code === RESULTS.UPLOAD_PENDING) {
+  if (result.code === RESULTS.UPLOAD_PENDING || result.code === RESULTS.UPLOAD_FAILED) {
     return h.redirect(PROCESSING_URL)
   }
 

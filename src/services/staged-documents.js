@@ -15,7 +15,7 @@ import * as stagedDocumentsApi from '../infra/guidance-api/staged-documents.js'
  */
 
 /**
- * Get the minimal-parse staged document status for a file by its
+ * Get the parse status of a staged document for a file by its
  * cdp-uploader file ID.
  *
  * @param {string} fileId

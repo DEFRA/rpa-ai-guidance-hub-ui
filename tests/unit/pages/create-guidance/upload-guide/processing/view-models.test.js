@@ -48,7 +48,7 @@ describe('UploadProcessingViewModel', () => {
 
     expect(viewModel.isError).toBe(true)
     expect(viewModel.errorMessage).toBe('The selected file contains a virus')
-    expect(viewModel.pageTitle).toBe('Error: Checking your file')
+    expect(viewModel.pageTitle).toBe('Error: Document upload')
   })
 
   test('ignores a message when there is no error', () => {
@@ -57,10 +57,26 @@ describe('UploadProcessingViewModel', () => {
     expect(viewModel.errorMessage).toBeNull()
   })
 
+  test('exposes supporting detail alongside the error message', () => {
+    const viewModel = new UploadProcessingViewModel({
+      isError: true,
+      message: 'This file cannot be opened',
+      detail: 'Check you selected the correct file.'
+    })
+
+    expect(viewModel.errorDetail).toBe('Check you selected the correct file.')
+  })
+
+  test('ignores detail when there is no error', () => {
+    const viewModel = new UploadProcessingViewModel({ detail: 'ignored' })
+
+    expect(viewModel.errorDetail).toBeNull()
+  })
+
   test('sets the page title and page name', () => {
     const viewModel = new UploadProcessingViewModel()
 
-    expect(viewModel.pageTitle).toBe('Checking your file')
+    expect(viewModel.pageTitle).toBe('Document upload')
     expect(viewModel.page).toBe('upload processing')
   })
 })

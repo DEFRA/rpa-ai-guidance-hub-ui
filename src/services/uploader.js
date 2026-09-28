@@ -8,7 +8,7 @@ import * as uploaderApi from '../infra/cdp-uploader/uploads.js'
  *
  * @typedef {Object} UploadFileModel
  * @property {string} field - The form field this file came from
- * @property {string} [fileId] - Upstream file identifier, used to correlate with the guidance API's minimal-parse draft record
+ * @property {string} [fileId] - Upstream file identifier, used to correlate with the guidance API's parse draft record
  * @property {string} [filename]
  * @property {string} [contentType]
  * @property {string} fileStatus - 'complete' | 'rejected' | 'pending'

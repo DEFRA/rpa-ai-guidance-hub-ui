@@ -3,6 +3,7 @@ import { vi, describe, test, expect, beforeEach } from 'vitest'
 import {
   getGuideUpload,
   createGuideUpload,
+  clearGuideUpload,
   addGuideUpload,
   setGuideUploadCompletedSteps,
   setGuideUploadMetadata,
@@ -16,10 +17,17 @@ describe('GuideUpload session helpers', () => {
   beforeEach(() => {
     yar = {
       set: vi.fn(),
-      get: vi.fn()
+      get: vi.fn(),
+      clear: vi.fn()
     }
 
     request = { yar }
+  })
+
+  test('clearGuideUpload clears the session key', () => {
+    clearGuideUpload(request)
+
+    expect(yar.clear).toHaveBeenCalledWith('guide-upload')
   })
 
   test('createGuideUpload creates wrapper, persists to session, and hasUpload is false initially', () => {

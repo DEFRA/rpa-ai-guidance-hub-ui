@@ -1,4 +1,5 @@
 const POLL_URL = '/create-guidance/upload-guide/processing/status'
+const PROCESSING_URL = '/create-guidance/upload-guide/processing'
 const REDIRECT_URL = '/create-guidance/upload-guide/metadata'
 const RETRY_URL = '/create-guidance/upload-guide'
 
@@ -9,7 +10,7 @@ const RETRY_URL = '/create-guidance/upload-guide'
 const REFRESH_SECONDS = 5
 
 /**
- * View model for the "Checking your file" upload processing page.
+ * View model for the "Document upload" processing page.
  */
 class UploadProcessingViewModel {
   /**
@@ -21,22 +22,59 @@ class UploadProcessingViewModel {
    * @param {boolean} [data.isComplete] - Whether processing is complete
    * @param {boolean} [data.isError] - Whether processing encountered an error
    * @param {string|null} [data.message] - User-facing explanation of an error
+   * @param {string|null} [data.detail] - Optional supporting copy for an error
    */
   constructor (data = {}) {
+    const {
+      label = 'Scanning for viruses',
+      percentage = 0,
+      isComplete = false,
+      isError = false,
+      message = null,
+      detail = null
+    } = data
+
     this.pollUrl = POLL_URL
+    this.processingUrl = PROCESSING_URL
     this.redirectUrl = REDIRECT_URL
     this.retryUrl = RETRY_URL
 
-    this.label = data.label ?? 'Scanning for viruses'
-    this.percentage = data.percentage ?? 0
-    this.isComplete = data.isComplete ?? false
-    this.isError = data.isError ?? false
-    this.errorMessage = this.isError ? (data.message ?? null) : null
+    this.label = label
+    this.percentage = percentage
+    this.isComplete = isComplete
+    this.isError = isError
+    this.errorMessage = this.#buildErrorField(isError, message)
+    this.errorDetail = this.#buildErrorField(isError, detail)
 
-    // Only keep refreshing while there is something to wait for.
-    this.refreshSeconds = this.isComplete || this.isError ? null : REFRESH_SECONDS
+    this.refreshSeconds = this.#buildRefreshSeconds(isComplete, isError)
 
-    this.pageTitle = this.isError ? 'Error: Checking your file' : 'Checking your file'
+    this.pageTitle = this.#buildPageTitle(isError)
+  }
+
+  /**
+   * @param {boolean} isError
+   * @param {string|null} value
+   * @returns {string|null}
+   */
+  #buildErrorField (isError, value) {
+    return isError ? value : null
+  }
+
+  /**
+   * @param {boolean} isComplete
+   * @param {boolean} isError
+   * @returns {number|null}
+   */
+  #buildRefreshSeconds (isComplete, isError) {
+    return isComplete || isError ? null : REFRESH_SECONDS
+  }
+
+  /**
+   * @param {boolean} isError
+   * @returns {string}
+   */
+  #buildPageTitle (isError) {
+    return isError ? 'Error: Document upload' : 'Document upload'
   }
 
   page = 'upload processing'

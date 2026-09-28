@@ -1,0 +1,33 @@
+{% extends "common/layout.njk" %}
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+
+{% block beforeContent %}
+  <a class="govuk-back-link" href="{{ cancelUrl }}">Back</a>
+{% endblock %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds app-content">
+      <h1 class="govuk-heading-l">Are you sure you want to start over?</h1>
+
+      {{ govukWarningText({
+        text: "This will delete everything you've entered for this guide, including the uploaded file. This cannot be undone.",
+        iconFallbackText: "Warning"
+      }) }}
+
+      {% include "create-guidance/common/guide-summary-cards.njk" %}
+
+      <form method="post">
+        {{ govukButton({
+          text: "Start over",
+          classes: "govuk-button--warning"
+        }) }}
+      </form>
+
+      <p class="govuk-body">
+        <a class="govuk-link" href="{{ cancelUrl }}">Cancel</a>
+      </p>
+    </div>
+  </div>
+{% endblock %}

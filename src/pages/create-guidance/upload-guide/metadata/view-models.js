@@ -46,7 +46,7 @@ class GuideDetailsViewModel {
   /**
    * Create a view model from session data and reference schemes
    *
-   * When a staged document's minimal-parse items are supplied, they are used
+   * When a staged document's parsed items are supplied, they are used
    * to populate the title, version and last modified date - but a title the
    * user has already saved to session (`values.guideTitle`) always takes
    * precedence over the parsed title, since it reflects a deliberate

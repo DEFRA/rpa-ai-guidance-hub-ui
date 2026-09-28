@@ -175,6 +175,17 @@ function getGuideUpload (request) {
 }
 
 /**
+ * Remove all guide upload session data, so the next visit to the journey
+ * starts from scratch
+ *
+ * @param {import('@hapi/hapi').Request} request
+ * @returns {void}
+ */
+function clearGuideUpload (request) {
+  request.yar.clear(SESSION_KEY)
+}
+
+/**
  * Append a new upload id to the stored GuideUpload in session
  *
  * @param {import('@hapi/hapi').Request} request
@@ -253,6 +264,7 @@ export {
   GuideUpload,
   getGuideUpload,
   createGuideUpload,
+  clearGuideUpload,
   addGuideUpload,
   setGuideUploadCompletedSteps,
   setGuideUploadFileId,
