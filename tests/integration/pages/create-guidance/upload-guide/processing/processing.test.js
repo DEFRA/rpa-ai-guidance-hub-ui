@@ -96,7 +96,7 @@ describe('upload guide processing page', () => {
       expect(res.payload).toContain('Scanning for viruses')
       expect(res.payload).toContain(`data-poll-url="${STATUS_URL}"`)
       expect(res.payload).toContain('data-redirect-url="/create-guidance/upload-guide/metadata"')
-      expect(res.payload).toContain('data-percentage="50"')
+      expect(res.payload).toContain('--progress-width: 50%')
       expect(res.payload).not.toContain('style="width')
       expect(scope.isDone()).toBe(true)
       expect(nock.pendingMocks()).toEqual([])

@@ -22,6 +22,7 @@ const BAR_ERROR_CLASS = 'app-progress__bar--error'
 const SELECTORS = {
   panel: '.app-progress',
   bar: '[data-progress-bar]',
+  style: '[data-progress-style]',
   label: '[data-progress-label]',
   track: '[role="progressbar"]',
   intro: '[data-progress-intro]',
@@ -47,18 +48,13 @@ function initPolling () {
 }
 
 /**
- * Apply the server-rendered percentage and, unless the server already
- * reported a failure, start polling.
+ * Unless the server already reported a failure, start polling. The initial
+ * percentage is rendered server-side via a nonce-authorized stylesheet, so
+ * nothing to apply here.
  *
  * @param {HTMLElement} panel - Element carrying `data-poll-url` and `data-redirect-url`
  */
 function _setupPolling (panel) {
-  const bar = panel.querySelector(SELECTORS.bar)
-
-  if (bar) {
-    bar.style.width = `${bar.dataset.percentage}%`
-  }
-
   if (panel.querySelector(`.${ERROR_CLASS}`)) {
     return
   }
@@ -125,7 +121,7 @@ function _render (panel, state) {
   const track = panel.querySelector(SELECTORS.track)
 
   if (bar) {
-    bar.style.width = `${state.percentage}%`
+    _setBarWidth(bar, state.percentage)
     bar.classList.toggle(BAR_ERROR_CLASS, state.isError)
   }
 
@@ -147,6 +143,34 @@ function _render (panel, state) {
     _show(panel, SELECTORS.complete)
     _hide(panel, SELECTORS.waiting)
   }
+}
+
+/**
+ * Update the bar's width by setting a custom property on the matching rule
+ * in the server-rendered, nonce-authorized stylesheet. The CSP here has no
+ * `unsafe-inline` for style attributes, and a nonce only authorizes `<style>`
+ * elements, not attribute or CSSOM writes to `bar.style` - so the width has
+ * to be changed through that stylesheet's own rules instead.
+ *
+ * @param {HTMLElement} bar
+ * @param {number} percentage
+ */
+function _setBarWidth (bar, percentage) {
+  const rule = _findBarRule(bar)
+
+  if (rule) {
+    rule.style.setProperty('--progress-width', `${percentage}%`)
+  }
+}
+
+/**
+ * @param {HTMLElement} bar
+ * @returns {CSSStyleRule|undefined}
+ */
+function _findBarRule (bar) {
+  const sheet = document.querySelector(SELECTORS.style)?.sheet
+
+  return [...(sheet?.cssRules ?? [])].find((rule) => rule.selectorText === `#${bar.id}`)
 }
 
 /**

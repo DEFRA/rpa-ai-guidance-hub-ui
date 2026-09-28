@@ -4,9 +4,9 @@
 
 {% block head %}
   {{ super() }}
-  <style nonce="{{ cspNonce.style }}">
+  <style nonce="{{ cspNonce.style }}" data-progress-style>
     #upload-progress-bar {
-      width: {{ percentage }}%
+      --progress-width: {{ percentage }}%;
     }
   </style>
 {% endblock %}
@@ -44,7 +44,7 @@
         <div class="app-progress{{ ' app-progress--error' if isError }}">
           <p class="app-progress__status" id="upload-status-label" data-progress-label role="status">{{ label }}</p>
           <div class="app-progress__track" role="progressbar" aria-labelledby="upload-status-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ percentage }}">
-            <div id="upload-progress-bar" class="app-progress__bar{{ ' app-progress__bar--error' if isError }}" data-progress-bar data-percentage="{{ percentage }}"></div>
+            <div id="upload-progress-bar" class="app-progress__bar{{ ' app-progress__bar--error' if isError }}" data-progress-bar></div>
           </div>
         </div>
 
