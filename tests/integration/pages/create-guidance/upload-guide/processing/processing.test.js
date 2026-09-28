@@ -337,15 +337,25 @@ describe('upload guide processing page', () => {
 
       const cookie = mergeCookies(first.cookie, failed.headers['set-cookie'])
 
-      // Reloading the upload form reports the same rejection rather than
-      // silently starting a fresh upload - no /initiate mock is set up, so
-      // any attempt to reinitiate would fail the test via unmatched nock.
+      // Reloading the upload form sends the user back to the same rejection
+      // rather than silently starting a fresh upload or rendering a form for
+      // the spent one - no /initiate mock is set up, so any attempt to
+      // reinitiate would fail the test via unmatched nock.
       nock(CDP_UPLOADER_URL).get('/status/u-rejected').reply(statusCodes.HTTP_STATUS_OK, rejectedStatus())
 
       const reload = await server.inject({ method: 'GET', url: '/create-guidance/upload-guide', headers: { cookie } })
 
-      expect(reload.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(reload.payload).toContain('u-rejected')
+      expect(reload.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(reload.headers.location).toBe(PROCESSING_URL)
+
+      nock(CDP_UPLOADER_URL).get('/status/u-rejected').reply(statusCodes.HTTP_STATUS_OK, rejectedStatus())
+
+      const page = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
+
+      expect(page.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(page.payload).toContain('The selected file contains a virus')
+      expect(page.payload).toContain('/create-guidance/start-over')
+      expect(page.payload).not.toContain('/upload-and-scan/u-rejected')
       expect(nock.pendingMocks()).toEqual([])
     })
   })

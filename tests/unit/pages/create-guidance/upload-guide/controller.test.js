@@ -140,6 +140,27 @@ describe('uploadGuideController', () => {
       })
     })
 
+    describe('when cdp-uploader reports the upload as failed', () => {
+      beforeEach(() => {
+        getGuideUpload.mockReturnValue({ activeUploadId: 'u-1' })
+        startMigration.mockResolvedValue({ code: RESULTS.UPLOAD_FAILED })
+      })
+
+      test('redirects to the processing page rather than rendering a form for the spent upload', async () => {
+        const result = await getUploadForm(request, h)
+
+        expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/processing')
+        expect(result).toEqual(h.redirect())
+        expect(h.view).not.toHaveBeenCalled()
+      })
+
+      test('does not record a new upload', async () => {
+        await getUploadForm(request, h)
+
+        expect(addGuideUpload).not.toHaveBeenCalled()
+      })
+    })
+
     describe('when the previous upload failed and a fresh one has been started', () => {
       beforeEach(() => {
         getGuideUpload.mockReturnValue({ activeUploadId: 'u-1' })

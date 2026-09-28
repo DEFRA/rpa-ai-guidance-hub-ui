@@ -66,18 +66,19 @@ const tracker = new ProgressTracker(STEP_CHECKS)
  * Ensure a migration/upload flow is started for the provided session wrapper.
  *
  * Reuses an upload whose form has not been submitted yet, and reports one
- * that is in progress or complete. Starts a fresh upload only when there is
- * none yet. A failed upload is *not* retried automatically here - it is
- * reported back as `UPLOAD_FAILED` and the existing (failed) upload is left
- * in place in session; only the user choosing "Start over" clears it, which
- * then leads back through this function with `upload.hasUpload()` false so a
- * fresh upload is initiated. "Failed" includes both a cdp-uploader-level
- * rejection and a file that scanned clean but was later found invalid by the
- * guidance API - cdp-uploader has no idea about that second kind, and
- * reports the file as complete forever, so it has to be checked separately.
- * A transient guidance-API lookup error (as opposed to a real validation
- * failure) is not treated as a failure here, so the existing upload is
- * preserved rather than abandoned in favour of a duplicate new one.
+ * that is in progress, complete, or failed at cdp-uploader (rejected, empty,
+ * or no longer known). A cdp-uploader failure is reported rather than
+ * replaced: the caller shows the failure, and a fresh upload only starts once
+ * the user chooses "start over", which clears the session.
+ *
+ * A fresh upload does start automatically when there is none, or when the
+ * file scanned clean but was later found invalid by the guidance API -
+ * cdp-uploader has no idea about that kind of failure, and reports the file
+ * as complete forever, so it has to be checked separately or a retry would
+ * just loop back to the same failed file. A transient guidance-API lookup
+ * error (as opposed to a real validation failure) is not treated as a
+ * failure here, so the existing upload is preserved rather than abandoned in
+ * favour of a duplicate new one.
  *
  * @param {import('./session.js').GuideUpload} upload - The GuideUpload instance from session
  * @returns {Promise<{code: string, uploadId?: string}>}

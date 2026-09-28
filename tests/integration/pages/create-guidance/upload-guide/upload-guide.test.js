@@ -102,7 +102,7 @@ describe('#uploadGuideController', () => {
       expect(headers.location).toBe('/create-guidance/upload-guide/processing')
     })
 
-    test('keeps reporting the same rejected upload on reload - a fresh one only starts via "start over"', async () => {
+    test('sends a rejected upload to the processing page rather than reusing its spent form - a fresh one only starts via "start over"', async () => {
       const { uploadId, cookie } = await startMigration(server, await loginAsDevUser(server))
 
       nock(CDP_UPLOADER_URL).get(`/status/${uploadId}`).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({
@@ -111,14 +111,14 @@ describe('#uploadGuideController', () => {
         form: { file: rejectedFile() }
       }))
 
-      const { statusCode, payload } = await server.inject({
+      const { statusCode, headers } = await server.inject({
         method: 'GET',
         url: '/create-guidance/upload-guide',
         headers: { cookie }
       })
 
-      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(payload).toContain(`/upload-and-scan/${uploadId}`)
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(headers.location).toBe('/create-guidance/upload-guide/processing')
     })
 
     test('redirects to metadata once the upload has scanned clean and parsing is complete', async () => {
