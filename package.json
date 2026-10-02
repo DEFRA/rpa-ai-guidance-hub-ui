@@ -58,7 +58,7 @@
     "joi": "18.2.9",
     "jwks-rsa": "4.1.0",
     "lodash": "4.18.1",
-    "marked": "18.0.13",
+    "marked": "18.0.14",
     "node-fetch": "3.3.2",
     "nunjucks": "3.2.4",
     "pino": "10.3.1",
@@ -67,7 +67,7 @@
     "validator": "13.15.35"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "5.0.1",
+    "@vitest/coverage-v8": "5.0.2",
     "autoprefixer": "10.6.1",
     "cssnano": "9.0.5",
     "cssnano-preset-default": "9.0.5",
@@ -79,15 +79,15 @@
     "npm-run-all2": "9.0.3",
     "postcss-load-config": "6.0.1",
     "postcss-loader": "8.2.1",
-    "prettier": "3.9.8",
-    "sass-embedded": "1.104.1",
+    "prettier": "3.9.9",
+    "sass-embedded": "1.105.0",
     "sass-loader": "17.0.1",
     "sharp": "0.35.4",
     "source-map-loader": "5.0.0",
     "stylelint": "17.15.0",
     "stylelint-config-gds": "3.0.0",
-    "vite": "8.3.0",
-    "vitest": "5.0.1",
+    "vite": "8.3.1",
+    "vitest": "5.0.2",
     "vitest-fetch-mock": "0.4.5"
   },
   "overrides": {
