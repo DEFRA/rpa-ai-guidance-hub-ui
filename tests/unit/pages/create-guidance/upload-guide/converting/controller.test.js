@@ -45,7 +45,7 @@ describe('upload-guide converting controller', () => {
     expect(clearSpy).toHaveBeenCalledWith(request)
   })
 
-  test('says conversion is taking a long time, offering to check again', async () => {
+  test('says conversion is taking longer than expected, offering to refresh the page to check again', async () => {
     vi.spyOn(session, 'getGuideUpload').mockReturnValue({
       hasUpload: () => true,
       fileId: 'file-1'
@@ -62,8 +62,8 @@ describe('upload-guide converting controller', () => {
 
     expect(clearSpy).not.toHaveBeenCalled()
     expect(h.view).toHaveBeenCalledWith(CONVERTING_VIEW, expect.objectContaining({
-      pageTitle: 'Converting this document is taking a long time',
-      checkAgainUrl: '/create-guidance/upload-guide/converting'
+      pageTitle: 'Document conversion',
+      convertingUrl: '/create-guidance/upload-guide/converting'
     }))
     expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
   })

@@ -370,7 +370,7 @@ describe('#checkAnswersController Integration', () => {
       expect(response.payload).toContain(message)
     })
 
-    test('POST tells the user conversion is taking a long time when the API is slower than the UI waits, until it has finished, then starts a new guide', async () => {
+    test('POST tells the user conversion is taking longer than expected when the API is slower than the UI waits, until it has finished, then starts a new guide', async () => {
       const devCookie = await loginAsDevUser(server)
       const cookie = await completeAllMetadata(server, devCookie)
       const timeout = guidanceApiClient.timeout
@@ -407,9 +407,10 @@ describe('#checkAnswersController Integration', () => {
         })
 
         expect(converting.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-        expect(converting.payload).toContain('Converting this document is taking a long time')
-        expect(converting.payload).toContain(`href="${CONVERTING_URL}"`)
-        expect(converting.payload).toContain('Check again')
+        expect(converting.payload).toContain('Document conversion')
+        expect(converting.payload).toContain(
+          `This is taking longer than expected. <a class="govuk-link" href="${CONVERTING_URL}">Refresh the page</a> to check again.`
+        )
 
         nock(GUIDANCE_API_BASE_URL)
           .get('/guides/staging/file-1')

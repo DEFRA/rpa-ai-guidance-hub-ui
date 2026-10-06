@@ -1,5 +1,4 @@
 {% extends "common/layout.njk" %}
-{% from "govuk/components/button/macro.njk" import govukButton %}
 
 {% block content %}
   <div class="govuk-grid-row">
@@ -7,18 +6,8 @@
       <h1 class="govuk-heading-l">{{ pageTitle }}</h1>
 
       <p class="govuk-body">
-        The document is still being converted. You do not need to upload it
-        again or enter its details again.
+        This is taking longer than expected. <a class="govuk-link" href="{{ convertingUrl }}">Refresh the page</a> to check again.
       </p>
-
-      <p class="govuk-body">
-        Wait a minute, then check whether the conversion has finished.
-      </p>
-
-      {{ govukButton({
-        text: "Check again",
-        href: checkAgainUrl
-      }) }}
     </div>
   </div>
 {% endblock %}
