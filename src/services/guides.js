@@ -6,7 +6,8 @@ const RESULTS = {
   GUIDE_CREATED: 'guideCreated', // new, or the one this upload made before
   UPLOAD_EXPIRED: 'uploadExpired', // the API has no staged file for the upload
   PARSE_PENDING: 'parsePending', // the staged file has not finished parsing
-  PARSE_FAILED: 'parseFailed' // the staged file could not be parsed
+  PARSE_FAILED: 'parseFailed', // the staged file could not be parsed
+  CONVERSION_SLOW: 'conversionSlow' // the API took longer to answer than the UI waits
 }
 
 /**
@@ -25,11 +26,23 @@ const RESULTS = {
  * @returns {Promise<{code: string}>} One of `RESULTS`
  */
 async function createGuide ({ uploadId, fileId, metadata, user }) {
-  const res = await guidesApi.createGuide({
-    source: { uploadId, fileId },
-    metadata,
-    createdBy: { id: user.id, displayName: user.displayName }
-  })
+  let res
+
+  try {
+    res = await guidesApi.createGuide({
+      source: { uploadId, fileId },
+      metadata,
+      createdBy: { id: user.id, displayName: user.displayName }
+    })
+  } catch (error) {
+    // The API carries on converting after the UI stops waiting, so a timeout
+    // is not a failure: the conversion may yet finish.
+    if (error.name === 'TimeoutError') {
+      return { code: RESULTS.CONVERSION_SLOW }
+    }
+
+    throw error
+  }
 
   if (res.status === statusCodes.HTTP_STATUS_NOT_FOUND) {
     return { code: RESULTS.UPLOAD_EXPIRED }

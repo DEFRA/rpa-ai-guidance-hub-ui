@@ -4,6 +4,7 @@ import { createServer } from '../../../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../../../helpers/login.js'
 import { mergeCookies } from '../../../../../helpers/cookies.js'
 import { config } from '../../../../../../../src/config/config.js'
+import { guidanceApiClient } from '../../../../../../../src/infra/guidance-api/client.js'
 import {
   audiencesResponse,
   createdGuideResponse,
@@ -20,6 +21,7 @@ const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
 const PROCESSING_URL = '/create-guidance/upload-guide/processing'
 const CHECK_ANSWERS_URL = '/create-guidance/upload-guide/metadata/check-answers'
+const CONVERTING_URL = '/create-guidance/upload-guide/converting'
 
 function mockReferenceData () {
   nock(GUIDANCE_API_BASE_URL)
@@ -346,6 +348,44 @@ describe('#checkAnswersController Integration', () => {
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
       expect(response.payload).toContain(message)
+    })
+
+    test('POST tells the user conversion is taking a long time when the API is slower than the UI waits', async () => {
+      const devCookie = await loginAsDevUser(server)
+      const cookie = await completeAllMetadata(server, devCookie)
+      const timeout = guidanceApiClient.timeout
+      guidanceApiClient.timeout = 200
+
+      try {
+        mockReferenceData()
+        nock(GUIDANCE_API_BASE_URL)
+          .post('/guides')
+          .delay(1000)
+          .reply(statusCodes.HTTP_STATUS_CREATED, createdGuideResponse())
+
+        const response = await server.inject({
+          method: 'POST',
+          url: CHECK_ANSWERS_URL,
+          payload: {},
+          headers: { cookie }
+        })
+
+        expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+        expect(response.headers.location).toBe(CONVERTING_URL)
+
+        const converting = await server.inject({
+          method: 'GET',
+          url: CONVERTING_URL,
+          headers: { cookie: mergeCookies(cookie, response.headers['set-cookie']) }
+        })
+
+        expect(converting.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+        expect(converting.payload).toContain('Converting this document is taking a long time')
+        expect(converting.payload).toContain(`href="${CONVERTING_URL}"`)
+        expect(converting.payload).toContain('Check again')
+      } finally {
+        guidanceApiClient.timeout = timeout
+      }
     })
 
     test('POST redisplays check answers with an error summary when a saved answer is no longer a valid reference option', async () => {

@@ -11,6 +11,7 @@ const UPLOAD_GUIDE_URL = '/create-guidance/upload-guide'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
 const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
 const HUB_URL = '/hub'
+const CONVERTING_URL = '/create-guidance/upload-guide/converting'
 
 // Why the API would not convert the upload, as the user is told it.
 const REFUSAL_MESSAGES = {
@@ -138,6 +139,10 @@ async function convertDocument (request, h) {
     metadata: upload.metadata,
     user: request.auth.credentials.profile
   })
+
+  if (code === GUIDE_RESULTS.CONVERSION_SLOW) {
+    return h.redirect(CONVERTING_URL)
+  }
 
   if (code !== GUIDE_RESULTS.GUIDE_CREATED) {
     const viewModel = CheckAnswersViewModel.fromSubmissionError(

@@ -89,4 +89,21 @@ describe('guides service', () => {
 
     expect(result).toEqual({ code: RESULTS.UPLOAD_EXPIRED })
   })
+
+  test('reports the conversion slow when the API takes longer to answer than the UI waits', async () => {
+    vi.spyOn(guidesApi, 'createGuide').mockRejectedValue(
+      new DOMException('The operation was aborted due to timeout', 'TimeoutError')
+    )
+
+    const result = await createGuide(guide)
+
+    expect(result).toEqual({ code: RESULTS.CONVERSION_SLOW })
+  })
+
+  test('lets any other failure through', async () => {
+    const failure = new Error('connection refused')
+    vi.spyOn(guidesApi, 'createGuide').mockRejectedValue(failure)
+
+    await expect(createGuide(guide)).rejects.toBe(failure)
+  })
 })
