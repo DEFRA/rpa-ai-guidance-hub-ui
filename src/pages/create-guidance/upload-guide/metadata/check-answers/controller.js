@@ -1,5 +1,5 @@
 import { statusCodes } from '../../../../../constants/status-codes.js'
-import { getGuideUpload } from '../../../session.js'
+import { clearGuideUpload, getGuideUpload } from '../../../session.js'
 import { createGuide, RESULTS as GUIDE_RESULTS } from '../../../../../services/guides.js'
 import * as referenceData from '../../../../../services/reference-data.js'
 import { getStagedDocumentById } from '../../../../../services/staged-documents.js'
@@ -154,6 +154,9 @@ async function convertDocument (request, h) {
       .view(CHECK_ANSWERS_VIEW, viewModel)
       .code(statusCodes.HTTP_STATUS_BAD_REQUEST)
   }
+
+  // The upload is now a guide, so the next guide starts with a new upload.
+  clearGuideUpload(request)
 
   return h.redirect(HUB_URL)
 }

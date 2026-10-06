@@ -1,5 +1,5 @@
 import { statusCodes } from '../../../../constants/status-codes.js'
-import { getGuideUpload } from '../../session.js'
+import { clearGuideUpload, getGuideUpload } from '../../session.js'
 import { getStagedDocumentById } from '../../../../services/staged-documents.js'
 import { ConvertingViewModel } from './view-models.js'
 
@@ -27,6 +27,9 @@ async function getConverting (request, h) {
   const stagedDocument = await getStagedDocumentById(upload.fileId)
 
   if (stagedDocument?.promotedAt) {
+    // The upload is now a guide, so the next guide starts with a new upload.
+    clearGuideUpload(request)
+
     return h.redirect(HUB_URL)
   }
 

@@ -137,6 +137,24 @@ async function completeAllMetadata (server, cookie) {
   return mergeCookies(sessionCookie, purposeResponse.headers['set-cookie'])
 }
 
+async function expectFreshUploadForm (server, cookie) {
+  nock(CDP_UPLOADER_URL)
+    .post('/initiate')
+    .reply(statusCodes.HTTP_STATUS_OK, initiateUploadResponse({
+      uploadId: 'u-next',
+      uploadUrl: 'http://cdp-uploader.test/upload-and-scan/u-next'
+    }))
+
+  const response = await server.inject({
+    method: 'GET',
+    url: '/create-guidance/upload-guide',
+    headers: { cookie }
+  })
+
+  expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+  expect(response.payload).toContain('/upload-and-scan/u-next')
+}
+
 describe('#checkAnswersController Integration', () => {
   let server
 
@@ -266,7 +284,7 @@ describe('#checkAnswersController Integration', () => {
       expect(postChangeResponse.headers.location).toBe(CHECK_ANSWERS_URL)
     })
 
-    test('POST converts document and redirects to hub on success', async () => {
+    test('POST converts document and redirects to hub on success, after which create guidance starts a new guide', async () => {
       const devCookie = await loginAsDevUser(server)
       const cookie = await completeAllMetadata(server, devCookie)
 
@@ -298,6 +316,8 @@ describe('#checkAnswersController Integration', () => {
       createGuide.done()
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(response.headers.location).toBe('/hub')
+
+      await expectFreshUploadForm(server, mergeCookies(cookie, response.headers['set-cookie']))
     })
 
     test('POST redisplays check answers asking for the document again when its upload has expired', async () => {
@@ -350,7 +370,7 @@ describe('#checkAnswersController Integration', () => {
       expect(response.payload).toContain(message)
     })
 
-    test('POST tells the user conversion is taking a long time when the API is slower than the UI waits, until it has finished', async () => {
+    test('POST tells the user conversion is taking a long time when the API is slower than the UI waits, until it has finished, then starts a new guide', async () => {
       const devCookie = await loginAsDevUser(server)
       const cookie = await completeAllMetadata(server, devCookie)
       const timeout = guidanceApiClient.timeout
@@ -405,6 +425,8 @@ describe('#checkAnswersController Integration', () => {
 
         expect(checkedAgain.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
         expect(checkedAgain.headers.location).toBe('/hub')
+
+        await expectFreshUploadForm(server, mergeCookies(convertingCookie, checkedAgain.headers['set-cookie']))
       } finally {
         guidanceApiClient.timeout = timeout
       }

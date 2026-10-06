@@ -37,9 +37,12 @@ describe('upload-guide converting controller', () => {
       promotedAt: '2026-10-06T11:00:00Z'
     })
 
+    const clearSpy = vi.spyOn(session, 'clearGuideUpload').mockReturnValue()
+
     await getConverting(request, h)
 
     expect(h.redirect).toHaveBeenCalledWith('/hub')
+    expect(clearSpy).toHaveBeenCalledWith(request)
   })
 
   test('says conversion is taking a long time, offering to check again', async () => {
@@ -53,8 +56,11 @@ describe('upload-guide converting controller', () => {
       promotedAt: null
     })
 
+    const clearSpy = vi.spyOn(session, 'clearGuideUpload').mockReturnValue()
+
     await getConverting(request, h)
 
+    expect(clearSpy).not.toHaveBeenCalled()
     expect(h.view).toHaveBeenCalledWith(CONVERTING_VIEW, expect.objectContaining({
       pageTitle: 'Converting this document is taking a long time',
       checkAgainUrl: '/create-guidance/upload-guide/converting'

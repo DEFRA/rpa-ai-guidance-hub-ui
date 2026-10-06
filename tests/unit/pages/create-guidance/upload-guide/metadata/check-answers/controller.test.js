@@ -51,7 +51,7 @@ describe('upload-guide metadata check-answers controller', () => {
       redirect: vi.fn()
     }
     request = {
-      yar: { get: vi.fn(() => null) },
+      yar: { get: vi.fn(() => null), clear: vi.fn() },
       logger: { error: vi.fn() }
     }
   })
@@ -156,6 +156,38 @@ describe('upload-guide metadata check-answers controller', () => {
         user: { id: 'user-1', displayName: 'A User' }
       })
       expect(h.redirect).toHaveBeenCalledWith('/hub')
+    })
+
+    test('clears the upload from the session once the guide is created, so the next guide starts afresh', async () => {
+      mockUpload(validMetadata())
+      mockReferenceData()
+      vi.spyOn(guidesService, 'createGuide')
+        .mockResolvedValue({ code: guidesService.RESULTS.GUIDE_CREATED })
+      const clearSpy = vi.spyOn(session, 'clearGuideUpload').mockReturnValue()
+      request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
+
+      await convertDocument(request, h)
+
+      expect(clearSpy).toHaveBeenCalledWith(request)
+    })
+
+    test.each([
+      'UPLOAD_EXPIRED',
+      'PARSE_PENDING',
+      'PARSE_FAILED',
+      'CONVERSION_SLOW'
+    ])('keeps the upload in the session when the result is %s', async (result) => {
+      mockUpload(validMetadata())
+      mockReferenceData()
+      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
+      vi.spyOn(guidesService, 'createGuide')
+        .mockResolvedValue({ code: guidesService.RESULTS[result] })
+      const clearSpy = vi.spyOn(session, 'clearGuideUpload').mockReturnValue()
+      request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
+
+      await convertDocument(request, h)
+
+      expect(clearSpy).not.toHaveBeenCalled()
     })
 
     test.each([
