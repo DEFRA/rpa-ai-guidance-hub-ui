@@ -1,5 +1,6 @@
 import { statusCodes } from '../../../../../constants/status-codes.js'
 import { getGuideUpload } from '../../../session.js'
+import { createGuide } from '../../../../../services/guides.js'
 import * as referenceData from '../../../../../services/reference-data.js'
 import { getStagedDocumentById } from '../../../../../services/staged-documents.js'
 import { buildCheckAnswersSchema } from './schemas/check-answers-schema.js'
@@ -96,8 +97,8 @@ async function getCheckAnswers (request, h) {
 }
 
 /**
- * Persisting the guide via the guidance API is tracked separately; once
- * the answers are valid this redirects straight to the dashboard.
+ * Once the answers are valid, converts the upload into a guide through
+ * the guidance API, then shows the dashboard.
  */
 async function convertDocument (request, h) {
   const upload = getGuideUpload(request)
@@ -129,6 +130,13 @@ async function convertDocument (request, h) {
       .view(CHECK_ANSWERS_VIEW, viewModel)
       .code(statusCodes.HTTP_STATUS_BAD_REQUEST)
   }
+
+  await createGuide({
+    uploadId: upload.activeUploadId,
+    fileId: upload.fileId,
+    metadata: upload.metadata,
+    user: request.auth.credentials.profile
+  })
 
   return h.redirect(HUB_URL)
 }

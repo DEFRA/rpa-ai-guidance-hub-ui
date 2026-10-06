@@ -1,5 +1,6 @@
 import { statusCodes } from '../../../../../../../src/constants/status-codes.js'
 import * as session from '../../../../../../../src/pages/create-guidance/session.js'
+import * as guidesService from '../../../../../../../src/services/guides.js'
 import * as referenceDataService from '../../../../../../../src/services/reference-data.js'
 import * as stagedDocumentsService from '../../../../../../../src/services/staged-documents.js'
 import {
@@ -139,13 +140,32 @@ describe('upload-guide metadata check-answers controller', () => {
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
     })
 
-    test('redirects to the hub when the metadata is valid against the current reference options', async () => {
+    test('creates the guide from the upload, its answers and the signed-in user, then redirects to the hub', async () => {
       mockUpload(validMetadata())
       mockReferenceData()
+      const createGuideSpy = vi.spyOn(guidesService, 'createGuide').mockResolvedValue()
+      request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
 
       await convertDocument(request, h)
 
+      expect(createGuideSpy).toHaveBeenCalledWith({
+        uploadId: 'test-upload-id',
+        fileId: 'file-1',
+        metadata: validMetadata(),
+        user: { id: 'user-1', displayName: 'A User' }
+      })
       expect(h.redirect).toHaveBeenCalledWith('/hub')
+    })
+
+    test('does not create the guide when an answer is missing', async () => {
+      mockUpload({ guideTitle: '' })
+      mockReferenceData()
+      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
+      const createGuideSpy = vi.spyOn(guidesService, 'createGuide')
+
+      await convertDocument(request, h)
+
+      expect(createGuideSpy).not.toHaveBeenCalled()
     })
 
     test('re-renders check answers with an error summary when a previously valid option is no longer current', async () => {

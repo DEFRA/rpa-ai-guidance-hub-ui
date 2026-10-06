@@ -6,6 +6,7 @@ import { mergeCookies } from '../../../../../helpers/cookies.js'
 import { config } from '../../../../../../../src/config/config.js'
 import {
   audiencesResponse,
+  createdGuideResponse,
   schemesResponse,
   stagedDocumentResponse,
   systemsResponse
@@ -269,6 +270,22 @@ describe('#checkAnswersController Integration', () => {
 
       mockReferenceData()
 
+      const createGuide = nock(GUIDANCE_API_BASE_URL)
+        .post('/guides', {
+          source: { uploadId: 'u-check', fileId: 'file-1' },
+          metadata: {
+            guideTitle: 'Complete Guide Title',
+            schemes: ['sfi'],
+            owner: 'designer@example.com',
+            goal: 'Clear guidance purpose',
+            requirements: 'Standard training required',
+            systems: ['crm'],
+            audience: ['processor']
+          },
+          createdBy: { id: 'dev-user-123', displayName: 'Dev User' }
+        })
+        .reply(statusCodes.HTTP_STATUS_CREATED, createdGuideResponse())
+
       const response = await server.inject({
         method: 'POST',
         url: CHECK_ANSWERS_URL,
@@ -276,6 +293,7 @@ describe('#checkAnswersController Integration', () => {
         headers: { cookie }
       })
 
+      createGuide.done()
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(response.headers.location).toBe('/hub')
     })

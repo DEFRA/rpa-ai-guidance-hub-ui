@@ -78,10 +78,36 @@ function stagedDocumentResponse (overrides = {}) {
 
 const draftResponse = stagedDocumentResponse
 
+/**
+ * Builds a mock guidance API `POST /guides` response: the document an
+ * upload became, with its one version.
+ *
+ * @param {Object} [overrides]
+ * @returns {{id: string, metadata: Object, source: Object, versions: Array<Object>}}
+ */
+function createdGuideResponse (overrides = {}) {
+  return {
+    id: 'document-1',
+    metadata: {},
+    source: { uploadId: 'u-check', fileId: 'file-1', filename: null },
+    versions: [
+      {
+        id: 'version-1',
+        contentUrl: 's3://rpa-ai-guidance-hub-docs/document-1/version-1/guide.md',
+        title: null,
+        createdBy: { id: 'dev-user-123', displayName: 'Dev User' },
+        createdAt: '2026-10-06T08:00:00Z'
+      }
+    ],
+    ...overrides
+  }
+}
+
 export {
   schemesResponse,
   systemsResponse,
   audiencesResponse,
   stagedDocumentResponse,
-  draftResponse
+  draftResponse,
+  createdGuideResponse
 }
