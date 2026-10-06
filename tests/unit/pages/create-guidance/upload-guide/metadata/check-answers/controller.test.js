@@ -143,7 +143,8 @@ describe('upload-guide metadata check-answers controller', () => {
     test('creates the guide from the upload, its answers and the signed-in user, then redirects to the hub', async () => {
       mockUpload(validMetadata())
       mockReferenceData()
-      const createGuideSpy = vi.spyOn(guidesService, 'createGuide').mockResolvedValue()
+      const createGuideSpy = vi.spyOn(guidesService, 'createGuide')
+        .mockResolvedValue({ code: guidesService.RESULTS.GUIDE_CREATED })
       request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
 
       await convertDocument(request, h)
@@ -155,6 +156,26 @@ describe('upload-guide metadata check-answers controller', () => {
         user: { id: 'user-1', displayName: 'A User' }
       })
       expect(h.redirect).toHaveBeenCalledWith('/hub')
+    })
+
+    test('asks for the document to be uploaded again when its upload has expired', async () => {
+      mockUpload(validMetadata())
+      mockReferenceData()
+      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
+      vi.spyOn(guidesService, 'createGuide')
+        .mockResolvedValue({ code: guidesService.RESULTS.UPLOAD_EXPIRED })
+      request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
+
+      await convertDocument(request, h)
+
+      expect(h.view).toHaveBeenCalledWith(CHECK_ANSWERS_VIEW, expect.objectContaining({
+        errorList: [{
+          text: 'The uploaded document has expired. Start again and upload it again',
+          href: '#conversion-error'
+        }]
+      }))
+      expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
+      expect(h.redirect).not.toHaveBeenCalled()
     })
 
     test('does not create the guide when an answer is missing', async () => {

@@ -1,6 +1,6 @@
 import { statusCodes } from '../../../../../constants/status-codes.js'
 import { getGuideUpload } from '../../../session.js'
-import { createGuide } from '../../../../../services/guides.js'
+import { createGuide, RESULTS as GUIDE_RESULTS } from '../../../../../services/guides.js'
 import * as referenceData from '../../../../../services/reference-data.js'
 import { getStagedDocumentById } from '../../../../../services/staged-documents.js'
 import { buildCheckAnswersSchema } from './schemas/check-answers-schema.js'
@@ -11,6 +11,7 @@ const UPLOAD_GUIDE_URL = '/create-guidance/upload-guide'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
 const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
 const HUB_URL = '/hub'
+const UPLOAD_EXPIRED_MESSAGE = 'The uploaded document has expired. Start again and upload it again'
 
 // Which screen owns each field, so an incomplete/invalid answer sends the
 // user back to the screen that can fix it rather than a generic error.
@@ -61,6 +62,23 @@ function _getIncompleteScreenUrl (error) {
   return FIELD_PAGE_MAP[field] ?? METADATA_URL
 }
 
+/**
+ * What the summary cards are built from: the answers, the staged
+ * document's parse details, and the option lists that label them.
+ *
+ * @private
+ * @param {import('../../../session.js').GuideUpload} upload
+ * @param {{schemeOptions: Array, systemOptions: Array, audienceOptions: Array}} options
+ * @returns {Promise<Object>}
+ */
+async function _summaryData (upload, options) {
+  const stagedDocument = upload.fileId
+    ? await getStagedDocumentById(upload.fileId)
+    : null
+
+  return { metadata: upload.metadata, stagedDocument, ...options }
+}
+
 async function getCheckAnswers (request, h) {
   const upload = getGuideUpload(request)
 
@@ -68,28 +86,15 @@ async function getCheckAnswers (request, h) {
     return h.redirect(UPLOAD_GUIDE_URL)
   }
 
-  const {
-    error,
-    schemeOptions,
-    systemOptions,
-    audienceOptions
-  } = await _validateMetadata(upload.metadata)
+  const { error, ...options } = await _validateMetadata(upload.metadata)
 
   if (error) {
     return h.redirect(_getIncompleteScreenUrl(error))
   }
 
-  const stagedDocument = upload.fileId
-    ? await getStagedDocumentById(upload.fileId)
-    : null
-
-  const viewModel = CheckAnswersViewModel.fromSession({
-    metadata: upload.metadata,
-    stagedDocument,
-    schemeOptions,
-    systemOptions,
-    audienceOptions
-  })
+  const viewModel = CheckAnswersViewModel.fromSession(
+    await _summaryData(upload, options)
+  )
 
   return h
     .view(CHECK_ANSWERS_VIEW, viewModel)
@@ -107,22 +112,11 @@ async function convertDocument (request, h) {
     return h.redirect(UPLOAD_GUIDE_URL)
   }
 
-  const { error, schemeOptions, systemOptions, audienceOptions } =
-    await _validateMetadata(upload.metadata)
+  const { error, ...options } = await _validateMetadata(upload.metadata)
 
   if (error) {
-    const stagedDocument = upload.fileId
-      ? await getStagedDocumentById(upload.fileId)
-      : null
-
     const viewModel = CheckAnswersViewModel.fromValidationError(
-      {
-        metadata: upload.metadata,
-        stagedDocument,
-        schemeOptions,
-        systemOptions,
-        audienceOptions
-      },
+      await _summaryData(upload, options),
       error
     )
 
@@ -131,12 +125,23 @@ async function convertDocument (request, h) {
       .code(statusCodes.HTTP_STATUS_BAD_REQUEST)
   }
 
-  await createGuide({
+  const { code } = await createGuide({
     uploadId: upload.activeUploadId,
     fileId: upload.fileId,
     metadata: upload.metadata,
     user: request.auth.credentials.profile
   })
+
+  if (code === GUIDE_RESULTS.UPLOAD_EXPIRED) {
+    const viewModel = CheckAnswersViewModel.fromSubmissionError(
+      CheckAnswersViewModel.fromSession(await _summaryData(upload, options)),
+      UPLOAD_EXPIRED_MESSAGE
+    )
+
+    return h
+      .view(CHECK_ANSWERS_VIEW, viewModel)
+      .code(statusCodes.HTTP_STATUS_BAD_REQUEST)
+  }
 
   return h.redirect(HUB_URL)
 }

@@ -1,4 +1,10 @@
+import { statusCodes } from '../constants/status-codes.js'
 import * as guidesApi from '../infra/guidance-api/guides.js'
+
+const RESULTS = {
+  GUIDE_CREATED: 'guideCreated', // new, or the one this upload made before
+  UPLOAD_EXPIRED: 'uploadExpired' // the API has no staged file for the upload
+}
 
 /**
  * Convert an upload into a guide, recording its answers and who made it.
@@ -13,16 +19,23 @@ import * as guidesApi from '../infra/guidance-api/guides.js'
  * @param {Object} guide.metadata - The journey's answers
  * @param {{id: string, displayName: string}} guide.user - The signed-in
  *   user's profile
- * @returns {Promise<void>}
+ * @returns {Promise<{code: string}>} One of `RESULTS`
  */
 async function createGuide ({ uploadId, fileId, metadata, user }) {
-  await guidesApi.createGuide({
+  const res = await guidesApi.createGuide({
     source: { uploadId, fileId },
     metadata,
     createdBy: { id: user.id, displayName: user.displayName }
   })
+
+  if (res.status === statusCodes.HTTP_STATUS_NOT_FOUND) {
+    return { code: RESULTS.UPLOAD_EXPIRED }
+  }
+
+  return { code: RESULTS.GUIDE_CREATED }
 }
 
 export {
-  createGuide
+  createGuide,
+  RESULTS
 }

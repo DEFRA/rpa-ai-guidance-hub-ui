@@ -1,5 +1,25 @@
+import { statusCodes } from '../../../src/constants/status-codes.js'
 import * as guidesApi from '../../../src/infra/guidance-api/guides.js'
-import { createGuide } from '../../../src/services/guides.js'
+import { createGuide, RESULTS } from '../../../src/services/guides.js'
+
+const guide = {
+  uploadId: 'upload-1',
+  fileId: 'file-1',
+  metadata: { guideTitle: 'A title' },
+  user: {
+    id: 'user-1',
+    displayName: 'A User',
+    email: 'a.user@example.com'
+  }
+}
+
+function mockApiResponse (status) {
+  return vi.spyOn(guidesApi, 'createGuide').mockResolvedValue({
+    ok: status < statusCodes.HTTP_STATUS_BAD_REQUEST,
+    status,
+    data: {}
+  })
+}
 
 describe('guides service', () => {
   beforeEach(() => {
@@ -7,24 +27,33 @@ describe('guides service', () => {
   })
 
   test('sends the upload, its answers and who made it to the API', async () => {
-    const createGuideSpy = vi.spyOn(guidesApi, 'createGuide')
-      .mockResolvedValue({ ok: true, status: 201, data: {} })
+    const createGuideSpy = mockApiResponse(statusCodes.HTTP_STATUS_CREATED)
 
-    await createGuide({
-      uploadId: 'upload-1',
-      fileId: 'file-1',
-      metadata: { guideTitle: 'A title' },
-      user: {
-        id: 'user-1',
-        displayName: 'A User',
-        email: 'a.user@example.com'
-      }
-    })
+    await createGuide(guide)
 
     expect(createGuideSpy).toHaveBeenCalledWith({
       source: { uploadId: 'upload-1', fileId: 'file-1' },
       metadata: { guideTitle: 'A title' },
       createdBy: { id: 'user-1', displayName: 'A User' }
     })
+  })
+
+  test.each([
+    statusCodes.HTTP_STATUS_CREATED,
+    statusCodes.HTTP_STATUS_OK
+  ])('reports the guide created when the API answers %i', async (status) => {
+    mockApiResponse(status)
+
+    const result = await createGuide(guide)
+
+    expect(result).toEqual({ code: RESULTS.GUIDE_CREATED })
+  })
+
+  test('reports the upload expired when the API has no staged file for it', async () => {
+    mockApiResponse(statusCodes.HTTP_STATUS_NOT_FOUND)
+
+    const result = await createGuide(guide)
+
+    expect(result).toEqual({ code: RESULTS.UPLOAD_EXPIRED })
   })
 })

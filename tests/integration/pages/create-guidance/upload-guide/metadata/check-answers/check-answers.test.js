@@ -298,6 +298,29 @@ describe('#checkAnswersController Integration', () => {
       expect(response.headers.location).toBe('/hub')
     })
 
+    test('POST redisplays check answers asking for the document again when its upload has expired', async () => {
+      const devCookie = await loginAsDevUser(server)
+      const cookie = await completeAllMetadata(server, devCookie)
+
+      mockReferenceData()
+      nock(GUIDANCE_API_BASE_URL)
+        .get('/guides/staging/file-1')
+        .reply(statusCodes.HTTP_STATUS_NOT_FOUND)
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/guides')
+        .reply(statusCodes.HTTP_STATUS_NOT_FOUND, { detail: 'No staged file file-1: never delivered, or expired' })
+
+      const response = await server.inject({
+        method: 'POST',
+        url: CHECK_ANSWERS_URL,
+        payload: {},
+        headers: { cookie }
+      })
+
+      expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
+      expect(response.payload).toContain('The uploaded document has expired. Start again and upload it again')
+    })
+
     test('POST redisplays check answers with an error summary when a saved answer is no longer a valid reference option', async () => {
       const devCookie = await loginAsDevUser(server)
       const cookie = await completeAllMetadata(server, devCookie)
