@@ -321,6 +321,33 @@ describe('#checkAnswersController Integration', () => {
       expect(response.payload).toContain('The uploaded document has expired. Start again and upload it again')
     })
 
+    test.each([
+      ['unfinished', 'in_progress', 'The uploaded document is still being processed. Wait a few seconds, then select Convert document again'],
+      ['failed', 'failed', 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team']
+    ])('POST redisplays check answers explaining why when the document parse is %s', async (_, parsingStatus, message) => {
+      const devCookie = await loginAsDevUser(server)
+      const cookie = await completeAllMetadata(server, devCookie)
+
+      mockReferenceData()
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/guides')
+        .reply(statusCodes.HTTP_STATUS_CONFLICT, { detail: `File file-1 is ${parsingStatus}, not parsed` })
+      nock(GUIDANCE_API_BASE_URL)
+        .get('/guides/staging/file-1')
+        .times(2)
+        .reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus }))
+
+      const response = await server.inject({
+        method: 'POST',
+        url: CHECK_ANSWERS_URL,
+        payload: {},
+        headers: { cookie }
+      })
+
+      expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
+      expect(response.payload).toContain(message)
+    })
+
     test('POST redisplays check answers with an error summary when a saved answer is no longer a valid reference option', async () => {
       const devCookie = await loginAsDevUser(server)
       const cookie = await completeAllMetadata(server, devCookie)

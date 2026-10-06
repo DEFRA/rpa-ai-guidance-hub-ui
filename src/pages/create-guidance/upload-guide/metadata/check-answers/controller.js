@@ -11,7 +11,13 @@ const UPLOAD_GUIDE_URL = '/create-guidance/upload-guide'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
 const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
 const HUB_URL = '/hub'
-const UPLOAD_EXPIRED_MESSAGE = 'The uploaded document has expired. Start again and upload it again'
+
+// Why the API would not convert the upload, as the user is told it.
+const REFUSAL_MESSAGES = {
+  [GUIDE_RESULTS.UPLOAD_EXPIRED]: 'The uploaded document has expired. Start again and upload it again',
+  [GUIDE_RESULTS.PARSE_PENDING]: 'The uploaded document is still being processed. Wait a few seconds, then select Convert document again',
+  [GUIDE_RESULTS.PARSE_FAILED]: 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team'
+}
 
 // Which screen owns each field, so an incomplete/invalid answer sends the
 // user back to the screen that can fix it rather than a generic error.
@@ -103,7 +109,8 @@ async function getCheckAnswers (request, h) {
 
 /**
  * Once the answers are valid, converts the upload into a guide through
- * the guidance API, then shows the dashboard.
+ * the guidance API, then shows the dashboard. If the API refuses, the
+ * answers are shown again with what went wrong and what to do about it.
  */
 async function convertDocument (request, h) {
   const upload = getGuideUpload(request)
@@ -132,10 +139,10 @@ async function convertDocument (request, h) {
     user: request.auth.credentials.profile
   })
 
-  if (code === GUIDE_RESULTS.UPLOAD_EXPIRED) {
+  if (code !== GUIDE_RESULTS.GUIDE_CREATED) {
     const viewModel = CheckAnswersViewModel.fromSubmissionError(
       CheckAnswersViewModel.fromSession(await _summaryData(upload, options)),
-      UPLOAD_EXPIRED_MESSAGE
+      REFUSAL_MESSAGES[code]
     )
 
     return h

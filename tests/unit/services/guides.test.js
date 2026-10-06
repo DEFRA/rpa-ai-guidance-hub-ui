@@ -1,6 +1,7 @@
 import { statusCodes } from '../../../src/constants/status-codes.js'
 import * as guidesApi from '../../../src/infra/guidance-api/guides.js'
 import { createGuide, RESULTS } from '../../../src/services/guides.js'
+import * as stagedDocumentsService from '../../../src/services/staged-documents.js'
 
 const guide = {
   uploadId: 'upload-1',
@@ -51,6 +52,38 @@ describe('guides service', () => {
 
   test('reports the upload expired when the API has no staged file for it', async () => {
     mockApiResponse(statusCodes.HTTP_STATUS_NOT_FOUND)
+
+    const result = await createGuide(guide)
+
+    expect(result).toEqual({ code: RESULTS.UPLOAD_EXPIRED })
+  })
+
+  test('reports the parse failed when the API refuses an upload whose parse failed', async () => {
+    mockApiResponse(statusCodes.HTTP_STATUS_CONFLICT)
+    vi.spyOn(stagedDocumentsService, 'getStagedDocumentById')
+      .mockResolvedValue({ fileId: 'file-1', parsingStatus: 'failed' })
+
+    const result = await createGuide(guide)
+
+    expect(result).toEqual({ code: RESULTS.PARSE_FAILED })
+  })
+
+  test.each([
+    'pending',
+    'in_progress'
+  ])('reports the parse unfinished when the API refuses an upload whose parse is %s', async (parsingStatus) => {
+    mockApiResponse(statusCodes.HTTP_STATUS_CONFLICT)
+    vi.spyOn(stagedDocumentsService, 'getStagedDocumentById')
+      .mockResolvedValue({ fileId: 'file-1', parsingStatus })
+
+    const result = await createGuide(guide)
+
+    expect(result).toEqual({ code: RESULTS.PARSE_PENDING })
+  })
+
+  test('reports the upload expired when its staged file goes after the API refuses it as unparsed', async () => {
+    mockApiResponse(statusCodes.HTTP_STATUS_CONFLICT)
+    vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
 
     const result = await createGuide(guide)
 

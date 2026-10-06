@@ -158,21 +158,22 @@ describe('upload-guide metadata check-answers controller', () => {
       expect(h.redirect).toHaveBeenCalledWith('/hub')
     })
 
-    test('asks for the document to be uploaded again when its upload has expired', async () => {
+    test.each([
+      ['its upload has expired', 'UPLOAD_EXPIRED', 'The uploaded document has expired. Start again and upload it again'],
+      ['its parse is unfinished', 'PARSE_PENDING', 'The uploaded document is still being processed. Wait a few seconds, then select Convert document again'],
+      ['its parse failed', 'PARSE_FAILED', 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team']
+    ])('explains why the document cannot be converted when %s', async (_, result, message) => {
       mockUpload(validMetadata())
       mockReferenceData()
       vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
       vi.spyOn(guidesService, 'createGuide')
-        .mockResolvedValue({ code: guidesService.RESULTS.UPLOAD_EXPIRED })
+        .mockResolvedValue({ code: guidesService.RESULTS[result] })
       request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
 
       await convertDocument(request, h)
 
       expect(h.view).toHaveBeenCalledWith(CHECK_ANSWERS_VIEW, expect.objectContaining({
-        errorList: [{
-          text: 'The uploaded document has expired. Start again and upload it again',
-          href: '#conversion-error'
-        }]
+        errorList: [{ text: message, href: '#conversion-error' }]
       }))
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
       expect(h.redirect).not.toHaveBeenCalled()
