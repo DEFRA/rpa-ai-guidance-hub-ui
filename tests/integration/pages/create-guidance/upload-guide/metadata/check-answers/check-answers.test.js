@@ -350,7 +350,7 @@ describe('#checkAnswersController Integration', () => {
       expect(response.payload).toContain(message)
     })
 
-    test('POST tells the user conversion is taking a long time when the API is slower than the UI waits', async () => {
+    test('POST tells the user conversion is taking a long time when the API is slower than the UI waits, until it has finished', async () => {
       const devCookie = await loginAsDevUser(server)
       const cookie = await completeAllMetadata(server, devCookie)
       const timeout = guidanceApiClient.timeout
@@ -373,16 +373,38 @@ describe('#checkAnswersController Integration', () => {
         expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
         expect(response.headers.location).toBe(CONVERTING_URL)
 
+        const convertingCookie = mergeCookies(cookie, response.headers['set-cookie'])
+        nock(GUIDANCE_API_BASE_URL)
+          .get('/guides/staging/file-1')
+          .reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({
+            parsingStatus: 'complete', documentId: 'document-1', promotedAt: null
+          }))
+
         const converting = await server.inject({
           method: 'GET',
           url: CONVERTING_URL,
-          headers: { cookie: mergeCookies(cookie, response.headers['set-cookie']) }
+          headers: { cookie: convertingCookie }
         })
 
         expect(converting.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
         expect(converting.payload).toContain('Converting this document is taking a long time')
         expect(converting.payload).toContain(`href="${CONVERTING_URL}"`)
         expect(converting.payload).toContain('Check again')
+
+        nock(GUIDANCE_API_BASE_URL)
+          .get('/guides/staging/file-1')
+          .reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({
+            parsingStatus: 'complete', documentId: 'document-1', promotedAt: '2026-10-06T11:00:00Z'
+          }))
+
+        const checkedAgain = await server.inject({
+          method: 'GET',
+          url: CONVERTING_URL,
+          headers: { cookie: convertingCookie }
+        })
+
+        expect(checkedAgain.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+        expect(checkedAgain.headers.location).toBe('/hub')
       } finally {
         guidanceApiClient.timeout = timeout
       }
