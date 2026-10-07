@@ -26,6 +26,8 @@ class ApiClient {
    * @param {Object<string, string>?} [options.headers] - Additional headers
    * @param {number[]} [options.expected] - List of expected non-ok status
    *   codes
+   * @param {number|null} [options.timeout] - Request timeout in
+   *   milliseconds, in place of the client's; null waits without limit
    * @returns {Promise<{ok: boolean, status: number, data: any}>} - The
    *   response object
    * @throws {Error} - When response is not ok and status is not in
@@ -34,7 +36,8 @@ class ApiClient {
    */
   async request (path, options = {}) {
     const url = _buildUrl(this.baseUrl, path, options.query)
-    const fetchOptions = _buildFetchOptions(options, this.timeout)
+    const timeout = options.timeout === undefined ? this.timeout : options.timeout
+    const fetchOptions = _buildFetchOptions(options, timeout)
     const response = await fetch(url, fetchOptions)
 
     return _handleResponse(response, {

@@ -1,5 +1,6 @@
 import { statusCodes } from '../../../../../constants/status-codes.js'
-import { getGuideUpload } from '../../../session.js'
+import { clearGuideUpload, getGuideUpload } from '../../../session.js'
+import { createGuide, RESULTS as GUIDE_RESULTS } from '../../../../../services/guides.js'
 import * as referenceData from '../../../../../services/reference-data.js'
 import { getStagedDocumentById } from '../../../../../services/staged-documents.js'
 import { buildCheckAnswersSchema } from './schemas/check-answers-schema.js'
@@ -10,6 +11,13 @@ const UPLOAD_GUIDE_URL = '/create-guidance/upload-guide'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
 const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
 const HUB_URL = '/hub'
+
+// Why the API would not convert the upload, as the user is told it.
+const REFUSAL_MESSAGES = {
+  [GUIDE_RESULTS.UPLOAD_EXPIRED]: 'The uploaded document has expired. Start again and upload it again',
+  [GUIDE_RESULTS.PARSE_PENDING]: 'The uploaded document is still being processed. Wait a few seconds, then select Convert document again',
+  [GUIDE_RESULTS.PARSE_FAILED]: 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team'
+}
 
 // Which screen owns each field, so an incomplete/invalid answer sends the
 // user back to the screen that can fix it rather than a generic error.
@@ -60,6 +68,23 @@ function _getIncompleteScreenUrl (error) {
   return FIELD_PAGE_MAP[field] ?? METADATA_URL
 }
 
+/**
+ * What the summary cards are built from: the answers, the staged
+ * document's parse details, and the option lists that label them.
+ *
+ * @private
+ * @param {import('../../../session.js').GuideUpload} upload
+ * @param {{schemeOptions: Array, systemOptions: Array, audienceOptions: Array}} options
+ * @returns {Promise<Object>}
+ */
+async function _summaryData (upload, options) {
+  const stagedDocument = upload.fileId
+    ? await getStagedDocumentById(upload.fileId)
+    : null
+
+  return { metadata: upload.metadata, stagedDocument, ...options }
+}
+
 async function getCheckAnswers (request, h) {
   const upload = getGuideUpload(request)
 
@@ -67,28 +92,15 @@ async function getCheckAnswers (request, h) {
     return h.redirect(UPLOAD_GUIDE_URL)
   }
 
-  const {
-    error,
-    schemeOptions,
-    systemOptions,
-    audienceOptions
-  } = await _validateMetadata(upload.metadata)
+  const { error, ...options } = await _validateMetadata(upload.metadata)
 
   if (error) {
     return h.redirect(_getIncompleteScreenUrl(error))
   }
 
-  const stagedDocument = upload.fileId
-    ? await getStagedDocumentById(upload.fileId)
-    : null
-
-  const viewModel = CheckAnswersViewModel.fromSession({
-    metadata: upload.metadata,
-    stagedDocument,
-    schemeOptions,
-    systemOptions,
-    audienceOptions
-  })
+  const viewModel = CheckAnswersViewModel.fromSession(
+    await _summaryData(upload, options)
+  )
 
   return h
     .view(CHECK_ANSWERS_VIEW, viewModel)
@@ -96,8 +108,9 @@ async function getCheckAnswers (request, h) {
 }
 
 /**
- * Persisting the guide via the guidance API is tracked separately; once
- * the answers are valid this redirects straight to the dashboard.
+ * Once the answers are valid, converts the upload into a guide through
+ * the guidance API, then shows the dashboard. If the API refuses, the
+ * answers are shown again with what went wrong and what to do about it.
  */
 async function convertDocument (request, h) {
   const upload = getGuideUpload(request)
@@ -106,22 +119,11 @@ async function convertDocument (request, h) {
     return h.redirect(UPLOAD_GUIDE_URL)
   }
 
-  const { error, schemeOptions, systemOptions, audienceOptions } =
-    await _validateMetadata(upload.metadata)
+  const { error, ...options } = await _validateMetadata(upload.metadata)
 
   if (error) {
-    const stagedDocument = upload.fileId
-      ? await getStagedDocumentById(upload.fileId)
-      : null
-
     const viewModel = CheckAnswersViewModel.fromValidationError(
-      {
-        metadata: upload.metadata,
-        stagedDocument,
-        schemeOptions,
-        systemOptions,
-        audienceOptions
-      },
+      await _summaryData(upload, options),
       error
     )
 
@@ -129,6 +131,27 @@ async function convertDocument (request, h) {
       .view(CHECK_ANSWERS_VIEW, viewModel)
       .code(statusCodes.HTTP_STATUS_BAD_REQUEST)
   }
+
+  const { code } = await createGuide({
+    uploadId: upload.activeUploadId,
+    fileId: upload.fileId,
+    metadata: upload.metadata,
+    user: request.auth.credentials.profile
+  })
+
+  if (code !== GUIDE_RESULTS.GUIDE_CREATED) {
+    const viewModel = CheckAnswersViewModel.fromSubmissionError(
+      CheckAnswersViewModel.fromSession(await _summaryData(upload, options)),
+      REFUSAL_MESSAGES[code]
+    )
+
+    return h
+      .view(CHECK_ANSWERS_VIEW, viewModel)
+      .code(statusCodes.HTTP_STATUS_BAD_REQUEST)
+  }
+
+  // The upload is now a guide, so the next guide starts with a new upload.
+  clearGuideUpload(request)
 
   return h.redirect(HUB_URL)
 }

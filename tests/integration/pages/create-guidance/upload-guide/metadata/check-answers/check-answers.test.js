@@ -4,8 +4,10 @@ import { createServer } from '../../../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../../../helpers/login.js'
 import { mergeCookies } from '../../../../../helpers/cookies.js'
 import { config } from '../../../../../../../src/config/config.js'
+import { guidanceApiClient } from '../../../../../../../src/infra/guidance-api/client.js'
 import {
   audiencesResponse,
+  createdGuideResponse,
   schemesResponse,
   stagedDocumentResponse,
   systemsResponse
@@ -132,6 +134,24 @@ async function completeAllMetadata (server, cookie) {
   expect(purposeResponse.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
   expect(purposeResponse.headers.location).toBe(CHECK_ANSWERS_URL)
   return mergeCookies(sessionCookie, purposeResponse.headers['set-cookie'])
+}
+
+async function expectFreshUploadForm (server, cookie) {
+  nock(CDP_UPLOADER_URL)
+    .post('/initiate')
+    .reply(statusCodes.HTTP_STATUS_OK, initiateUploadResponse({
+      uploadId: 'u-next',
+      uploadUrl: 'http://cdp-uploader.test/upload-and-scan/u-next'
+    }))
+
+  const response = await server.inject({
+    method: 'GET',
+    url: '/create-guidance/upload-guide',
+    headers: { cookie }
+  })
+
+  expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+  expect(response.payload).toContain('/upload-and-scan/u-next')
 }
 
 describe('#checkAnswersController Integration', () => {
@@ -263,11 +283,27 @@ describe('#checkAnswersController Integration', () => {
       expect(postChangeResponse.headers.location).toBe(CHECK_ANSWERS_URL)
     })
 
-    test('POST converts document and redirects to hub on success', async () => {
+    test('POST converts document and redirects to hub on success, after which create guidance starts a new guide', async () => {
       const devCookie = await loginAsDevUser(server)
       const cookie = await completeAllMetadata(server, devCookie)
 
       mockReferenceData()
+
+      const createGuide = nock(GUIDANCE_API_BASE_URL)
+        .post('/guides', {
+          source: { uploadId: 'u-check', fileId: 'file-1' },
+          metadata: {
+            guideTitle: 'Complete Guide Title',
+            schemes: ['sfi'],
+            owner: 'designer@example.com',
+            goal: 'Clear guidance purpose',
+            requirements: 'Standard training required',
+            systems: ['crm'],
+            audience: ['processor']
+          },
+          createdBy: { id: 'dev-user-123', displayName: 'Dev User' }
+        })
+        .reply(statusCodes.HTTP_STATUS_CREATED, createdGuideResponse())
 
       const response = await server.inject({
         method: 'POST',
@@ -276,8 +312,90 @@ describe('#checkAnswersController Integration', () => {
         headers: { cookie }
       })
 
+      createGuide.done()
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(response.headers.location).toBe('/hub')
+
+      await expectFreshUploadForm(server, mergeCookies(cookie, response.headers['set-cookie']))
+    })
+
+    test('POST redisplays check answers asking for the document again when its upload has expired', async () => {
+      const devCookie = await loginAsDevUser(server)
+      const cookie = await completeAllMetadata(server, devCookie)
+
+      mockReferenceData()
+      nock(GUIDANCE_API_BASE_URL)
+        .get('/guides/staging/file-1')
+        .reply(statusCodes.HTTP_STATUS_NOT_FOUND)
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/guides')
+        .reply(statusCodes.HTTP_STATUS_NOT_FOUND, { detail: 'No staged file file-1: never delivered, or expired' })
+
+      const response = await server.inject({
+        method: 'POST',
+        url: CHECK_ANSWERS_URL,
+        payload: {},
+        headers: { cookie }
+      })
+
+      expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
+      expect(response.payload).toContain('The uploaded document has expired. Start again and upload it again')
+    })
+
+    test.each([
+      ['unfinished', 'in_progress', 'The uploaded document is still being processed. Wait a few seconds, then select Convert document again'],
+      ['failed', 'failed', 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team']
+    ])('POST redisplays check answers explaining why when the document parse is %s', async (_, parsingStatus, message) => {
+      const devCookie = await loginAsDevUser(server)
+      const cookie = await completeAllMetadata(server, devCookie)
+
+      mockReferenceData()
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/guides')
+        .reply(statusCodes.HTTP_STATUS_CONFLICT, { detail: `File file-1 is ${parsingStatus}, not parsed` })
+      nock(GUIDANCE_API_BASE_URL)
+        .get('/guides/staging/file-1')
+        .times(2)
+        .reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus }))
+
+      const response = await server.inject({
+        method: 'POST',
+        url: CHECK_ANSWERS_URL,
+        payload: {},
+        headers: { cookie }
+      })
+
+      expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
+      expect(response.payload).toContain(message)
+    })
+
+    test('POST waits for a conversion slower than the API client\'s timeout, then starts a new guide', async () => {
+      const devCookie = await loginAsDevUser(server)
+      const cookie = await completeAllMetadata(server, devCookie)
+      const timeout = guidanceApiClient.timeout
+      guidanceApiClient.timeout = 100
+
+      try {
+        mockReferenceData()
+        nock(GUIDANCE_API_BASE_URL)
+          .post('/guides')
+          .delay(300)
+          .reply(statusCodes.HTTP_STATUS_CREATED, createdGuideResponse())
+
+        const response = await server.inject({
+          method: 'POST',
+          url: CHECK_ANSWERS_URL,
+          payload: {},
+          headers: { cookie }
+        })
+
+        expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+        expect(response.headers.location).toBe('/hub')
+
+        await expectFreshUploadForm(server, mergeCookies(cookie, response.headers['set-cookie']))
+      } finally {
+        guidanceApiClient.timeout = timeout
+      }
     })
 
     test('POST redisplays check answers with an error summary when a saved answer is no longer a valid reference option', async () => {

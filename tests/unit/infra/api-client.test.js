@@ -89,5 +89,23 @@ describe('ApiClient', () => {
 
       expect(response.ok).toBe(true)
     })
+
+    test('gives up on a response slower than the timeout', async () => {
+      const client = new ApiClient({ baseUrl: TEST_BASE_URL, timeout: 10, errorClass: TestApiError })
+
+      nock(TEST_BASE_URL).get('/slow').delay(100).reply(statusCodes.HTTP_STATUS_OK, {})
+
+      await expect(client.request('/slow')).rejects.toMatchObject({ name: 'TimeoutError' })
+    })
+
+    test('waits without limit when the request\'s timeout is null', async () => {
+      const client = new ApiClient({ baseUrl: TEST_BASE_URL, timeout: 10, errorClass: TestApiError })
+
+      nock(TEST_BASE_URL).get('/slow').delay(100).reply(statusCodes.HTTP_STATUS_OK, { done: true })
+
+      const response = await client.request('/slow', { timeout: null })
+
+      expect(response.data).toEqual({ done: true })
+    })
   })
 })

@@ -12,6 +12,10 @@ import * as stagedDocumentsApi from '../infra/guidance-api/staged-documents.js'
  * @property {string|null} [title]
  * @property {string|null} [version]
  * @property {string|null} [lastModified]
+ * @property {string|null} [documentId] - The document this file was converted
+ *   into, once its ids are reserved
+ * @property {string|null} [promotedAt] - When that conversion was committed;
+ *   null until it has finished
  */
 
 /**
@@ -36,7 +40,9 @@ async function getStagedDocumentById (fileId) {
     parsingError: res.data.parsingError ?? null,
     title: res.data.title ?? null,
     version: res.data.version ?? null,
-    lastModified: res.data.lastModified ?? null
+    lastModified: res.data.lastModified ?? null,
+    documentId: res.data.documentId ?? null,
+    promotedAt: res.data.promotedAt ?? null
   }
 
   return stagedDocument

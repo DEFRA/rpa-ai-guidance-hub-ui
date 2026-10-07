@@ -31,7 +31,9 @@ describe('staged-documents service', () => {
       parsingError: null,
       title: 'Guide Title',
       version: '1.0',
-      lastModified: '2026-05-10T12:00:00.000Z'
+      lastModified: '2026-05-10T12:00:00.000Z',
+      documentId: null,
+      promotedAt: null
     })
   })
 
@@ -53,8 +55,30 @@ describe('staged-documents service', () => {
       parsingError: null,
       title: null,
       version: null,
-      lastModified: null
+      lastModified: null,
+      documentId: null,
+      promotedAt: null
     })
+  })
+
+  test('returns the document it was converted into, and when that was committed', async () => {
+    vi.spyOn(stagedDocumentsApi, 'getStagedDocument').mockResolvedValue({
+      ok: true,
+      status: statusCodes.HTTP_STATUS_OK,
+      data: {
+        fileId: 'file-1',
+        parsingStatus: 'complete',
+        documentId: 'document-1',
+        promotedAt: '2026-10-06T11:00:00Z'
+      }
+    })
+
+    const result = await getStagedDocumentById('file-1')
+
+    expect(result).toEqual(expect.objectContaining({
+      documentId: 'document-1',
+      promotedAt: '2026-10-06T11:00:00Z'
+    }))
   })
 
   test('returns null when document is not found (404)', async () => {

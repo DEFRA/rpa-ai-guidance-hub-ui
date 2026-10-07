@@ -1,5 +1,6 @@
 import { statusCodes } from '../../../../../../../src/constants/status-codes.js'
 import * as session from '../../../../../../../src/pages/create-guidance/session.js'
+import * as guidesService from '../../../../../../../src/services/guides.js'
 import * as referenceDataService from '../../../../../../../src/services/reference-data.js'
 import * as stagedDocumentsService from '../../../../../../../src/services/staged-documents.js'
 import {
@@ -50,7 +51,7 @@ describe('upload-guide metadata check-answers controller', () => {
       redirect: vi.fn()
     }
     request = {
-      yar: { get: vi.fn(() => null) },
+      yar: { get: vi.fn(() => null), clear: vi.fn() },
       logger: { error: vi.fn() }
     }
   })
@@ -139,13 +140,85 @@ describe('upload-guide metadata check-answers controller', () => {
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
     })
 
-    test('redirects to the hub when the metadata is valid against the current reference options', async () => {
+    test('creates the guide from the upload, its answers and the signed-in user, then redirects to the hub', async () => {
       mockUpload(validMetadata())
       mockReferenceData()
+      const createGuideSpy = vi.spyOn(guidesService, 'createGuide')
+        .mockResolvedValue({ code: guidesService.RESULTS.GUIDE_CREATED })
+      request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
 
       await convertDocument(request, h)
 
+      expect(createGuideSpy).toHaveBeenCalledWith({
+        uploadId: 'test-upload-id',
+        fileId: 'file-1',
+        metadata: validMetadata(),
+        user: { id: 'user-1', displayName: 'A User' }
+      })
       expect(h.redirect).toHaveBeenCalledWith('/hub')
+    })
+
+    test('clears the upload from the session once the guide is created, so the next guide starts afresh', async () => {
+      mockUpload(validMetadata())
+      mockReferenceData()
+      vi.spyOn(guidesService, 'createGuide')
+        .mockResolvedValue({ code: guidesService.RESULTS.GUIDE_CREATED })
+      const clearSpy = vi.spyOn(session, 'clearGuideUpload').mockReturnValue()
+      request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
+
+      await convertDocument(request, h)
+
+      expect(clearSpy).toHaveBeenCalledWith(request)
+    })
+
+    test.each([
+      'UPLOAD_EXPIRED',
+      'PARSE_PENDING',
+      'PARSE_FAILED'
+    ])('keeps the upload in the session when the result is %s', async (result) => {
+      mockUpload(validMetadata())
+      mockReferenceData()
+      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
+      vi.spyOn(guidesService, 'createGuide')
+        .mockResolvedValue({ code: guidesService.RESULTS[result] })
+      const clearSpy = vi.spyOn(session, 'clearGuideUpload').mockReturnValue()
+      request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
+
+      await convertDocument(request, h)
+
+      expect(clearSpy).not.toHaveBeenCalled()
+    })
+
+    test.each([
+      ['its upload has expired', 'UPLOAD_EXPIRED', 'The uploaded document has expired. Start again and upload it again'],
+      ['its parse is unfinished', 'PARSE_PENDING', 'The uploaded document is still being processed. Wait a few seconds, then select Convert document again'],
+      ['its parse failed', 'PARSE_FAILED', 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team']
+    ])('explains why the document cannot be converted when %s', async (_, result, message) => {
+      mockUpload(validMetadata())
+      mockReferenceData()
+      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
+      vi.spyOn(guidesService, 'createGuide')
+        .mockResolvedValue({ code: guidesService.RESULTS[result] })
+      request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
+
+      await convertDocument(request, h)
+
+      expect(h.view).toHaveBeenCalledWith(CHECK_ANSWERS_VIEW, expect.objectContaining({
+        errorList: [{ text: message, href: '#conversion-error' }]
+      }))
+      expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
+      expect(h.redirect).not.toHaveBeenCalled()
+    })
+
+    test('does not create the guide when an answer is missing', async () => {
+      mockUpload({ guideTitle: '' })
+      mockReferenceData()
+      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
+      const createGuideSpy = vi.spyOn(guidesService, 'createGuide')
+
+      await convertDocument(request, h)
+
+      expect(createGuideSpy).not.toHaveBeenCalled()
     })
 
     test('re-renders check answers with an error summary when a previously valid option is no longer current', async () => {
