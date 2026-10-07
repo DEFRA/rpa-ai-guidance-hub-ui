@@ -51,7 +51,7 @@ describe('upload-guide metadata check-answers controller', () => {
       redirect: vi.fn()
     }
     request = {
-      yar: { get: vi.fn(() => null), clear: vi.fn() },
+      yar: { get: vi.fn(() => null), clear: vi.fn(), flash: vi.fn() },
       logger: { error: vi.fn() }
     }
   })
@@ -140,7 +140,7 @@ describe('upload-guide metadata check-answers controller', () => {
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
     })
 
-    test('creates the guide from the upload, its answers and the signed-in user, then redirects to the hub', async () => {
+    test('creates the guide from the upload, its answers and the signed-in user, then confirms it', async () => {
       mockUpload(validMetadata())
       mockReferenceData()
       const createGuideSpy = vi.spyOn(guidesService, 'createGuide')
@@ -155,7 +155,20 @@ describe('upload-guide metadata check-answers controller', () => {
         metadata: validMetadata(),
         user: { id: 'user-1', displayName: 'A User' }
       })
-      expect(h.redirect).toHaveBeenCalledWith('/hub')
+      expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/converted')
+    })
+
+    test('carries the guide title over to the confirmation', async () => {
+      mockUpload(validMetadata())
+      mockReferenceData()
+      vi.spyOn(guidesService, 'createGuide')
+        .mockResolvedValue({ code: guidesService.RESULTS.GUIDE_CREATED })
+      const flashSpy = vi.spyOn(session, 'flashConvertedGuide').mockReturnValue()
+      request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
+
+      await convertDocument(request, h)
+
+      expect(flashSpy).toHaveBeenCalledWith(request, validMetadata().guideTitle)
     })
 
     test('clears the upload from the session once the guide is created, so the next guide starts afresh', async () => {

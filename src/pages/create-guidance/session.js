@@ -5,6 +5,12 @@
 const SESSION_KEY = 'guide-upload'
 
 /**
+ * Key used to carry a converted guide over the redirect to its
+ * confirmation, once
+ */
+const CONVERTED_GUIDE_KEY = 'converted-guide'
+
+/**
  * Wrapper around session-stored uploads providing a small API used by
  * create-guidance flows.
  *
@@ -259,6 +265,30 @@ function getGuideUploadMetadata (request) {
   return upload?.metadata ?? null
 }
 
+/**
+ * Remember the guide just converted, for its confirmation page only. The
+ * upload itself is cleared, so this is all that survives the redirect.
+ *
+ * @param {import('@hapi/hapi').Request} request - Hapi request object with yar
+ * @param {string} guideTitle
+ */
+function flashConvertedGuide (request, guideTitle) {
+  request.yar.flash(CONVERTED_GUIDE_KEY, guideTitle)
+}
+
+/**
+ * Take the guide just converted, which can be taken once.
+ *
+ * @param {import('@hapi/hapi').Request} request - Hapi request object with yar
+ * @returns {{guideTitle: string}|null} null when nothing has been converted
+ *   or it was already taken
+ */
+function takeConvertedGuide (request) {
+  const [guideTitle] = request.yar.flash(CONVERTED_GUIDE_KEY)
+
+  return guideTitle ? { guideTitle } : null
+}
+
 export {
   SESSION_KEY,
   GuideUpload,
@@ -269,5 +299,7 @@ export {
   setGuideUploadCompletedSteps,
   setGuideUploadFileId,
   setGuideUploadMetadata,
-  getGuideUploadMetadata
+  getGuideUploadMetadata,
+  flashConvertedGuide,
+  takeConvertedGuide
 }

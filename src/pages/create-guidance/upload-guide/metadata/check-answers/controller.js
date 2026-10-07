@@ -1,5 +1,5 @@
 import { statusCodes } from '../../../../../constants/status-codes.js'
-import { clearGuideUpload, getGuideUpload } from '../../../session.js'
+import { clearGuideUpload, flashConvertedGuide, getGuideUpload } from '../../../session.js'
 import { createGuide, RESULTS as GUIDE_RESULTS } from '../../../../../services/guides.js'
 import * as referenceData from '../../../../../services/reference-data.js'
 import { getStagedDocumentById } from '../../../../../services/staged-documents.js'
@@ -10,7 +10,7 @@ const CHECK_ANSWERS_VIEW = 'create-guidance/upload-guide/metadata/check-answers/
 const UPLOAD_GUIDE_URL = '/create-guidance/upload-guide'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
 const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
-const HUB_URL = '/hub'
+const CONVERTED_URL = '/create-guidance/upload-guide/converted'
 
 // Why the API would not convert the upload, as the user is told it.
 const REFUSAL_MESSAGES = {
@@ -152,8 +152,9 @@ async function convertDocument (request, h) {
 
   // The upload is now a guide, so the next guide starts with a new upload.
   clearGuideUpload(request)
+  flashConvertedGuide(request, upload.metadata.guideTitle)
 
-  return h.redirect(HUB_URL)
+  return h.redirect(CONVERTED_URL)
 }
 
 export {
