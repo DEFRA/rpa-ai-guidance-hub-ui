@@ -174,8 +174,7 @@ describe('upload-guide metadata check-answers controller', () => {
     test.each([
       'UPLOAD_EXPIRED',
       'PARSE_PENDING',
-      'PARSE_FAILED',
-      'CONVERSION_SLOW'
+      'PARSE_FAILED'
     ])('keeps the upload in the session when the result is %s', async (result) => {
       mockUpload(validMetadata())
       mockReferenceData()
@@ -209,18 +208,6 @@ describe('upload-guide metadata check-answers controller', () => {
       }))
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
       expect(h.redirect).not.toHaveBeenCalled()
-    })
-
-    test('shows that conversion is taking a long time when the API is slower than the UI waits', async () => {
-      mockUpload(validMetadata())
-      mockReferenceData()
-      vi.spyOn(guidesService, 'createGuide')
-        .mockResolvedValue({ code: guidesService.RESULTS.CONVERSION_SLOW })
-      request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
-
-      await convertDocument(request, h)
-
-      expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/converting')
     })
 
     test('does not create the guide when an answer is missing', async () => {

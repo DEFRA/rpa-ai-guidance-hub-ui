@@ -7,6 +7,9 @@ import { guidanceApiClient } from './client.js'
  * Safe to repeat: the API answers the guide the same upload made before
  * (200) rather than making a second one.
  *
+ * Waits as long as the conversion takes, which can be longer than the
+ * client's timeout allows.
+ *
  * @param {Object} newGuide
  * @param {{uploadId: string, fileId: string, filename: string}} newGuide.source
  * @param {Object} newGuide.metadata - The journey's answers
@@ -23,7 +26,8 @@ async function createGuide (newGuide) {
     expected: [
       statusCodes.HTTP_STATUS_NOT_FOUND,
       statusCodes.HTTP_STATUS_CONFLICT
-    ]
+    ],
+    timeout: null
   })
 }
 
