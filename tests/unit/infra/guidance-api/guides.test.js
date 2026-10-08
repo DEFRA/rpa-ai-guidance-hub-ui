@@ -22,7 +22,7 @@ describe('guides infra', () => {
     vi.restoreAllMocks()
   })
 
-  test('calls POST /guides with the new guide as its body, expecting 404 and 409, waiting without limit', async () => {
+  test('calls POST /guides with the new guide as its body, expecting 404 and 409, within the client\'s usual timeout', async () => {
     const requestSpy = vi.spyOn(guidanceApiClient, 'request')
       .mockResolvedValue({ ok: true, status: 201, data: {} })
 
@@ -34,8 +34,7 @@ describe('guides infra', () => {
       expected: [
         statusCodes.HTTP_STATUS_NOT_FOUND,
         statusCodes.HTTP_STATUS_CONFLICT
-      ],
-      timeout: null
+      ]
     })
   })
 

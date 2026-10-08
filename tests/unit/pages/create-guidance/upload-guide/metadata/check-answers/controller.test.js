@@ -158,6 +158,20 @@ describe('upload-guide metadata check-answers controller', () => {
       expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/converted')
     })
 
+    test('follows the save on the converting page when the API saves in the background', async () => {
+      mockUpload(validMetadata())
+      mockReferenceData()
+      vi.spyOn(guidesService, 'createGuide')
+        .mockResolvedValue({ code: guidesService.RESULTS.SAVE_STARTED })
+      const clearSpy = vi.spyOn(session, 'clearGuideUpload').mockReturnValue()
+      request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
+
+      await convertDocument(request, h)
+
+      expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/converting')
+      expect(clearSpy).not.toHaveBeenCalled()
+    })
+
     test('carries the guide title over to the confirmation', async () => {
       mockUpload(validMetadata())
       mockReferenceData()

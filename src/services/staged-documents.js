@@ -16,6 +16,12 @@ import * as stagedDocumentsApi from '../infra/guidance-api/staged-documents.js'
  *   into, once its ids are reserved
  * @property {string|null} [promotedAt] - When that conversion was committed;
  *   null until it has finished
+ * @property {string|null} [savingStatus] - 'in_progress' | 'complete' |
+ *   'failed'; null until a save of the document has started
+ * @property {number|null} [saveStepsCompleted] - Parts of the document saved
+ * @property {number|null} [saveStepsTotal] - Parts to save: one per picture,
+ *   and one for the content; null until the API knows
+ * @property {string|null} [saveError] - Why the save failed
  */
 
 /**
@@ -42,7 +48,11 @@ async function getStagedDocumentById (fileId) {
     version: res.data.version ?? null,
     lastModified: res.data.lastModified ?? null,
     documentId: res.data.documentId ?? null,
-    promotedAt: res.data.promotedAt ?? null
+    promotedAt: res.data.promotedAt ?? null,
+    savingStatus: res.data.savingStatus ?? null,
+    saveStepsCompleted: res.data.saveStepsCompleted ?? null,
+    saveStepsTotal: res.data.saveStepsTotal ?? null,
+    saveError: res.data.saveError ?? null
   }
 
   return stagedDocument

@@ -39,11 +39,16 @@ describe('guides service', () => {
     })
   })
 
-  test.each([
-    statusCodes.HTTP_STATUS_CREATED,
-    statusCodes.HTTP_STATUS_OK
-  ])('reports the guide created when the API answers %i', async (status) => {
-    mockApiResponse(status)
+  test('reports the save started when the API accepts the upload to convert in the background', async () => {
+    mockApiResponse(statusCodes.HTTP_STATUS_ACCEPTED)
+
+    const result = await createGuide(guide)
+
+    expect(result).toEqual({ code: RESULTS.SAVE_STARTED })
+  })
+
+  test('reports the guide created when the API answers the guide this upload already made', async () => {
+    mockApiResponse(statusCodes.HTTP_STATUS_OK)
 
     const result = await createGuide(guide)
 
