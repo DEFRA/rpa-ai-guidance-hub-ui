@@ -4,11 +4,10 @@ import { guidanceApiClient } from './client.js'
 /**
  * Convert an upload into a guide, recording what its author said about it.
  *
- * Safe to repeat: the API answers the guide the same upload made before
- * (200) rather than making a second one.
- *
- * Waits as long as the conversion takes, which can be longer than the
- * client's timeout allows.
+ * The API answers at once (202) and saves the guide in the background; the
+ * staging record of the file says how far it has got. Safe to repeat: the
+ * API answers the guide the same upload made before (200), and a save
+ * under way is followed rather than started again.
  *
  * @param {Object} newGuide
  * @param {{uploadId: string, fileId: string, filename: string}} newGuide.source
@@ -26,8 +25,7 @@ async function createGuide (newGuide) {
     expected: [
       statusCodes.HTTP_STATUS_NOT_FOUND,
       statusCodes.HTTP_STATUS_CONFLICT
-    ],
-    timeout: null
+    ]
   })
 }
 

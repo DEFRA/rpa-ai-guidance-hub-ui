@@ -3,7 +3,8 @@ import * as guidesApi from '../infra/guidance-api/guides.js'
 import { getStagedDocumentById } from './staged-documents.js'
 
 const RESULTS = {
-  GUIDE_CREATED: 'guideCreated', // new, or the one this upload made before
+  SAVE_STARTED: 'saveStarted', // accepted: the guide is saving in the background
+  GUIDE_CREATED: 'guideCreated', // the one this upload made before
   UPLOAD_EXPIRED: 'uploadExpired', // the API has no staged file for the upload
   PARSE_PENDING: 'parsePending', // the staged file has not finished parsing
   PARSE_FAILED: 'parseFailed' // the staged file could not be parsed
@@ -37,6 +38,10 @@ async function createGuide ({ uploadId, fileId, metadata, user }) {
 
   if (res.status === statusCodes.HTTP_STATUS_CONFLICT) {
     return _whyNotParsed(fileId)
+  }
+
+  if (res.status === statusCodes.HTTP_STATUS_ACCEPTED) {
+    return { code: RESULTS.SAVE_STARTED }
   }
 
   return { code: RESULTS.GUIDE_CREATED }

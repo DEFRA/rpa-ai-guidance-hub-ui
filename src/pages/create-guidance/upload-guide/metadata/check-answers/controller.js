@@ -11,6 +11,7 @@ const UPLOAD_GUIDE_URL = '/create-guidance/upload-guide'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
 const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
 const CONVERTED_URL = '/create-guidance/upload-guide/converted'
+const CONVERTING_URL = '/create-guidance/upload-guide/converting'
 
 // Why the API would not convert the upload, as the user is told it.
 const REFUSAL_MESSAGES = {
@@ -108,9 +109,11 @@ async function getCheckAnswers (request, h) {
 }
 
 /**
- * Once the answers are valid, converts the upload into a guide through
- * the guidance API, then shows the dashboard. If the API refuses, the
- * answers are shown again with what went wrong and what to do about it.
+ * Once the answers are valid, asks the guidance API to convert the upload
+ * into a guide. The API saves it in the background, so the user follows
+ * the save on the converting page, which keeps the upload in the session
+ * until the save is complete. If the API refuses, the answers are shown
+ * again with what went wrong and what to do about it.
  */
 async function convertDocument (request, h) {
   const upload = getGuideUpload(request)
@@ -138,6 +141,10 @@ async function convertDocument (request, h) {
     metadata: upload.metadata,
     user: request.auth.credentials.profile
   })
+
+  if (code === GUIDE_RESULTS.SAVE_STARTED) {
+    return h.redirect(CONVERTING_URL)
+  }
 
   if (code !== GUIDE_RESULTS.GUIDE_CREATED) {
     const viewModel = CheckAnswersViewModel.fromSubmissionError(

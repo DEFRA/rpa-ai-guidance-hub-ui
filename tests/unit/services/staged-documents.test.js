@@ -33,7 +33,11 @@ describe('staged-documents service', () => {
       version: '1.0',
       lastModified: '2026-05-10T12:00:00.000Z',
       documentId: null,
-      promotedAt: null
+      promotedAt: null,
+      savingStatus: null,
+      saveStepsCompleted: null,
+      saveStepsTotal: null,
+      saveError: null
     })
   })
 
@@ -57,8 +61,36 @@ describe('staged-documents service', () => {
       version: null,
       lastModified: null,
       documentId: null,
-      promotedAt: null
+      promotedAt: null,
+      savingStatus: null,
+      saveStepsCompleted: null,
+      saveStepsTotal: null,
+      saveError: null
     })
+  })
+
+  test('returns how far saving the document it converts into has got', async () => {
+    vi.spyOn(stagedDocumentsApi, 'getStagedDocument').mockResolvedValue({
+      ok: true,
+      status: statusCodes.HTTP_STATUS_OK,
+      data: {
+        fileId: 'file-1',
+        parsingStatus: 'complete',
+        savingStatus: 'failed',
+        saveStepsCompleted: 12,
+        saveStepsTotal: 74,
+        saveError: 'The document store refused a write'
+      }
+    })
+
+    const result = await getStagedDocumentById('file-1')
+
+    expect(result).toEqual(expect.objectContaining({
+      savingStatus: 'failed',
+      saveStepsCompleted: 12,
+      saveStepsTotal: 74,
+      saveError: 'The document store refused a write'
+    }))
   })
 
   test('returns the document it was converted into, and when that was committed', async () => {
