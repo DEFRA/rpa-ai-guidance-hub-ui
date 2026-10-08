@@ -269,10 +269,15 @@ function getGuideUploadMetadata (request) {
  * Remember the guide just converted, for its confirmation page only. The
  * upload itself is cleared, so this is all that survives the redirect.
  *
+ * Flash queues values, so a guide converted before an earlier one's
+ * confirmation was seen would queue behind it. Taking the earlier one first
+ * leaves only the latest to confirm.
+ *
  * @param {import('@hapi/hapi').Request} request - Hapi request object with yar
  * @param {string} guideTitle
  */
 function flashConvertedGuide (request, guideTitle) {
+  request.yar.flash(CONVERTED_GUIDE_KEY)
   request.yar.flash(CONVERTED_GUIDE_KEY, guideTitle)
 }
 
