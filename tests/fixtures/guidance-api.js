@@ -103,7 +103,73 @@ function createdGuideResponse (overrides = {}) {
   }
 }
 
+/**
+ * A version as `GET /guides/{id}` and `GET /guides` send it.
+ *
+ * @param {Object} [overrides]
+ * @returns {{id: string, contentUrl: string, title: string|null, createdBy: Object|null, createdAt: string}}
+ */
+function versionResponse (overrides = {}) {
+  return {
+    id: 'version-1',
+    contentUrl: 's3://rpa-ai-guidance-hub-docs/guide-1/version-1/content.md',
+    title: 'Claiming the SFI payment',
+    createdBy: { id: 'dev-user-123', displayName: 'Dev User' },
+    createdAt: '2026-10-06T08:00:00Z',
+    ...overrides
+  }
+}
+
+/**
+ * Body of `GET /guides/{id}` on 200: a guide with its versions, newest
+ * first.
+ *
+ * @param {Object} [overrides]
+ * @returns {{id: string, metadata: Object, source: Object, versions: Array<Object>}}
+ */
+function guideResponse (overrides = {}) {
+  return {
+    id: 'guide-1',
+    metadata: {
+      guideTitle: 'Authored title',
+      schemes: ['sfi'],
+      systems: ['crm'],
+      audience: ['processor'],
+      owner: 'owner@example.com'
+    },
+    source: { uploadId: 'u-1', fileId: 'file-1', filename: 'guide.docx' },
+    versions: [versionResponse()],
+    ...overrides
+  }
+}
+
+/**
+ * One item of `GET /guides` on 200: a guide with only its latest version.
+ *
+ * @param {Object} [overrides]
+ * @returns {{id: string, metadata: Object, source: Object, latestVersion: Object|null}}
+ */
+function guideSummaryResponse (overrides = {}) {
+  const { versions, ...summary } = guideResponse()
+
+  return { ...summary, latestVersion: versions[0], ...overrides }
+}
+
+/**
+ * Body of `GET /guides` on 200.
+ *
+ * @param {Object} [overrides]
+ * @returns {{items: Array<Object>, nextCursor: string|null}}
+ */
+function guidePageResponse (overrides = {}) {
+  return { items: [guideSummaryResponse()], nextCursor: null, ...overrides }
+}
+
 export {
+  guidePageResponse,
+  guideResponse,
+  guideSummaryResponse,
+  versionResponse,
   schemesResponse,
   systemsResponse,
   audiencesResponse,

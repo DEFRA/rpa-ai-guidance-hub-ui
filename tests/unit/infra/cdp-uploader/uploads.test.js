@@ -34,7 +34,7 @@ describe('cdp-uploader uploads API', () => {
         s3Bucket: 'rpa-ai-guidance-hub-source-docs'
       })
 
-      expect(response).toEqual({ ok: true, status: statusCodes.HTTP_STATUS_OK, data: responseBody })
+      expect(response).toMatchObject({ ok: true, status: statusCodes.HTTP_STATUS_OK, data: responseBody })
     })
   })
 

@@ -39,7 +39,39 @@ describe('ApiClient', () => {
 
       const response = await client.request('/items')
 
-      expect(response).toEqual({ ok: true, status: statusCodes.HTTP_STATUS_OK, data: { items: [1, 2] } })
+      expect(response).toMatchObject({ ok: true, status: statusCodes.HTTP_STATUS_OK, data: { items: [1, 2] } })
+    })
+
+    test('reads an ok body as text when asked', async () => {
+      const client = new ApiClient({ baseUrl: TEST_BASE_URL, errorClass: TestApiError })
+
+      nock(TEST_BASE_URL).get('/doc').reply(statusCodes.HTTP_STATUS_OK, '# Title', { 'Content-Type': 'text/plain' })
+
+      const response = await client.request('/doc', { responseType: 'text' })
+
+      expect(response).toMatchObject({ ok: true, data: '# Title' })
+    })
+
+    test('reads an ok body as a buffer, with its headers, when asked', async () => {
+      const client = new ApiClient({ baseUrl: TEST_BASE_URL, errorClass: TestApiError })
+
+      nock(TEST_BASE_URL).get('/image').reply(statusCodes.HTTP_STATUS_OK, Buffer.from([1, 2, 3]), { 'Content-Type': 'image/png' })
+
+      const response = await client.request('/image', { responseType: 'buffer' })
+
+      expect(Buffer.isBuffer(response.data)).toBe(true)
+      expect([...response.data]).toEqual([1, 2, 3])
+      expect(response.headers.get('content-type')).toBe('image/png')
+    })
+
+    test('repeats a query parameter given an array', async () => {
+      const client = new ApiClient({ baseUrl: TEST_BASE_URL, errorClass: TestApiError })
+
+      nock(TEST_BASE_URL).get('/items').query({ scheme: ['a', 'b'], limit: '5' }).reply(statusCodes.HTTP_STATUS_OK, {})
+
+      const response = await client.request('/items', { query: { scheme: ['a', 'b'], limit: 5, cursor: undefined } })
+
+      expect(response.ok).toBe(true)
     })
 
     test('throws when an ok response has no valid JSON body', async () => {
