@@ -125,7 +125,13 @@ describe('ApiClient', () => {
     test('gives up on a response slower than the timeout', async () => {
       const client = new ApiClient({ baseUrl: TEST_BASE_URL, timeout: 10, errorClass: TestApiError })
 
-      nock(TEST_BASE_URL).get('/slow').delay(100).reply(statusCodes.HTTP_STATUS_OK, {})
+      // nock's delay() only holds back the body, which ignores the abort
+      // signal, so hold back the whole reply instead
+      nock(TEST_BASE_URL).get('/slow').reply(async () => {
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        return [statusCodes.HTTP_STATUS_OK, {}]
+      })
 
       await expect(client.request('/slow')).rejects.toMatchObject({ name: 'TimeoutError' })
     })
