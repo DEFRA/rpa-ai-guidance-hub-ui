@@ -62,6 +62,7 @@
         {% set savedGuidancePanelHtml %}{{ guidanceTablePanel(savedGuidance) }}{% endset %}
         {% set editingPanelHtml %}{{ guidanceTablePanel(editing) }}{% endset %}
         {% set awaitingApprovalPanelHtml %}{{ guidanceTablePanel(awaitingApproval) }}{% endset %}
+        {% set allGuidesPanelHtml %}{{ guidanceTablePanel(allGuides) }}{% endset %}
 
         {{ govukTabs({
           title: "Contents",
@@ -92,6 +93,13 @@
               id: "awaiting-approval",
               panel: {
                 html: awaitingApprovalPanelHtml
+              }
+            },
+            {
+              label: tabLabel(allGuides.heading, allGuides.count),
+              id: "all-guides",
+              panel: {
+                html: allGuidesPanelHtml
               }
             }
           ]
