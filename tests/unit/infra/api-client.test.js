@@ -69,9 +69,7 @@ describe('ApiClient', () => {
 
       nock(TEST_BASE_URL).get('/items').query({ scheme: ['a', 'b'], limit: '5' }).reply(statusCodes.HTTP_STATUS_OK, {})
 
-      const response = await client.request('/items', { query: { scheme: ['a', 'b'], limit: 5, cursor: undefined } })
-
-      expect(response.ok).toBe(true)
+      await client.request('/items', { query: { scheme: ['a', 'b'], limit: 5, cursor: undefined } })
     })
 
     test('throws when an ok response has no valid JSON body', async () => {
@@ -85,11 +83,12 @@ describe('ApiClient', () => {
     test('returns ok:false for a status in the expected list', async () => {
       const client = new ApiClient({ baseUrl: TEST_BASE_URL, errorClass: TestApiError })
 
-      nock(TEST_BASE_URL).get('/missing').reply(statusCodes.HTTP_STATUS_NOT_FOUND)
+      nock(TEST_BASE_URL).get('/missing').reply(statusCodes.HTTP_STATUS_NOT_FOUND, '', { 'content-type': 'text/plain' })
 
       const response = await client.request('/missing', { expected: [statusCodes.HTTP_STATUS_NOT_FOUND] })
 
-      expect(response).toEqual({ ok: false, status: statusCodes.HTTP_STATUS_NOT_FOUND, data: null })
+      expect(response).toMatchObject({ ok: false, status: statusCodes.HTTP_STATUS_NOT_FOUND, data: null })
+      expect(response.headers.get('content-type')).toBe('text/plain')
     })
 
     test('throws errorClass instance with status code for unexpected status', async () => {

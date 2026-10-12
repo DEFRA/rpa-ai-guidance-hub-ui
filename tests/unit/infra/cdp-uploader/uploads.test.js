@@ -44,7 +44,7 @@ describe('cdp-uploader uploads API', () => {
 
       const response = await getUploadStatus('u-1')
 
-      expect(response).toEqual({ ok: false, status: statusCodes.HTTP_STATUS_NOT_FOUND, data: null })
+      expect(response).toMatchObject({ ok: false, status: statusCodes.HTTP_STATUS_NOT_FOUND, data: null })
     })
 
     test('adds debug=true to the query string when requested', async () => {

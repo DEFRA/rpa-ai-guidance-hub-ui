@@ -133,7 +133,7 @@ async function _handleResponse (response, context) {
   }
 
   if (expected.includes(response.status)) {
-    return { ok: false, status: response.status, data: null }
+    return { ok: false, status: response.status, data: null, headers: response.headers }
   }
 
   throw errorClass.fromResponse(method, path, response)

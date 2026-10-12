@@ -106,6 +106,9 @@ function createdGuideResponse (overrides = {}) {
 /**
  * A version as `GET /guides/{id}` and `GET /guides` send it.
  *
+ * Verified against OpenAPI schema on 2026-10-12: contains id, contentUrl,
+ * title, createdBy, and createdAt.
+ *
  * @param {Object} [overrides]
  * @returns {{id: string, contentUrl: string, title: string|null, createdBy: Object|null, createdAt: string}}
  */
@@ -123,6 +126,9 @@ function versionResponse (overrides = {}) {
 /**
  * Body of `GET /guides/{id}` on 200: a guide with its versions, newest
  * first.
+ *
+ * Verified against OpenAPI schema on 2026-10-12: returns id, metadata,
+ * source, and versions array ordered newest first.
  *
  * @param {Object} [overrides]
  * @returns {{id: string, metadata: Object, source: Object, versions: Array<Object>}}
@@ -146,6 +152,9 @@ function guideResponse (overrides = {}) {
 /**
  * One item of `GET /guides` on 200: a guide with only its latest version.
  *
+ * Verified against OpenAPI schema on 2026-10-12: guide representation
+ * including id, metadata, source, and latestVersion.
+ *
  * @param {Object} [overrides]
  * @returns {{id: string, metadata: Object, source: Object, latestVersion: Object|null}}
  */
@@ -157,6 +166,9 @@ function guideSummaryResponse (overrides = {}) {
 
 /**
  * Body of `GET /guides` on 200.
+ *
+ * Verified against OpenAPI schema on 2026-10-12: paginated response
+ * containing items array and nextCursor string or null.
  *
  * @param {Object} [overrides]
  * @returns {{items: Array<Object>, nextCursor: string|null}}

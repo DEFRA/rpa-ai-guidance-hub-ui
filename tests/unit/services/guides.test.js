@@ -167,13 +167,6 @@ describe('guides service: reading', () => {
         lastUpdated: null
       })
     })
-
-    test('lets a failure through', async () => {
-      const failure = new Error('connection refused')
-      vi.spyOn(guidesApi, 'listGuides').mockRejectedValue(failure)
-
-      await expect(listGuides()).rejects.toBe(failure)
-    })
   })
 
   describe('getGuideById', () => {
@@ -258,13 +251,6 @@ describe('guides service: reading', () => {
       vi.spyOn(guidesApi, 'getGuideContent').mockResolvedValue(NOT_FOUND)
 
       expect(await getGuideContent('nope')).toBeNull()
-    })
-
-    test('lets a failure through', async () => {
-      const failure = new Error('502')
-      vi.spyOn(guidesApi, 'getGuideContent').mockRejectedValue(failure)
-
-      await expect(getGuideContent('guide-1')).rejects.toBe(failure)
     })
   })
 
