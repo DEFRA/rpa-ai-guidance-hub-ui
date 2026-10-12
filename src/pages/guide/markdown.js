@@ -1,8 +1,8 @@
 import { Marked } from 'marked'
 
-// The palette is the client viewer's own, so the fallback and the viewer
-// colour the same spans the same way.
-import { COLOURED_SPAN, colourClass } from '../../client/javascripts/tiptap/text-colours.js'
+// The palette is shared with the client-side editor, so the server-rendered
+// viewer colours the same spans the same way.
+import { COLOURED_SPAN, colourClass } from '../../constants/text-colours.js'
 import { relativeHref } from '../common/relative-href.js'
 
 const SAFE_ABSOLUTE_LINK = /^(https?:|mailto:)/i

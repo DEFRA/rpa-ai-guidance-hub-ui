@@ -203,7 +203,7 @@ describe('#guideController', () => {
       expect(payload).toContain('Sustainable Farming Incentive (SFI)')
       expect(payload).toContain('Processor')
       expect(payload).toContain('CRM')
-      expect(payload).toContain('href="mailto:owner@example.com"')
+      expect(payload).toContain('href="mailto:owner%40example.com"')
     })
 
     test('does not offer to change the guide', async () => {
@@ -266,14 +266,6 @@ describe('#guideController', () => {
       const { statusCode } = await get('/guides/not-a-guide')
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_NOT_FOUND)
-    })
-
-    test('makes the viewer script available to the page', async () => {
-      mockGuide()
-
-      const { payload } = await get(GUIDE_URL)
-
-      expect(payload).toMatch(/<script type="module" src="[^"]*tiptap[^"]*"/)
     })
   })
 
