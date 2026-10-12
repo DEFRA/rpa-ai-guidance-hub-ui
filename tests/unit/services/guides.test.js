@@ -135,9 +135,9 @@ describe('guides service: reading', () => {
           id: 'guide-1',
           title: 'Claiming the SFI payment',
           owner: 'owner@example.com',
-          schemes: ['sfi'],
-          systems: ['crm'],
-          audience: ['processor'],
+          schemes: ['Sustainable Farming Incentive (SFI)'],
+          systems: ['CRM'],
+          audience: ['Processor'],
           lastUpdated: '2026-10-06T08:00:00Z'
         }],
         nextCursor: 'next-1'

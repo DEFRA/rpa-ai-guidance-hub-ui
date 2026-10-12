@@ -132,9 +132,9 @@ function guideResponse (overrides = {}) {
     id: 'guide-1',
     metadata: {
       guideTitle: 'Authored title',
-      schemes: ['sfi'],
-      systems: ['crm'],
-      audience: ['processor'],
+      schemes: ['Sustainable Farming Incentive (SFI)'],
+      systems: ['CRM'],
+      audience: ['Processor'],
       owner: 'owner@example.com'
     },
     source: { uploadId: 'u-1', fileId: 'file-1', filename: 'guide.docx' },

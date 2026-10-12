@@ -1,6 +1,4 @@
-import { format, isValid, parseISO } from 'date-fns'
-
-const DATE_FORMAT = 'd MMMM yyyy'
+import { formatIsoDate } from '../../../common/format-date.js'
 
 /**
  * Format a staged document's raw (ISO) lastModified timestamp for display.
@@ -9,15 +7,7 @@ const DATE_FORMAT = 'd MMMM yyyy'
  * @returns {string|null} - Formatted date, or null when missing/unparseable
  *   so callers can fall back to their own default
  */
-function formatStagedDocumentDate (dateString) {
-  if (!dateString) {
-    return null
-  }
-
-  const parsed = parseISO(dateString)
-
-  return isValid(parsed) ? format(parsed, DATE_FORMAT) : null
-}
+const formatStagedDocumentDate = formatIsoDate
 
 /**
  * Map reference options onto the `{value, text}` shape GOV.UK checkbox and
