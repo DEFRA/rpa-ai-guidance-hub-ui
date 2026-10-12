@@ -7,7 +7,9 @@ import {
   addGuideUpload,
   setGuideUploadCompletedSteps,
   setGuideUploadMetadata,
-  getGuideUploadMetadata
+  getGuideUploadMetadata,
+  flashConvertedGuide,
+  takeConvertedGuide
 } from '../../../../src/pages/create-guidance/session.js'
 
 describe('GuideUpload session helpers', () => {
@@ -220,5 +222,41 @@ describe('GuideUpload session helpers', () => {
 
     yar.get.mockReturnValue({ uploads: [{ uploadId: 'u-1' }] })
     expect(getGuideUploadMetadata(request)).toBeNull()
+  })
+
+  /**
+   * Flash as yar does it: a value is queued behind any already flashed, and
+   * reading a key takes every value queued for it.
+   */
+  function flashLikeYar () {
+    const flashes = {}
+    yar.flash = vi.fn((key, value) => {
+      if (value !== undefined) {
+        flashes[key] = [...(flashes[key] ?? []), value]
+        return undefined
+      }
+      const taken = flashes[key] ?? []
+      delete flashes[key]
+      return taken
+    })
+  }
+
+  test('takeConvertedGuide gives the flashed guide title once, then null', () => {
+    flashLikeYar()
+
+    flashConvertedGuide(request, 'Converted Guide')
+
+    expect(takeConvertedGuide(request)).toEqual({ guideTitle: 'Converted Guide' })
+    expect(takeConvertedGuide(request)).toBeNull()
+  })
+
+  test('takeConvertedGuide gives the latest guide when a second is converted before the first confirmation is seen', () => {
+    flashLikeYar()
+
+    flashConvertedGuide(request, 'First Guide')
+    flashConvertedGuide(request, 'Second Guide')
+
+    expect(takeConvertedGuide(request)).toEqual({ guideTitle: 'Second Guide' })
+    expect(takeConvertedGuide(request)).toBeNull()
   })
 })

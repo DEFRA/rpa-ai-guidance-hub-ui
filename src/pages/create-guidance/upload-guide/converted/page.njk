@@ -1,0 +1,35 @@
+{% extends "common/layout.njk" %}
+{% from "govuk/components/panel/macro.njk" import govukPanel %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds app-content">
+      {{ govukPanel({
+        titleText: "Guidance converted",
+        text: guideTitle
+      }) }}
+
+      <h2 class="govuk-heading-m">What happens next</h2>
+
+      <p class="govuk-body">
+        Your document is now markdown in the hub, saved as a draft. Only you can
+        see it until it is reviewed and published.
+      </p>
+
+      <p class="govuk-body">
+        Have a look at how it converted before you take it any further.
+      </p>
+
+      {# A placeholder until RAI-116 (View a guidance document) gives it the guide to open. #}
+      {{ govukButton({
+        text: "View the guidance",
+        href: "#"
+      }) }}
+
+      <p class="govuk-body">
+        <a class="govuk-link" href="/create-guidance/upload-guide">Convert another document</a>
+      </p>
+    </div>
+  </div>
+{% endblock %}
