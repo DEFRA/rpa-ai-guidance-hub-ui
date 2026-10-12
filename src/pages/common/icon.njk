@@ -1,0 +1,13 @@
+{#
+  Simple 20x20 line icons. Always decorative (aria-hidden): every control
+  that uses one carries its own text name.
+#}
+{% macro icon(name) %}
+<svg class="app-side-nav-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+  {%- if name == "collapse" -%}
+    <path d="m11 6-4 4 4 4"/><path d="m15 6-4 4 4 4"/>
+  {%- elif name == "expand" -%}
+    <path d="m5 6 4 4-4 4"/><path d="m9 6 4 4-4 4"/>
+  {%- endif -%}
+</svg>
+{%- endmacro %}

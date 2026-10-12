@@ -5,6 +5,7 @@ import hapiVision from '@hapi/vision'
 import nunjucks from 'nunjucks'
 
 import { config } from '../../config/config.js'
+import { jsonScript, renderMarkdownFallback } from '../../pages/guide/markdown.js'
 
 const nunjucksEnvironment = nunjucks.configure(
   [
@@ -18,6 +19,11 @@ const nunjucksEnvironment = nunjucks.configure(
     lstripBlocks: true
   }
 )
+
+// Both filters return markup that is already safe, so mark it as such rather
+// than have autoescape mangle it.
+nunjucksEnvironment.addFilter('jsonScript', value => nunjucks.runtime.markSafe(jsonScript(value)))
+nunjucksEnvironment.addFilter('markdownFallback', (markdown, headingIds) => nunjucks.runtime.markSafe(renderMarkdownFallback(markdown, headingIds)))
 
 function loadManifest () {
   const manifestPath = path.join(
