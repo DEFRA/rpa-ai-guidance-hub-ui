@@ -8,7 +8,7 @@ import { relativeHref } from '../common/relative-href.js'
 const SAFE_ABSOLUTE_LINK = /^(https?:|mailto:)/i
 
 // The JSON escape for `<`: a backslash, then 'u003c'.
-const ESCAPED_LESS_THAN = '\\u003c'
+const ESCAPED_LESS_THAN = String.raw`\u003c`
 
 // The bare inline formatting tags the guides' source documents use. Only these
 // exact tags, with no attributes, are passed through.
@@ -140,7 +140,9 @@ function renderMarkdownFallback (markdown, headingIds = []) {
     renderer: {
       ...SAFE_RENDERER,
       heading ({ tokens, depth }) {
-        const id = headingIds[headings++]
+        const id = headingIds[headings]
+
+        headings += 1
         const idAttribute = id ? ` id="${_escape(id)}"` : ''
 
         return `<h${depth}${idAttribute}>${this.parser.parseInline(tokens)}</h${depth}>\n`

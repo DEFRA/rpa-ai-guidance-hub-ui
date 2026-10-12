@@ -19,7 +19,7 @@ function initGuidePages () {
     })
     page.removeAttribute('hidden')
 
-    const number = page.getAttribute('data-guide-page')
+    const number = page.dataset.guidePage
 
     // Replace rather than push so each find hop is not a Back step
     const url = new URL(window.location.href)
@@ -27,7 +27,7 @@ function initGuidePages () {
     window.history.replaceState(window.history.state, '', url)
 
     document.querySelectorAll('[data-guide-contents-page]').forEach((entry) => {
-      const current = entry.getAttribute('data-guide-contents-page') === number
+      const current = entry.dataset.guideContentsPage === number
       const link = entry.querySelector('a')
 
       entry.classList.toggle('app-guide-contents__section--current', current)

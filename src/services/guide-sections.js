@@ -51,21 +51,36 @@ function splitIntoSections (markdown) {
         parts.push(_part(INTRODUCTION_TITLE, null, []))
       }
 
-      parts.at(-1).raw.push(_raw(token))
-
-      if (token.type === 'heading') {
-        const slug = slugs.get(token)
-
-        parts.at(-1).headingIds.push(slug)
-
-        if (token.depth === depth + 1) {
-          parts.at(-1).subheadings.push({ title: _plainText(token), slug })
-        }
-      }
+      _addToken(parts.at(-1), token, slugs, depth)
     }
   }
 
   return _build(parts)
+}
+
+/**
+ * Add a token to the section it falls in, recording it if it is a heading.
+ *
+ * @private
+ * @param {ReturnType<typeof _part>} part
+ * @param {import('marked').Token} token
+ * @param {Map<import('marked').Token, string>} slugs
+ * @param {number} depth - The section heading depth
+ */
+function _addToken (part, token, slugs, depth) {
+  part.raw.push(_raw(token))
+
+  if (token.type !== 'heading') {
+    return
+  }
+
+  const slug = slugs.get(token)
+
+  part.headingIds.push(slug)
+
+  if (token.depth === depth + 1) {
+    part.subheadings.push({ title: _plainText(token), slug })
+  }
 }
 
 /**

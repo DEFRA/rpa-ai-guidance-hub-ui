@@ -3,7 +3,7 @@ import { READING_WIDTHS } from './reading-width.js'
 
 const UNTITLED = 'Untitled guide'
 const VERSION_COLOURS = ['green', 'purple', 'blue', 'orange', 'pink', 'turquoise']
-const SIMPLE_EMAIL = /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/
+const SIMPLE_EMAIL = /^[^\s@<>"]+@[^\s@<>".]+(?:\.[^\s@<>".]+)+$/
 
 /**
  * @typedef {Object} MetadataRow
@@ -29,23 +29,51 @@ function _list (values) {
  * @returns {MetadataRow[]}
  */
 function buildMetadataRows (metadata = {}) {
-  const schemes = metadata.schemes ?? []
-  const audience = metadata.audience ?? []
-  const systems = metadata.systems ?? []
-  const { owner } = metadata
-
   return [
-    schemes.length > 0 && { label: 'Scheme', text: _list(schemes) },
-    audience.length > 0 && { label: "Who it's for", text: _list(audience) },
-    systems.length > 0 && { label: 'Systems used', text: _list(systems) },
-    metadata.goal && { label: 'Purpose', text: metadata.goal },
-    metadata.requirements && { label: 'Required knowledge', text: metadata.requirements },
-    owner && {
-      label: 'Owner',
-      text: owner,
-      ...(SIMPLE_EMAIL.test(owner) && { href: `mailto:${owner}` })
-    }
+    _listRow('Scheme', metadata.schemes),
+    _listRow("Who it's for", metadata.audience),
+    _listRow('Systems used', metadata.systems),
+    _textRow('Purpose', metadata.goal),
+    _textRow('Required knowledge', metadata.requirements),
+    _ownerRow(metadata.owner)
   ].filter(Boolean)
+}
+
+/**
+ * @private
+ * @param {string} label
+ * @param {string[]} [values]
+ * @returns {MetadataRow|null} Null when there are no values
+ */
+function _listRow (label, values) {
+  return values?.length > 0 ? { label, text: _list(values) } : null
+}
+
+/**
+ * @private
+ * @param {string} label
+ * @param {string} [text]
+ * @returns {MetadataRow|null} Null when there is no text
+ */
+function _textRow (label, text) {
+  return text ? { label, text } : null
+}
+
+/**
+ * @private
+ * @param {string} [owner]
+ * @returns {MetadataRow|null} Null when there is no owner
+ */
+function _ownerRow (owner) {
+  if (!owner) {
+    return null
+  }
+
+  return {
+    label: 'Owner',
+    text: owner,
+    ...(SIMPLE_EMAIL.test(owner) && { href: `mailto:${owner}` })
+  }
 }
 
 /**

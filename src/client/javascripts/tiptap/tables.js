@@ -20,7 +20,7 @@ function lines (content) {
     if (child.type === 'hardBreak') {
       split.push([])
     } else {
-      split[split.length - 1].push(child)
+      split.at(-1).push(child)
     }
   }
 

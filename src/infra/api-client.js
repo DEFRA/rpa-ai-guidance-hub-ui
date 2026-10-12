@@ -72,6 +72,8 @@ function _buildUrl (baseUrl, path, query = {}) {
       value.forEach(item => url.searchParams.append(key, item))
     } else if (value !== undefined) {
       url.searchParams.set(key, value)
+    } else {
+      // An undefined parameter is left out of the query string
     }
   }
 
