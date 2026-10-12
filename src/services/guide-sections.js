@@ -1,7 +1,6 @@
 import { Lexer } from 'marked'
 
 const INTRODUCTION_TITLE = 'Introduction'
-const ANCHOR_LINK = /\]\(#([^)\s]+)\)/g
 
 /**
  * A guide's Markdown is one document; the viewer reads it a section at a
@@ -108,12 +107,104 @@ function resolveAnchors (sections, hrefForPage) {
 
   return sections.map((section, index) => ({
     ...section,
-    markdown: section.markdown.replaceAll(ANCHOR_LINK, (link, slug) => {
+    markdown: _resolveLinks(section.markdown, slug => {
       const page = pageOf.get(slug)
 
-      return page && page !== index + 1 ? `](${hrefForPage(page)}#${slug})` : link
+      return page && page !== index + 1 ? `${hrefForPage(page)}#${slug}` : null
     })
   }))
+}
+
+/**
+ * Rewrite the destination of each parsed Markdown link to an anchor. Code,
+ * escaped syntax and images are not links, so they are never touched.
+ *
+ * @private
+ * @param {string} markdown
+ * @param {(slug: string) => string|null} resolve - The new destination for
+ *   an anchor, or null to leave the link as it is
+ * @returns {string}
+ */
+function _resolveLinks (markdown, resolve) {
+  const edits = []
+
+  _collectLinkEdits(new Lexer().lex(markdown), markdown, 0, resolve, edits)
+
+  return edits.reduceRight(
+    (result, { start, end, text }) => result.slice(0, start) + text + result.slice(end),
+    markdown
+  )
+}
+
+/**
+ * @private
+ * @param {import('marked').Token} token
+ * @returns {import('marked').Token[]} The tokens nested directly in `token`,
+ *   in source order
+ */
+function _children (token) {
+  if (token.type === 'table') {
+    return [...token.header, ...token.rows.flat()].flatMap(cell => cell.tokens)
+  }
+
+  return token.items ?? token.tokens ?? []
+}
+
+/**
+ * Find the links among `tokens`, which appear in `source` in order from
+ * `from`, and record an edit for each one that should be rewritten.
+ *
+ * @private
+ * @param {import('marked').Token[]} tokens
+ * @param {string} source
+ * @param {number} from
+ * @param {(slug: string) => string|null} resolve
+ * @param {Array<{start: number, end: number, text: string}>} edits
+ */
+function _collectLinkEdits (tokens, source, from, resolve, edits) {
+  let cursor = from
+
+  for (const token of tokens) {
+    const start = source.indexOf(token.raw, cursor)
+
+    if (start === -1) {
+      continue
+    }
+
+    if (token.type === 'link') {
+      const edit = _linkEdit(token, start, resolve)
+
+      if (edit) {
+        edits.push(edit)
+      }
+    } else {
+      _collectLinkEdits(_children(token), source, start, resolve, edits)
+    }
+
+    cursor = start + token.raw.length
+  }
+}
+
+/**
+ * @private
+ * @param {import('marked').Tokens.Link} link
+ * @param {number} start - Where the link begins in the source
+ * @param {(slug: string) => string|null} resolve
+ * @returns {{start: number, end: number, text: string}|null} Null when the
+ *   link is not an inline link to an anchor that needs rewriting
+ */
+function _linkEdit (link, start, resolve) {
+  const opening = `[${link.text}](#`
+  const slug = link.href.slice(1)
+  const destination = link.href.startsWith('#') ? resolve(slug) : null
+
+  if (!destination || !link.raw.startsWith(opening + slug)) {
+    return null
+  }
+
+  const from = start + opening.length - 1
+
+  return { start: from, end: from + 1 + slug.length, text: destination }
 }
 
 /**

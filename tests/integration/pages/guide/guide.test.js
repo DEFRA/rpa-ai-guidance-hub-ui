@@ -71,7 +71,7 @@ describe('#guideController', () => {
   }
 
   describe('GET /guides/{guideId}', () => {
-    test('Should show the title as the one main heading, with its version, Live tag and date', async () => {
+    test('shows the title as the one main heading, with its version, Live tag and date', async () => {
       mockGuide()
 
       const { statusCode, payload } = await get(GUIDE_URL)
@@ -84,7 +84,7 @@ describe('#guideController', () => {
       expect(payload).toContain('Updated 6 October 2026')
     })
 
-    test('Should show how far through each page of the guide the reader is, without an inline style', async () => {
+    test('shows how far through each page of the guide the reader is, without an inline style', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -95,7 +95,7 @@ describe('#guideController', () => {
       expect(payload).not.toMatch(/style="[^"]*width/)
     })
 
-    test('Should show the section being read, and where the reader is', async () => {
+    test('shows the section being read, and where the reader is', async () => {
       mockGuide()
 
       const { payload } = await get(`${GUIDE_URL}?page=2`)
@@ -104,7 +104,7 @@ describe('#guideController', () => {
       expect(payload).toMatch(/<div class="app-guide-page" data-guide-page="2">/)
     })
 
-    test('Should keep the other sections for find-in-page, hidden until it finds a match', async () => {
+    test('keeps the other sections for find-in-page, hidden until it finds a match', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -116,7 +116,7 @@ describe('#guideController', () => {
       expect(payload).toContain('Close it.')
     })
 
-    test('Should give only the section being read to the viewer', async () => {
+    test('gives only the section being read to the viewer', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -126,7 +126,7 @@ describe('#guideController', () => {
       expect(payload).not.toContain('"Assign it."')
     })
 
-    test('Should list every section in the contents, linking to each', async () => {
+    test('lists every section in the contents, linking to each', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -138,7 +138,7 @@ describe('#guideController', () => {
       expect(payload).toContain('data-guide-contents-page="2"')
     })
 
-    test('Should name the section a Next or Previous link goes to', async () => {
+    test('names the section a Next or Previous link goes to', async () => {
       mockGuide()
 
       const { payload } = await get(`${GUIDE_URL}?page=2`)
@@ -148,7 +148,7 @@ describe('#guideController', () => {
       expect(payload).toMatch(/govuk-pagination__link-label[^>]*>Close case</)
     })
 
-    test('Should have no Previous link on the first page and no Next link on the last', async () => {
+    test('has no Previous link on the first page and no Next link on the last', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -160,7 +160,7 @@ describe('#guideController', () => {
       expect(last).not.toContain('govuk-pagination__next')
     })
 
-    test('Should render the section as a fallback and for the viewer, its images served by the app', async () => {
+    test('renders the section as a fallback and for the viewer, its images served by the app', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -171,7 +171,7 @@ describe('#guideController', () => {
       expect(payload).toContain(`<img src="${GUIDE_URL}/assets/abc123.png"`)
     })
 
-    test('Should colour the parts of a note to fill in without the viewer, by class and not by style', async () => {
+    test('colours the parts of a note to fill in without the viewer, by class and not by style', async () => {
       mockGuide({ markdown: '## Section\n\nComplete the parts in [red]{.red}.\n\n> Version used:[&lt;version&gt;]{.red}' })
 
       const { payload } = await get(GUIDE_URL)
@@ -183,7 +183,7 @@ describe('#guideController', () => {
       expect(fallback).not.toMatch(/<span[^>]*style=/)
     })
 
-    test('Should take a link to another section to the page that has it, and leave one to this page', async () => {
+    test('takes a link to another section to the page that has it, and leave one to this page', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -194,7 +194,7 @@ describe('#guideController', () => {
       expect(payload).toContain('data-heading-ids="[&quot;before-you-begin&quot;]"')
     })
 
-    test('Should describe the guide, with its owner as a link', async () => {
+    test('describes the guide, with its owner as a link', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -206,7 +206,7 @@ describe('#guideController', () => {
       expect(payload).toContain('href="mailto:owner@example.com"')
     })
 
-    test('Should not offer to change the guide', async () => {
+    test('does not offer to change the guide', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -216,7 +216,7 @@ describe('#guideController', () => {
       expect(payload).not.toContain('data-tiptap-editable')
     })
 
-    test('Should go back to the hub', async () => {
+    test('goes back to the hub', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -224,7 +224,7 @@ describe('#guideController', () => {
       expect(payload).toMatch(/<a[^>]*href="\/hub"[^>]*govuk-back-link|<a[^>]*govuk-back-link[^>]*href="\/hub"/)
     })
 
-    test('Should escape a hostile title, owner and Markdown', async () => {
+    test('escapes a hostile title, owner and Markdown', async () => {
       const hostile = guideResponse({
         id: GUIDE_ID,
         metadata: { guideTitle: '<img src=x onerror=alert(1)>', owner: '"><script>alert(1)</script>' },
@@ -243,7 +243,7 @@ describe('#guideController', () => {
       expect(payload).toContain('&lt;script&gt;alert(&quot;title&quot;)&lt;/script&gt;')
     })
 
-    test('Should not let Markdown close the script element carrying it', async () => {
+    test('does not let Markdown close the script element carrying it', async () => {
       mockGuide({ markdown: '## Section\n\n</script><script>alert(1)</script>' })
 
       const { payload } = await get(GUIDE_URL)
@@ -251,7 +251,7 @@ describe('#guideController', () => {
       expect(payload).not.toContain('</script><script>alert(1)')
     })
 
-    test('Should say the guide is not found when the API has none', async () => {
+    test('says the guide is not found when the API has none', async () => {
       nock(GUIDANCE_API_BASE_URL)
         .get(`/guides/${GUIDE_ID}`).reply(statusCodes.HTTP_STATUS_NOT_FOUND)
         .get(`/guides/${GUIDE_ID}/content`).reply(statusCodes.HTTP_STATUS_NOT_FOUND)
@@ -262,13 +262,13 @@ describe('#guideController', () => {
       expect(payload).toContain('Page not found')
     })
 
-    test('Should say the guide is not found for an address that cannot be a guide', async () => {
+    test('says the guide is not found for an address that cannot be a guide', async () => {
       const { statusCode } = await get('/guides/not-a-guide')
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_NOT_FOUND)
     })
 
-    test('Should make the viewer script available to the page', async () => {
+    test('makes the viewer script available to the page', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -278,7 +278,7 @@ describe('#guideController', () => {
   })
 
   describe('the contents', () => {
-    test('Should list each section\'s subheadings beneath it', async () => {
+    test('lists each section\'s subheadings beneath it', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -286,7 +286,7 @@ describe('#guideController', () => {
       expect(payload).toMatch(/app-guide-contents__list[\s\S]*href="#before-you-begin">Before you begin/)
     })
 
-    test('Should link a subheading on another page to that page', async () => {
+    test('links a subheading on another page to that page', async () => {
       mockGuide({ markdown: '## One\n\ntext\n\n## Two\n\n### 2.1 Deep\n\ntext' })
 
       const { payload } = await get(GUIDE_URL)
@@ -296,7 +296,7 @@ describe('#guideController', () => {
   })
 
   describe('the page shell', () => {
-    test('Should run the full width, with the panel as a column of the shell beside the reading column', async () => {
+    test('runs the full width, with the panel as a column of the shell beside the reading column', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -306,7 +306,7 @@ describe('#guideController', () => {
       expect(payload).toMatch(/class="app-shell">[\s\S]*class="app-shell__main">[\s\S]*class="app-guide-panel"/)
     })
 
-    test('Should keep the contents a direct child of the reading column, where it can stick', async () => {
+    test('keeps the contents a direct child of the reading column, where it can stick', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -314,7 +314,7 @@ describe('#guideController', () => {
       expect(payload).toMatch(/<div class="app-guide-reading app-guide-reading--standard">[\s\S]*?<\/div>\s*<nav class="app-guide-contents"/)
     })
 
-    test('Should list the guide\'s answers in the panel as the prototype\'s metadata list', async () => {
+    test('lists the guide\'s answers in the panel as the prototype\'s metadata list', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -323,7 +323,7 @@ describe('#guideController', () => {
       expect(payload).toContain('class="app-side-nav__icon-button"')
     })
 
-    test('Should show the collapsed panel as the prototype\'s rail, its button named and with a tooltip', async () => {
+    test('shows the collapsed panel as the prototype\'s rail, its button named and with a tooltip', async () => {
       const { cookie: collapsedCookie } = await server.inject({
         method: 'POST',
         url: '/guides/panel-toggle',
@@ -343,7 +343,7 @@ describe('#guideController', () => {
   })
 
   describe('the page banner', () => {
-    test('Should be full width, with the Defra green beneath it', async () => {
+    test('is full width, with the Defra green beneath it', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -365,7 +365,7 @@ describe('#guideController', () => {
       return { response, cookie: mergeCookies(cookie, response.headers['set-cookie']) }
     }
 
-    test('Should be open, offering to hide the details', async () => {
+    test('is open, offering to hide the details', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
@@ -376,7 +376,7 @@ describe('#guideController', () => {
       expect(payload).not.toContain('app-guide-panel--collapsed')
     })
 
-    test('Should fold away to a rail that offers to show the details, and open again', async () => {
+    test('folds away to a rail that offers to show the details, and open again', async () => {
       const { response, cookie: collapsed } = await togglePanel('true')
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
@@ -398,7 +398,7 @@ describe('#guideController', () => {
       expect(open.payload).toContain('id="guide-panel-body"')
     })
 
-    test('Should not go to another site', async () => {
+    test('does not go to another site', async () => {
       const response = await server.inject({
         method: 'POST',
         url: '/guides/panel-toggle',
@@ -409,7 +409,7 @@ describe('#guideController', () => {
       expect(response.headers.location).toBe('/hub')
     })
 
-    test('Should refuse something that is not true or false', async () => {
+    test('refuses something that is not true or false', async () => {
       const { response } = await togglePanel('maybe')
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
@@ -428,7 +428,7 @@ describe('#guideController', () => {
       return { response, cookie: mergeCookies(cookie, response.headers['set-cookie']) }
     }
 
-    test('Should remember the width and go back to the page', async () => {
+    test('remembers the width and go back to the page', async () => {
       const { response, cookie: updated } = await choose('wide')
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
@@ -442,14 +442,14 @@ describe('#guideController', () => {
       expect(payload).toMatch(/aria-pressed="false">Standard</)
     })
 
-    test('Should not go to another site', async () => {
+    test('does not go to another site', async () => {
       const { response } = await choose('full', 'https://evil.example')
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(response.headers.location).toBe('/hub')
     })
 
-    test('Should refuse a width that is not offered', async () => {
+    test('refuses a width that is not offered', async () => {
       const { response } = await choose('huge')
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
@@ -457,7 +457,7 @@ describe('#guideController', () => {
   })
 
   describe('GET /guides/{guideId}/assets/{name}', () => {
-    test('Should serve the image with the API\'s type and caching', async () => {
+    test('serves the image with the API\'s type and caching', async () => {
       nock(GUIDANCE_API_BASE_URL)
         .get(`/guides/${GUIDE_ID}/assets/abc123.png`)
         .reply(statusCodes.HTTP_STATUS_OK, Buffer.from([137, 80, 78, 71]), {
@@ -473,7 +473,7 @@ describe('#guideController', () => {
       expect([...response.rawPayload]).toEqual([137, 80, 78, 71])
     })
 
-    test('Should be not found when the API has no such asset', async () => {
+    test('is not found when the API has no such asset', async () => {
       nock(GUIDANCE_API_BASE_URL)
         .get(`/guides/${GUIDE_ID}/assets/abc123.png`)
         .reply(statusCodes.HTTP_STATUS_NOT_FOUND)
@@ -483,7 +483,7 @@ describe('#guideController', () => {
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_NOT_FOUND)
     })
 
-    test.each([['..%2Fsecret.png'], ['no-extension'], ['a.b.c']])('Should be not found, without asking the API, for the name %s', async (name) => {
+    test.each([['..%2Fsecret.png'], ['no-extension'], ['a.b.c']])('is not found, without asking the API, for the name %s', async (name) => {
       const { statusCode } = await get(`${GUIDE_URL}/assets/${name}`)
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_NOT_FOUND)
@@ -496,7 +496,7 @@ describe('#guideController', () => {
       ['GET', `${GUIDE_URL}/assets/abc123.png`],
       ['POST', '/guides/reading-width'],
       ['POST', '/guides/panel-toggle']
-    ])('Should redirect %s %s to the home page', async (method, url) => {
+    ])('redirects %s %s to the home page', async (method, url) => {
       const { statusCode, headers } = await server.inject({ method, url })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)

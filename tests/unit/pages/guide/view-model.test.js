@@ -151,7 +151,7 @@ describe('buildMetadataRows', () => {
       { label: 'Systems used', text: 'CRM' },
       { label: 'Purpose', text: 'Explain the claim.' },
       { label: 'Required knowledge', text: 'Know the rules.' },
-      { label: 'Owner', text: 'owner@example.com', href: 'mailto:owner@example.com' }
+      { label: 'Owner', text: 'owner@example.com', href: 'mailto:owner%40example.com' }
     ])
   })
 
@@ -166,5 +166,11 @@ describe('buildMetadataRows', () => {
     const [row] = buildMetadataRows({ owner: 'javascript:alert(1)' })
 
     expect(row).toEqual({ label: 'Owner', text: 'javascript:alert(1)' })
+  })
+
+  test('does not link an owner with mailto query parameters smuggled in', () => {
+    const [row] = buildMetadataRows({ owner: 'owner@example.com?subject=Injected' })
+
+    expect(row).toEqual({ label: 'Owner', text: 'owner@example.com?subject=Injected' })
   })
 })

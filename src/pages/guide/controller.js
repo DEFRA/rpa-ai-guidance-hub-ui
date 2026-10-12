@@ -11,6 +11,11 @@ import { buildMetadataRows, GuideViewModel } from './view-model.js'
 const GUIDE_VIEW = 'guide/page.njk'
 const FALLBACK_RETURN_URL = '/hub'
 const ONE_YEAR_IN_SECONDS = 31536000
+const ALLOWED_ASSET_CONTENT_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp'
+])
 
 /**
  * @private
@@ -117,19 +122,24 @@ function postPanelToggle (request, h) {
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
  * @returns {Promise<import('@hapi/hapi').ResponseObject>}
- * @throws {Boom.Boom} 404 when there is no such asset
+ * @throws {Boom.Boom} 404 when there is no such asset, or it is not a
+ *   raster image type we allow
  */
 async function getGuideAsset (request, h) {
   const { guideId, name } = request.params
   const asset = await guidesService.getGuideAsset(guideId, name)
 
-  if (!asset) {
+  const contentType = asset?.contentType?.split(';')[0].trim().toLowerCase()
+
+  if (!asset || !ALLOWED_ASSET_CONTENT_TYPES.has(contentType)) {
     throw Boom.notFound()
   }
 
   return h
     .response(asset.body)
-    .type(asset.contentType)
+    .type(contentType)
+    .header('x-content-type-options', 'nosniff')
+    .header('content-security-policy', "default-src 'none'; sandbox")
     .header('cache-control', asset.cacheControl ?? `private, max-age=${ONE_YEAR_IN_SECONDS}, immutable`)
 }
 
