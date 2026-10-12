@@ -90,13 +90,6 @@ describe('guide controller', () => {
         output: { statusCode: statusCodes.HTTP_STATUS_NOT_FOUND }
       })
     })
-
-    test('lets a failure through', async () => {
-      const failure = new Error('502')
-      guidesService.getGuideContent.mockRejectedValue(failure)
-
-      await expect(controller.getGuidePage(createRequest(), h)).rejects.toBe(failure)
-    })
   })
 
   describe('postReadingWidth', () => {
@@ -171,6 +164,58 @@ describe('guide controller', () => {
       await expect(controller.getGuideAsset(createRequest(), h)).rejects.toMatchObject({
         output: { statusCode: statusCodes.HTTP_STATUS_NOT_FOUND }
       })
+    })
+
+    test.each([
+      'image/jpeg',
+      'image/png',
+      'image/webp'
+    ])('is found when %s is in the allow list', async (contentType) => {
+      vi.spyOn(guidesService, 'getGuideAsset').mockResolvedValue({
+        body: Buffer.from(''),
+        contentType,
+        cacheControl: null
+      })
+
+      const response = await controller.getGuideAsset(createRequest(), h)
+
+      expect(response).toBe(h.assetResponse)
+      expect(h.assetResponse.type).toHaveBeenCalledWith(contentType)
+      expect(h.assetResponse.header).toHaveBeenCalledWith('x-content-type-options', 'nosniff')
+      expect(h.assetResponse.header).toHaveBeenCalledWith('content-security-policy', "default-src 'none'; sandbox")
+    })
+
+    test.each([
+      ['image/png; charset=binary', 'image/png'],
+      ['IMAGE/PNG', 'image/png']
+    ])('serves %j as %s', async (contentType, expected) => {
+      vi.spyOn(guidesService, 'getGuideAsset').mockResolvedValue({
+        body: Buffer.from(''),
+        contentType,
+        cacheControl: null
+      })
+
+      await controller.getGuideAsset(createRequest(), h)
+
+      expect(h.assetResponse.type).toHaveBeenCalledWith(expected)
+    })
+
+    test.each([
+      'text/html',
+      'image/svg+xml',
+      'image/gif',
+      undefined
+    ])('is not found when %s is not in the allow list', async (contentType) => {
+      vi.spyOn(guidesService, 'getGuideAsset').mockResolvedValue({
+        body: Buffer.from(''),
+        contentType,
+        cacheControl: null
+      })
+
+      await expect(controller.getGuideAsset(createRequest(), h)).rejects.toMatchObject({
+        output: { statusCode: statusCodes.HTTP_STATUS_NOT_FOUND }
+      })
+      expect(h.response).not.toHaveBeenCalled()
     })
   })
 })

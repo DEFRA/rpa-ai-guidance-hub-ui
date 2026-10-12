@@ -165,4 +165,34 @@ describe('resolveAnchors', () => {
   test('do not change the sections it is given', () => {
     expect(sections[0].markdown).toContain('[2 Two](#2-two)')
   })
+
+  describe('leave text that is not a link as it is', () => {
+    const literal = [
+      '## 1 One',
+      '',
+      'Inline `[Two](#2-two)` code and an escaped \\[Two\\](#2-two) example.',
+      '',
+      '![Two](#2-two) is an image.',
+      '',
+      '```md',
+      '[Two](#2-two)',
+      '```',
+      '',
+      '- a real [Two](#2-two) link in a list',
+      '',
+      '## 2 Two'
+    ].join('\n')
+    const [one] = resolveAnchors(splitIntoSections(literal), page => `/g?page=${page}`)
+
+    test('code, escaped syntax and images', () => {
+      expect(one.markdown).toContain('`[Two](#2-two)`')
+      expect(one.markdown).toContain('\\[Two\\](#2-two)')
+      expect(one.markdown).toContain('![Two](#2-two)')
+      expect(one.markdown).toContain('```md\n[Two](#2-two)\n```')
+    })
+
+    test('still resolves a real link beside them', () => {
+      expect(one.markdown).toContain('- a real [Two](/g?page=2#2-two) link in a list')
+    })
+  })
 })
