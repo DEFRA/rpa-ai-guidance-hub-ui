@@ -1,0 +1,145 @@
+// Kept as the prototype has it, so a change there can be copied across as it
+// is; these rules are disabled rather than the code reshaped to satisfy them.
+// stylelint-disable scss/selector-class-pattern, property-no-deprecated
+
+@use 'govuk-frontend' as *;
+@use '../variables/colours' as *;
+
+// A converted guide's Markdown on the guide page, rendered by the TipTap
+// viewer (scripts/tiptap-viewer) into a .ProseMirror element, or by marked
+// into __fallback without JS. The same rules cover both so the page doesn't
+// shift when the viewer takes over. Type sizes follow the GOV.UK type scale
+// and the guide's own heading scale (_app-guide.scss).
+
+.app-guide-markdown {
+  .ProseMirror {
+    // The two ProseMirror base rules a read-only view needs; the rest of
+    // prosemirror.css is about editing.
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    outline: none;
+  }
+
+  // The first block sits at the top of the section. The viewer puts its
+  // content a level deeper than the fallback and the fallback follows a
+  // <script>, so name each by what holds the blocks.
+  .app-guide-markdown__fallback > :first-child,
+  .ProseMirror > :first-child {
+    margin-top: 0;
+  }
+
+  h2,
+  h3 {
+    margin: govuk-spacing(4) 0 govuk-spacing(2);
+    font-weight: 700;
+    font-size: 19px;
+  }
+
+  h4,
+  h5,
+  h6 {
+    margin: govuk-spacing(4) 0 govuk-spacing(2);
+    font-weight: 700;
+    font-size: 16px;
+  }
+
+  p {
+    margin: 0 0 govuk-spacing(4);
+  }
+
+  ul,
+  ol {
+    margin: 0 0 govuk-spacing(4);
+    padding-left: govuk-spacing(4);
+  }
+
+  li {
+    margin-bottom: govuk-spacing(1);
+
+    > p {
+      margin-bottom: 0;
+      // TipTap wraps a list item's text in a <p>, which would otherwise
+      // be set tighter than the bare text the fallback has there.
+      line-height: inherit;
+    }
+  }
+
+  a {
+    @include govuk-link-common;
+    @include govuk-link-style-default;
+  }
+
+  // govuk-table's look, since the Markdown has no classes to carry.
+  table {
+    width: 100%;
+    margin-bottom: govuk-spacing(6);
+    border-spacing: 0;
+    border-collapse: collapse;
+    font-size: 16px;
+  }
+
+  th,
+  td {
+    padding: govuk-spacing(2) govuk-spacing(4) govuk-spacing(2) 0;
+    border-bottom: 1px solid $govuk-border-colour;
+    text-align: left;
+    vertical-align: top;
+
+    p,
+    ul {
+      margin-bottom: 0;
+    }
+
+    // As for list items: a cell's <p> keeps the cell's own type.
+    p {
+      font-size: inherit;
+      line-height: inherit;
+    }
+  }
+
+  // TipTap wraps each cell's text in a <p>, which would reset the weight.
+  th,
+  th p {
+    font-weight: 700;
+  }
+
+  img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin-bottom: govuk-spacing(4);
+  }
+
+  // govuk-inset-text's look.
+  blockquote {
+    margin: govuk-spacing(4) 0 govuk-spacing(6);
+    padding: govuk-spacing(3);
+    border-left: $govuk-border-width-wide solid $govuk-border-colour;
+
+    > :last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  mark {
+    padding: 0 2px;
+    background-color: govuk-colour('yellow');
+    color: $govuk-text-colour;
+  }
+
+  code {
+    font-family: monospace;
+    font-size: 0.9em;
+  }
+}
+
+// The colour palette from text-colours.js ([text]{.red}). The class prefix is
+// upstream's, kept so the copied extension files stay verbatim.
+.markdown-preview__text--red {
+  color: govuk-colour('red');
+  font-weight: 700;
+}
+
+.markdown-preview__text--blue {
+  color: govuk-colour('blue');
+}
