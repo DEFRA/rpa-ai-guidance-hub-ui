@@ -10,7 +10,7 @@ import {
   colourClass,
   colourHex,
   colourModifier
-} from './text-colours.js'
+} from '../../../constants/text-colours.js'
 
 /**
  * Extension for serialising and deserialising bracketed coloured text spans.
