@@ -221,6 +221,7 @@ describe('guides service: reading', () => {
   describe('getGuideAsset', () => {
     test('answers the image with its type, ignoring the API\'s caching', async () => {
       const body = Buffer.from('png')
+
       guidesApi.getGuideAsset.mockResolvedValue({
         ok: true,
         status: 200,

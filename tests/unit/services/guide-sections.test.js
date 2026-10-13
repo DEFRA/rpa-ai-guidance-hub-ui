@@ -1,4 +1,4 @@
-import { resolveAnchors, splitIntoSections } from '../../../src/services/guide-sections.js'
+import { resolveAnchors, resolveImages, splitIntoSections } from '../../../src/services/guide-sections.js'
 
 describe('splitIntoSections', () => {
   test('splits at the shallowest heading and drops the title', () => {
@@ -194,5 +194,40 @@ describe('resolveAnchors', () => {
     test('still resolves a real link beside them', () => {
       expect(one.markdown).toContain('- a real [Two](/g?page=2#2-two) link in a list')
     })
+  })
+})
+
+describe('resolveImages', () => {
+  const [section] = splitIntoSections([
+    '## One',
+    '',
+    '![A chart](../assets/chart.png) and ![](../assets/blank.png "Blank")',
+    '',
+    '[![Linked](../assets/linked.png)](#one) and [a link](../assets/not-an-image.png)',
+    '',
+    '`![Code](../assets/code.png)` and ![Elsewhere](https://example.com/x.png)'
+  ].join('\n'))
+
+  const [resolved] = resolveImages([section], href => href.startsWith('../assets/')
+    ? `/guides/g/assets/${href.slice('../assets/'.length)}`
+    : href)
+
+  test('point an image at the address it is served from', () => {
+    expect(resolved.markdown).toContain('![A chart](/guides/g/assets/chart.png)')
+    expect(resolved.markdown).toContain('![](/guides/g/assets/blank.png "Blank")')
+  })
+
+  test('point an image inside a link at it too', () => {
+    expect(resolved.markdown).toContain('[![Linked](/guides/g/assets/linked.png)](#one)')
+  })
+
+  test('leave links, code and images it does not change as they are', () => {
+    expect(resolved.markdown).toContain('[a link](../assets/not-an-image.png)')
+    expect(resolved.markdown).toContain('`![Code](../assets/code.png)`')
+    expect(resolved.markdown).toContain('![Elsewhere](https://example.com/x.png)')
+  })
+
+  test('do not change the sections it is given', () => {
+    expect(section.markdown).toContain('![A chart](../assets/chart.png)')
   })
 })
