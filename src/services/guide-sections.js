@@ -107,28 +107,50 @@ function resolveAnchors (sections, hrefForPage) {
 
   return sections.map((section, index) => ({
     ...section,
-    markdown: _resolveLinks(section.markdown, slug => {
-      const page = pageOf.get(slug)
+    markdown: _rewrite(section.markdown, (token, start) => token.type === 'link'
+      ? _linkEdit(token, start, slug => {
+        const page = pageOf.get(slug)
 
-      return page && page !== index + 1 ? `${hrefForPage(page)}#${slug}` : null
-    })
+        return page && page !== index + 1 ? `${hrefForPage(page)}#${slug}` : null
+      })
+      : null)
   }))
 }
 
 /**
- * Rewrite the destination of each parsed Markdown link to an anchor. Code,
- * escaped syntax and images are not links, so they are never touched.
+ * Point each image at the address the browser can fetch it from. The
+ * guide's content names an image relative to itself, which means nothing to
+ * the page it is shown on.
+ *
+ * @param {GuideSection[]} sections
+ * @param {(href: string) => string} hrefForImage - The address to use for an
+ *   image's address; returning it unchanged leaves the image as it is
+ * @returns {GuideSection[]}
+ */
+function resolveImages (sections, hrefForImage) {
+  return sections.map(section => ({
+    ...section,
+    markdown: _rewrite(section.markdown, (token, start) => token.type === 'image'
+      ? _imageEdit(token, start, hrefForImage)
+      : null)
+  }))
+}
+
+/**
+ * Rewrite parts of the parsed Markdown. Code and escaped syntax are not
+ * parsed as links or images, so they are never touched.
  *
  * @private
  * @param {string} markdown
- * @param {(slug: string) => string|null} resolve - The new destination for
- *   an anchor, or null to leave the link as it is
+ * @param {(token: import('marked').Token, start: number) => {start: number, end: number, text: string}|null} editFor
+ *   - The edit to make for a token found at `start` in the source, or null
+ *   to leave it as it is
  * @returns {string}
  */
-function _resolveLinks (markdown, resolve) {
+function _rewrite (markdown, editFor) {
   const edits = []
 
-  _collectLinkEdits(new Lexer().lex(markdown), markdown, 0, resolve, edits)
+  _collectEdits(new Lexer().lex(markdown), markdown, 0, editFor, edits)
 
   return edits.reduceRight(
     (result, { start, end, text }) => result.slice(0, start) + text + result.slice(end),
@@ -151,17 +173,17 @@ function _children (token) {
 }
 
 /**
- * Find the links among `tokens`, which appear in `source` in order from
- * `from`, and record an edit for each one that should be rewritten.
+ * Walk `tokens`, which appear in `source` in order from `from`, and record
+ * the edit `editFor` gives for each, if any.
  *
  * @private
  * @param {import('marked').Token[]} tokens
  * @param {string} source
  * @param {number} from
- * @param {(slug: string) => string|null} resolve
+ * @param {(token: import('marked').Token, start: number) => {start: number, end: number, text: string}|null} editFor
  * @param {Array<{start: number, end: number, text: string}>} edits
  */
-function _collectLinkEdits (tokens, source, from, resolve, edits) {
+function _collectEdits (tokens, source, from, editFor, edits) {
   let cursor = from
 
   for (const token of tokens) {
@@ -171,15 +193,14 @@ function _collectLinkEdits (tokens, source, from, resolve, edits) {
       continue
     }
 
-    if (token.type === 'link') {
-      const edit = _linkEdit(token, start, resolve)
+    const edit = editFor(token, start)
 
-      if (edit) {
-        edits.push(edit)
-      }
-    } else {
-      _collectLinkEdits(_children(token), source, start, resolve, edits)
+    if (edit) {
+      edits.push(edit)
     }
+
+    // A link's text can hold an image, so look inside it too.
+    _collectEdits(_children(token), source, start, editFor, edits)
 
     cursor = start + token.raw.length
   }
@@ -205,6 +226,27 @@ function _linkEdit (link, start, resolve) {
   const from = start + opening.length - 1
 
   return { start: from, end: from + 1 + slug.length, text: destination }
+}
+
+/**
+ * @private
+ * @param {import('marked').Tokens.Image} image
+ * @param {number} start - Where the image begins in the source
+ * @param {(href: string) => string} resolve
+ * @returns {{start: number, end: number, text: string}|null} Null when the
+ *   image is not an inline image whose address needs rewriting
+ */
+function _imageEdit (image, start, resolve) {
+  const opening = `![${image.text}](`
+  const destination = resolve(image.href)
+
+  if (destination === image.href || !image.raw.startsWith(opening + image.href)) {
+    return null
+  }
+
+  const from = start + opening.length
+
+  return { start: from, end: from + image.href.length, text: destination }
 }
 
 /**
@@ -317,5 +359,6 @@ function _plainText (token) {
 
 export {
   resolveAnchors,
+  resolveImages,
   splitIntoSections
 }

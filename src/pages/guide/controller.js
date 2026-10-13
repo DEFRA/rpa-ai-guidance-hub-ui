@@ -2,8 +2,9 @@ import Boom from '@hapi/boom'
 
 import { statusCodes } from '../../constants/status-codes.js'
 import { relativeHref } from '../common/relative-href.js'
-import { resolveAnchors, splitIntoSections } from '../../services/guide-sections.js'
+import { resolveAnchors, resolveImages, splitIntoSections } from '../../services/guide-sections.js'
 import * as guidesService from '../../services/guides.js'
+import { guideAssetHref } from './asset-href.js'
 import { isPanelCollapsed, setPanelCollapsed } from './panel.js'
 import { getReadingWidth, setReadingWidth } from './reading-width.js'
 import { buildMetadataRows, GuideViewModel } from './view-model.js'
@@ -66,7 +67,10 @@ async function getGuidePage (request, h) {
     throw Boom.notFound()
   }
 
-  const sections = resolveAnchors(split, page => GuideViewModel.pageHref(guideId, page))
+  const sections = resolveImages(
+    resolveAnchors(split, page => GuideViewModel.pageHref(guideId, page)),
+    href => guideAssetHref(href, guideId)
+  )
 
   const viewModel = new GuideViewModel({
     guide,
