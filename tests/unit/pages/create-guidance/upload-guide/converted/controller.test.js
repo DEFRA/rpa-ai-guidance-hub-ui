@@ -2,6 +2,8 @@ import { statusCodes } from '../../../../../../src/constants/status-codes.js'
 import * as session from '../../../../../../src/pages/create-guidance/session.js'
 import { getConverted } from '../../../../../../src/pages/create-guidance/upload-guide/converted/controller.js'
 
+vi.mock('../../../../../../src/pages/create-guidance/session.js')
+
 const CONVERTED_VIEW = 'create-guidance/upload-guide/converted/page.njk'
 
 describe('converted controller', () => {
@@ -9,7 +11,7 @@ describe('converted controller', () => {
   const request = {}
 
   beforeEach(() => {
-    vi.restoreAllMocks()
+    vi.resetAllMocks()
     code = vi.fn()
     h = {
       view: vi.fn(() => ({ code })),
@@ -18,7 +20,7 @@ describe('converted controller', () => {
   })
 
   test('confirms the guide just converted, by its title', () => {
-    vi.spyOn(session, 'takeConvertedGuide').mockReturnValue({ guideTitle: 'Converted Guide' })
+    session.takeConvertedGuide.mockReturnValue({ guideTitle: 'Converted Guide' })
 
     getConverted(request, h)
 
@@ -30,7 +32,7 @@ describe('converted controller', () => {
   })
 
   test('goes to the hub when nothing has just been converted', () => {
-    vi.spyOn(session, 'takeConvertedGuide').mockReturnValue(null)
+    session.takeConvertedGuide.mockReturnValue(null)
 
     getConverted(request, h)
 

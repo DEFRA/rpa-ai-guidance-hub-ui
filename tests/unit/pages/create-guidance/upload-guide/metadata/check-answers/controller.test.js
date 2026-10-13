@@ -8,6 +8,11 @@ import {
   getCheckAnswers
 } from '../../../../../../../src/pages/create-guidance/upload-guide/metadata/check-answers/controller.js'
 
+vi.mock('../../../../../../../src/services/guides.js')
+vi.mock('../../../../../../../src/services/reference-data.js')
+vi.mock('../../../../../../../src/pages/create-guidance/session.js')
+vi.mock('../../../../../../../src/services/staged-documents.js')
+
 const CHECK_ANSWERS_VIEW = 'create-guidance/upload-guide/metadata/check-answers/page.njk'
 
 function validMetadata (overrides = {}) {
@@ -30,21 +35,21 @@ function mockUpload (metadata, fileId = 'file-1') {
     fileId,
     metadata
   }
-  vi.spyOn(session, 'getGuideUpload').mockReturnValue(upload)
+  session.getGuideUpload.mockReturnValue(upload)
   return upload
 }
 
 function mockReferenceData () {
-  vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([{ value: 'sfi', label: 'SFI' }])
-  vi.spyOn(referenceDataService, 'getSystems').mockResolvedValue([{ value: 'crm', label: 'CRM' }])
-  vi.spyOn(referenceDataService, 'getAudiences').mockResolvedValue([{ value: 'processor', label: 'Processor' }])
+  referenceDataService.getSchemes.mockResolvedValue([{ value: 'sfi', label: 'SFI' }])
+  referenceDataService.getSystems.mockResolvedValue([{ value: 'crm', label: 'CRM' }])
+  referenceDataService.getAudiences.mockResolvedValue([{ value: 'processor', label: 'Processor' }])
 }
 
 describe('upload-guide metadata check-answers controller', () => {
   let request, h, code
 
   beforeEach(() => {
-    vi.restoreAllMocks()
+    vi.resetAllMocks()
     code = vi.fn()
     h = {
       view: vi.fn(() => ({ code })),
@@ -84,7 +89,7 @@ describe('upload-guide metadata check-answers controller', () => {
     test('renders the summary cards with labelled answers and staged doc info', async () => {
       mockUpload(validMetadata(), 'file-1')
       mockReferenceData()
-      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue({
+      stagedDocumentsService.getStagedDocumentById.mockResolvedValue({
         version: '1.0',
         lastModified: '2026-06-29T10:00:00.000Z'
       })
@@ -113,7 +118,7 @@ describe('upload-guide metadata check-answers controller', () => {
     test('re-renders check answers with an error summary when the guide details answers are missing', async () => {
       mockUpload({ guideTitle: '' })
       mockReferenceData()
-      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
+      stagedDocumentsService.getStagedDocumentById.mockResolvedValue(null)
 
       await convertDocument(request, h)
 
@@ -128,7 +133,7 @@ describe('upload-guide metadata check-answers controller', () => {
     test('re-renders check answers with an error summary when the purpose answers are missing', async () => {
       mockUpload({ guideTitle: 'A title', schemes: ['sfi'] })
       mockReferenceData()
-      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
+      stagedDocumentsService.getStagedDocumentById.mockResolvedValue(null)
 
       await convertDocument(request, h)
 
@@ -143,13 +148,13 @@ describe('upload-guide metadata check-answers controller', () => {
     test('creates the guide from the upload, its answers and the signed-in user, then confirms it', async () => {
       mockUpload(validMetadata())
       mockReferenceData()
-      const createGuideSpy = vi.spyOn(guidesService, 'createGuide')
+      guidesService.createGuide
         .mockResolvedValue({ code: guidesService.RESULTS.GUIDE_CREATED })
       request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
 
       await convertDocument(request, h)
 
-      expect(createGuideSpy).toHaveBeenCalledWith({
+      expect(guidesService.createGuide).toHaveBeenCalledWith({
         uploadId: 'test-upload-id',
         fileId: 'file-1',
         metadata: validMetadata(),
@@ -161,27 +166,27 @@ describe('upload-guide metadata check-answers controller', () => {
     test('carries the guide title over to the confirmation', async () => {
       mockUpload(validMetadata())
       mockReferenceData()
-      vi.spyOn(guidesService, 'createGuide')
+      guidesService.createGuide
         .mockResolvedValue({ code: guidesService.RESULTS.GUIDE_CREATED })
-      const flashSpy = vi.spyOn(session, 'flashConvertedGuide').mockReturnValue()
+      session.flashConvertedGuide.mockReturnValue()
       request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
 
       await convertDocument(request, h)
 
-      expect(flashSpy).toHaveBeenCalledWith(request, validMetadata().guideTitle)
+      expect(session.flashConvertedGuide).toHaveBeenCalledWith(request, validMetadata().guideTitle)
     })
 
     test('clears the upload from the session once the guide is created, so the next guide starts afresh', async () => {
       mockUpload(validMetadata())
       mockReferenceData()
-      vi.spyOn(guidesService, 'createGuide')
+      guidesService.createGuide
         .mockResolvedValue({ code: guidesService.RESULTS.GUIDE_CREATED })
-      const clearSpy = vi.spyOn(session, 'clearGuideUpload').mockReturnValue()
+      session.clearGuideUpload.mockReturnValue()
       request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
 
       await convertDocument(request, h)
 
-      expect(clearSpy).toHaveBeenCalledWith(request)
+      expect(session.clearGuideUpload).toHaveBeenCalledWith(request)
     })
 
     test.each([
@@ -191,15 +196,15 @@ describe('upload-guide metadata check-answers controller', () => {
     ])('keeps the upload in the session when the result is %s', async (result) => {
       mockUpload(validMetadata())
       mockReferenceData()
-      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
-      vi.spyOn(guidesService, 'createGuide')
+      stagedDocumentsService.getStagedDocumentById.mockResolvedValue(null)
+      guidesService.createGuide
         .mockResolvedValue({ code: guidesService.RESULTS[result] })
-      const clearSpy = vi.spyOn(session, 'clearGuideUpload').mockReturnValue()
+      session.clearGuideUpload.mockReturnValue()
       request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
 
       await convertDocument(request, h)
 
-      expect(clearSpy).not.toHaveBeenCalled()
+      expect(session.clearGuideUpload).not.toHaveBeenCalled()
     })
 
     test.each([
@@ -209,8 +214,8 @@ describe('upload-guide metadata check-answers controller', () => {
     ])('explains why the document cannot be converted when %s', async (_, result, message) => {
       mockUpload(validMetadata())
       mockReferenceData()
-      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
-      vi.spyOn(guidesService, 'createGuide')
+      stagedDocumentsService.getStagedDocumentById.mockResolvedValue(null)
+      guidesService.createGuide
         .mockResolvedValue({ code: guidesService.RESULTS[result] })
       request.auth = { credentials: { profile: { id: 'user-1', displayName: 'A User' } } }
 
@@ -226,18 +231,17 @@ describe('upload-guide metadata check-answers controller', () => {
     test('does not create the guide when an answer is missing', async () => {
       mockUpload({ guideTitle: '' })
       mockReferenceData()
-      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
-      const createGuideSpy = vi.spyOn(guidesService, 'createGuide')
+      stagedDocumentsService.getStagedDocumentById.mockResolvedValue(null)
 
       await convertDocument(request, h)
 
-      expect(createGuideSpy).not.toHaveBeenCalled()
+      expect(guidesService.createGuide).not.toHaveBeenCalled()
     })
 
     test('re-renders check answers with an error summary when a previously valid option is no longer current', async () => {
       mockUpload(validMetadata({ schemes: ['retired-scheme'] }), 'file-1')
       mockReferenceData()
-      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
+      stagedDocumentsService.getStagedDocumentById.mockResolvedValue(null)
 
       await convertDocument(request, h)
 

@@ -1,12 +1,11 @@
 import { statusCodes } from '../../../../src/constants/status-codes.js'
+
 import { guidanceApiClient } from '../../../../src/infra/guidance-api/client.js'
-import {
-  createGuide,
-  getGuide,
-  getGuideAsset,
-  getGuideContent,
-  listGuides
-} from '../../../../src/infra/guidance-api/guides.js'
+import * as guideApi from '../../../../src/infra/guidance-api/guides.js'
+
+vi.mock('../../../../src/infra/guidance-api/client.js', () => ({
+  guidanceApiClient: { request: vi.fn() }
+}))
 
 const newGuide = {
   source: {
@@ -25,16 +24,15 @@ const newGuide = {
 
 describe('guides infra', () => {
   beforeEach(() => {
-    vi.restoreAllMocks()
+    vi.resetAllMocks()
   })
 
   test('calls POST /guides with the new guide as its body, expecting 404 and 409, waiting without limit', async () => {
-    const requestSpy = vi.spyOn(guidanceApiClient, 'request')
-      .mockResolvedValue({ ok: true, status: 201, data: {} })
+    guidanceApiClient.request.mockResolvedValue({ ok: true, status: 201, data: {} })
 
-    await createGuide(newGuide)
+    await guideApi.createGuide(newGuide)
 
-    expect(requestSpy).toHaveBeenCalledWith('/guides', {
+    expect(guidanceApiClient.request).toHaveBeenCalledWith('/guides', {
       method: 'POST',
       body: newGuide,
       expected: [
@@ -51,21 +49,20 @@ describe('guides infra', () => {
       status: 201,
       data: { id: 'document-123', versions: [{ id: 'version-123' }] }
     }
-    vi.spyOn(guidanceApiClient, 'request').mockResolvedValue(mockResponse)
+    guidanceApiClient.request.mockResolvedValue(mockResponse)
 
-    const result = await createGuide(newGuide)
+    const result = await guideApi.createGuide(newGuide)
 
     expect(result).toEqual(mockResponse)
   })
 
   describe('listGuides', () => {
     test('calls GET /guides with no filters by default', async () => {
-      const requestSpy = vi.spyOn(guidanceApiClient, 'request')
-        .mockResolvedValue({ ok: true, status: 200, data: {} })
+      guidanceApiClient.request.mockResolvedValue({ ok: true, status: 200, data: {} })
 
-      await listGuides()
+      await guideApi.listGuides()
 
-      expect(requestSpy).toHaveBeenCalledWith('/guides', {
+      expect(guidanceApiClient.request).toHaveBeenCalledWith('/guides', {
         query: {
           limit: undefined,
           cursor: undefined,
@@ -78,10 +75,9 @@ describe('guides infra', () => {
     })
 
     test('names the filters as the API does', async () => {
-      const requestSpy = vi.spyOn(guidanceApiClient, 'request')
-        .mockResolvedValue({ ok: true, status: 200, data: {} })
+      guidanceApiClient.request.mockResolvedValue({ ok: true, status: 200, data: {} })
 
-      await listGuides({
+      await guideApi.listGuides({
         limit: 10,
         cursor: 'c1',
         schemes: ['sfi'],
@@ -90,7 +86,7 @@ describe('guides infra', () => {
         guidanceTypes: ['how-to']
       })
 
-      expect(requestSpy).toHaveBeenCalledWith('/guides', {
+      expect(guidanceApiClient.request).toHaveBeenCalledWith('/guides', {
         query: {
           limit: 10,
           cursor: 'c1',
@@ -105,12 +101,11 @@ describe('guides infra', () => {
 
   describe('getGuide', () => {
     test('calls GET /guides/{id}, expecting 404', async () => {
-      const requestSpy = vi.spyOn(guidanceApiClient, 'request')
-        .mockResolvedValue({ ok: true, status: 200, data: {} })
+      guidanceApiClient.request.mockResolvedValue({ ok: true, status: 200, data: {} })
 
-      await getGuide('guide 1')
+      await guideApi.getGuide('guide 1')
 
-      expect(requestSpy).toHaveBeenCalledWith('/guides/guide%201', {
+      expect(guidanceApiClient.request).toHaveBeenCalledWith('/guides/guide%201', {
         expected: [statusCodes.HTTP_STATUS_NOT_FOUND]
       })
     })
@@ -118,12 +113,11 @@ describe('guides infra', () => {
 
   describe('getGuideContent', () => {
     test('calls GET /guides/{id}/content reading text, expecting 404', async () => {
-      const requestSpy = vi.spyOn(guidanceApiClient, 'request')
-        .mockResolvedValue({ ok: true, status: 200, data: '# Title' })
+      guidanceApiClient.request.mockResolvedValue({ ok: true, status: 200, data: '# Title' })
 
-      await getGuideContent('guide-1')
+      await guideApi.getGuideContent('guide-1')
 
-      expect(requestSpy).toHaveBeenCalledWith('/guides/guide-1/content', {
+      expect(guidanceApiClient.request).toHaveBeenCalledWith('/guides/guide-1/content', {
         expected: [statusCodes.HTTP_STATUS_NOT_FOUND],
         responseType: 'text'
       })
@@ -132,12 +126,11 @@ describe('guides infra', () => {
 
   describe('getGuideAsset', () => {
     test('calls GET /guides/{id}/assets/{name} reading a buffer, expecting 404', async () => {
-      const requestSpy = vi.spyOn(guidanceApiClient, 'request')
-        .mockResolvedValue({ ok: true, status: 200, data: Buffer.from('') })
+      guidanceApiClient.request.mockResolvedValue({ ok: true, status: 200, data: Buffer.from('') })
 
-      await getGuideAsset('guide-1', 'abc123.png')
+      await guideApi.getGuideAsset('guide-1', 'abc123.png')
 
-      expect(requestSpy).toHaveBeenCalledWith('/guides/guide-1/assets/abc123.png', {
+      expect(guidanceApiClient.request).toHaveBeenCalledWith('/guides/guide-1/assets/abc123.png', {
         expected: [statusCodes.HTTP_STATUS_NOT_FOUND],
         responseType: 'buffer'
       })

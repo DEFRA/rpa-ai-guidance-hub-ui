@@ -1,13 +1,25 @@
 /**
- * ApiClient - Shared base class for HTTP clients
+ * @typedef {Object} RequestOptions
+ * @property {string} [method] - Defaults to 'GET'
+ * @property {Object} [body] - Sent as JSON
+ * @property {Object<string, string|string[]>} [query] - Arrays repeat the
+ *   parameter; undefined values are omitted
+ * @property {Object<string, string>} [headers]
+ * @property {number[]} [expected] - Non-ok statuses to return, not throw
+ * @property {number|null} [timeout] - Overrides the client's; null for none
+ * @property {'json'|'text'|'buffer'} [responseType] - Defaults to 'json'
+ */
+
+/**
+ * Shared base class for HTTP clients.
  */
 class ApiClient {
   /**
    * @param {Object} options
-   * @param {string} options.baseUrl - The base URL for the API
-   * @param {number} [options.timeout] - Request timeout in milliseconds
-   * @param {typeof Error} options.errorClass - Error class to throw on
-   *   non-ok status
+   * @param {string} options.baseUrl
+   * @param {number} [options.timeout] - Request timeout in ms
+   * @param {typeof Error} options.errorClass - Thrown on unexpected non-ok
+   *   statuses; must provide `fromResponse(method, path, response)`
    */
   constructor ({ baseUrl, timeout, errorClass }) {
     this.baseUrl = baseUrl
@@ -16,26 +28,13 @@ class ApiClient {
   }
 
   /**
-   * Make an HTTP request
+   * Make an HTTP request and return `{ ok, status, data, headers }`.
    *
-   * @param {string} path - The API endpoint path
-   * @param {Object} [options] - The request options
-   * @param {string} [options.method] - The HTTP method (default: 'GET')
-   * @param {Object<string, any>?} [options.body] - The request body
-   * @param {Object<string, string|string[]>?} [options.query] - Query
-   *   string parameters; an array repeats the parameter
-   * @param {Object<string, string>?} [options.headers] - Additional headers
-   * @param {number[]} [options.expected] - List of expected non-ok status
-   *   codes
-   * @param {number|null} [options.timeout] - Request timeout in
-   *   milliseconds, in place of the client's; null waits without limit
-   * @param {'json'|'text'|'buffer'} [options.responseType] - How to read an
-   *   ok response body (default: 'json'); 'buffer' gives a Buffer
-   * @returns {Promise<{ok: boolean, status: number, data: any, headers:
-   *   Headers}>} - The response object
-   * @throws {Error} - When response is not ok and status is not in
-   *   expected list
-   * @throws {SyntaxError} - When an ok 'json' response body isn't valid JSON
+   * Non-ok statuses throw unless listed in `options.expected`, in which
+   * case `data` is null.
+   *
+   * @param {string} path
+   * @param {RequestOptions} [options]
    */
   async request (path, options = {}) {
     const url = _buildUrl(this.baseUrl, path, options.query)
@@ -54,41 +53,25 @@ class ApiClient {
 }
 
 /**
+ * Builds a URL, appending any defined query parameters.
+ *
  * @private
- *
- * Builds a URL, appending any defined query string parameters.
- *
- * @param {string} baseUrl - The base URL for the API
- * @param {string} path - The API endpoint path
- * @param {Object<string, string|string[]>} [query] - Query string
- *   parameters; an array repeats the parameter
- * @returns {URL} The built URL
  */
 function _buildUrl (baseUrl, path, query = {}) {
   const url = new URL(`${baseUrl}${path}`)
 
-  for (const [key, value] of Object.entries(query)) {
-    if (Array.isArray(value)) {
-      value.forEach(item => url.searchParams.append(key, item))
-    } else if (value !== undefined) {
-      url.searchParams.set(key, value)
-    } else {
-      // An undefined parameter is left out of the query string
-    }
-  }
+  Object.entries(query)
+    .filter(([, value]) => value !== undefined)
+    .flatMap(([key, value]) => [value].flat().map(item => [key, item]))
+    .forEach(([key, item]) => url.searchParams.append(key, item))
 
   return url
 }
 
 /**
- * @private
- *
  * Builds the options object passed to fetch.
  *
- * @param {Object} options - The request options
- * @param {number} [timeout] - Request timeout in milliseconds
- * @returns {{method: string, headers: Object, signal: AbortSignal
- *   |undefined, body: string|undefined}} The fetch options
+ * @private
  */
 function _buildFetchOptions (options, timeout) {
   const method = options.method || 'GET'
@@ -105,35 +88,19 @@ function _buildFetchOptions (options, timeout) {
 }
 
 /**
+ * Returns a result for ok or expected statuses, throws for anything else.
+ *
  * @private
- *
- * Resolves a fetch response, returning a result object for ok/expected
- * statuses or throwing for unexpected non-ok statuses.
- *
- * @param {Response} response - The fetch response
- * @param {Object} context
- * @param {string} context.method - The HTTP method used for the request
- * @param {string} context.path - The API endpoint path
- * @param {number[]} [context.expected] - Expected non-ok status codes
- * @param {'json'|'text'|'buffer'} [context.responseType] - How to read an
- *   ok body
- * @param {typeof Error} context.errorClass - Error class to throw on
- *   unexpected non-ok status
- * @returns {Promise<{ok: boolean, status: number, data: any, headers:
- *   Headers}>} The response result
- * @throws {Error} When response is not ok and status is not expected
  */
 async function _handleResponse (response, context) {
   const { method, path, expected = [], responseType, errorClass } = context
 
   if (response.ok) {
-    const data = await _readBody(response, responseType)
-
-    return { ok: true, status: response.status, data, headers: response.headers }
+    return _result(response, true, await _readBody(response, responseType))
   }
 
   if (expected.includes(response.status)) {
-    return { ok: false, status: response.status, data: null, headers: response.headers }
+    return _result(response, false, null)
   }
 
   throw errorClass.fromResponse(method, path, response)
@@ -141,12 +108,20 @@ async function _handleResponse (response, context) {
 
 /**
  * @private
+ */
+function _result (response, ok, data) {
+  return {
+    ok,
+    status: response.status,
+    data,
+    headers: response.headers
+  }
+}
+
+/**
+ * Reads an ok response body; `responseType` defaults to 'json'.
  *
- * Reads an ok response body in the requested form.
- *
- * @param {Response} response - The fetch response
- * @param {'json'|'text'|'buffer'} [responseType] - Defaults to 'json'
- * @returns {Promise<any>} The parsed body
+ * @private
  */
 async function _readBody (response, responseType = 'json') {
   if (responseType === 'text') {

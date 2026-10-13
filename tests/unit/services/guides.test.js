@@ -1,21 +1,12 @@
 import { statusCodes } from '../../../src/constants/status-codes.js'
+
 import * as guidesApi from '../../../src/infra/guidance-api/guides.js'
-import {
-  createGuide,
-  getGuideAsset,
-  getGuideById,
-  getGuideContent,
-  getGuideVersions,
-  listGuides,
-  RESULTS
-} from '../../../src/services/guides.js'
-import {
-  guidePageResponse,
-  guideResponse,
-  guideSummaryResponse,
-  versionResponse
-} from '../../fixtures/guidance-api.js'
+import * as guideService from '../../../src/services/guides.js'
+import * as guidanceApiFixtures from '../../fixtures/guidance-api.js'
 import * as stagedDocumentsService from '../../../src/services/staged-documents.js'
+
+vi.mock('../../../src/infra/guidance-api/guides.js')
+vi.mock('../../../src/services/staged-documents.js')
 
 const guide = {
   uploadId: 'upload-1',
@@ -29,7 +20,7 @@ const guide = {
 }
 
 function mockApiResponse (status) {
-  return vi.spyOn(guidesApi, 'createGuide').mockResolvedValue({
+  return guidesApi.createGuide.mockResolvedValue({
     ok: status < statusCodes.HTTP_STATUS_BAD_REQUEST,
     status,
     data: {}
@@ -38,13 +29,13 @@ function mockApiResponse (status) {
 
 describe('guides service', () => {
   beforeEach(() => {
-    vi.restoreAllMocks()
+    vi.resetAllMocks()
   })
 
   test('sends the upload, its answers and who made it to the API', async () => {
     const createGuideSpy = mockApiResponse(statusCodes.HTTP_STATUS_CREATED)
 
-    await createGuide(guide)
+    await guideService.createGuide(guide)
 
     expect(createGuideSpy).toHaveBeenCalledWith({
       source: { uploadId: 'upload-1', fileId: 'file-1' },
@@ -59,27 +50,27 @@ describe('guides service', () => {
   ])('reports the guide created when the API answers %i', async (status) => {
     mockApiResponse(status)
 
-    const result = await createGuide(guide)
+    const result = await guideService.createGuide(guide)
 
-    expect(result).toEqual({ code: RESULTS.GUIDE_CREATED })
+    expect(result).toEqual({ code: guideService.RESULTS.GUIDE_CREATED })
   })
 
   test('reports the upload expired when the API has no staged file for it', async () => {
     mockApiResponse(statusCodes.HTTP_STATUS_NOT_FOUND)
 
-    const result = await createGuide(guide)
+    const result = await guideService.createGuide(guide)
 
-    expect(result).toEqual({ code: RESULTS.UPLOAD_EXPIRED })
+    expect(result).toEqual({ code: guideService.RESULTS.UPLOAD_EXPIRED })
   })
 
   test('reports the parse failed when the API refuses an upload whose parse failed', async () => {
     mockApiResponse(statusCodes.HTTP_STATUS_CONFLICT)
-    vi.spyOn(stagedDocumentsService, 'getStagedDocumentById')
+    stagedDocumentsService.getStagedDocumentById
       .mockResolvedValue({ fileId: 'file-1', parsingStatus: 'failed' })
 
-    const result = await createGuide(guide)
+    const result = await guideService.createGuide(guide)
 
-    expect(result).toEqual({ code: RESULTS.PARSE_FAILED })
+    expect(result).toEqual({ code: guideService.RESULTS.PARSE_FAILED })
   })
 
   test.each([
@@ -87,28 +78,28 @@ describe('guides service', () => {
     'in_progress'
   ])('reports the parse unfinished when the API refuses an upload whose parse is %s', async (parsingStatus) => {
     mockApiResponse(statusCodes.HTTP_STATUS_CONFLICT)
-    vi.spyOn(stagedDocumentsService, 'getStagedDocumentById')
+    stagedDocumentsService.getStagedDocumentById
       .mockResolvedValue({ fileId: 'file-1', parsingStatus })
 
-    const result = await createGuide(guide)
+    const result = await guideService.createGuide(guide)
 
-    expect(result).toEqual({ code: RESULTS.PARSE_PENDING })
+    expect(result).toEqual({ code: guideService.RESULTS.PARSE_PENDING })
   })
 
   test('reports the upload expired when its staged file goes after the API refuses it as unparsed', async () => {
     mockApiResponse(statusCodes.HTTP_STATUS_CONFLICT)
-    vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
+    stagedDocumentsService.getStagedDocumentById.mockResolvedValue(null)
 
-    const result = await createGuide(guide)
+    const result = await guideService.createGuide(guide)
 
-    expect(result).toEqual({ code: RESULTS.UPLOAD_EXPIRED })
+    expect(result).toEqual({ code: guideService.RESULTS.UPLOAD_EXPIRED })
   })
 
   test('lets any other failure through', async () => {
     const failure = new Error('connection refused')
-    vi.spyOn(guidesApi, 'createGuide').mockRejectedValue(failure)
+    guidesApi.createGuide.mockRejectedValue(failure)
 
-    await expect(createGuide(guide)).rejects.toBe(failure)
+    await expect(guideService.createGuide(guide)).rejects.toBe(failure)
   })
 })
 
@@ -116,20 +107,20 @@ const NOT_FOUND = { ok: false, status: statusCodes.HTTP_STATUS_NOT_FOUND, data: 
 
 describe('guides service: reading', () => {
   beforeEach(() => {
-    vi.restoreAllMocks()
+    vi.resetAllMocks()
   })
 
   describe('listGuides', () => {
     test('shapes each guide and passes the cursor on', async () => {
-      const spy = vi.spyOn(guidesApi, 'listGuides').mockResolvedValue({
+      guidesApi.listGuides.mockResolvedValue({
         ok: true,
         status: 200,
-        data: guidePageResponse({ nextCursor: 'next-1' })
+        data: guidanceApiFixtures.guidePageResponse({ nextCursor: 'next-1' })
       })
 
-      const result = await listGuides({ limit: 5 })
+      const result = await guideService.listGuides({ limit: 5 })
 
-      expect(spy).toHaveBeenCalledWith({ limit: 5 })
+      expect(guidesApi.listGuides).toHaveBeenCalledWith({ limit: 5 })
       expect(result).toEqual({
         guides: [{
           id: 'guide-1',
@@ -145,18 +136,18 @@ describe('guides service: reading', () => {
     })
 
     test('falls back to the authored title and empty lists for a guide with no version or answers', async () => {
-      vi.spyOn(guidesApi, 'listGuides').mockResolvedValue({
+      guidesApi.listGuides.mockResolvedValue({
         ok: true,
         status: 200,
-        data: guidePageResponse({
-          items: [guideSummaryResponse({
+        data: guidanceApiFixtures.guidePageResponse({
+          items: [guidanceApiFixtures.guideSummaryResponse({
             latestVersion: null,
             metadata: { guideTitle: 'Authored title' }
           })]
         })
       })
 
-      const { guides } = await listGuides()
+      const { guides } = await guideService.listGuides()
 
       expect(guides[0]).toMatchObject({
         title: 'Authored title',
@@ -171,14 +162,14 @@ describe('guides service: reading', () => {
 
   describe('getGuideById', () => {
     test('shapes the guide with its latest version first', async () => {
-      const older = versionResponse({ id: 'version-0', title: 'Old', createdAt: '2026-09-01T00:00:00Z' })
-      vi.spyOn(guidesApi, 'getGuide').mockResolvedValue({
+      const older = guidanceApiFixtures.versionResponse({ id: 'version-0', title: 'Old', createdAt: '2026-09-01T00:00:00Z' })
+      guidesApi.getGuide.mockResolvedValue({
         ok: true,
         status: 200,
-        data: guideResponse({ versions: [versionResponse(), older] })
+        data: guidanceApiFixtures.guideResponse({ versions: [guidanceApiFixtures.versionResponse(), older] })
       })
 
-      const guide = await getGuideById('guide-1')
+      const guide = await guideService.getGuideById('guide-1')
 
       expect(guide).toMatchObject({
         id: 'guide-1',
@@ -186,18 +177,19 @@ describe('guides service: reading', () => {
         lastUpdated: '2026-10-06T08:00:00Z',
         latestVersion: { id: 'version-1' }
       })
+
       expect(guide.versions.map(version => version.id)).toEqual(['version-1', 'version-0'])
       expect(guide.versions[0]).not.toHaveProperty('contentUrl')
     })
 
     test('has no latest version for a guide without versions', async () => {
-      vi.spyOn(guidesApi, 'getGuide').mockResolvedValue({
+      guidesApi.getGuide.mockResolvedValue({
         ok: true,
         status: 200,
-        data: guideResponse({ versions: [] })
+        data: guidanceApiFixtures.guideResponse({ versions: [] })
       })
 
-      expect(await getGuideById('guide-1')).toMatchObject({
+      expect(await guideService.getGuideById('guide-1')).toMatchObject({
         title: 'Authored title',
         latestVersion: null,
         lastUpdated: null
@@ -205,93 +197,99 @@ describe('guides service: reading', () => {
     })
 
     test('answers null when there is no such guide', async () => {
-      vi.spyOn(guidesApi, 'getGuide').mockResolvedValue(NOT_FOUND)
+      guidesApi.getGuide.mockResolvedValue(NOT_FOUND)
 
-      expect(await getGuideById('nope')).toBeNull()
-    })
-  })
-
-  describe('getGuideVersions', () => {
-    test('answers the versions', async () => {
-      vi.spyOn(guidesApi, 'getGuide').mockResolvedValue({
-        ok: true,
-        status: 200,
-        data: guideResponse()
-      })
-
-      expect(await getGuideVersions('guide-1')).toEqual([{
-        id: 'version-1',
-        title: 'Claiming the SFI payment',
-        createdBy: { id: 'dev-user-123', displayName: 'Dev User' },
-        createdAt: '2026-10-06T08:00:00Z'
-      }])
-    })
-
-    test('answers null when there is no such guide', async () => {
-      vi.spyOn(guidesApi, 'getGuide').mockResolvedValue(NOT_FOUND)
-
-      expect(await getGuideVersions('nope')).toBeNull()
+      expect(await guideService.getGuideById('nope')).toBeNull()
     })
   })
 
   describe('getGuideContent', () => {
-    test('points the content\'s images at the UI\'s asset route', async () => {
-      vi.spyOn(guidesApi, 'getGuideContent').mockResolvedValue({
-        ok: true,
-        status: 200,
-        data: '# Title\n\n![](../assets/abc123.png)\n\n[link](../assets/x/y.png)'
-      })
+    test('answers the content\'s Markdown as the API sent it', async () => {
+      const data = '# Title\n\n![](../assets/abc123.png)'
+      guidesApi.getGuideContent.mockResolvedValue({ ok: true, status: 200, data })
 
-      expect(await getGuideContent('guide 1')).toEqual({
-        markdown: '# Title\n\n![](/guides/guide%201/assets/abc123.png)\n\n[link](../assets/x/y.png)'
-      })
+      expect(await guideService.getGuideContent('guide-1')).toEqual({ markdown: data })
     })
 
     test('answers null when there is no content', async () => {
-      vi.spyOn(guidesApi, 'getGuideContent').mockResolvedValue(NOT_FOUND)
+      guidesApi.getGuideContent.mockResolvedValue(NOT_FOUND)
 
-      expect(await getGuideContent('nope')).toBeNull()
+      expect(await guideService.getGuideContent('nope')).toBeNull()
     })
   })
 
   describe('getGuideAsset', () => {
-    test('answers the image with its type and caching', async () => {
+    test('answers the image with its type, ignoring the API\'s caching', async () => {
       const body = Buffer.from('png')
-      vi.spyOn(guidesApi, 'getGuideAsset').mockResolvedValue({
+      guidesApi.getGuideAsset.mockResolvedValue({
         ok: true,
         status: 200,
         data: body,
         headers: new Headers({
-          'content-type': 'image/png',
-          'cache-control': 'private, max-age=31536000, immutable'
+          'content-type': 'Image/PNG; charset=binary',
+          'cache-control': 'public, max-age=1'
         })
       })
 
-      expect(await getGuideAsset('guide-1', 'abc123.png')).toEqual({
+      expect(await guideService.getGuideAsset('guide-1', 'abc123.png')).toEqual({
         body,
-        contentType: 'image/png',
-        cacheControl: 'private, max-age=31536000, immutable'
+        contentType: 'image/png'
       })
     })
 
-    test('defaults the type and has no caching when the API names none', async () => {
-      vi.spyOn(guidesApi, 'getGuideAsset').mockResolvedValue({
+    test.each([
+      'image/png',
+      'image/jpeg',
+      'image/webp'
+    ])('serves %s', async (type) => {
+      const body = Buffer.from('img')
+      guidesApi.getGuideAsset.mockResolvedValue({
+        ok: true,
+        status: 200,
+        data: body,
+        headers: new Headers({ 'content-type': type })
+      })
+
+      expect(await guideService.getGuideAsset('guide-1', 'abc123.img')).toEqual({
+        body,
+        contentType: type
+      })
+    })
+
+    test('asks the API for the guide\'s asset by name', async () => {
+      guidesApi.getGuideAsset.mockResolvedValue(NOT_FOUND)
+
+      await guideService.getGuideAsset('guide-1', 'abc123.png')
+
+      expect(guidesApi.getGuideAsset).toHaveBeenCalledWith('guide-1', 'abc123.png')
+    })
+
+    test.each([
+      ['no type', {}],
+      ['an empty type', { 'content-type': '' }],
+      ['an octet-stream', { 'content-type': 'application/octet-stream' }],
+      ['an SVG', { 'content-type': 'image/svg+xml' }],
+      ['a GIF', { 'content-type': 'image/gif' }],
+      ['HTML', { 'content-type': 'text/html' }],
+      ['HTML posing as an image', { 'content-type': 'text/html; name=image/png' }],
+      ['a type that only starts like an allowed one', { 'content-type': 'image/png+xml' }],
+      ['a type that only ends like an allowed one', { 'content-type': 'x-image/png' }],
+      ['a list of types', { 'content-type': 'image/png, text/html' }]
+    ])('answers null when the API names %s', async (_name, headers) => {
+      guidesApi.getGuideAsset.mockResolvedValue({
         ok: true,
         status: 200,
         data: Buffer.from(''),
-        headers: new Headers()
+        headers: new Headers(headers)
       })
 
-      expect(await getGuideAsset('guide-1', 'abc123.png')).toMatchObject({
-        contentType: 'application/octet-stream',
-        cacheControl: null
-      })
+      expect(await guideService.getGuideAsset('guide-1', 'abc123.png')).toBeNull()
     })
 
     test('answers null when there is no such asset', async () => {
-      vi.spyOn(guidesApi, 'getGuideAsset').mockResolvedValue(NOT_FOUND)
+      guidesApi.getGuideAsset.mockResolvedValue(NOT_FOUND)
 
-      expect(await getGuideAsset('guide-1', 'nope.png')).toBeNull()
+      expect(await guideService.getGuideAsset('guide-1', 'nope.png')).toBeNull()
     })
   })
 })

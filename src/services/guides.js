@@ -1,6 +1,43 @@
 import { statusCodes } from '../constants/status-codes.js'
+
 import * as guidesApi from '../infra/guidance-api/guides.js'
-import { getStagedDocumentById } from './staged-documents.js'
+import * as stagedDocumentsService from './staged-documents.js'
+
+/**
+ * A guide as a list shows it.
+ *
+ * @typedef {Object} GuideSummary
+ * @property {string} id
+ * @property {string|null} title - The latest version's title, else the
+ *   title its author gave
+ * @property {string|null} owner
+ * @property {string[]} schemes
+ * @property {string[]} systems
+ * @property {string[]} audience
+ * @property {string|null} lastUpdated - When the latest version was made
+ */
+
+/**
+ * A version of a guide.
+ *
+ * @typedef {Object} GuideVersion
+ * @property {string} id
+ * @property {string|null} title
+ * @property {{id: string, displayName: string|null}|null} createdBy
+ * @property {string} createdAt
+ */
+
+/**
+ * A guide with its versions.
+ *
+ * @typedef {Object} Guide
+ * @property {string} id
+ * @property {string|null} title
+ * @property {Object} metadata - What the author said about the guide
+ * @property {GuideVersion[]} versions - Newest first
+ * @property {GuideVersion|null} latestVersion
+ * @property {string|null} lastUpdated
+ */
 
 const RESULTS = {
   GUIDE_CREATED: 'guideCreated', // new, or the one this upload made before
@@ -8,6 +45,12 @@ const RESULTS = {
   PARSE_PENDING: 'parsePending', // the staged file has not finished parsing
   PARSE_FAILED: 'parseFailed' // the staged file could not be parsed
 }
+
+const ALLOWED_ASSET_CONTENT_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp'
+])
 
 /**
  * Convert an upload into a guide, recording its answers and who made it.
@@ -51,7 +94,7 @@ async function createGuide ({ uploadId, fileId, metadata, user }) {
  * @returns {Promise<{code: string}>}
  */
 async function _whyNotParsed (fileId) {
-  const stagedDocument = await getStagedDocumentById(fileId)
+  const stagedDocument = await stagedDocumentsService.getStagedDocumentById(fileId)
 
   if (!stagedDocument) {
     return { code: RESULTS.UPLOAD_EXPIRED }
@@ -63,42 +106,6 @@ async function _whyNotParsed (fileId) {
 
   return { code: RESULTS.PARSE_PENDING }
 }
-
-/**
- * A guide as a list shows it.
- *
- * @typedef {Object} GuideSummary
- * @property {string} id
- * @property {string|null} title - The latest version's title, else the
- *   title its author gave
- * @property {string|null} owner
- * @property {string[]} schemes
- * @property {string[]} systems
- * @property {string[]} audience
- * @property {string|null} lastUpdated - When the latest version was made
- */
-
-/**
- * A version of a guide.
- *
- * @typedef {Object} GuideVersion
- * @property {string} id
- * @property {string|null} title
- * @property {{id: string, displayName: string|null}|null} createdBy
- * @property {string} createdAt
- */
-
-/**
- * A guide with its versions.
- *
- * @typedef {Object} Guide
- * @property {string} id
- * @property {string|null} title
- * @property {Object} metadata - What the author said about the guide
- * @property {GuideVersion[]} versions - Newest first
- * @property {GuideVersion|null} latestVersion
- * @property {string|null} lastUpdated
- */
 
 /**
  * List guides, newest first, a page at a time.
@@ -144,22 +151,9 @@ async function getGuideById (guideId) {
 }
 
 /**
- * Get a guide's versions, newest first.
- *
- * @param {string} guideId
- * @returns {Promise<GuideVersion[]|null>} The versions, or null if there is
- *   no such guide
- * @throws {GuidanceApiError} - If the infra layer reports a non-404 failure
- */
-async function getGuideVersions (guideId) {
-  const guide = await getGuideById(guideId)
-
-  return guide ? guide.versions : null
-}
-
-/**
- * Get the Markdown of a guide's latest version, its images pointing at the
- * UI's own asset route.
+ * Get the Markdown of a guide's latest version, as the API sends it. Its
+ * asset links are relative to the API; a renderer resolves each with
+ * `guideAssetHref`.
  *
  * @param {string} guideId
  * @returns {Promise<{markdown: string}|null>} The content, or null if
@@ -174,7 +168,7 @@ async function getGuideContent (guideId) {
     return null
   }
 
-  return { markdown: _rewriteAssetLinks(res.data, guideId) }
+  return { markdown: res.data }
 }
 
 /**
@@ -182,8 +176,9 @@ async function getGuideContent (guideId) {
  *
  * @param {string} guideId
  * @param {string} name - The asset's file name
- * @returns {Promise<{body: Buffer, contentType: string, cacheControl:
- *   string|null}|null>} The image, or null if there is no such asset
+ * @returns {Promise<{body: Buffer, contentType: string}|null>} The image, or
+ *   null if there is no such asset or it is not an image type we serve.
+ *   Caching is for the caller to decide, not the API.
  * @throws {GuidanceApiError} - If the infra layer reports a non-404 failure
  */
 async function getGuideAsset (guideId, name) {
@@ -193,11 +188,13 @@ async function getGuideAsset (guideId, name) {
     return null
   }
 
-  return {
-    body: res.data,
-    contentType: res.headers.get('content-type') ?? 'application/octet-stream',
-    cacheControl: res.headers.get('cache-control')
+  const contentType = res.headers.get('content-type')?.split(';')[0].trim().toLowerCase()
+
+  if (!ALLOWED_ASSET_CONTENT_TYPES.has(contentType)) {
+    return null
   }
+
+  return { body: res.data, contentType }
 }
 
 /**
@@ -243,27 +240,11 @@ function _titleOf (version, metadata) {
   return version?.title ?? metadata?.guideTitle ?? null
 }
 
-/**
- * The content names an image `../assets/<name>`; the browser can only reach
- * the guide's assets by the UI's route.
- *
- * @private
- * @param {string} markdown
- * @param {string} guideId
- * @returns {string}
- */
-function _rewriteAssetLinks (markdown, guideId) {
-  const base = `/guides/${encodeURIComponent(guideId)}/assets/`
-
-  return markdown.replaceAll(/\]\(\.\.\/assets\/([A-Za-z0-9]+\.[A-Za-z0-9]+)\)/g, `](${base}$1)`)
-}
-
 export {
   createGuide,
   getGuideAsset,
   getGuideById,
   getGuideContent,
-  getGuideVersions,
   listGuides,
   RESULTS
 }

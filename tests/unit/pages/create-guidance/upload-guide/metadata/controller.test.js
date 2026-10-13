@@ -8,13 +8,22 @@ import {
   saveMetadata
 } from '../../../../../../src/pages/create-guidance/upload-guide/metadata/controller.js'
 
+vi.mock('../../../../../../src/services/reference-data.js', async (importOriginal) => ({
+  ...await importOriginal(),
+  getSchemes: vi.fn(),
+  getSystems: vi.fn(),
+  getAudiences: vi.fn()
+}))
+vi.mock('../../../../../../src/pages/create-guidance/session.js')
+vi.mock('../../../../../../src/services/staged-documents.js')
+
 const METADATA_VIEW = 'create-guidance/upload-guide/metadata/page.njk'
 
 describe('upload-guide metadata controller', () => {
   let request, h, code, redirect, takeover
 
   beforeEach(() => {
-    vi.restoreAllMocks()
+    vi.resetAllMocks()
     takeover = vi.fn()
     code = vi.fn(() => ({ takeover }))
     redirect = vi.fn()
@@ -40,8 +49,8 @@ describe('upload-guide metadata controller', () => {
         fileId: null,
         metadata: { guideTitle: 'Existing Title' }
       }
-      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
-      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([
+      session.getGuideUpload.mockReturnValue(uploadMock)
+      referenceDataService.getSchemes.mockResolvedValue([
         { value: 'sfi', label: 'Sustainable Farming Incentive' },
         { value: 'none', label: 'Not scheme-specific' }
       ])
@@ -68,18 +77,13 @@ describe('upload-guide metadata controller', () => {
         fileId: null,
         metadata: {}
       }
-      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
-      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
-      const getStagedDocumentByIdSpy = vi.spyOn(
-        stagedDocumentsService,
-        'getStagedDocumentById'
-      )
-
+      session.getGuideUpload.mockReturnValue(uploadMock)
+      referenceDataService.getSchemes.mockResolvedValue([])
       request = { yar: { get: vi.fn(), flash: vi.fn(() => []) } }
 
       await getMetadataForm(request, h)
 
-      expect(getStagedDocumentByIdSpy).not.toHaveBeenCalled()
+      expect(stagedDocumentsService.getStagedDocumentById).not.toHaveBeenCalled()
     })
 
     test('loads staged document title, version and formatted last modified date into the view model', async () => {
@@ -89,9 +93,9 @@ describe('upload-guide metadata controller', () => {
         fileId: 'file-1',
         metadata: {}
       }
-      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
-      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
-      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById')
+      session.getGuideUpload.mockReturnValue(uploadMock)
+      referenceDataService.getSchemes.mockResolvedValue([])
+      stagedDocumentsService.getStagedDocumentById
         .mockResolvedValue({
           fileId: 'file-1',
           title: 'Parsed Title',
@@ -119,8 +123,8 @@ describe('upload-guide metadata controller', () => {
         fileId: null,
         metadata: {}
       }
-      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
-      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
+      session.getGuideUpload.mockReturnValue(uploadMock)
+      referenceDataService.getSchemes.mockResolvedValue([])
 
       request = {
         query: { from: 'check' },
@@ -145,9 +149,9 @@ describe('upload-guide metadata controller', () => {
         fileId: 'file-1',
         metadata: { guideTitle: 'User Overwritten Title' }
       }
-      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
-      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
-      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById')
+      session.getGuideUpload.mockReturnValue(uploadMock)
+      referenceDataService.getSchemes.mockResolvedValue([])
+      stagedDocumentsService.getStagedDocumentById
         .mockResolvedValue({
           fileId: 'file-1',
           title: 'Parsed Title',
@@ -171,9 +175,9 @@ describe('upload-guide metadata controller', () => {
         fileId: 'file-1',
         metadata: {}
       }
-      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
-      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
-      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById')
+      session.getGuideUpload.mockReturnValue(uploadMock)
+      referenceDataService.getSchemes.mockResolvedValue([])
+      stagedDocumentsService.getStagedDocumentById
         .mockResolvedValue(null)
 
       request = { yar: { get: vi.fn(), flash: vi.fn(() => []) } }
@@ -194,8 +198,8 @@ describe('upload-guide metadata controller', () => {
         fileId: null,
         metadata: {}
       }
-      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
-      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
+      session.getGuideUpload.mockReturnValue(uploadMock)
+      referenceDataService.getSchemes.mockResolvedValue([])
 
       request = {
         yar: {
@@ -215,7 +219,7 @@ describe('upload-guide metadata controller', () => {
 
   describe('metadataFailAction', () => {
     test('returns 400 with validation errors on the view', async () => {
-      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([
+      referenceDataService.getSchemes.mockResolvedValue([
         { value: 'none', label: 'Not scheme-specific' }
       ])
 
@@ -240,7 +244,7 @@ describe('upload-guide metadata controller', () => {
     })
 
     test('redisplays a normalized scheme selection when "none" is submitted alongside another scheme', async () => {
-      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
+      referenceDataService.getSchemes.mockResolvedValue([])
 
       request = {
         payload: { guideTitle: '', schemes: ['none', 'sfi'] },
@@ -263,9 +267,9 @@ describe('upload-guide metadata controller', () => {
         activeUploadId: 'test-upload-id',
         fileId: 'file-1'
       }
-      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
-      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
-      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById')
+      session.getGuideUpload.mockReturnValue(uploadMock)
+      referenceDataService.getSchemes.mockResolvedValue([])
+      stagedDocumentsService.getStagedDocumentById
         .mockResolvedValue({
           fileId: 'file-1',
           title: 'Parsed Title',
@@ -298,8 +302,8 @@ describe('upload-guide metadata controller', () => {
         fileId: null,
         metadata: {}
       }
-      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
-      vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([])
+      session.getGuideUpload.mockReturnValue(uploadMock)
+      referenceDataService.getSchemes.mockResolvedValue([])
 
       request = {
         query: { from: 'check' },
@@ -324,7 +328,7 @@ describe('upload-guide metadata controller', () => {
 
   describe('saveMetadata', () => {
     test('redirects to upload form if no active upload in session', async () => {
-      vi.spyOn(session, 'getGuideUpload').mockReturnValue(null)
+      session.getGuideUpload.mockReturnValue(null)
 
       request = {
         payload: { guideTitle: 'Title' },
@@ -341,8 +345,8 @@ describe('upload-guide metadata controller', () => {
         hasUpload: vi.fn(() => true),
         activeUploadId: 'test-upload-id'
       }
-      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
-      const setMetadataSpy = vi.spyOn(session, 'setGuideUploadMetadata').mockImplementation(() => {})
+      session.getGuideUpload.mockReturnValue(uploadMock)
+      session.setGuideUploadMetadata.mockImplementation(() => {})
 
       request = {
         payload: {
@@ -354,7 +358,7 @@ describe('upload-guide metadata controller', () => {
 
       await saveMetadata(request, h)
 
-      expect(setMetadataSpy).toHaveBeenCalledWith(request, {
+      expect(session.setGuideUploadMetadata).toHaveBeenCalledWith(request, {
         guideTitle: 'Updated Guide Title',
         schemes: ['sfi']
       })
@@ -366,8 +370,8 @@ describe('upload-guide metadata controller', () => {
         hasUpload: vi.fn(() => true),
         activeUploadId: 'test-upload-id'
       }
-      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
-      const setMetadataSpy = vi.spyOn(session, 'setGuideUploadMetadata').mockImplementation(() => {})
+      session.getGuideUpload.mockReturnValue(uploadMock)
+      session.setGuideUploadMetadata.mockImplementation(() => {})
 
       request = {
         payload: {
@@ -379,7 +383,7 @@ describe('upload-guide metadata controller', () => {
 
       await saveMetadata(request, h)
 
-      expect(setMetadataSpy).toHaveBeenCalledWith(request, {
+      expect(session.setGuideUploadMetadata).toHaveBeenCalledWith(request, {
         guideTitle: 'Updated Guide Title',
         schemes: ['sfi']
       })
@@ -390,8 +394,8 @@ describe('upload-guide metadata controller', () => {
         hasUpload: vi.fn(() => true),
         activeUploadId: 'test-upload-id'
       }
-      vi.spyOn(session, 'getGuideUpload').mockReturnValue(uploadMock)
-      vi.spyOn(session, 'setGuideUploadMetadata').mockImplementation(() => {})
+      session.getGuideUpload.mockReturnValue(uploadMock)
+      session.setGuideUploadMetadata.mockImplementation(() => {})
 
       request = {
         query: { from: 'check' },

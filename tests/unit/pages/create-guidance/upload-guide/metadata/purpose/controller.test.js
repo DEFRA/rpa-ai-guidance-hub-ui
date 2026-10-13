@@ -8,18 +8,26 @@ import {
   savePurpose
 } from '../../../../../../../src/pages/create-guidance/upload-guide/metadata/purpose/controller.js'
 
+vi.mock('../../../../../../../src/services/reference-data.js', async (importOriginal) => ({
+  ...await importOriginal(),
+  getSchemes: vi.fn(),
+  getSystems: vi.fn(),
+  getAudiences: vi.fn()
+}))
+vi.mock('../../../../../../../src/pages/create-guidance/session.js')
+
 const PURPOSE_VIEW = 'create-guidance/upload-guide/metadata/purpose/page.njk'
 const systemOptions = [{ value: 'crm', label: 'CRM' }]
 const audienceOptions = [{ value: 'processor', label: 'Processor' }]
 
 function mockReferenceData () {
-  vi.spyOn(referenceDataService, 'getSystems').mockResolvedValue(systemOptions)
-  vi.spyOn(referenceDataService, 'getAudiences').mockResolvedValue(audienceOptions)
+  referenceDataService.getSystems.mockResolvedValue(systemOptions)
+  referenceDataService.getAudiences.mockResolvedValue(audienceOptions)
 }
 
 function mockUpload (metadata) {
   const upload = { hasUpload: vi.fn(() => true), activeUploadId: 'test-upload-id', metadata }
-  vi.spyOn(session, 'getGuideUpload').mockReturnValue(upload)
+  session.getGuideUpload.mockReturnValue(upload)
   return upload
 }
 
@@ -27,7 +35,7 @@ describe('upload-guide metadata purpose controller', () => {
   let request, h, code, takeover
 
   beforeEach(() => {
-    vi.restoreAllMocks()
+    vi.resetAllMocks()
     takeover = vi.fn()
     code = vi.fn(() => ({ takeover }))
     h = {
@@ -145,7 +153,7 @@ describe('upload-guide metadata purpose controller', () => {
 
     test('merges the answers into session and redirects to check answers', async () => {
       mockUpload({ guideTitle: 'A title' })
-      const setMetadataSpy = vi.spyOn(session, 'setGuideUploadMetadata').mockImplementation(() => {})
+      session.setGuideUploadMetadata.mockImplementation(() => {})
       request.payload = {
         owner: 'owner@example.com',
         goal: 'A purpose',
@@ -157,7 +165,7 @@ describe('upload-guide metadata purpose controller', () => {
 
       await savePurpose(request, h)
 
-      expect(setMetadataSpy).toHaveBeenCalledWith(request, {
+      expect(session.setGuideUploadMetadata).toHaveBeenCalledWith(request, {
         owner: 'owner@example.com',
         goal: 'A purpose',
         requirements: 'Training',
@@ -169,7 +177,7 @@ describe('upload-guide metadata purpose controller', () => {
 
     test('redirects to check answers even when from=check query is provided', async () => {
       mockUpload({ guideTitle: 'A title' })
-      vi.spyOn(session, 'setGuideUploadMetadata').mockImplementation(() => {})
+      session.setGuideUploadMetadata.mockImplementation(() => {})
       request.query = { from: 'check' }
       request.payload = {
         owner: 'owner@example.com',
