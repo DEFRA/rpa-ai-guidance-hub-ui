@@ -3,6 +3,9 @@ import * as referenceDataService from '../../../../../src/services/reference-dat
 import * as stagedDocumentsService from '../../../../../src/services/staged-documents.js'
 import { getStartOver, postStartOver } from '../../../../../src/pages/create-guidance/start-over/controller.js'
 
+vi.mock('../../../../../src/services/reference-data.js')
+vi.mock('../../../../../src/services/staged-documents.js')
+
 const START_OVER_VIEW = 'create-guidance/start-over/page.njk'
 const UPLOAD_GUIDE_URL = '/create-guidance/upload-guide'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
@@ -18,16 +21,16 @@ function requestWith (sessionData, query = {}) {
 }
 
 function mockReferenceData () {
-  vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([{ value: 'sfi', label: 'SFI' }])
-  vi.spyOn(referenceDataService, 'getSystems').mockResolvedValue([{ value: 'crm', label: 'CRM' }])
-  vi.spyOn(referenceDataService, 'getAudiences').mockResolvedValue([{ value: 'processor', label: 'Processor' }])
+  referenceDataService.getSchemes.mockResolvedValue([{ value: 'sfi', label: 'SFI' }])
+  referenceDataService.getSystems.mockResolvedValue([{ value: 'crm', label: 'CRM' }])
+  referenceDataService.getAudiences.mockResolvedValue([{ value: 'processor', label: 'Processor' }])
 }
 
 describe('start-over controller', () => {
   let h, code
 
   beforeEach(() => {
-    vi.restoreAllMocks()
+    vi.resetAllMocks()
     code = vi.fn()
     h = {
       view: vi.fn(() => ({ code })),
@@ -57,7 +60,7 @@ describe('start-over controller', () => {
 
     test('shows what would be discarded, including the uploaded file, instead of resetting when metadata has been captured', async () => {
       mockReferenceData()
-      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue({
+      stagedDocumentsService.getStagedDocumentById.mockResolvedValue({
         fileId: 'file-1',
         version: '1.2',
         lastModified: '2024-01-01T00:00:00.000Z'
@@ -99,7 +102,7 @@ describe('start-over controller', () => {
 
     test('asks for confirmation once the upload has completed, even without metadata yet', async () => {
       mockReferenceData()
-      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
+      stagedDocumentsService.getStagedDocumentById.mockResolvedValue(null)
 
       const request = requestWith({
         uploads: [{ uploadId: 'u-1', completedStepIds: ['scanning', 'parse'], fileId: 'file-1' }]
@@ -122,7 +125,7 @@ describe('start-over controller', () => {
 
     test('uses returnUrl as the cancel target when it is within the journey', async () => {
       mockReferenceData()
-      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
+      stagedDocumentsService.getStagedDocumentById.mockResolvedValue(null)
 
       const request = requestWith(
         { uploads: [{ uploadId: 'u-1', completedStepIds: [], metadata: { guideTitle: 'Test' } }] },
@@ -139,7 +142,7 @@ describe('start-over controller', () => {
 
     test('falls back to the default cancel url when returnUrl points outside the journey', async () => {
       mockReferenceData()
-      vi.spyOn(stagedDocumentsService, 'getStagedDocumentById').mockResolvedValue(null)
+      stagedDocumentsService.getStagedDocumentById.mockResolvedValue(null)
 
       const request = requestWith(
         { uploads: [{ uploadId: 'u-1', completedStepIds: [], metadata: { guideTitle: 'Test' } }] },

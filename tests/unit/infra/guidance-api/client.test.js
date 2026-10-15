@@ -1,70 +1,59 @@
+import nock from 'nock'
+
 import { GuidanceApiClient, GuidanceApiError } from '../../../../src/infra/guidance-api/client.js'
+
+const TEST_BASE_URL = 'http://test-guidance-api'
+
+beforeAll(() => {
+  nock.disableNetConnect()
+})
+
+afterAll(() => {
+  nock.enableNetConnect()
+})
+
+afterEach(() => {
+  nock.cleanAll()
+})
 
 describe('GuidanceApiClient', () => {
   let client
 
   beforeEach(() => {
-    client = new GuidanceApiClient('http://test-guidance-api')
-    vi.restoreAllMocks()
+    client = new GuidanceApiClient(TEST_BASE_URL)
   })
 
   test('request() returns parsed JSON on 200 OK', async () => {
     const mockData = { id: 'g-1', content: 'markdown-content' }
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: vi.fn().mockResolvedValue(mockData)
-    })
+    nock(TEST_BASE_URL).get('/guides').reply(200, mockData)
 
     const result = await client.request('/guides')
 
-    expect(result).toEqual({ ok: true, status: 200, data: mockData })
-    expect(global.fetch).toHaveBeenCalled()
+    expect(result).toMatchObject({ ok: true, status: 200, data: mockData })
   })
 
   test('request() sends JSON body and headers when provided', async () => {
     const payload = { source: { uploadId: 'u-1' } }
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 201,
-      json: vi.fn().mockResolvedValue({ id: 'g-1' })
-    })
+    // nock only matches a request with this JSON content type and body
+    const scope = nock(TEST_BASE_URL, { reqheaders: { 'content-type': 'application/json' } })
+      .post('/guides', payload)
+      .reply(201, { id: 'g-1' })
 
-    await client.request('/guides', {
-      method: 'POST',
-      body: payload
-    })
+    await client.request('/guides', { method: 'POST', body: payload })
 
-    expect(global.fetch).toHaveBeenCalledWith(
-      new URL('http://test-guidance-api/guides'),
-      expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({
-          'Content-Type': 'application/json'
-        }),
-        body: JSON.stringify(payload)
-      })
-    )
+    expect(scope.isDone()).toBe(true)
   })
 
   test('request() handles expected status codes gracefully without throwing', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      statusText: 'Not Found'
-    })
+    nock(TEST_BASE_URL).get('/documents/123/metadata').reply(404)
 
     const result = await client.request('/documents/123/metadata', { expected: [404] })
 
-    expect(result).toEqual({ ok: false, status: 404, data: null })
+    expect(result).toMatchObject({ ok: false, status: 404, data: null })
   })
 
   test('request() throws GuidanceApiError on unexpected non-ok status', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      statusText: 'Internal Server Error'
-    })
+    nock(TEST_BASE_URL).get('/guides').reply(500)
 
     await expect(client.request('/guides')).rejects.toThrow(GuidanceApiError)
   })

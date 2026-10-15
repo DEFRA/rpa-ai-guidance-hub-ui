@@ -1,20 +1,15 @@
 import * as referenceDataApi from '../../../src/infra/guidance-api/reference-data.js'
-import {
-  getSchemes,
-  getAudiences,
-  getSystems,
-  getGuidanceTypes,
-  normalizeSchemes,
-  normalizeSelection
-} from '../../../src/services/reference-data.js'
+import * as referenceData from '../../../src/services/reference-data.js'
+
+vi.mock('../../../src/infra/guidance-api/reference-data.js')
 
 describe('reference-data service', () => {
   beforeEach(() => {
-    vi.restoreAllMocks()
+    vi.resetAllMocks()
   })
 
   test('getSchemes appends the "None" opt-out option to the infra response data', async () => {
-    vi.spyOn(referenceDataApi, 'getSchemes').mockResolvedValue({
+    referenceDataApi.getSchemes.mockResolvedValue({
       ok: true,
       status: 200,
       data: [
@@ -23,7 +18,7 @@ describe('reference-data service', () => {
       ]
     })
 
-    const result = await getSchemes()
+    const result = await referenceData.getSchemes()
 
     expect(result).toEqual([
       { value: 'sfi', label: 'Sustainable Farming Incentive (SFI)' },
@@ -33,94 +28,94 @@ describe('reference-data service', () => {
   })
 
   test('getAudiences returns the infra response data unchanged', async () => {
-    vi.spyOn(referenceDataApi, 'getAudiences').mockResolvedValue({
+    referenceDataApi.getAudiences.mockResolvedValue({
       ok: true,
       status: 200,
       data: [{ value: 'caseworker', label: 'Caseworker' }]
     })
 
-    expect(await getAudiences()).toEqual([{ value: 'caseworker', label: 'Caseworker' }])
+    expect(await referenceData.getAudiences()).toEqual([{ value: 'caseworker', label: 'Caseworker' }])
   })
 
   test('getSystems returns the infra response data unchanged', async () => {
-    vi.spyOn(referenceDataApi, 'getSystems').mockResolvedValue({
+    referenceDataApi.getSystems.mockResolvedValue({
       ok: true,
       status: 200,
       data: [{ value: 'siti-agri', label: 'Siti Agri' }]
     })
 
-    expect(await getSystems()).toEqual([{ value: 'siti-agri', label: 'Siti Agri' }])
+    expect(await referenceData.getSystems()).toEqual([{ value: 'siti-agri', label: 'Siti Agri' }])
   })
 
   test('getGuidanceTypes returns the infra response data unchanged', async () => {
-    vi.spyOn(referenceDataApi, 'getGuidanceTypes').mockResolvedValue({
+    referenceDataApi.getGuidanceTypes.mockResolvedValue({
       ok: true,
       status: 200,
       data: [{ value: 'process-guide', label: 'Process guide' }]
     })
 
-    expect(await getGuidanceTypes()).toEqual([{ value: 'process-guide', label: 'Process guide' }])
+    expect(await referenceData.getGuidanceTypes()).toEqual([{ value: 'process-guide', label: 'Process guide' }])
   })
 })
 
 describe('#normalizeSchemes', () => {
   test('returns ["none"] when only "none" is selected (string form)', () => {
-    expect(normalizeSchemes('none')).toEqual(['none'])
+    expect(referenceData.normalizeSchemes('none')).toEqual(['none'])
   })
 
   test('returns ["none"] when only "none" is selected (array form)', () => {
-    expect(normalizeSchemes(['none'])).toEqual(['none'])
+    expect(referenceData.normalizeSchemes(['none'])).toEqual(['none'])
   })
 
   test('drops "none" when a non-none option is also selected (none then other)', () => {
-    expect(normalizeSchemes(['none', 'sfi'])).toEqual(['sfi'])
+    expect(referenceData.normalizeSchemes(['none', 'sfi'])).toEqual(['sfi'])
   })
 
   test('drops "none" when a non-none option is also selected (other then none)', () => {
-    expect(normalizeSchemes(['sfi', 'none'])).toEqual(['sfi'])
+    expect(referenceData.normalizeSchemes(['sfi', 'none'])).toEqual(['sfi'])
   })
 
   test('drops "none" when multiple non-none options are selected alongside it', () => {
-    expect(normalizeSchemes(['none', 'sfi', 'bps'])).toEqual(['sfi', 'bps'])
+    expect(referenceData.normalizeSchemes(['none', 'sfi', 'bps'])).toEqual(['sfi', 'bps'])
   })
 
   test('preserves multiple non-none options unchanged when "none" is absent', () => {
-    expect(normalizeSchemes(['sfi', 'bps'])).toEqual(['sfi', 'bps'])
+    expect(referenceData.normalizeSchemes(['sfi', 'bps'])).toEqual(['sfi', 'bps'])
   })
 
   test('normalizes a single non-none string value into an array unchanged', () => {
-    expect(normalizeSchemes('sfi')).toEqual(['sfi'])
+    expect(referenceData.normalizeSchemes('sfi')).toEqual(['sfi'])
   })
 
   test('returns [] for undefined selection', () => {
-    expect(normalizeSchemes(undefined)).toEqual([])
+    expect(referenceData.normalizeSchemes(undefined)).toEqual([])
   })
 
   test('returns [] for empty string selection', () => {
-    expect(normalizeSchemes('')).toEqual([])
+    expect(referenceData.normalizeSchemes('')).toEqual([])
   })
 
   test('returns [] for empty array selection', () => {
-    expect(normalizeSchemes([])).toEqual([])
+    expect(referenceData.normalizeSchemes([])).toEqual([])
   })
 })
 
 describe('#normalizeSelection', () => {
   test('returns [] for undefined, null and empty string selections', () => {
-    expect(normalizeSelection(undefined)).toEqual([])
-    expect(normalizeSelection(null)).toEqual([])
-    expect(normalizeSelection('')).toEqual([])
+    expect(referenceData.normalizeSelection(undefined)).toEqual([])
+    expect(referenceData.normalizeSelection(null)).toEqual([])
+    expect(referenceData.normalizeSelection('')).toEqual([])
   })
 
   test('wraps a single string value in an array', () => {
-    expect(normalizeSelection('crm')).toEqual(['crm'])
+    expect(referenceData.normalizeSelection('crm')).toEqual(['crm'])
   })
 
   test('returns an array selection unchanged', () => {
-    expect(normalizeSelection(['crm', 'siti-agri'])).toEqual(['crm', 'siti-agri'])
+    expect(referenceData.normalizeSelection(['crm', 'siti-agri'])).toEqual(['crm', 'siti-agri'])
   })
 
   test('returns an empty array unchanged', () => {
-    expect(normalizeSelection([])).toEqual([])
+    expect(referenceData.normalizeSelection([])).toEqual([])
   })
 })

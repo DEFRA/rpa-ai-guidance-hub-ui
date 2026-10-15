@@ -20,6 +20,7 @@ describe('ProgressTracker', () => {
       step1: vi.fn(async () => ({ complete: true })),
       step2: vi.fn(async () => ({ complete: false }))
     }
+
     const steps = [
       { id: 'step-1', label: 'First', check: checks.step1 },
       { id: 'step-2', label: 'Second', check: checks.step2 }

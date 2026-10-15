@@ -42,7 +42,7 @@ describe('CdpUploaderClient', () => {
 
       const response = await client.request('/initiate')
 
-      expect(response).toEqual({ ok: true, status: statusCodes.HTTP_STATUS_OK, data: { uploadId: 'u1' } })
+      expect(response).toMatchObject({ ok: true, status: statusCodes.HTTP_STATUS_OK, data: { uploadId: 'u1' } })
     })
 
     test('throws when an ok response has no valid JSON body', async () => {
@@ -60,7 +60,7 @@ describe('CdpUploaderClient', () => {
 
       const response = await client.request('/status/xxx', { expected: [statusCodes.HTTP_STATUS_NOT_FOUND] })
 
-      expect(response).toEqual({ ok: false, status: statusCodes.HTTP_STATUS_NOT_FOUND, data: null })
+      expect(response).toMatchObject({ ok: false, status: statusCodes.HTTP_STATUS_NOT_FOUND, data: null })
     })
 
     test('throws CdpUploaderError with the status code for an unexpected non-ok status', async () => {

@@ -1,16 +1,17 @@
 import { statusCodes } from '../../../src/constants/status-codes.js'
+
 import * as stagedDocumentsApi from '../../../src/infra/guidance-api/staged-documents.js'
-import {
-  getStagedDocumentById
-} from '../../../src/services/staged-documents.js'
+import * as stagedDocumentsService from '../../../src/services/staged-documents.js'
+
+vi.mock('../../../src/infra/guidance-api/staged-documents.js')
 
 describe('staged-documents service', () => {
   beforeEach(() => {
-    vi.restoreAllMocks()
+    vi.resetAllMocks()
   })
 
   test('returns shaped staged document when found', async () => {
-    vi.spyOn(stagedDocumentsApi, 'getStagedDocument').mockResolvedValue({
+    stagedDocumentsApi.getStagedDocument.mockResolvedValue({
       ok: true,
       status: statusCodes.HTTP_STATUS_OK,
       data: {
@@ -23,7 +24,7 @@ describe('staged-documents service', () => {
       }
     })
 
-    const result = await getStagedDocumentById('file-1')
+    const result = await stagedDocumentsService.getStagedDocumentById('file-1')
 
     expect(result).toEqual({
       fileId: 'file-1',
@@ -38,7 +39,7 @@ describe('staged-documents service', () => {
   })
 
   test('fills null defaults for missing optional fields', async () => {
-    vi.spyOn(stagedDocumentsApi, 'getStagedDocument').mockResolvedValue({
+    stagedDocumentsApi.getStagedDocument.mockResolvedValue({
       ok: true,
       status: statusCodes.HTTP_STATUS_OK,
       data: {
@@ -47,7 +48,7 @@ describe('staged-documents service', () => {
       }
     })
 
-    const result = await getStagedDocumentById('file-1')
+    const result = await stagedDocumentsService.getStagedDocumentById('file-1')
 
     expect(result).toEqual({
       fileId: 'file-1',
@@ -62,7 +63,7 @@ describe('staged-documents service', () => {
   })
 
   test('returns the document it was converted into, and when that was committed', async () => {
-    vi.spyOn(stagedDocumentsApi, 'getStagedDocument').mockResolvedValue({
+    stagedDocumentsApi.getStagedDocument.mockResolvedValue({
       ok: true,
       status: statusCodes.HTTP_STATUS_OK,
       data: {
@@ -73,7 +74,7 @@ describe('staged-documents service', () => {
       }
     })
 
-    const result = await getStagedDocumentById('file-1')
+    const result = await stagedDocumentsService.getStagedDocumentById('file-1')
 
     expect(result).toEqual(expect.objectContaining({
       documentId: 'document-1',
@@ -82,21 +83,21 @@ describe('staged-documents service', () => {
   })
 
   test('returns null when document is not found (404)', async () => {
-    vi.spyOn(stagedDocumentsApi, 'getStagedDocument').mockResolvedValue({
+    stagedDocumentsApi.getStagedDocument.mockResolvedValue({
       ok: false,
       status: statusCodes.HTTP_STATUS_NOT_FOUND,
       data: null
     })
 
-    const result = await getStagedDocumentById('missing-file')
+    const result = await stagedDocumentsService.getStagedDocumentById('missing-file')
 
     expect(result).toBeNull()
   })
 
   test('propagates rejection when infra call fails', async () => {
     const error = new Error('Network error')
-    vi.spyOn(stagedDocumentsApi, 'getStagedDocument').mockRejectedValue(error)
+    stagedDocumentsApi.getStagedDocument.mockRejectedValue(error)
 
-    await expect(getStagedDocumentById('file-1')).rejects.toThrow('Network error')
+    await expect(stagedDocumentsService.getStagedDocumentById('file-1')).rejects.toThrow('Network error')
   })
 })

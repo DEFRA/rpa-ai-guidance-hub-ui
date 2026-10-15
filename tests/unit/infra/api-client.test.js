@@ -39,7 +39,37 @@ describe('ApiClient', () => {
 
       const response = await client.request('/items')
 
-      expect(response).toEqual({ ok: true, status: statusCodes.HTTP_STATUS_OK, data: { items: [1, 2] } })
+      expect(response).toMatchObject({ ok: true, status: statusCodes.HTTP_STATUS_OK, data: { items: [1, 2] } })
+    })
+
+    test('reads an ok body as text when asked', async () => {
+      const client = new ApiClient({ baseUrl: TEST_BASE_URL, errorClass: TestApiError })
+
+      nock(TEST_BASE_URL).get('/doc').reply(statusCodes.HTTP_STATUS_OK, '# Title', { 'Content-Type': 'text/plain' })
+
+      const response = await client.request('/doc', { responseType: 'text' })
+
+      expect(response).toMatchObject({ ok: true, data: '# Title' })
+    })
+
+    test('reads an ok body as a buffer, with its headers, when asked', async () => {
+      const client = new ApiClient({ baseUrl: TEST_BASE_URL, errorClass: TestApiError })
+
+      nock(TEST_BASE_URL).get('/image').reply(statusCodes.HTTP_STATUS_OK, Buffer.from([1, 2, 3]), { 'Content-Type': 'image/png' })
+
+      const response = await client.request('/image', { responseType: 'buffer' })
+
+      expect(Buffer.isBuffer(response.data)).toBe(true)
+      expect([...response.data]).toEqual([1, 2, 3])
+      expect(response.headers.get('content-type')).toBe('image/png')
+    })
+
+    test('repeats a query parameter given an array', async () => {
+      const client = new ApiClient({ baseUrl: TEST_BASE_URL, errorClass: TestApiError })
+
+      nock(TEST_BASE_URL).get('/items').query({ scheme: ['a', 'b'], limit: '5' }).reply(statusCodes.HTTP_STATUS_OK, {})
+
+      await client.request('/items', { query: { scheme: ['a', 'b'], limit: 5, cursor: undefined } })
     })
 
     test('throws when an ok response has no valid JSON body', async () => {
@@ -53,11 +83,12 @@ describe('ApiClient', () => {
     test('returns ok:false for a status in the expected list', async () => {
       const client = new ApiClient({ baseUrl: TEST_BASE_URL, errorClass: TestApiError })
 
-      nock(TEST_BASE_URL).get('/missing').reply(statusCodes.HTTP_STATUS_NOT_FOUND)
+      nock(TEST_BASE_URL).get('/missing').reply(statusCodes.HTTP_STATUS_NOT_FOUND, '', { 'content-type': 'text/plain' })
 
       const response = await client.request('/missing', { expected: [statusCodes.HTTP_STATUS_NOT_FOUND] })
 
-      expect(response).toEqual({ ok: false, status: statusCodes.HTTP_STATUS_NOT_FOUND, data: null })
+      expect(response).toMatchObject({ ok: false, status: statusCodes.HTTP_STATUS_NOT_FOUND, data: null })
+      expect(response.headers.get('content-type')).toBe('text/plain')
     })
 
     test('throws errorClass instance with status code for unexpected status', async () => {
@@ -93,7 +124,13 @@ describe('ApiClient', () => {
     test('gives up on a response slower than the timeout', async () => {
       const client = new ApiClient({ baseUrl: TEST_BASE_URL, timeout: 10, errorClass: TestApiError })
 
-      nock(TEST_BASE_URL).get('/slow').delay(100).reply(statusCodes.HTTP_STATUS_OK, {})
+      // nock's delay() only holds back the body, which ignores the abort
+      // signal, so hold back the whole reply instead
+      nock(TEST_BASE_URL).get('/slow').reply(async () => {
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        return [statusCodes.HTTP_STATUS_OK, {}]
+      })
 
       await expect(client.request('/slow')).rejects.toMatchObject({ name: 'TimeoutError' })
     })
