@@ -1,0 +1,48 @@
+@use 'govuk-frontend' as *;
+@use '../variables/colours' as *;
+@use 'app-side-nav' as *;
+
+// What this service's page needs around the prototype's guide styles
+// (_app-guide.scss, _app-guide-markdown.scss, _app-side-nav.scss), which are
+// kept as they are. In the prototype the shell sits outside the page's width
+// container; here the guide page drops the container and the main wrapper's
+// padding (`app-width-container--bleed`, `app-main-wrapper--bleed`) so the
+// shell, and the panel at its right, run the full width and height.
+
+.app-width-container--bleed {
+  width: auto;
+  max-width: none;
+  margin-right: 0;
+  margin-left: 0;
+}
+
+.govuk-main-wrapper.app-main-wrapper--bleed {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+// The reading column's margins - the same as .app-full-width's in the
+// prototype - now that the container that gave them is gone.
+.app-guide-gutter {
+  padding: 0 govuk-spacing(4) govuk-spacing(6);
+
+  @include govuk-media-query($from: tablet) {
+    padding-right: govuk-spacing(6);
+    padding-left: govuk-spacing(6);
+  }
+
+  @include govuk-media-query($from: desktop) {
+    padding-right: govuk-spacing(8);
+    padding-left: govuk-spacing(8);
+  }
+}
+
+// The prototype's tooltip opens to the right of its item, which suits a left
+// side nav. The panel is on the right of the page, so it opens to the left,
+// still bridged by a transparent border so it stays while hovered.
+.app-guide-panel .app-side-nav__tooltip {
+  right: 100%;
+  left: auto;
+  border-right: 10px solid transparent;
+  border-left: 0;
+}
