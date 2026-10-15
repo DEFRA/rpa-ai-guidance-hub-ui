@@ -16,7 +16,8 @@ describe('#HubViewModel', () => {
       ['recentlyOpened', 'Recently opened'],
       ['savedGuidance', 'Saved guidance'],
       ['editing', 'Editing'],
-      ['awaitingApproval', 'Awaiting approval']
+      ['awaitingApproval', 'Awaiting approval'],
+      ['allGuides', 'All guides']
     ])('Should return an empty %s table', (key, heading) => {
       expect(viewModel[key]).toEqual(expect.objectContaining({
         heading,
@@ -129,6 +130,35 @@ describe('#HubViewModel', () => {
 
       expect(viewModel.awaitingApproval.rows[0][2]).toEqual({ type: 'text', text: 'No issues' })
       expect(viewModel.awaitingApproval.rows[0][3]).toEqual({ type: 'text', text: 'None' })
+    })
+  })
+
+  describe('allGuides', () => {
+    const guide = {
+      title: 'Claiming the SFI payment',
+      href: '/guides/guide-1',
+      lastModified: '20 July 2026',
+      owner: 'owner@example.com'
+    }
+
+    test('Should build a link/lastModified/owner row', () => {
+      const { allGuides } = new HubViewModel({ allGuides: [guide] })
+
+      expect(allGuides.count).toBe(1)
+      expect(allGuides.isEmpty).toBe(false)
+      expect(allGuides.rows).toEqual([[
+        { type: 'link', text: guide.title, href: '/guides/guide-1' },
+        { type: 'text', text: '20 July 2026' },
+        { type: 'text', text: 'owner@example.com' }
+      ]])
+    })
+
+    test('Should not link to an untrusted href', () => {
+      const { allGuides } = new HubViewModel({
+        allGuides: [{ ...guide, href: 'javascript:alert(1)' }]
+      })
+
+      expect(allGuides.rows[0][0].href).toBe('#')
     })
   })
 })

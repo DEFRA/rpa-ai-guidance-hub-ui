@@ -1,3 +1,5 @@
+import { relativeHref } from '../common/relative-href.js'
+
 const tableHeadClasses = {
   HALF_WIDTH: 'govuk-!-width-one-half',
   VISUALLY_HIDDEN: 'govuk-visually-hidden'
@@ -13,20 +15,21 @@ const CELL_TYPES = Object.freeze({
   TEXT: 'text',
   VERSION: 'version',
   TITLE: 'title',
+  LINK: 'link',
   REMOVE_ACTION: 'removeAction'
 })
-
-/**
- * Placeholder origin that relative hrefs are resolved against - `.invalid`
- * is reserved, so it can never collide with a real host.
- */
-const SAME_ORIGIN_BASE = 'https://same-origin.invalid'
 
 const DOCUMENT_TABLE_HEAD = [
   { text: 'Title', classes: tableHeadClasses.HALF_WIDTH },
   { text: 'Last modified' },
   { text: 'Version' },
   { text: 'Action' }
+]
+
+const ALL_GUIDES_TABLE_HEAD = [
+  { text: 'Title', classes: tableHeadClasses.HALF_WIDTH },
+  { text: 'Last updated' },
+  { text: 'Owner' }
 ]
 
 const EDITING_TABLE_HEAD = [
@@ -42,37 +45,6 @@ const AWAITING_APPROVAL_TABLE_HEAD = [
   { text: 'Publishing checks' },
   { text: 'Changes requested' }
 ]
-
-/**
- * Nunjucks auto-escaping only entity-encodes `href` values - it doesn't
- * stop a `javascript:`/`data:` scheme from executing on click. Guidance
- * items will eventually come from an API rather than this repo's own
- * code, so hrefs are treated as untrusted and restricted to same-origin
- * relative paths.
- *
- * A leading `/` alone isn't enough: browsers normalise backslashes to
- * forward slashes and strip tab/newline characters anywhere in a URL, so
- * `/\evil.example` and `/\n/evil.example` are both navigated to as
- * protocol-relative (`//evil.example`) despite "looking" like single-slash
- * paths. Rather than chase each normalisation quirk, the href is parsed
- * the same way a browser would and kept only if it resolves to our origin.
- *
- * @private
- * @param {string} href
- * @returns {string} `href`, or "#" when it isn't a safe relative path
- */
-function _relativeHref (href) {
-  if (typeof href !== 'string' || !href.startsWith('/')) {
-    return '#'
-  }
-
-  try {
-    return new URL(href, SAME_ORIGIN_BASE).origin === SAME_ORIGIN_BASE ? href : '#'
-  } catch {
-    // e.g. `//[` - a protocol-relative URL with an unparseable host
-    return '#'
-  }
-}
 
 function _textCell (text) {
   return { type: CELL_TYPES.TEXT, text }
@@ -95,14 +67,18 @@ function _titleCell (item, statusText, statusColour) {
   return {
     type: CELL_TYPES.TITLE,
     text: item.title,
-    href: _relativeHref(item.href),
+    href: relativeHref(item.href),
     statusText,
     statusColour
   }
 }
 
+function _linkCell (item) {
+  return { type: CELL_TYPES.LINK, text: item.title, href: relativeHref(item.href) }
+}
+
 function _removeActionCell (item) {
-  return { type: CELL_TYPES.REMOVE_ACTION, text: item.title, href: _relativeHref(item.removeHref) }
+  return { type: CELL_TYPES.REMOVE_ACTION, text: item.title, href: relativeHref(item.removeHref) }
 }
 
 function _buildDocumentRows (items) {
@@ -111,6 +87,14 @@ function _buildDocumentRows (items) {
     _textCell(item.lastModified),
     _versionCell(item.version),
     _removeActionCell(item)
+  ])
+}
+
+function _buildAllGuidesRows (items) {
+  return items.map((item) => [
+    _linkCell(item),
+    _textCell(item.lastModified),
+    _textCell(item.owner)
   ])
 }
 
@@ -154,7 +138,7 @@ function _buildTable ({ items, heading, emptyMessage, hintMessage, head, rows })
 }
 
 /**
- * HubViewModel - The four guidance tables shown on the hub landing page.
+ * HubViewModel - The guidance tables shown on the hub landing page.
  *
  * Each table is built entirely from data (headings, empty-state copy,
  * column headers and cell content) rather than pre-rendered HTML, so
@@ -169,13 +153,16 @@ class HubViewModel {
    * @param {Array<object>} [data.savedGuidance=[]]
    * @param {Array<object>} [data.editing=[]]
    * @param {Array<object>} [data.awaitingApproval=[]]
+   * @param {Array<object>} [data.allGuides=[]] - Items are
+   *   `{title, href, lastModified, owner}`
    */
   constructor (data = {}) {
     const {
       recentlyOpened = [],
       savedGuidance = [],
       editing = [],
-      awaitingApproval = []
+      awaitingApproval = [],
+      allGuides = []
     } = data
 
     this.recentlyOpened = _buildTable({
@@ -212,6 +199,15 @@ class HubViewModel {
       hintMessage: null,
       head: AWAITING_APPROVAL_TABLE_HEAD,
       rows: _buildAwaitingApprovalRows(awaitingApproval)
+    })
+
+    this.allGuides = _buildTable({
+      items: allGuides,
+      heading: 'All guides',
+      emptyMessage: 'There are no guides yet.',
+      hintMessage: null,
+      head: ALL_GUIDES_TABLE_HEAD,
+      rows: _buildAllGuidesRows(allGuides)
     })
   }
 }

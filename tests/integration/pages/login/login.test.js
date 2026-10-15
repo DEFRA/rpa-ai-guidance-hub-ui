@@ -1,6 +1,10 @@
 import { constants as statusCodes } from 'node:http2'
 
+import nock from 'nock'
+
+import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
+import { guidePageResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 describe('#loginController', () => {
@@ -9,9 +13,15 @@ describe('#loginController', () => {
   beforeAll(async () => {
     server = await createServer()
     await server.initialize()
+    nock.disableNetConnect()
+  })
+
+  afterEach(() => {
+    nock.cleanAll()
   })
 
   afterAll(async () => {
+    nock.enableNetConnect()
     await server.stop({ timeout: 0 })
   })
 
@@ -29,6 +39,11 @@ describe('#loginController', () => {
         .map((c) => c.split(';')[0])
         .join('; ')
       expect(cookie).not.toBe('')
+
+      // The hub lists the guides.
+      nock(config.get('guidanceApi.baseUrl'))
+        .get('/guides')
+        .reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
 
       // Confirms the dev-session profile was actually stored against the
       // session (not just that a cookie was set) - it flows through to the
