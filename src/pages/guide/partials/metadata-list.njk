@@ -1,0 +1,9 @@
+{# The panel's own metadata list - the guide's answers to what it is about. #}
+<dl class="app-guide-metadata-list">
+  {% for row in metadataRows %}
+    <div class="app-guide-metadata-list__row">
+      <dt>{{ row.label }}</dt>
+      <dd>{% if row.href %}<a class="govuk-link" href="{{ row.href }}">{{ row.text }}</a>{% else %}{{ row.text }}{% endif %}</dd>
+    </div>
+  {% endfor %}
+</dl>
