@@ -32,13 +32,15 @@
     {{ tag(cell.version, cell.colour) }}
   {%- elif cell.type == "title" -%}
     <div class="govuk-!-margin-bottom-1">{{ tag(cell.statusText, cell.statusColour) }}</div><a class="govuk-link" href="{{ cell.href }}">{{ cell.text }}</a>
+  {%- elif cell.type == "link" -%}
+    <a class="govuk-link" href="{{ cell.href }}">{{ cell.text }}</a>
   {%- elif cell.type == "removeAction" -%}
     <a class="govuk-link" href="{{ cell.href }}">Remove<span class="govuk-visually-hidden"> {{ cell.text }}</span></a>
   {%- endif -%}
 {% endmacro %}
 
 {#
-  Renders any of the hub's four guidance tables from a HubViewModel table
+  Renders any of the hub's guidance tables from a HubViewModel table
   entry - {heading, emptyMessage, hintMessage, head, rows, isEmpty, count}.
 #}
 {% macro guidanceTablePanel(table) %}

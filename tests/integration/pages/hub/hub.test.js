@@ -1,8 +1,14 @@
 import { constants as statusCodes } from 'node:http2'
 
+import nock from 'nock'
+
+import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
+import { guidePageResponse, guideSummaryResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
+
+const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 
 describe('#hubController', () => {
   let server
@@ -10,14 +16,24 @@ describe('#hubController', () => {
   beforeAll(async () => {
     server = await createServer()
     await server.initialize()
+    nock.disableNetConnect()
+  })
+
+  beforeEach(() => {
+    nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
+  })
+
+  afterEach(() => {
+    nock.cleanAll()
   })
 
   afterAll(async () => {
+    nock.enableNetConnect()
     await server.stop({ timeout: 0 })
   })
 
   describe('When logged in as a dev user', () => {
-    test('Should respond with 200 and render the hub page with the 4 tabs and action button', async () => {
+    test('Should respond with 200 and render the hub page with the 5 tabs and action button', async () => {
       const cookie = await loginAsDevUser(server)
 
       const { statusCode, payload } = await server.inject({
@@ -32,7 +48,8 @@ describe('#hubController', () => {
       expect(payload).toContain('Saved guidance (0)')
       expect(payload).toContain('Editing (0)')
       expect(payload).toContain('Awaiting approval (0)')
-      expect(payload).not.toContain('All guidance')
+      expect(payload).toContain('All guides (1)')
+      expect(payload).toContain('href="#all-guides"')
       expect(payload).toContain('Upload guidance')
       expect(payload).toContain('You haven&#39;t opened any guidance yet.')
       expect(payload).not.toContain('defra-service-navigation')
@@ -75,6 +92,34 @@ describe('#hubController', () => {
       expect(renderedHtml).not.toContain('javascript:alert')
       expect(renderedHtml).not.toContain('evil.example.com')
       expect(renderedHtml).toContain('href="#"')
+    })
+  })
+
+  describe('the All guides tab', () => {
+    test('Should list each guide, linking to it', async () => {
+      nock.cleanAll()
+      nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({
+        items: [guideSummaryResponse({ id: '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90' })]
+      }))
+      const cookie = await loginAsDevUser(server)
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+
+      expect(payload).toContain('href="/guides/0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90"')
+      expect(payload).toContain('Claiming the SFI payment')
+      expect(payload).toContain('6 October 2026')
+      expect(payload).toContain('owner@example.com')
+    })
+
+    test('Should say there are no guides when there are none', async () => {
+      nock.cleanAll()
+      nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items: [] }))
+      const cookie = await loginAsDevUser(server)
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+
+      expect(payload).toContain('All guides (0)')
+      expect(payload).toContain('There are no guides yet.')
     })
   })
 
