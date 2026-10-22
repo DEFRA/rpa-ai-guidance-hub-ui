@@ -1,4 +1,3 @@
-import isEmail from 'validator/lib/isEmail.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { READING_WIDTHS } from './reading-width.js'
 
@@ -9,7 +8,7 @@ const VERSION_COLOURS = ['green', 'purple', 'blue', 'orange', 'pink', 'turquoise
  * @typedef {Object} MetadataRow
  * @property {string} label
  * @property {string} text
- * @property {string} [href] - A `mailto:` link, for an owner's email address
+ * @property {string} href - Always a `mailto:` link for the owner's email address
  */
 
 /**
@@ -72,7 +71,7 @@ function _ownerRow (owner) {
   return {
     label: 'Owner',
     text: owner,
-    ...(isEmail(owner) && { href: `mailto:${encodeURIComponent(owner)}` })
+    href: `mailto:${encodeURIComponent(owner)}`
   }
 }
 

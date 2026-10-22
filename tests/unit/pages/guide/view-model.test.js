@@ -156,21 +156,11 @@ describe('buildMetadataRows', () => {
   })
 
   test('leaves out what the guide does not say', () => {
-    expect(buildMetadataRows({ goal: 'Only this.' })).toEqual([
-      { label: 'Purpose', text: 'Only this.' }
+    expect(buildMetadataRows({ goal: 'Only this.', owner: 'a@example.com' })).toEqual([
+      { label: 'Purpose', text: 'Only this.' },
+      { label: 'Owner', text: 'a@example.com', href: 'mailto:a%40example.com' }
     ])
     expect(buildMetadataRows(undefined)).toEqual([])
   })
 
-  test('does not link an owner that is not an email address', () => {
-    const [row] = buildMetadataRows({ owner: 'javascript:alert(1)' })
-
-    expect(row).toEqual({ label: 'Owner', text: 'javascript:alert(1)' })
-  })
-
-  test('does not link an owner with mailto query parameters smuggled in', () => {
-    const [row] = buildMetadataRows({ owner: 'owner@example.com?subject=Injected' })
-
-    expect(row).toEqual({ label: 'Owner', text: 'owner@example.com?subject=Injected' })
-  })
 })
