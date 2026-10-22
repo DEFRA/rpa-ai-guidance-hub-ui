@@ -1,4 +1,4 @@
-ARG PARENT_VERSION=3.0.10-node24.16.0
+ARG PARENT_VERSION=3.2.4-node24.22.1
 ARG PORT=3000
 ARG PORT_DEBUG=9229
 
@@ -13,8 +13,8 @@ ARG PORT_DEBUG
 ENV PORT=${PORT}
 EXPOSE ${PORT} ${PORT_DEBUG}
 
-COPY --chown=node:node --chmod=755 package*.json ./
-RUN npm install --ignore-scripts
+COPY --chown=node:node --chmod=755 package*.json .npmrc ./
+RUN npm ci --ignore-scripts
 COPY --chown=node:node --chmod=755 . .
 RUN npm run build
 
@@ -38,11 +38,11 @@ USER root
 RUN apk add --no-cache curl
 USER node
 
-COPY --from=production_build /home/node/package*.json ./
+COPY --from=production_build /home/node/package*.json /home/node/.npmrc ./
 COPY --from=production_build /home/node/src ./src/
 COPY --from=production_build /home/node/.public/ ./.public/
 
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
 
 ARG PORT
 ENV PORT=${PORT}

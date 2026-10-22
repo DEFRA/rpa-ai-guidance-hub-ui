@@ -17,8 +17,8 @@
     "start:dev": "NODE_ENV=development run-p build:watch server:watch",
     "start:debug": "NODE_ENV=development run-p build:watch server:debug",
     "dev": "npm run start:dev",
-    "server:debug": "nodemon --inspect-brk=0.0.0.0 --env-file-if-exists=.env --watch src --watch .public --ext js,njk,yaml,json --ignore src/client --exec 'node --env-file-if-exists=.env --use-strict ./src/index.js'",
-    "server:watch": "nodemon --env-file-if-exists=.env --watch src --watch .public --ext js,njk,yaml,json --ignore src/client --exec 'node --env-file-if-exists=.env --use-strict ./src/index.js'",
+    "server:debug": "mkdir -p .public && node --inspect-brk=0.0.0.0 --env-file-if-exists=.env --use-strict --watch-preserve-output --watch-path=src/config --watch-path=src/constants --watch-path=src/health-probe --watch-path=src/infra --watch-path=src/pages --watch-path=src/server --watch-path=src/services --watch-path=src/index.js --watch-path=.public ./src/index.js",
+    "server:watch": "mkdir -p .public && node --env-file-if-exists=.env --use-strict --watch-preserve-output --watch-path=src/config --watch-path=src/constants --watch-path=src/health-probe --watch-path=src/infra --watch-path=src/pages --watch-path=src/server --watch-path=src/services --watch-path=src/index.js --watch-path=.public ./src/index.js",
     "lint": "run-s lint:js lint:scss",
     "lint:js": "eslint .",
     "lint:js:fix": "eslint . --fix",
@@ -97,7 +97,6 @@
     "husky": "9.1.7",
     "neostandard": "0.14.1",
     "nock": "15.0.1",
-    "nodemon": "3.1.14",
     "npm-run-all2": "9.0.3",
     "postcss-load-config": "6.0.1",
     "postcss-loader": "8.2.1",
@@ -114,6 +113,12 @@
   },
   "overrides": {
     "braces": "3.0.3",
-    "fast-uri": "3.1.8"
+    "fast-uri": "3.1.8",
+    "blankie": {
+      "@hapi/joi": "npm:joi@18.2.9"
+    },
+    "nunjucks": {
+      "chokidar": "5.0.0"
+    }
   }
 }
