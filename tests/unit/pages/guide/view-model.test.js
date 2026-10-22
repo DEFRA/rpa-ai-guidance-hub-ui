@@ -162,5 +162,4 @@ describe('buildMetadataRows', () => {
     ])
     expect(buildMetadataRows(undefined)).toEqual([])
   })
-
 })
