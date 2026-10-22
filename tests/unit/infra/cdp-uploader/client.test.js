@@ -118,7 +118,7 @@ describe('CdpUploaderClient', () => {
 
       nock(TEST_BASE_URL).get('/initiate').replyWithError('network down')
 
-      await expect(client.request('/initiate')).rejects.toThrow('network down')
+      await expect(client.request('/initiate')).rejects.toMatchObject({ cause: { message: 'network down' } })
     })
   })
 })
