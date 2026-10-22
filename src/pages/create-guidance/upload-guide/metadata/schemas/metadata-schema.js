@@ -14,13 +14,13 @@ const SCHEME_REQUIRED_MESSAGE = 'Select at least one scheme this guidance relate
  * this schema just trusts whatever valid values it's given, same as any
  * other scheme.
  *
- * @param {Array<{value: string}>} schemeOptions - Valid scheme reference options
+ * @param {Array<{label: string}>} schemeOptions - Valid scheme options
  * @returns {Joi.ObjectSchema}
  */
 function buildMetadataSchema (schemeOptions) {
-  const schemeValues = schemeOptions.map((option) => option.value)
+  const schemeLabels = schemeOptions.map((option) => option.label)
 
-  if (schemeValues.length === 0) {
+  if (schemeLabels.length === 0) {
     throw new Error('No valid scheme options provided')
   }
 
@@ -35,7 +35,7 @@ function buildMetadataSchema (schemeOptions) {
         'string.max': 'Guidance title must be 200 characters or fewer'
       }),
     schemes: Joi.array()
-      .items(Joi.string().valid(...schemeValues))
+      .items(Joi.string().valid(...schemeLabels))
       .single()
       .min(1)
       .required()

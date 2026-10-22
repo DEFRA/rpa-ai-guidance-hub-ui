@@ -37,8 +37,7 @@ class CheckAnswersViewModel {
   }
 
   /**
-   * Build the summary rows from session metadata and the reference option
-   * lists needed to label the checkbox answers
+   * Build the summary rows from session metadata and the staged document
    */
   static fromSession (sessionData) {
     return new CheckAnswersViewModel(buildGuideSummaryCards(sessionData))

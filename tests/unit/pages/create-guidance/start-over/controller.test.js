@@ -21,9 +21,9 @@ function requestWith (sessionData, query = {}) {
 }
 
 function mockReferenceData () {
-  referenceDataService.getSchemes.mockResolvedValue([{ value: 'sfi', label: 'SFI' }])
-  referenceDataService.getSystems.mockResolvedValue([{ value: 'crm', label: 'CRM' }])
-  referenceDataService.getAudiences.mockResolvedValue([{ value: 'processor', label: 'Processor' }])
+  referenceDataService.getSchemes.mockResolvedValue([{ label: 'Sustainable Farming Incentive (SFI)', shortLabel: 'Sustainable Farming Incentive (SFI)' }])
+  referenceDataService.getSystems.mockResolvedValue([{ label: 'CRM', shortLabel: 'CRM' }])
+  referenceDataService.getAudiences.mockResolvedValue([{ label: 'Processor', shortLabel: 'Processor' }])
 }
 
 describe('start-over controller', () => {
@@ -71,7 +71,7 @@ describe('start-over controller', () => {
           uploadId: 'u-1',
           completedStepIds: ['scanning', 'parse'],
           fileId: 'file-1',
-          metadata: { guideTitle: 'Test', schemes: ['sfi'], owner: 'owner@example.com' }
+          metadata: { guideTitle: 'Test', schemes: ['Sustainable Farming Incentive'], owner: 'owner@example.com' }
         }]
       })
 

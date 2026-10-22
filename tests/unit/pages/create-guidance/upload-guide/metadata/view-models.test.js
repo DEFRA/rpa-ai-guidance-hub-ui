@@ -2,15 +2,12 @@ import { GuideDetailsViewModel } from '../../../../../../src/pages/create-guidan
 
 describe('#GuideDetailsViewModel', () => {
   test('fromSession() populates values from session metadata', () => {
-    const schemeOptions = [
-      { value: 'sfi', text: 'Sustainable Farming Incentive' },
-      { value: 'none', text: 'Not scheme-specific' }
-    ]
+    const schemeOptions = [{ label: 'Sustainable Farming Incentive' }, { label: 'Not scheme-specific' }]
 
     const viewModel = GuideDetailsViewModel.fromSession({
       values: {
         guideTitle: 'Saved Title',
-        schemes: 'sfi',
+        schemes: 'Sustainable Farming Incentive',
         versionNumber: '1.2',
         lastModifiedDate: '10 May 2026'
       },
@@ -18,12 +15,12 @@ describe('#GuideDetailsViewModel', () => {
     })
 
     expect(viewModel.values.guideTitle).toBe('Saved Title')
-    expect(viewModel.values.schemes).toBe('sfi')
+    expect(viewModel.values.schemes).toBe('Sustainable Farming Incentive')
     expect(viewModel.versionNumber).toBe('1.2')
     expect(viewModel.lastModifiedDate).toBe('10 May 2026')
     expect(viewModel.schemeOptions).toEqual([
-      { value: 'sfi', text: 'Sustainable Farming Incentive' },
-      { value: 'none', text: 'Not scheme-specific', divider: 'or' }
+      { value: 'Sustainable Farming Incentive', text: 'Sustainable Farming Incentive' },
+      { value: 'Not scheme-specific', text: 'Not scheme-specific', divider: 'or' }
     ])
     expect(viewModel.errors).toEqual({})
     expect(viewModel.errorList).toEqual([])

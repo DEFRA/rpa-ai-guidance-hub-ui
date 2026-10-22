@@ -1,27 +1,21 @@
 import { CheckAnswersViewModel } from '../../../../../../../src/pages/create-guidance/upload-guide/metadata/check-answers/view-models.js'
 
 describe('CheckAnswersViewModel', () => {
-  test('fromSession() builds two summary cards with labelled answers', () => {
+  test('fromSession() builds two summary cards from the saved answers', () => {
     const viewModel = CheckAnswersViewModel.fromSession({
       metadata: {
         guideTitle: 'A title',
-        schemes: ['sfi', 'none'],
+        schemes: ['Sustainable Farming Incentive (SFI)', 'Not scheme-specific'],
         owner: 'owner@example.com',
         goal: 'A purpose',
         requirements: 'Training',
-        systems: ['crm', 'legacy'],
-        audience: ['processor']
+        systems: ['CRM', 'legacy'],
+        audience: ['Processor']
       },
       stagedDocument: {
         version: '1.2',
         lastModified: '2026-06-29T10:00:00.000Z'
-      },
-      schemeOptions: [
-        { value: 'sfi', label: 'Sustainable Farming Incentive (SFI)' },
-        { value: 'none', label: 'Not scheme-specific' }
-      ],
-      systemOptions: [{ value: 'crm', label: 'CRM' }],
-      audienceOptions: [{ value: 'processor', label: 'Processor' }]
+      }
     })
 
     expect(viewModel.guideDetailsCard).toEqual({

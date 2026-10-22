@@ -1,14 +1,11 @@
 import { buildMetadataSchema } from '../../../../../../src/pages/create-guidance/upload-guide/metadata/schemas/metadata-schema.js'
 
-const schemeOptions = [
-  { value: 'sfi', text: 'Sustainable Farming Incentive' },
-  { value: 'none', text: 'Not scheme-specific' }
-]
+const schemeOptions = [{ label: 'Sustainable Farming Incentive' }, { label: 'Not scheme-specific' }]
 
 function validPayload (overrides = {}) {
   return {
     guideTitle: 'Processing farmer claims using RPA processors and legacy systems',
-    schemes: ['sfi'],
+    schemes: ['Sustainable Farming Incentive'],
     ...overrides
   }
 }
@@ -22,12 +19,12 @@ describe('#buildMetadataSchema', () => {
   })
 
   test('accepts a single scheme value that is not wrapped in an array', () => {
-    const result = metadataSchema.validate(validPayload({ schemes: 'sfi' }))
+    const result = metadataSchema.validate(validPayload({ schemes: 'Sustainable Farming Incentive' }))
     expect(result.error).toBeUndefined()
   })
 
-  test('accepts scheme "none"', () => {
-    const result = metadataSchema.validate(validPayload({ schemes: ['none'] }))
+  test('accepts scheme "Not scheme-specific"', () => {
+    const result = metadataSchema.validate(validPayload({ schemes: ['Not scheme-specific'] }))
     expect(result.error).toBeUndefined()
   })
 
@@ -58,9 +55,9 @@ describe('#buildMetadataSchema', () => {
   })
 
   test('builds a schema scoped to the options it is given', () => {
-    const otherSchema = buildMetadataSchema([{ value: 'other-scheme' }])
+    const otherSchema = buildMetadataSchema([{ label: 'Other scheme' }])
 
-    const result = otherSchema.validate(validPayload({ schemes: ['sfi'] }))
+    const result = otherSchema.validate(validPayload({ schemes: ['Sustainable Farming Incentive'] }))
 
     expect(result.error).toBeDefined()
     expect(result.error.details[0].message).toBe('Select at least one scheme this guidance relates to')

@@ -42,7 +42,7 @@ const FIELD_PAGE_MAP = {
  *
  * @private
  * @param {Object} metadata
- * @returns {Promise<{error: Object|null, schemeOptions: Array, systemOptions: Array, audienceOptions: Array}>}
+ * @returns {Promise<{error: Object|null}>}
  */
 async function _validateMetadata (metadata) {
   const [schemeOptions, systemOptions, audienceOptions] = await Promise.all([
@@ -54,7 +54,7 @@ async function _validateMetadata (metadata) {
   const schema = buildCheckAnswersSchema({ schemeOptions, systemOptions, audienceOptions })
   const { error } = schema.validate(metadata, { abortEarly: false })
 
-  return { error, schemeOptions, systemOptions, audienceOptions }
+  return { error }
 }
 
 /**
@@ -69,20 +69,19 @@ function _getIncompleteScreenUrl (error) {
 }
 
 /**
- * What the summary cards are built from: the answers, the staged
- * document's parse details, and the option lists that label them.
+ * What the summary cards are built from: the answers and the staged
+ * document's parse details.
  *
  * @private
  * @param {import('../../../session.js').GuideUpload} upload
- * @param {{schemeOptions: Array, systemOptions: Array, audienceOptions: Array}} options
  * @returns {Promise<Object>}
  */
-async function _summaryData (upload, options) {
+async function _summaryData (upload) {
   const stagedDocument = upload.fileId
     ? await getStagedDocumentById(upload.fileId)
     : null
 
-  return { metadata: upload.metadata, stagedDocument, ...options }
+  return { metadata: upload.metadata, stagedDocument }
 }
 
 async function getCheckAnswers (request, h) {
@@ -92,14 +91,14 @@ async function getCheckAnswers (request, h) {
     return h.redirect(UPLOAD_GUIDE_URL)
   }
 
-  const { error, ...options } = await _validateMetadata(upload.metadata)
+  const { error } = await _validateMetadata(upload.metadata)
 
   if (error) {
     return h.redirect(_getIncompleteScreenUrl(error))
   }
 
   const viewModel = CheckAnswersViewModel.fromSession(
-    await _summaryData(upload, options)
+    await _summaryData(upload)
   )
 
   return h
@@ -119,11 +118,11 @@ async function convertDocument (request, h) {
     return h.redirect(UPLOAD_GUIDE_URL)
   }
 
-  const { error, ...options } = await _validateMetadata(upload.metadata)
+  const { error } = await _validateMetadata(upload.metadata)
 
   if (error) {
     const viewModel = CheckAnswersViewModel.fromValidationError(
-      await _summaryData(upload, options),
+      await _summaryData(upload),
       error
     )
 
@@ -141,7 +140,7 @@ async function convertDocument (request, h) {
 
   if (code !== GUIDE_RESULTS.GUIDE_CREATED) {
     const viewModel = CheckAnswersViewModel.fromSubmissionError(
-      CheckAnswersViewModel.fromSession(await _summaryData(upload, options)),
+      CheckAnswersViewModel.fromSession(await _summaryData(upload)),
       REFUSAL_MESSAGES[code]
     )
 

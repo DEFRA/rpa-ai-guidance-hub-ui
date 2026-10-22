@@ -1,7 +1,9 @@
 {% extends "govuk/template.njk" %}
 {% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
 
-{% set mainClasses = "app-main-wrapper" %}
+{% if mainClasses is not defined %}
+  {% set mainClasses = "app-main-wrapper" %}
+{% endif %}
 
 {% if isAuthenticated %}
   {% set serviceNameLink = "/hub" %}
@@ -18,7 +20,7 @@
 {% endblock %}
 
 {% block header %}
-  <header class="defra-header" role="banner">
+  <header class="defra-header{% if headerFullWidth %} defra-header--full-width{% endif %}" role="banner">
     <div class="defra-header__inner">
     <div class="defra-header__brand-group">
       <img
@@ -46,6 +48,9 @@
     </div>
     </div>
   </header>
+  {% if headerFullWidth %}
+  <div class="defra-header__brand-border"></div>
+  {% endif %}
   {% if showNav and isAuthenticated %}
   <nav class="defra-service-navigation" aria-label="Service navigation">
     <div class="defra-service-navigation__inner">

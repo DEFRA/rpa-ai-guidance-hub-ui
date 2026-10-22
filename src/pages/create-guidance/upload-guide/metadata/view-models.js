@@ -1,6 +1,6 @@
-import { NONE_SCHEME_VALUE } from '../../../../services/reference-data.js'
+import { NOT_SCHEME_SPECIFIC } from '../../../../services/reference-data.js'
 import { mapValidationError } from '../../form-errors.js'
-import { formatStagedDocumentDate } from './view-helpers.js'
+import { formatStagedDocumentDate, toCheckboxOptions } from './view-helpers.js'
 
 const BACK_URL = '/create-guidance/upload-guide'
 const NOT_AVAILABLE = 'Not available'
@@ -26,10 +26,9 @@ class GuideDetailsViewModel {
    * @param {string|null} [data.notification]
    */
   constructor (data = {}) {
-    const schemeOptions = (data.schemeOptions || []).map((option) => ({
-      value: option.value,
-      text: option.text || option.label,
-      ...(option.value === NONE_SCHEME_VALUE ? { divider: 'or' } : {})
+    const schemeOptions = toCheckboxOptions(data.schemeOptions).map((option) => ({
+      ...option,
+      ...(option.value === NOT_SCHEME_SPECIFIC ? { divider: 'or' } : {})
     }))
 
     this.values = data.values || {}
