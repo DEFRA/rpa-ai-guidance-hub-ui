@@ -1,7 +1,12 @@
+import { globalIgnores } from 'eslint/config'
 import neostandard from 'neostandard'
 
-export default neostandard({
-  env: ['node', 'vitest'],
-  ignores: [...neostandard.resolveIgnoresFromGitignore()],
-  noJsx: true
-})
+// Since neostandard 0.14, its `ignores` option only skips its own rules, so the
+// gitignored paths (such as the built .public assets) are ignored globally here.
+export default [
+  globalIgnores(neostandard.resolveIgnoresFromGitignore()),
+  ...neostandard({
+    env: ['node', 'vitest'],
+    noJsx: true
+  })
+]
