@@ -63,7 +63,7 @@ describe('#guideController', () => {
 
   afterAll(async () => {
     nock.enableNetConnect()
-    await server.stop({ timeout: 0 })
+    await server?.stop({ timeout: 0 })
   })
 
   function get (url) {
