@@ -51,8 +51,8 @@ describe('upload-guide metadata controller', () => {
       }
       session.getGuideUpload.mockReturnValue(uploadMock)
       referenceDataService.getSchemes.mockResolvedValue([
-        { value: 'sfi', label: 'Sustainable Farming Incentive' },
-        { value: 'none', label: 'Not scheme-specific' }
+        { label: 'Sustainable Farming Incentive', shortLabel: 'Sustainable Farming Incentive' },
+        { label: 'Not scheme-specific', shortLabel: 'Not scheme-specific' }
       ])
 
       request = { yar: { get: vi.fn(), flash: vi.fn(() => []) } }
@@ -62,8 +62,8 @@ describe('upload-guide metadata controller', () => {
       expect(h.view).toHaveBeenCalledWith(METADATA_VIEW, expect.objectContaining({
         values: expect.objectContaining({ guideTitle: 'Existing Title' }),
         schemeOptions: [
-          { value: 'sfi', text: 'Sustainable Farming Incentive' },
-          { value: 'none', text: 'Not scheme-specific', divider: 'or' }
+          { value: 'Sustainable Farming Incentive', text: 'Sustainable Farming Incentive' },
+          { value: 'Not scheme-specific', text: 'Not scheme-specific', divider: 'or' }
         ],
         notification: null
       }))
@@ -220,7 +220,7 @@ describe('upload-guide metadata controller', () => {
   describe('metadataFailAction', () => {
     test('returns 400 with validation errors on the view', async () => {
       referenceDataService.getSchemes.mockResolvedValue([
-        { value: 'none', label: 'Not scheme-specific' }
+        { label: 'Not scheme-specific', shortLabel: 'Not scheme-specific' }
       ])
 
       request = {
@@ -236,18 +236,18 @@ describe('upload-guide metadata controller', () => {
       expect(h.view).toHaveBeenCalledWith(METADATA_VIEW, expect.objectContaining({
         errors: { guideTitle: 'Enter the guidance title' },
         schemeOptions: [
-          { value: 'none', text: 'Not scheme-specific', divider: 'or' }
+          { value: 'Not scheme-specific', text: 'Not scheme-specific', divider: 'or' }
         ]
       }))
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
       expect(takeover).toHaveBeenCalled()
     })
 
-    test('redisplays a normalized scheme selection when "none" is submitted alongside another scheme', async () => {
+    test('redisplays a normalized scheme selection when "Not scheme-specific" is submitted alongside another scheme', async () => {
       referenceDataService.getSchemes.mockResolvedValue([])
 
       request = {
-        payload: { guideTitle: '', schemes: ['none', 'sfi'] },
+        payload: { guideTitle: '', schemes: ['Not scheme-specific', 'Sustainable Farming Incentive'] },
         yar: { get: vi.fn() }
       }
       const err = {
@@ -257,7 +257,7 @@ describe('upload-guide metadata controller', () => {
       await metadataFailAction(request, h, err)
 
       expect(h.view).toHaveBeenCalledWith(METADATA_VIEW, expect.objectContaining({
-        values: expect.objectContaining({ schemes: ['sfi'] })
+        values: expect.objectContaining({ schemes: ['Sustainable Farming Incentive'] })
       }))
     })
 
@@ -365,7 +365,7 @@ describe('upload-guide metadata controller', () => {
       expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/metadata/purpose')
     })
 
-    test('normalizes "none" out when submitted alongside another scheme', async () => {
+    test('normalizes "Not scheme-specific" out when submitted alongside another scheme', async () => {
       const uploadMock = {
         hasUpload: vi.fn(() => true),
         activeUploadId: 'test-upload-id'
@@ -376,7 +376,7 @@ describe('upload-guide metadata controller', () => {
       request = {
         payload: {
           guideTitle: 'Updated Guide Title',
-          schemes: ['none', 'sfi']
+          schemes: ['Not scheme-specific', 'Sustainable Farming Incentive']
         },
         yar: { get: vi.fn(), set: vi.fn() }
       }
@@ -385,7 +385,7 @@ describe('upload-guide metadata controller', () => {
 
       expect(session.setGuideUploadMetadata).toHaveBeenCalledWith(request, {
         guideTitle: 'Updated Guide Title',
-        schemes: ['sfi']
+        schemes: ['Sustainable Farming Incentive']
       })
     })
 
@@ -401,7 +401,7 @@ describe('upload-guide metadata controller', () => {
         query: { from: 'check' },
         payload: {
           guideTitle: 'Updated Guide Title',
-          schemes: ['sfi']
+          schemes: ['Sustainable Farming Incentive']
         },
         yar: { get: vi.fn(), set: vi.fn() }
       }

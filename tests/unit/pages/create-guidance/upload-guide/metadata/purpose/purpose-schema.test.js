@@ -1,15 +1,15 @@
 import { buildPurposeSchema } from '../../../../../../../src/pages/create-guidance/upload-guide/metadata/purpose/schemas/purpose-schema.js'
 
-const systemOptions = [{ value: 'crm' }, { value: 'siti-agri' }]
-const audienceOptions = [{ value: 'processor' }, { value: 'team-leader' }]
+const systemOptions = [{ label: 'CRM' }, { label: 'Siti Agri' }]
+const audienceOptions = [{ label: 'Processor' }, { label: 'Team leader' }]
 
 function validPayload (overrides = {}) {
   return {
     owner: 'owner@example.com',
     goal: 'Explains how to process a claim',
     requirements: 'CRM access',
-    systems: ['crm'],
-    audience: ['processor'],
+    systems: ['CRM'],
+    audience: ['Processor'],
     ...overrides
   }
 }
@@ -31,11 +31,11 @@ describe('#buildPurposeSchema', () => {
   })
 
   test('accepts a single checked box submitted as a bare string', () => {
-    const { error, value } = validate(validPayload({ systems: 'crm', audience: 'team-leader' }))
+    const { error, value } = validate(validPayload({ systems: 'CRM', audience: 'Team leader' }))
 
     expect(error).toBeUndefined()
-    expect(value.systems).toEqual(['crm'])
-    expect(value.audience).toEqual(['team-leader'])
+    expect(value.systems).toEqual(['CRM'])
+    expect(value.audience).toEqual(['Team leader'])
   })
 
   test('trims text fields and normalizes CRLF line breaks in the purpose', () => {
@@ -89,7 +89,7 @@ describe('#buildPurposeSchema', () => {
   })
 
   test('rejects system and audience values that are not in the reference options', () => {
-    expect(messages(validPayload({ systems: ['crm', 'unknown'], audience: 'nobody' }))).toEqual([
+    expect(messages(validPayload({ systems: ['CRM', 'unknown'], audience: 'nobody' }))).toEqual([
       'Select the systems this guidance uses',
       'Select who this guidance is for'
     ])

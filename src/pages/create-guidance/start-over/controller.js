@@ -1,7 +1,6 @@
 import { statusCodes } from '../../../constants/status-codes.js'
 import { getGuideUpload, clearGuideUpload } from '../session.js'
 import { STEP_IDS } from '../upload-guide/steps.js'
-import * as referenceData from '../../../services/reference-data.js'
 import { getStagedDocumentById } from '../../../services/staged-documents.js'
 import { buildGuideSummaryCards } from '../guide-summary.js'
 import { StartOverViewModel } from './view-models.js'
@@ -52,19 +51,13 @@ function _cancelUrl (request) {
  * @returns {Promise<{guideDetailsCard: Object, ownerPurposeCard: Object}>}
  */
 async function _buildSummaryCards (upload) {
-  const [stagedDocument, schemeOptions, systemOptions, audienceOptions] = await Promise.all([
-    upload.fileId ? getStagedDocumentById(upload.fileId) : null,
-    referenceData.getSchemes(),
-    referenceData.getSystems(),
-    referenceData.getAudiences()
-  ])
+  const stagedDocument = upload.fileId
+    ? await getStagedDocumentById(upload.fileId)
+    : null
 
   return buildGuideSummaryCards({
     metadata: upload.metadata ?? {},
-    stagedDocument,
-    schemeOptions,
-    systemOptions,
-    audienceOptions
+    stagedDocument
   })
 }
 

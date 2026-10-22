@@ -3,7 +3,7 @@ import { guidanceApiClient } from './client.js'
 /**
  * Fetch scheme reference options ("Which scheme does this guidance relate to?")
  *
- * @returns {Promise<{ok: boolean, status: number, data: Array<{value: string, label: string}>}>}
+ * @returns {Promise<{ok: boolean, status: number, data: Array<{label: string, shortLabel?: string}>}>}
  * @throws {GuidanceApiError} - When response is not ok
  */
 async function getSchemes () {
@@ -13,7 +13,7 @@ async function getSchemes () {
 /**
  * Fetch audience reference options ("Who is this for?")
  *
- * @returns {Promise<{ok: boolean, status: number, data: Array<{value: string, label: string}>}>}
+ * @returns {Promise<{ok: boolean, status: number, data: Array<{label: string, shortLabel?: string}>}>}
  * @throws {GuidanceApiError} - When response is not ok
  */
 async function getAudiences () {
@@ -23,7 +23,7 @@ async function getAudiences () {
 /**
  * Fetch system reference options ("What systems does this guidance relate to?")
  *
- * @returns {Promise<{ok: boolean, status: number, data: Array<{value: string, label: string}>}>}
+ * @returns {Promise<{ok: boolean, status: number, data: Array<{label: string, shortLabel?: string}>}>}
  * @throws {GuidanceApiError} - When response is not ok
  */
 async function getSystems () {
@@ -33,7 +33,7 @@ async function getSystems () {
 /**
  * Fetch guidance type reference options
  *
- * @returns {Promise<{ok: boolean, status: number, data: Array<{value: string, label: string}>}>}
+ * @returns {Promise<{ok: boolean, status: number, data: Array<{label: string, shortLabel?: string}>}>}
  * @throws {GuidanceApiError} - When response is not ok
  */
 async function getGuidanceTypes () {

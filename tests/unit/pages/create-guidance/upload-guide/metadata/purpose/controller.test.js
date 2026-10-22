@@ -17,8 +17,8 @@ vi.mock('../../../../../../../src/services/reference-data.js', async (importOrig
 vi.mock('../../../../../../../src/pages/create-guidance/session.js')
 
 const PURPOSE_VIEW = 'create-guidance/upload-guide/metadata/purpose/page.njk'
-const systemOptions = [{ value: 'crm', label: 'CRM' }]
-const audienceOptions = [{ value: 'processor', label: 'Processor' }]
+const systemOptions = [{ label: 'CRM', shortLabel: 'CRM' }]
+const audienceOptions = [{ label: 'Processor', shortLabel: 'Processor' }]
 
 function mockReferenceData () {
   referenceDataService.getSystems.mockResolvedValue(systemOptions)
@@ -70,15 +70,15 @@ describe('upload-guide metadata purpose controller', () => {
     })
 
     test('renders the form with saved values and both option lists', async () => {
-      mockUpload({ guideTitle: 'A title', owner: 'owner@example.com', systems: ['crm'] })
+      mockUpload({ guideTitle: 'A title', owner: 'owner@example.com', systems: ['CRM'] })
       mockReferenceData()
 
       await getPurposeForm(request, h)
 
       expect(h.view).toHaveBeenCalledWith(PURPOSE_VIEW, expect.objectContaining({
-        values: expect.objectContaining({ owner: 'owner@example.com', systems: ['crm'], audience: [] }),
-        systemOptions: [{ value: 'crm', text: 'CRM' }],
-        audienceOptions: [{ value: 'processor', text: 'Processor' }]
+        values: expect.objectContaining({ owner: 'owner@example.com', systems: ['CRM'], audience: [] }),
+        systemOptions: [{ value: 'CRM', text: 'CRM' }],
+        audienceOptions: [{ value: 'Processor', text: 'Processor' }]
       }))
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
     })
@@ -103,7 +103,7 @@ describe('upload-guide metadata purpose controller', () => {
   describe('purposeFailAction', () => {
     test('re-renders with 400, the validation errors and normalized selections', async () => {
       mockReferenceData()
-      request.payload = { owner: '', systems: 'crm' }
+      request.payload = { owner: '', systems: 'CRM' }
       const err = { details: [{ path: ['owner'], message: 'Enter an email address' }] }
 
       await purposeFailAction(request, h, err)
@@ -111,8 +111,8 @@ describe('upload-guide metadata purpose controller', () => {
       expect(h.view).toHaveBeenCalledWith(PURPOSE_VIEW, expect.objectContaining({
         errors: { owner: 'Enter an email address' },
         errorList: [{ text: 'Enter an email address', href: '#owner' }],
-        values: { owner: '', systems: ['crm'], audience: [] },
-        systemOptions: [{ value: 'crm', text: 'CRM' }]
+        values: { owner: '', systems: ['CRM'], audience: [] },
+        systemOptions: [{ value: 'CRM', text: 'CRM' }]
       }))
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
       expect(takeover).toHaveBeenCalled()
@@ -121,7 +121,7 @@ describe('upload-guide metadata purpose controller', () => {
     test('sets backUrl and formAction with from=check when validation fails from check-answers', async () => {
       mockReferenceData()
       request.query = { from: 'check' }
-      request.payload = { owner: '', systems: 'crm' }
+      request.payload = { owner: '', systems: 'CRM' }
       const err = { details: [{ path: ['owner'], message: 'Enter an email address' }] }
 
       await purposeFailAction(request, h, err)
@@ -158,8 +158,8 @@ describe('upload-guide metadata purpose controller', () => {
         owner: 'owner@example.com',
         goal: 'A purpose',
         requirements: 'Training',
-        systems: 'crm',
-        audience: ['processor', 'team-leader'],
+        systems: 'CRM',
+        audience: ['Processor', 'Team-leader'],
         extra: 'ignored'
       }
 
@@ -169,8 +169,8 @@ describe('upload-guide metadata purpose controller', () => {
         owner: 'owner@example.com',
         goal: 'A purpose',
         requirements: 'Training',
-        systems: ['crm'],
-        audience: ['processor', 'team-leader']
+        systems: ['CRM'],
+        audience: ['Processor', 'Team-leader']
       })
       expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/metadata/check-answers')
     })
@@ -183,8 +183,8 @@ describe('upload-guide metadata purpose controller', () => {
         owner: 'owner@example.com',
         goal: 'A purpose',
         requirements: 'Training',
-        systems: ['crm'],
-        audience: ['processor']
+        systems: ['CRM'],
+        audience: ['Processor']
       }
 
       await savePurpose(request, h)

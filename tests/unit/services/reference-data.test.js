@@ -8,83 +8,83 @@ describe('reference-data service', () => {
     vi.resetAllMocks()
   })
 
-  test('getSchemes appends the "None" opt-out option to the infra response data', async () => {
+  test('getSchemes appends the "Not scheme-specific" opt-out to the infra response labels', async () => {
     referenceDataApi.getSchemes.mockResolvedValue({
       ok: true,
       status: 200,
       data: [
-        { value: 'sfi', label: 'Sustainable Farming Incentive (SFI)' },
-        { value: 'countryside-stewardship', label: 'Countryside Stewardship (CS)' }
+        { label: 'Sustainable Farming Incentive (SFI)', shortLabel: 'SFI' },
+        { label: 'Countryside Stewardship (CS)' }
       ]
     })
 
     const result = await referenceData.getSchemes()
 
     expect(result).toEqual([
-      { value: 'sfi', label: 'Sustainable Farming Incentive (SFI)' },
-      { value: 'countryside-stewardship', label: 'Countryside Stewardship (CS)' },
-      { value: 'none', label: 'Not scheme-specific' }
+      { label: 'Sustainable Farming Incentive (SFI)', shortLabel: 'SFI' },
+      { label: 'Countryside Stewardship (CS)', shortLabel: 'Countryside Stewardship (CS)' },
+      { label: 'Not scheme-specific', shortLabel: 'Not scheme-specific' }
     ])
   })
 
-  test('getAudiences returns the infra response data unchanged', async () => {
+  test('getAudiences returns the infra response options, defaulting shortLabel to the label', async () => {
     referenceDataApi.getAudiences.mockResolvedValue({
       ok: true,
       status: 200,
-      data: [{ value: 'caseworker', label: 'Caseworker' }]
+      data: [{ label: 'Caseworker' }]
     })
 
-    expect(await referenceData.getAudiences()).toEqual([{ value: 'caseworker', label: 'Caseworker' }])
+    expect(await referenceData.getAudiences()).toEqual([{ label: 'Caseworker', shortLabel: 'Caseworker' }])
   })
 
-  test('getSystems returns the infra response data unchanged', async () => {
+  test('getSystems returns the infra response options, defaulting shortLabel to the label', async () => {
     referenceDataApi.getSystems.mockResolvedValue({
       ok: true,
       status: 200,
-      data: [{ value: 'siti-agri', label: 'Siti Agri' }]
+      data: [{ label: 'Siti Agri' }]
     })
 
-    expect(await referenceData.getSystems()).toEqual([{ value: 'siti-agri', label: 'Siti Agri' }])
+    expect(await referenceData.getSystems()).toEqual([{ label: 'Siti Agri', shortLabel: 'Siti Agri' }])
   })
 
-  test('getGuidanceTypes returns the infra response data unchanged', async () => {
+  test('getGuidanceTypes returns the infra response options, defaulting shortLabel to the label', async () => {
     referenceDataApi.getGuidanceTypes.mockResolvedValue({
       ok: true,
       status: 200,
-      data: [{ value: 'process-guide', label: 'Process guide' }]
+      data: [{ label: 'Process guide' }]
     })
 
-    expect(await referenceData.getGuidanceTypes()).toEqual([{ value: 'process-guide', label: 'Process guide' }])
+    expect(await referenceData.getGuidanceTypes()).toEqual([{ label: 'Process guide', shortLabel: 'Process guide' }])
   })
 })
 
 describe('#normalizeSchemes', () => {
-  test('returns ["none"] when only "none" is selected (string form)', () => {
-    expect(referenceData.normalizeSchemes('none')).toEqual(['none'])
+  test('returns ["Not scheme-specific"] when only that option is selected (string form)', () => {
+    expect(referenceData.normalizeSchemes('Not scheme-specific')).toEqual(['Not scheme-specific'])
   })
 
-  test('returns ["none"] when only "none" is selected (array form)', () => {
-    expect(referenceData.normalizeSchemes(['none'])).toEqual(['none'])
+  test('returns ["Not scheme-specific"] when only that option is selected (array form)', () => {
+    expect(referenceData.normalizeSchemes(['Not scheme-specific'])).toEqual(['Not scheme-specific'])
   })
 
-  test('drops "none" when a non-none option is also selected (none then other)', () => {
-    expect(referenceData.normalizeSchemes(['none', 'sfi'])).toEqual(['sfi'])
+  test('drops "Not scheme-specific" when a specific option is also selected (opt-out then other)', () => {
+    expect(referenceData.normalizeSchemes(['Not scheme-specific', 'Sustainable Farming Incentive (SFI)'])).toEqual(['Sustainable Farming Incentive (SFI)'])
   })
 
-  test('drops "none" when a non-none option is also selected (other then none)', () => {
-    expect(referenceData.normalizeSchemes(['sfi', 'none'])).toEqual(['sfi'])
+  test('drops "Not scheme-specific" when a specific option is also selected (other then opt-out)', () => {
+    expect(referenceData.normalizeSchemes(['Sustainable Farming Incentive (SFI)', 'Not scheme-specific'])).toEqual(['Sustainable Farming Incentive (SFI)'])
   })
 
-  test('drops "none" when multiple non-none options are selected alongside it', () => {
-    expect(referenceData.normalizeSchemes(['none', 'sfi', 'bps'])).toEqual(['sfi', 'bps'])
+  test('drops "Not scheme-specific" when multiple specific options are selected alongside it', () => {
+    expect(referenceData.normalizeSchemes(['Not scheme-specific', 'Sustainable Farming Incentive (SFI)', 'Bps'])).toEqual(['Sustainable Farming Incentive (SFI)', 'Bps'])
   })
 
-  test('preserves multiple non-none options unchanged when "none" is absent', () => {
-    expect(referenceData.normalizeSchemes(['sfi', 'bps'])).toEqual(['sfi', 'bps'])
+  test('preserves multiple specific options unchanged when "Not scheme-specific" is absent', () => {
+    expect(referenceData.normalizeSchemes(['Sustainable Farming Incentive (SFI)', 'Bps'])).toEqual(['Sustainable Farming Incentive (SFI)', 'Bps'])
   })
 
-  test('normalizes a single non-none string value into an array unchanged', () => {
-    expect(referenceData.normalizeSchemes('sfi')).toEqual(['sfi'])
+  test('normalizes a single specific string value into an array unchanged', () => {
+    expect(referenceData.normalizeSchemes('Sustainable Farming Incentive (SFI)')).toEqual(['Sustainable Farming Incentive (SFI)'])
   })
 
   test('returns [] for undefined selection', () => {

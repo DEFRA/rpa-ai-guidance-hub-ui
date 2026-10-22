@@ -144,7 +144,7 @@ describe('#checkAnswersController Integration', () => {
       const postChangeResponse = await server.inject({
         method: 'POST',
         url: '/create-guidance/upload-guide/metadata?from=check',
-        payload: { guideTitle: 'Updated Guide Title', schemes: ['sfi'] },
+        payload: { guideTitle: 'Updated Guide Title', schemes: ['Sustainable Farming Incentive (SFI)'] },
         headers: { cookie }
       })
 
@@ -163,12 +163,12 @@ describe('#checkAnswersController Integration', () => {
           source: { uploadId: 'u-check', fileId: 'file-1' },
           metadata: {
             guideTitle: 'Complete Guide Title',
-            schemes: ['sfi'],
+            schemes: ['Sustainable Farming Incentive (SFI)'],
             owner: 'designer@example.com',
             goal: 'Clear guidance purpose',
             requirements: 'Standard training required',
-            systems: ['crm'],
-            audience: ['processor']
+            systems: ['CRM'],
+            audience: ['Processor']
           },
           createdBy: { id: 'dev-user-123', displayName: 'Dev User' }
         })
@@ -283,7 +283,7 @@ describe('#checkAnswersController Integration', () => {
       nock(GUIDANCE_API_BASE_URL)
         .get('/reference/schemes')
         .reply(statusCodes.HTTP_STATUS_OK, schemesResponse([
-          { value: 'other-scheme', label: 'Other scheme' }
+          { label: 'Other scheme' }
         ]))
 
       nock(GUIDANCE_API_BASE_URL)

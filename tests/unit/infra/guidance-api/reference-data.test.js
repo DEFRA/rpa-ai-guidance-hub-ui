@@ -14,13 +14,13 @@ describe('reference-data infra', () => {
     guidanceApiClient.request.mockResolvedValue({
       ok: true,
       status: 200,
-      data: [{ value: 'sfi', label: 'SFI' }]
+      data: ['SFI']
     })
 
     const result = await referenceData.getSchemes()
 
     expect(guidanceApiClient.request).toHaveBeenCalledWith('/reference/schemes')
-    expect(result).toEqual({ ok: true, status: 200, data: [{ value: 'sfi', label: 'SFI' }] })
+    expect(result).toEqual({ ok: true, status: 200, data: ['SFI'] })
   })
 
   test('getAudiences calls GET /reference/audiences', async () => {

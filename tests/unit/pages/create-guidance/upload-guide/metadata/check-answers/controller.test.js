@@ -18,12 +18,12 @@ const CHECK_ANSWERS_VIEW = 'create-guidance/upload-guide/metadata/check-answers/
 function validMetadata (overrides = {}) {
   return {
     guideTitle: 'A title',
-    schemes: ['sfi'],
+    schemes: ['Sustainable Farming Incentive'],
     owner: 'owner@example.com',
     goal: 'A purpose',
     requirements: 'Training',
-    systems: ['crm'],
-    audience: ['processor'],
+    systems: ['CRM'],
+    audience: ['Processor'],
     ...overrides
   }
 }
@@ -40,9 +40,9 @@ function mockUpload (metadata, fileId = 'file-1') {
 }
 
 function mockReferenceData () {
-  referenceDataService.getSchemes.mockResolvedValue([{ value: 'sfi', label: 'SFI' }])
-  referenceDataService.getSystems.mockResolvedValue([{ value: 'crm', label: 'CRM' }])
-  referenceDataService.getAudiences.mockResolvedValue([{ value: 'processor', label: 'Processor' }])
+  referenceDataService.getSchemes.mockResolvedValue([{ label: 'Sustainable Farming Incentive', shortLabel: 'Sustainable Farming Incentive' }])
+  referenceDataService.getSystems.mockResolvedValue([{ label: 'CRM', shortLabel: 'CRM' }])
+  referenceDataService.getAudiences.mockResolvedValue([{ label: 'Processor', shortLabel: 'Processor' }])
 }
 
 describe('upload-guide metadata check-answers controller', () => {
@@ -78,7 +78,7 @@ describe('upload-guide metadata check-answers controller', () => {
     })
 
     test('redirects to the purpose form if its answers are missing', async () => {
-      mockUpload({ guideTitle: 'A title', schemes: ['sfi'] })
+      mockUpload({ guideTitle: 'A title', schemes: ['Sustainable Farming Incentive'] })
       mockReferenceData()
 
       await getCheckAnswers(request, h)
@@ -131,7 +131,7 @@ describe('upload-guide metadata check-answers controller', () => {
     })
 
     test('re-renders check answers with an error summary when the purpose answers are missing', async () => {
-      mockUpload({ guideTitle: 'A title', schemes: ['sfi'] })
+      mockUpload({ guideTitle: 'A title', schemes: ['Sustainable Farming Incentive'] })
       mockReferenceData()
       stagedDocumentsService.getStagedDocumentById.mockResolvedValue(null)
 

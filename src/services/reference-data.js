@@ -1,26 +1,45 @@
 import * as referenceDataApi from '../infra/guidance-api/reference-data.js'
 
 /**
- * ReferenceOption - a reference data value/label pair
+ * ReferenceOption - a reference data option
+ *
+ * The label is the option's identity: it is what the session stores, the
+ * schemas validate against and the guidance API is sent. The short label is
+ * display-only, for places where the full label is too long; it falls back to
+ * the label when the API has none.
  *
  * @typedef {Object} ReferenceOption
- * @property {string} value
  * @property {string} label
+ * @property {string} shortLabel
  */
 
 /**
- * Value of the "Not scheme-specific" opt-out choice for the "which scheme
+ * Build a ReferenceOption from an API option, defaulting the short label.
+ *
+ * @param {{label: string, shortLabel?: string}} option
+ * @returns {ReferenceOption}
+ * @private
+ */
+function toReferenceOption ({ label, shortLabel }) {
+  return { label, shortLabel: shortLabel ?? label }
+}
+
+/**
+ * Label of the "Not scheme-specific" opt-out choice for the "which scheme
  * does this guidance relate to?" question. It's not a scheme the guidance
  * API itself knows about, but `getSchemes` always appends it below so every
  * caller - building the checkbox list, validating a submitted selection -
- * sees one consistent set of valid scheme values.
+ * sees one consistent set of valid schemes.
+ *
+ * Reference options are identified by label end to end: the API defines them,
+ * the session stores them and the guidance API is sent them. Shaping them for a
+ * form is a view concern (see `toCheckboxOptions` in view-helpers.js).
  */
-const NONE_SCHEME_VALUE = 'none'
-const NOT_SCHEME_SPECIFIC_OPTION = { value: NONE_SCHEME_VALUE, label: 'Not scheme-specific' }
+const NOT_SCHEME_SPECIFIC = 'Not scheme-specific'
 
 /**
  * Fetch available schemes from the reference data service, plus the
- * "Not scheme-specific" opt-out choice (see NONE_SCHEME_VALUE above), which
+ * "Not scheme-specific" opt-out choice (see NOT_SCHEME_SPECIFIC above), which
  * always belongs alongside them however this list is used.
  *
  * @returns {Promise<ReferenceOption[]>}
@@ -28,7 +47,7 @@ const NOT_SCHEME_SPECIFIC_OPTION = { value: NONE_SCHEME_VALUE, label: 'Not schem
 async function getSchemes () {
   const { data } = await referenceDataApi.getSchemes()
 
-  return [...data, NOT_SCHEME_SPECIFIC_OPTION]
+  return [...data.map(toReferenceOption), toReferenceOption({ label: NOT_SCHEME_SPECIFIC })]
 }
 
 /**
@@ -39,7 +58,7 @@ async function getSchemes () {
 async function getAudiences () {
   const { data } = await referenceDataApi.getAudiences()
 
-  return data
+  return data.map(toReferenceOption)
 }
 
 /**
@@ -50,7 +69,7 @@ async function getAudiences () {
 async function getSystems () {
   const { data } = await referenceDataApi.getSystems()
 
-  return data
+  return data.map(toReferenceOption)
 }
 
 /**
@@ -61,17 +80,17 @@ async function getSystems () {
 async function getGuidanceTypes () {
   const { data } = await referenceDataApi.getGuidanceTypes()
 
-  return data
+  return data.map(toReferenceOption)
 }
 
 /**
  * Normalize a submitted `schemes` field so "None" is mutually exclusive with
- * every other scheme: selecting "none" alone is a valid, self-contained
- * selection; selecting any other scheme alongside it drops "none".
+ * every other scheme: selecting "Not scheme-specific" alone is a valid, self-contained
+ * selection; selecting any other scheme alongside it drops it.
  *
  * Unlike the getters above, this isn't a fetch wrapper - it's the one
  * scheme-specific business rule callers need, kept here because it depends
- * on the same `NONE_SCHEME_VALUE` this module owns.
+ * on the same `NOT_SCHEME_SPECIFIC` this module owns.
  *
  * Submission shape is normalized first via `normalizeSelection`, so callers
  * (session persistence, redisplay view model) always receive an array back
@@ -82,13 +101,13 @@ async function getGuidanceTypes () {
  */
 function normalizeSchemes (rawSchemes) {
   const schemes = normalizeSelection(rawSchemes)
-  const nonNoneSchemes = schemes.filter((value) => value !== NONE_SCHEME_VALUE)
+  const specificSchemes = schemes.filter((scheme) => scheme !== NOT_SCHEME_SPECIFIC)
 
-  if (nonNoneSchemes.length > 0) {
-    return nonNoneSchemes
+  if (specificSchemes.length > 0) {
+    return specificSchemes
   }
 
-  return schemes.includes(NONE_SCHEME_VALUE) ? [NONE_SCHEME_VALUE] : []
+  return schemes.includes(NOT_SCHEME_SPECIFIC) ? [NOT_SCHEME_SPECIFIC] : []
 }
 
 /**
@@ -115,7 +134,7 @@ export {
   getAudiences,
   getSystems,
   getGuidanceTypes,
-  NONE_SCHEME_VALUE,
+  NOT_SCHEME_SPECIFIC,
   normalizeSchemes,
   normalizeSelection
 }

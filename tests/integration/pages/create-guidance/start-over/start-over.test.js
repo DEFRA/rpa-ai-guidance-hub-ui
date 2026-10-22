@@ -3,7 +3,7 @@ import { constants as statusCodes } from 'node:http2'
 import nock from 'nock'
 
 import { initiateUploadResponse, rejectedFile, uploadStatusResponse } from '../../../../fixtures/cdp-uploader.js'
-import { audiencesResponse, schemesResponse, stagedDocumentResponse, systemsResponse } from '../../../../fixtures/guidance-api.js'
+import { stagedDocumentResponse } from '../../../../fixtures/guidance-api.js'
 import { createServer } from '../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../helpers/login.js'
 import { mergeCookies } from '../../../helpers/cookies.js'
@@ -14,12 +14,6 @@ const GUIDANCE_API_URL = config.get('guidanceApi.baseUrl')
 const START_OVER_URL = '/create-guidance/start-over'
 const UPLOAD_GUIDE_URL = '/create-guidance/upload-guide'
 const PROCESSING_URL = '/create-guidance/upload-guide/processing'
-
-function mockReferenceData () {
-  nock(GUIDANCE_API_URL).get('/reference/schemes').reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
-  nock(GUIDANCE_API_URL).get('/reference/systems').reply(statusCodes.HTTP_STATUS_OK, systemsResponse())
-  nock(GUIDANCE_API_URL).get('/reference/audiences').reply(statusCodes.HTTP_STATUS_OK, audiencesResponse())
-}
 
 /**
  * Put an active upload in session by driving the real upload-initiation
@@ -127,7 +121,6 @@ describe('start-over', () => {
         version: '1.4',
         lastModified: '2024-03-01T00:00:00.000Z'
       }))
-      mockReferenceData()
 
       const res = await server.inject({ method: 'GET', url: START_OVER_URL, headers: { cookie } })
 
@@ -151,7 +144,6 @@ describe('start-over', () => {
       const { cookie } = await completeUpload(server, await loginAsDevUser(server))
 
       nock(GUIDANCE_API_URL).get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'complete' }))
-      mockReferenceData()
 
       const res = await server.inject({
         method: 'GET',

@@ -166,7 +166,7 @@ describe('#uploadGuideController', () => {
       nock(CDP_UPLOADER_URL).persist().get(`/status/${uploadId}`).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))
       nock(GUIDANCE_API_URL).persist().get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'complete' }))
       vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([
-        { value: 'sfi', label: 'Sustainable Farming Incentive (SFI)' }
+        'Sustainable Farming Incentive (SFI)'
       ])
 
       const initial = await server.inject({

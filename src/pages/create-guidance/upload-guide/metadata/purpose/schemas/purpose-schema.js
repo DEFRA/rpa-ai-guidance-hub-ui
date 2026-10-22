@@ -16,20 +16,20 @@ const AUDIENCE_REQUIRED_MESSAGE = 'Select who this guidance is for'
  * box submits as; every failure mode maps to the one "select" message.
  *
  * @private
- * @param {Array<{value: string}>} options - Valid reference options
+ * @param {Array<{label: string}>} options - Valid reference options
  * @param {string} message - User-facing error for any failure
  * @param {string} name - Option list name, for the empty-list error
  * @returns {Joi.ArraySchema}
  */
 function _requiredSelection (options, message, name) {
-  const values = options.map((option) => option.value)
+  const labels = options.map((option) => option.label)
 
-  if (values.length === 0) {
+  if (labels.length === 0) {
     throw new Error(`No valid ${name} options provided`)
   }
 
   return Joi.array()
-    .items(Joi.string().valid(...values))
+    .items(Joi.string().valid(...labels))
     .single()
     .min(1)
     .required()
@@ -54,8 +54,8 @@ function _requiredSelection (options, message, name) {
  * error summary relies on that to list them in page order.
  *
  * @param {Object} options
- * @param {Array<{value: string}>} options.systemOptions - Valid system reference options
- * @param {Array<{value: string}>} options.audienceOptions - Valid audience reference options
+ * @param {Array<{label: string}>} options.systemOptions - Valid system options
+ * @param {Array<{label: string}>} options.audienceOptions - Valid audience options
  * @returns {Joi.ObjectSchema}
  */
 function buildPurposeSchema ({ systemOptions, audienceOptions }) {

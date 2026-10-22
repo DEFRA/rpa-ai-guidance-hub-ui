@@ -1,18 +1,18 @@
 import { OwnerAndPurposeViewModel } from '../../../../../../../src/pages/create-guidance/upload-guide/metadata/purpose/view-models.js'
 
-const systemOptions = [{ value: 'crm', label: 'CRM' }, { value: 'siti-agri', label: 'SITI Agri' }]
-const audienceOptions = [{ value: 'processor', label: 'Processor' }]
+const systemOptions = [{ label: 'CRM' }, { label: 'SITI Agri' }]
+const audienceOptions = [{ label: 'Processor' }]
 
 describe('#OwnerAndPurposeViewModel', () => {
-  test('fromSession() populates values from session metadata and maps option labels to text', () => {
+  test('fromSession() populates values from session metadata and maps option labels to checkbox options', () => {
     const viewModel = OwnerAndPurposeViewModel.fromSession({
       values: {
         guideTitle: 'Ignored here',
         owner: 'owner@example.com',
         goal: 'A purpose',
         requirements: 'Some training',
-        systems: ['crm'],
-        audience: ['processor']
+        systems: ['CRM'],
+        audience: ['Processor']
       },
       systemOptions,
       audienceOptions
@@ -22,14 +22,14 @@ describe('#OwnerAndPurposeViewModel', () => {
       owner: 'owner@example.com',
       goal: 'A purpose',
       requirements: 'Some training',
-      systems: ['crm'],
-      audience: ['processor']
+      systems: ['CRM'],
+      audience: ['Processor']
     })
     expect(viewModel.systemOptions).toEqual([
-      { value: 'crm', text: 'CRM' },
-      { value: 'siti-agri', text: 'SITI Agri' }
+      { value: 'CRM', text: 'CRM' },
+      { value: 'SITI Agri', text: 'SITI Agri' }
     ])
-    expect(viewModel.audienceOptions).toEqual([{ value: 'processor', text: 'Processor' }])
+    expect(viewModel.audienceOptions).toEqual([{ value: 'Processor', text: 'Processor' }])
     expect(viewModel.errors).toEqual({})
     expect(viewModel.errorList).toEqual([])
   })
@@ -90,13 +90,5 @@ describe('#OwnerAndPurposeViewModel', () => {
     expect(viewModel.audienceOptions).toEqual([])
     expect(viewModel.backUrl).toBe('/create-guidance/upload-guide/metadata')
     expect(viewModel.pageTitle).toBe('Owner and purpose')
-  })
-
-  test('constructor prefers a pre-mapped option text over the label', () => {
-    const viewModel = new OwnerAndPurposeViewModel({
-      systemOptions: [{ value: 'crm', text: 'Custom', label: 'CRM' }]
-    })
-
-    expect(viewModel.systemOptions).toEqual([{ value: 'crm', text: 'Custom' }])
   })
 })

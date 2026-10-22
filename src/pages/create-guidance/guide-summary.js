@@ -1,8 +1,7 @@
 import {
   buildSummaryCard,
   buildSummaryRow,
-  formatStagedDocumentDate,
-  labelsFor
+  formatStagedDocumentDate
 } from './upload-guide/metadata/view-helpers.js'
 
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
@@ -13,9 +12,7 @@ function _valueOrNotProvided (value) {
   return value || NOT_PROVIDED
 }
 
-function _labelsOrNotProvided (values, options) {
-  const labels = labelsFor(values, options)
-
+function _labelsOrNotProvided (labels = []) {
   return labels.length ? labels.join(', ') : NOT_PROVIDED
 }
 
@@ -29,13 +26,11 @@ function _labelsOrNotProvided (values, options) {
  * @param {Object} data
  * @param {Object} data.metadata
  * @param {Object|null} data.stagedDocument
- * @param {Array<{value: string, label: string}>} data.schemeOptions
  * @param {string} [data.changeHref] - Defaults to the metadata screen
  */
 function buildGuideDetailsCard ({
   metadata,
   stagedDocument,
-  schemeOptions,
   changeHref = `${METADATA_URL}?from=check`
 }) {
   return buildSummaryCard({
@@ -49,29 +44,24 @@ function buildGuideDetailsCard ({
         'Last modified date',
         _valueOrNotProvided(formatStagedDocumentDate(stagedDocument?.lastModified))
       ),
-      buildSummaryRow('Scheme', _labelsOrNotProvided(metadata.schemes, schemeOptions))
+      buildSummaryRow('Scheme', _labelsOrNotProvided(metadata.schemes))
     ]
   })
 }
 
 /**
  * Build the "owner and purpose" summary card, sourced from session
- * metadata and the reference option lists needed to label checkbox
- * answers.
+ * metadata.
  *
  * Shared by the check-answers screen and the start-over confirmation screen,
  * so both agree on exactly what a guide's owner and purpose consist of.
  *
  * @param {Object} data
  * @param {Object} data.metadata
- * @param {Array<{value: string, label: string}>} data.systemOptions
- * @param {Array<{value: string, label: string}>} data.audienceOptions
  * @param {string} [data.changeHref] - Defaults to the purpose screen
  */
 function buildOwnerPurposeCard ({
   metadata,
-  systemOptions,
-  audienceOptions,
   changeHref = `${PURPOSE_URL}?from=check`
 }) {
   return buildSummaryCard({
@@ -85,10 +75,10 @@ function buildOwnerPurposeCard ({
         'Required knowledge and training',
         _valueOrNotProvided(metadata.requirements)
       ),
-      buildSummaryRow('Systems', _labelsOrNotProvided(metadata.systems, systemOptions)),
+      buildSummaryRow('Systems', _labelsOrNotProvided(metadata.systems)),
       buildSummaryRow(
         'Who is this guidance for?',
-        _labelsOrNotProvided(metadata.audience, audienceOptions)
+        _labelsOrNotProvided(metadata.audience)
       )
     ]
   })
@@ -102,21 +92,15 @@ function buildOwnerPurposeCard ({
  * @param {Object} [data={}]
  * @param {Object} [data.metadata={}]
  * @param {Object|null} [data.stagedDocument=null]
- * @param {Array<{value: string, label: string}>} [data.schemeOptions=[]]
- * @param {Array<{value: string, label: string}>} [data.systemOptions=[]]
- * @param {Array<{value: string, label: string}>} [data.audienceOptions=[]]
  * @returns {{guideDetailsCard: Object, ownerPurposeCard: Object}}
  */
 function buildGuideSummaryCards ({
   metadata = {},
-  stagedDocument = null,
-  schemeOptions = [],
-  systemOptions = [],
-  audienceOptions = []
+  stagedDocument = null
 } = {}) {
   return {
-    guideDetailsCard: buildGuideDetailsCard({ metadata, stagedDocument, schemeOptions }),
-    ownerPurposeCard: buildOwnerPurposeCard({ metadata, systemOptions, audienceOptions })
+    guideDetailsCard: buildGuideDetailsCard({ metadata, stagedDocument }),
+    ownerPurposeCard: buildOwnerPurposeCard({ metadata })
   }
 }
 

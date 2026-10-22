@@ -12,9 +12,9 @@ import { buildPurposeSchema } from '../../purpose/schemas/purpose-schema.js'
  * current.
  *
  * @param {Object} options
- * @param {Array<{value: string}>} options.schemeOptions - Valid scheme reference options
- * @param {Array<{value: string}>} options.systemOptions - Valid system reference options
- * @param {Array<{value: string}>} options.audienceOptions - Valid audience reference options
+ * @param {Array<{label: string}>} options.schemeOptions - Valid scheme options
+ * @param {Array<{label: string}>} options.systemOptions - Valid system options
+ * @param {Array<{label: string}>} options.audienceOptions - Valid audience options
  * @returns {import('joi').ObjectSchema}
  */
 function buildCheckAnswersSchema ({ schemeOptions, systemOptions, audienceOptions }) {

@@ -10,32 +10,15 @@ import { formatIsoDate } from '../../../common/format-date.js'
 const formatStagedDocumentDate = formatIsoDate
 
 /**
- * Map reference options onto the `{value, text}` shape GOV.UK checkbox and
- * radio templates render, accepting either a `label` or a `text` property
- * from the source option.
+ * Map reference options onto the `{value, text}` shape GOV.UK checkbox
+ * and radio templates render. The label is its own form value: it is
+ * attribute-escaped on render, so no encoding is needed.
  *
- * @param {Array<{value: string, label?: string, text?: string}>} [options]
+ * @param {Array<{label: string}>} [options]
  * @returns {Array<{value: string, text: string}>}
  */
 function toCheckboxOptions (options = []) {
-  return options.map((option) => ({
-    value: option.value,
-    text: option.text || option.label
-  }))
-}
-
-/**
- * Resolve a list of selected reference values to their labels, falling
- * back to the raw value for anything the current option list doesn't know.
- *
- * @param {Array<string>} [values]
- * @param {Array<{value: string, label: string}>} [options]
- * @returns {Array<string>}
- */
-function labelsFor (values = [], options = []) {
-  const labelByValue = new Map(options.map((option) => [option.value, option.label]))
-
-  return values.map((value) => labelByValue.get(value) ?? value)
+  return options.map(({ label }) => ({ value: label, text: label }))
 }
 
 /**
@@ -77,7 +60,6 @@ function buildSummaryRow (keyText, valueText) {
 export {
   formatStagedDocumentDate,
   toCheckboxOptions,
-  labelsFor,
   buildSummaryCard,
   buildSummaryRow
 }
