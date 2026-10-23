@@ -1,10 +1,26 @@
 {#
-  The side navigation, on every page once signed in (common/layout.njk).
-  Its look and behaviour follow the prototype's side navigation
-  (rpa-ai-guidance-hub-prototype: app/views/partials/side-nav.njk).
+  The side navigation, on every page once signed in (common/layout.njk), in
+  place of the header. Its look and behaviour follow the prototype's side
+  navigation (rpa-ai-guidance-hub-prototype: app/views/partials/side-nav.njk).
 #}
 <nav class="app-side-nav" aria-label="Guidance hub">
-  <p class="app-side-nav__service">
-    <a href="/hub" class="app-side-nav__service-link">{{ serviceName }}</a>
-  </p>
+  <div class="app-side-nav__header">
+    <div class="app-side-nav__identity">
+      <img
+        src="{{ getAssetPath('src/client/images/defra-logo.svg') }}"
+        alt="Department for Environment, Food &amp; Rural Affairs"
+        class="app-side-nav__logo"
+      />
+      <p class="app-side-nav__service">
+        <a href="/hub" class="app-side-nav__service-link">{{ serviceName }}</a>
+      </p>
+    </div>
+  </div>
+
+  <ul class="app-side-nav__list app-side-nav__footer">
+    {% if userDisplayName %}
+      <li class="app-side-nav__user">{{ userDisplayName }}</li>
+    {% endif %}
+    <li><a class="app-side-nav__link" href="/logout">Sign out</a></li>
+  </ul>
 </nav>
