@@ -84,6 +84,9 @@ const viewPlugin = {
       // Returns { script, style } when enabled, undefined otherwise
       cspNonce: request?.plugins?.blankie?.nonces,
       isAuthenticated: Boolean(request?.auth?.isAuthenticated),
+      // The hub has no roles yet, so everyone gets the designer's view; an
+      // operator's view is the same without the designer's functions.
+      isDesigner: true,
       userDisplayName: request?.auth?.credentials?.profile?.displayName ?? null
     })
   }

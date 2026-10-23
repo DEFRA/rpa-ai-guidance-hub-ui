@@ -9,6 +9,8 @@
 
 {% set pageTitle = 'RPA Guidance Hub' %}
 {% set page = 'hub' %}
+{# The hub has its own search box, so the side navigation leaves out its own. #}
+{% set hideNavSearch = true %}
 
 {% block content %}
   <div class="defra-hero defra-hero--hub govuk-!-margin-bottom-6">
@@ -52,18 +54,6 @@
       </div>
     </div>
 
-    {# A designer's functions, kept together so an operator's view can leave them out. #}
-    {% if isDesigner %}
-      <div class="govuk-grid-row">
-        <div class="govuk-grid-column-full">
-          <h2 class="govuk-heading-l" id="designing">Designing</h2>
-          <div class="govuk-button-group">
-            <a class="govuk-button" href="/create-guidance/upload-guide">Upload guidance</a>
-          </div>
-          {{ guidanceTablePanel(awaitingMyReview) }}
-        </div>
-      </div>
-    {% endif %}
 
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-full">

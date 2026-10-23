@@ -33,7 +33,7 @@ describe('#hubController', () => {
   })
 
   describe('When logged in as a dev user', () => {
-    test('Should respond with 200 and render the hub page with its 4 tabs and the Designing section', async () => {
+    test('Should respond with 200 and render the hub page with its 4 tabs', async () => {
       const cookie = await loginAsDevUser(server)
 
       const { statusCode, payload } = await server.inject({
@@ -47,7 +47,6 @@ describe('#hubController', () => {
       expect(payload).toContain('Recently opened (0)')
       expect(payload).toContain('Pinned (0)')
       expect(payload).toContain('Bookmarked guides (0)')
-      expect(payload).toContain('There is no guidance awaiting your review.')
       expect(payload).toContain('href="#pinned"')
       expect(payload).toContain('href="#bookmarked-guides"')
       expect(payload).not.toContain('Editing')
@@ -72,19 +71,15 @@ describe('#hubController', () => {
       expect(payload).not.toContain('href="#awaiting-my-review"')
     })
 
-    test('groups Upload guidance and Awaiting my review under Designing, before the tabs', async () => {
+    test('leaves a designer\'s work to the side navigation', async () => {
       const cookie = await loginAsDevUser(server)
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
-      const designing = payload.indexOf('>Designing</h2>')
-      const tabs = payload.indexOf('class="govuk-tabs"')
-      expect(designing).toBeGreaterThan(-1)
-      expect(designing).toBeLessThan(tabs)
-      expect(payload.indexOf('Upload guidance')).toBeGreaterThan(designing)
-      expect(payload.indexOf('Upload guidance')).toBeLessThan(tabs)
-      expect(payload.indexOf('Awaiting my review')).toBeGreaterThan(designing)
-      expect(payload.indexOf('Awaiting my review')).toBeLessThan(tabs)
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      expect(main).not.toContain('Designing')
+      expect(main).not.toContain('Upload guidance')
+      expect(main).not.toContain('Awaiting my review')
     })
 
     test('Should escape HTML in guidance items to prevent XSS vulnerabilities', async () => {
