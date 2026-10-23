@@ -6,6 +6,7 @@ import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { initiateUploadResponse } from '../../../fixtures/cdp-uploader.js'
 import { guidePageResponse } from '../../../fixtures/guidance-api.js'
+import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -123,6 +124,78 @@ describe('Side navigation', () => {
 
       const marked = [...nav.matchAll(/<a [^>]*aria-current="page"[^>]*>[^]*?app-side-nav__text">([^<]+)</g)].map(([, text]) => text)
       expect(marked).toEqual([current])
+    })
+  })
+
+  describe('folding away', () => {
+    async function fold (cookie, collapsed, returnTo) {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/side-nav/toggle',
+        headers: { cookie },
+        payload: { collapsed, returnTo }
+      })
+
+      return { response, cookie: mergeCookies(cookie, response.headers['set-cookie']) }
+    }
+
+    async function pageOf (cookie, url) {
+      const { payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
+
+      return payload
+    }
+
+    test('offers to fold the navigation away, coming back to the same page', async () => {
+      const cookie = await loginAsDevUser(server)
+
+      const payload = await pageOf(cookie, '/create-guidance/upload-guide?step=1')
+
+      expect(payload).toMatch(/<button type="submit" form="side-nav-toggle-form"[^>]*>[^]*Collapse navigation/)
+      expect(payload).toMatch(/<form id="side-nav-toggle-form" method="post" action="\/side-nav\/toggle" hidden>[^]*name="collapsed" value="true"[^]*name="returnTo" value="\/create-guidance\/upload-guide\?step=1"/)
+    })
+
+    test('folds down to its icons, back on the page it was folded on', async () => {
+      const signedIn = await loginAsDevUser(server)
+
+      const { response, cookie } = await fold(signedIn, true, '/hub')
+      const payload = await pageOf(cookie, '/hub')
+
+      expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(response.headers.location).toBe('/hub')
+      expect(payload).toContain('<nav class="app-side-nav app-side-nav--rail" aria-label="Guidance hub">')
+      for (const name of ['Expand navigation', 'Hub', 'Recently opened', 'Pinned', 'Bookmarked guides', 'Awaiting my review', 'Upload guidance', 'Pinned guidance', 'Case bookmarks', 'Sign out']) {
+        expect(payload).toContain(`<span class="app-side-nav__rail-label">${name}</span>`)
+      }
+      expect(payload).not.toContain('app-side-nav__search')
+      expect(payload).toMatch(/name="collapsed" value="false"/)
+    })
+
+    test('stays folded on the next page, for the session', async () => {
+      const signedIn = await loginAsDevUser(server)
+
+      const { cookie } = await fold(signedIn, true, '/hub')
+      const payload = await pageOf(cookie, '/create-guidance/upload-guide')
+
+      expect(payload).toContain('app-side-nav--rail')
+    })
+
+    test('unfolds again', async () => {
+      const signedIn = await loginAsDevUser(server)
+
+      const folded = await fold(signedIn, true, '/hub')
+      const { cookie } = await fold(folded.cookie, false, '/hub')
+      const payload = await pageOf(cookie, '/hub')
+
+      expect(payload).toContain('<nav class="app-side-nav" aria-label="Guidance hub">')
+      expect(payload).not.toContain('app-side-nav--rail')
+    })
+
+    test('goes back to the hub, not to another site', async () => {
+      const signedIn = await loginAsDevUser(server)
+
+      const { response } = await fold(signedIn, true, 'https://example.com/elsewhere')
+
+      expect(response.headers.location).toBe('/hub')
     })
   })
 

@@ -33,7 +33,12 @@
 {# Signed in, every page has the side navigation beside its content. #}
 {% block container %}
   {% if isAuthenticated %}
-    <div class="app-layout">
+    {# Folds the side navigation away or opens it out, then comes back here. #}
+    <form id="side-nav-toggle-form" method="post" action="/side-nav/toggle" hidden>
+      <input type="hidden" name="collapsed" value="{{ 'false' if sideNavCollapsed else 'true' }}">
+      <input type="hidden" name="returnTo" value="{{ currentUrl }}">
+    </form>
+    <div class="app-layout{% if sideNavCollapsed %} app-layout--collapsed{% endif %}">
       <div class="app-layout__nav">
         {% include "common/side-nav.njk" %}
       </div>
