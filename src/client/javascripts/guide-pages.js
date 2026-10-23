@@ -26,6 +26,11 @@ function initGuidePages () {
     url.searchParams.set('page', number)
     window.history.replaceState(window.history.state, '', url)
 
+    document.querySelectorAll('.app-shell input[name="returnTo"]')
+      .forEach((input) => {
+        input.value = `${url.pathname}${url.search}`
+      })
+
     document.querySelectorAll('[data-guide-contents-page]').forEach((entry) => {
       const current = entry.dataset.guideContentsPage === number
       const link = entry.querySelector('a')
