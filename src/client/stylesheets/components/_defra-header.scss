@@ -1,5 +1,4 @@
 @use '../variables/colours' as *;
-@use 'govuk-frontend' as govuk;
 
 .defra-header {
   background-color: $govuk-white;
@@ -16,20 +15,6 @@
   margin: 0 auto;
   padding-left: 15px;
   padding-right: 15px;
-}
-
-// A page that uses the full width has its banner full width too, its content
-// lined up with the page's own edges, and the Defra green beneath it.
-.defra-header--full-width .defra-header__inner {
-  max-width: none;
-  margin: 0 govuk.$govuk-gutter;
-  padding-right: 0;
-  padding-left: 0;
-}
-
-.defra-header__brand-border {
-  height: 10px;
-  background-color: $defra-green;
 }
 
 .defra-header__brand-group {
@@ -84,27 +69,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.defra-header__account-icon {
-  flex-shrink: 0;
-  color: $defra-green;
-}
-
-.defra-header__account-name {
-  font-family: Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-size: 16px;
-  font-weight: 400;
-  color: $govuk-black;
-  white-space: nowrap;
-}
-
-.defra-header__account-divider {
-  width: 1px;
-  height: 20px;
-  background-color: $govuk-mid-grey;
 }
 
 .defra-header__account-link {
@@ -261,7 +225,6 @@
     height: 40px;
   }
 
-  .defra-header__account-name,
   .defra-header__account-link {
     font-size: 14px;
   }
