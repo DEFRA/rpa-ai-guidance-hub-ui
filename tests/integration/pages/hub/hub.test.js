@@ -33,7 +33,7 @@ describe('#hubController', () => {
   })
 
   describe('When logged in as a dev user', () => {
-    test('Should respond with 200 and render the hub page with the 5 tabs and action button', async () => {
+    test('Should respond with 200 and render the hub page with its 4 tabs', async () => {
       const cookie = await loginAsDevUser(server)
 
       const { statusCode, payload } = await server.inject({
@@ -45,9 +45,12 @@ describe('#hubController', () => {
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(payload).toContain('RPA Guidance hub')
       expect(payload).toContain('Recently opened (0)')
-      expect(payload).toContain('Saved guidance (0)')
-      expect(payload).toContain('Editing (0)')
-      expect(payload).toContain('Awaiting approval (0)')
+      expect(payload).toContain('Pinned (0)')
+      expect(payload).toContain('Bookmarked guides (0)')
+      expect(payload).toContain('href="#pinned"')
+      expect(payload).toContain('href="#bookmarked-guides"')
+      expect(payload).not.toContain('Editing')
+      expect(payload).not.toContain('Saved guidance')
       expect(payload).toContain('All guides (1)')
       expect(payload).toContain('href="#all-guides"')
       expect(payload).toContain('Upload guidance')
@@ -55,6 +58,28 @@ describe('#hubController', () => {
       expect(payload).not.toContain('defra-service-navigation')
       expect(payload).toContain('class="govuk-tabs" data-module="govuk-tabs"')
       expect(payload).toContain('href="#recently-opened"')
+    })
+
+    test('lists everyone\'s guides in tabs, all guides first, in the side navigation\'s order', async () => {
+      const cookie = await loginAsDevUser(server)
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+
+      const order = ['All guides (', 'Recently opened (', 'Pinned (', 'Bookmarked guides ('].map((label) => payload.indexOf(label))
+      expect(order).toEqual([...order].sort((a, b) => a - b))
+      expect(order).not.toContain(-1)
+      expect(payload).not.toContain('href="#awaiting-my-review"')
+    })
+
+    test('leaves a designer\'s work to the side navigation', async () => {
+      const cookie = await loginAsDevUser(server)
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      expect(main).not.toContain('Designing')
+      expect(main).not.toContain('Upload guidance')
+      expect(main).not.toContain('Awaiting my review')
     })
 
     test('Should escape HTML in guidance items to prevent XSS vulnerabilities', async () => {

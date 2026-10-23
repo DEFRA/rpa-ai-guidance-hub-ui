@@ -32,13 +32,6 @@ const ALL_GUIDES_TABLE_HEAD = [
   { text: 'Owner' }
 ]
 
-const EDITING_TABLE_HEAD = [
-  { text: 'Document name', classes: tableHeadClasses.HALF_WIDTH },
-  { text: 'Version' },
-  { text: 'Last modified' },
-  { text: 'Action', classes: tableHeadClasses.VISUALLY_HIDDEN }
-]
-
 const AWAITING_APPROVAL_TABLE_HEAD = [
   { text: 'Document name', classes: tableHeadClasses.HALF_WIDTH },
   { text: 'Version' },
@@ -98,15 +91,6 @@ function _buildAllGuidesRows (items) {
   ])
 }
 
-function _buildEditingRows (items) {
-  return items.map((item) => [
-    _titleCell(item, 'Draft', 'grey'),
-    _versionCell(item.version),
-    _textCell(item.lastModified),
-    _removeActionCell(item)
-  ])
-}
-
 function _buildAwaitingApprovalRows (items) {
   return items.map((item) => [
     _titleCell(item, 'Awaiting approval', 'yellow'),
@@ -150,18 +134,18 @@ class HubViewModel {
   /**
    * @param {Object} [data={}]
    * @param {Array<object>} [data.recentlyOpened=[]]
-   * @param {Array<object>} [data.savedGuidance=[]]
-   * @param {Array<object>} [data.editing=[]]
-   * @param {Array<object>} [data.awaitingApproval=[]]
+   * @param {Array<object>} [data.pinned=[]]
+   * @param {Array<object>} [data.bookmarkedGuides=[]]
+   * @param {Array<object>} [data.awaitingMyReview=[]]
    * @param {Array<object>} [data.allGuides=[]] - Items are
    *   `{title, href, lastModified, owner}`
    */
   constructor (data = {}) {
     const {
       recentlyOpened = [],
-      savedGuidance = [],
-      editing = [],
-      awaitingApproval = [],
+      pinned = [],
+      bookmarkedGuides = [],
+      awaitingMyReview = [],
       allGuides = []
     } = data
 
@@ -174,31 +158,31 @@ class HubViewModel {
       rows: _buildDocumentRows(recentlyOpened)
     })
 
-    this.savedGuidance = _buildTable({
-      items: savedGuidance,
-      heading: 'Saved guidance',
-      emptyMessage: "You haven't saved any guidance yet. Select 'Save' on a guide to add it here.",
-      hintMessage: "Guidance you've saved for quick access.",
+    this.pinned = _buildTable({
+      items: pinned,
+      heading: 'Pinned',
+      emptyMessage: "You haven't pinned any guidance yet. Select 'Pin guide' on a guide to add it here.",
+      hintMessage: "Guidance you've pinned for quick access.",
       head: DOCUMENT_TABLE_HEAD,
-      rows: _buildDocumentRows(savedGuidance)
+      rows: _buildDocumentRows(pinned)
     })
 
-    this.editing = _buildTable({
-      items: editing,
-      heading: 'Editing',
-      emptyMessage: 'You are not currently editing any guidance documents.',
-      hintMessage: null,
-      head: EDITING_TABLE_HEAD,
-      rows: _buildEditingRows(editing)
+    this.bookmarkedGuides = _buildTable({
+      items: bookmarkedGuides,
+      heading: 'Bookmarked guides',
+      emptyMessage: "You haven't bookmarked any guidance yet. Bookmark a section of a guide to add it here.",
+      hintMessage: "Guidance you've bookmarked a section of.",
+      head: DOCUMENT_TABLE_HEAD,
+      rows: _buildDocumentRows(bookmarkedGuides)
     })
 
-    this.awaitingApproval = _buildTable({
-      items: awaitingApproval,
-      heading: 'Awaiting approval',
-      emptyMessage: 'There are no guidance documents awaiting approval.',
+    this.awaitingMyReview = _buildTable({
+      items: awaitingMyReview,
+      heading: 'Awaiting my review',
+      emptyMessage: 'There is no guidance awaiting your review.',
       hintMessage: null,
       head: AWAITING_APPROVAL_TABLE_HEAD,
-      rows: _buildAwaitingApprovalRows(awaitingApproval)
+      rows: _buildAwaitingApprovalRows(awaitingMyReview)
     })
 
     this.allGuides = _buildTable({

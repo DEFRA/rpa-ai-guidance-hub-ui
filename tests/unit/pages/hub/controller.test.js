@@ -32,15 +32,15 @@ describe('#hubController', () => {
           isEmpty: expect.any(Boolean),
           count: expect.any(Number)
         }),
-        savedGuidance: expect.objectContaining({
+        pinned: expect.objectContaining({
           isEmpty: expect.any(Boolean),
           count: expect.any(Number)
         }),
-        editing: expect.objectContaining({
+        bookmarkedGuides: expect.objectContaining({
           isEmpty: expect.any(Boolean),
           count: expect.any(Number)
         }),
-        awaitingApproval: expect.objectContaining({
+        awaitingMyReview: expect.objectContaining({
           isEmpty: expect.any(Boolean),
           count: expect.any(Number)
         }),

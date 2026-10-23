@@ -335,13 +335,13 @@ describe('#guideController', () => {
   })
 
   describe('the page banner', () => {
-    test('is full width, with the Defra green beneath it', async () => {
+    test('is the side navigation, in place of the header', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
 
-      expect(payload).toContain('defra-header defra-header--full-width')
-      expect(payload).toContain('defra-header__brand-border')
+      expect(payload).toContain('<nav class="app-side-nav" aria-label="Guidance hub">')
+      expect(payload).not.toContain('class="defra-header')
     })
   })
 

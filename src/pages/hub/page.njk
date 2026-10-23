@@ -9,7 +9,8 @@
 
 {% set pageTitle = 'RPA Guidance Hub' %}
 {% set page = 'hub' %}
-{% set showNav = false %}
+{# The hub has its own search box, so the side navigation leaves out its own. #}
+{% set hideNavSearch = true %}
 
 {% block content %}
   <div class="defra-hero defra-hero--hub govuk-!-margin-bottom-6">
@@ -50,23 +51,27 @@
           </div>
         </form>
 
-        <div class="govuk-button-group">
-          <a class="govuk-button" href="/create-guidance/upload-guide">Upload guidance</a>
-        </div>
       </div>
     </div>
+
 
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-full">
         {% set recentlyOpenedPanelHtml %}{{ guidanceTablePanel(recentlyOpened) }}{% endset %}
-        {% set savedGuidancePanelHtml %}{{ guidanceTablePanel(savedGuidance) }}{% endset %}
-        {% set editingPanelHtml %}{{ guidanceTablePanel(editing) }}{% endset %}
-        {% set awaitingApprovalPanelHtml %}{{ guidanceTablePanel(awaitingApproval) }}{% endset %}
+        {% set pinnedPanelHtml %}{{ guidanceTablePanel(pinned) }}{% endset %}
+        {% set bookmarkedGuidesPanelHtml %}{{ guidanceTablePanel(bookmarkedGuides) }}{% endset %}
         {% set allGuidesPanelHtml %}{{ guidanceTablePanel(allGuides) }}{% endset %}
 
         {{ govukTabs({
           title: "Contents",
           items: [
+            {
+              label: tabLabel(allGuides.heading, allGuides.count),
+              id: "all-guides",
+              panel: {
+                html: allGuidesPanelHtml
+              }
+            },
             {
               label: tabLabel(recentlyOpened.heading, recentlyOpened.count),
               id: "recently-opened",
@@ -75,36 +80,23 @@
               }
             },
             {
-              label: tabLabel(savedGuidance.heading, savedGuidance.count),
-              id: "saved-guidance",
+              label: tabLabel(pinned.heading, pinned.count),
+              id: "pinned",
               panel: {
-                html: savedGuidancePanelHtml
+                html: pinnedPanelHtml
               }
             },
             {
-              label: tabLabel(editing.heading, editing.count),
-              id: "editing",
+              label: tabLabel(bookmarkedGuides.heading, bookmarkedGuides.count),
+              id: "bookmarked-guides",
               panel: {
-                html: editingPanelHtml
-              }
-            },
-            {
-              label: tabLabel(awaitingApproval.heading, awaitingApproval.count),
-              id: "awaiting-approval",
-              panel: {
-                html: awaitingApprovalPanelHtml
-              }
-            },
-            {
-              label: tabLabel(allGuides.heading, allGuides.count),
-              id: "all-guides",
-              panel: {
-                html: allGuidesPanelHtml
+                html: bookmarkedGuidesPanelHtml
               }
             }
           ]
         }) }}
       </div>
     </div>
+
   </div>
 {% endblock %}
