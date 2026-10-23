@@ -46,6 +46,33 @@ describe('Side navigation', () => {
     expect(payload).toContain(SIDE_NAVIGATION)
   })
 
+  test.each([
+    ['the hub', '/hub'],
+    ['uploading a guide', '/create-guidance/upload-guide']
+  ])('takes the place of the header on %s when signed in', async (_name, url) => {
+    const cookie = await loginAsDevUser(server)
+
+    const { payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
+
+    expect(payload).not.toContain('class="defra-header')
+    expect(payload).not.toContain('defra-service-navigation')
+    expect(payload).toMatch(/<nav class="app-side-nav"[^]*class="app-side-nav__logo"[^]*class="app-side-nav__service-link"/)
+  })
+
+  test('lets the user sign out from its footer', async () => {
+    const cookie = await loginAsDevUser(server)
+
+    const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+
+    expect(payload).toMatch(/app-side-nav__footer"[^]*href="\/logout"[^>]*>[^<]*Sign out/)
+  })
+
+  test('leaves the header on the sign-in page', async () => {
+    const { payload } = await server.inject({ method: 'GET', url: '/' })
+
+    expect(payload).toContain('class="defra-header')
+  })
+
   test('does not show on the sign-in page', async () => {
     const { payload } = await server.inject({ method: 'GET', url: '/' })
 
