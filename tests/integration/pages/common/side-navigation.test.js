@@ -67,6 +67,65 @@ describe('Side navigation', () => {
     expect(payload).toMatch(/app-side-nav__footer"[^]*href="\/logout"[^>]*>[^<]*Sign out/)
   })
 
+  describe('contents', () => {
+    async function navOf (url) {
+      const cookie = await loginAsDevUser(server)
+      const { payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
+
+      return payload.slice(payload.indexOf('<nav class="app-side-nav"'), payload.indexOf('</nav>', payload.indexOf('<nav class="app-side-nav"')))
+    }
+
+    function linkTexts (nav) {
+      return [...nav.matchAll(/<a [^>]*href="([^"]+)"[^>]*>[^]*?app-side-nav__text">([^<]+)</g)]
+        .map(([, href, text]) => [text, href])
+    }
+
+    test('has a search box that searches from the hub', async () => {
+      const nav = await navOf('/create-guidance/upload-guide')
+
+      expect(nav).toContain('<form class="app-side-nav__search" method="get" action="/hub" role="search">')
+      expect(nav).toContain('<label class="govuk-visually-hidden" for="side-nav-search">Search or ask question</label>')
+      expect(nav).toMatch(/<input [^>]*id="side-nav-search" name="search"/)
+    })
+
+    test('leaves the search to the hub\'s own search box on the hub', async () => {
+      const nav = await navOf('/hub')
+
+      expect(nav).not.toContain('app-side-nav__search')
+    })
+
+    test('links to the hub and each list of guides, then a designer\'s work, in order', async () => {
+      const nav = await navOf('/hub')
+
+      expect(linkTexts(nav)).toEqual([
+        ['Hub', '/hub'],
+        ['Recently opened', '/hub#recently-opened'],
+        ['Pinned', '/hub#pinned'],
+        ['Bookmarked guides', '/hub#bookmarked-guides'],
+        ['Awaiting my review', '/hub'],
+        ['Upload guidance', '/create-guidance/upload-guide']
+      ])
+      expect(nav).toContain('>Designing</h2>')
+    })
+
+    test('has sections for pinned guidance and case bookmarks, empty for now', async () => {
+      const nav = await navOf('/hub')
+
+      expect(nav).toMatch(/<details class="app-side-nav__section"[^>]*>[^]*Pinned guidance[^]*You haven't pinned any guidance yet\./)
+      expect(nav).toMatch(/<details class="app-side-nav__section"[^>]*>[^]*Case bookmarks[^]*You haven't bookmarked any guidance to a case yet\./)
+    })
+
+    test.each([
+      ['/hub', 'Hub'],
+      ['/create-guidance/upload-guide', 'Upload guidance']
+    ])('marks the current page on %s', async (url, current) => {
+      const nav = await navOf(url)
+
+      const marked = [...nav.matchAll(/<a [^>]*aria-current="page"[^>]*>[^]*?app-side-nav__text">([^<]+)</g)].map(([, text]) => text)
+      expect(marked).toEqual([current])
+    })
+  })
+
   test('leaves the header on the sign-in page', async () => {
     const { payload } = await server.inject({ method: 'GET', url: '/' })
 

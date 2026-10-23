@@ -149,10 +149,6 @@ class HubViewModel {
       allGuides = []
     } = data
 
-    // The hub has no roles yet, so everyone gets the designer's view; an
-    // operator's view is the same without the Designing section.
-    this.isDesigner = true
-
     this.recentlyOpened = _buildTable({
       items: recentlyOpened,
       heading: 'Recently opened',
