@@ -272,9 +272,11 @@ $app-side-nav-muted: #505a5f;
   min-width: 0;
 }
 
-// Folded away to its icons (side-nav.njk), the column is the rail's width.
+// Folded away to its icons (side-nav.njk), the column is the rail's width,
+// and does not clip, so each icon's tooltip can show beside it.
 .app-layout--collapsed .app-layout__nav {
   width: $app-side-nav-rail-width;
+  overflow: visible;
 }
 
 // Beside the nav the page runs the full width of its column, and everything in
