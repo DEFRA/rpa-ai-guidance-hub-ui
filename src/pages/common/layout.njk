@@ -64,6 +64,18 @@
   {% endif %}
 {% endblock %}
 
+{# Signed in, every page has the side navigation beside its content. #}
+{% block container %}
+  {% if isAuthenticated %}
+    <div class="app-layout">
+      {% include "common/side-nav.njk" %}
+      <div class="app-layout__main">{{ super() }}</div>
+    </div>
+  {% else %}
+    {{ super() }}
+  {% endif %}
+{% endblock %}
+
 {% block pageTitle %}
   {{ pageTitle if pageTitle else serviceName }} | {{ serviceName }}
 {% endblock %}
