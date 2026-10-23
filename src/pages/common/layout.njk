@@ -28,10 +28,13 @@
         alt="Department for Environment, Food &amp; Rural Affairs"
         class="defra-header__logo"
       />
-      <a href="{{ serviceNameLink }}" class="defra-header__service-name">{{ serviceName }}</a>
-    </div>
-    <div class="defra-header__account">
+      {# Signed out, only the logo: the sign-in page names the service and offers sign-in. #}
       {% if isAuthenticated %}
+        <a href="{{ serviceNameLink }}" class="defra-header__service-name">{{ serviceName }}</a>
+      {% endif %}
+    </div>
+    {% if isAuthenticated %}
+    <div class="defra-header__account">
         <svg class="defra-header__account-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <circle cx="12" cy="12" r="12" fill="currentColor" />
           <circle cx="12" cy="9.5" r="3.5" fill="#ffffff" />
@@ -42,10 +45,8 @@
           <span class="defra-header__account-divider" aria-hidden="true"></span>
         {% endif %}
         <a href="/logout" class="defra-header__account-link">Sign out</a>
-      {% else %}
-        <a href="/login/callback" class="defra-header__account-link">Sign in</a>
-      {% endif %}
     </div>
+    {% endif %}
     </div>
   </header>
   {% if headerFullWidth %}
