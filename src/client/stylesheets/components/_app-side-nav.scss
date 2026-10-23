@@ -272,6 +272,35 @@ $app-side-nav-muted: #505a5f;
   min-width: 0;
 }
 
+// Beside the nav the page runs the full width of its column, and everything in
+// it starts the same distance from the column's edge, as in the prototype
+// ($app-content-gutter there). Width containers nested in the page's own (the
+// hub's) take no margins of their own, or the content would be inset twice.
+$app-content-gutter: govuk-spacing(4);
+
+.app-layout__main .govuk-width-container {
+  max-width: none;
+  margin-right: 0;
+  margin-left: 0;
+}
+
+.app-layout__main > .govuk-width-container {
+  padding-right: $app-content-gutter;
+  padding-left: $app-content-gutter;
+}
+
+// The hub's banner spans the column from the nav's edge, its content inset by
+// the same gutter, in place of the 100vw band it is on a page without the nav.
+.app-layout__main .defra-hero {
+  left: auto;
+  transform: none;
+  width: auto;
+  margin-right: -$app-content-gutter;
+  margin-left: -$app-content-gutter;
+  padding-right: $app-content-gutter;
+  padding-left: $app-content-gutter;
+}
+
 // The nav fills the column's height with its padding inside it, or the
 // padding overflows the window and the column scrolls with nothing to show.
 .app-layout__nav .app-side-nav {
@@ -371,4 +400,152 @@ $app-side-nav-muted: #505a5f;
   padding: 6px 10px 6px 12px;
   color: $app-side-nav-muted;
   overflow-wrap: anywhere;
+}
+
+.app-side-nav__chevron {
+  width: 16px;
+  height: 16px;
+  vertical-align: -3px;
+  transition: transform 0.15s ease;
+}
+
+details:not([open]) > summary .app-side-nav__chevron {
+  transform: rotate(-90deg);
+}
+
+.app-side-nav__search {
+  position: relative;
+  margin: 0 0 govuk-spacing(3);
+}
+
+.app-side-nav__search-icon {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: $app-side-nav-muted;
+  pointer-events: none;
+}
+
+.app-side-nav__search-input {
+  @include govuk-font($size: 16);
+  box-sizing: border-box;
+  width: 100%;
+  height: 40px;
+  padding: 0 govuk-spacing(3) 0 36px;
+  border: 1px solid $app-side-nav-muted;
+  border-radius: 6px;
+  background-color: $govuk-white;
+  color: $govuk-black;
+
+  &::placeholder {
+    color: $app-side-nav-muted;
+    opacity: 1;
+  }
+
+  &:focus {
+    outline: 3px solid $govuk-yellow;
+    outline-offset: 0;
+    box-shadow: inset 0 0 0 2px $govuk-black;
+  }
+}
+
+.app-side-nav__link .app-side-nav-icon {
+  color: $app-side-nav-muted;
+}
+
+.app-side-nav__link:focus .app-side-nav-icon {
+  color: $govuk-black;
+}
+
+.app-side-nav__link--current {
+  background-color: $defra-light-green;
+  font-weight: 700;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 0;
+    width: 4px;
+    border-radius: 2px;
+    background-color: $defra-green;
+  }
+
+  .app-side-nav-icon {
+    color: $defra-green-hover;
+  }
+
+  &:hover {
+    background-color: $defra-light-green;
+    text-decoration: underline;
+  }
+}
+
+.app-side-nav__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-side-nav__label {
+  margin: govuk-spacing(4) govuk-spacing(3) govuk-spacing(1);
+  color: $app-side-nav-muted;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+// Collapsible sections (Pinned guidance, Case bookmarks)
+
+.app-side-nav__section {
+  margin-top: govuk-spacing(3);
+  padding-top: govuk-spacing(1);
+  border-top: 1px solid $app-side-nav-divider;
+}
+
+.app-side-nav__section-summary {
+  display: flex;
+  align-items: center;
+  gap: govuk-spacing(2);
+  min-height: 40px;
+  padding: 0 govuk-spacing(2) 0 govuk-spacing(3);
+  border-radius: 6px;
+
+  .app-side-nav__label {
+    margin: 0;
+  }
+
+  .app-side-nav__chevron {
+    margin-left: auto;
+    color: $app-side-nav-muted;
+  }
+
+  &:hover {
+    background-color: $app-side-nav-hover;
+  }
+
+  &:focus {
+    @include app-side-nav-focus;
+
+    .app-side-nav__label,
+    .app-side-nav__section-count,
+    .app-side-nav__chevron {
+      color: $govuk-black;
+    }
+  }
+}
+
+.app-side-nav__section-count {
+  color: $app-side-nav-muted;
+  font-size: 14px;
+}
+
+.app-side-nav__empty {
+  margin: 0;
+  padding: govuk-spacing(1) govuk-spacing(3) govuk-spacing(2);
+  color: $app-side-nav-muted;
+  font-size: 14px;
 }

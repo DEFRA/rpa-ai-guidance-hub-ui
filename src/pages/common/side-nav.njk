@@ -2,7 +2,23 @@
   The side navigation, on every page once signed in (common/layout.njk), in
   place of the header. Its look and behaviour follow the prototype's side
   navigation (rpa-ai-guidance-hub-prototype: app/views/partials/side-nav.njk).
+
+  Each list opens its tab on the hub, until the lists have pages of their own.
 #}
+{% from "common/icon.njk" import icon %}
+
+{% set onUpload = currentPath and currentPath.indexOf('/create-guidance') == 0 %}
+{% set listItems = [
+  { text: "Hub", href: "/hub", icon: "home", current: currentPath == "/hub" },
+  { text: "Recently opened", href: "/hub#recently-opened", icon: "clock" },
+  { text: "Pinned", href: "/hub#pinned", icon: "star" },
+  { text: "Bookmarked guides", href: "/hub#bookmarked-guides", icon: "bookmark" }
+] %}
+{% set designerItems = [
+  { text: "Awaiting my review", href: "/hub", icon: "hourglass" },
+  { text: "Upload guidance", href: "/create-guidance/upload-guide", icon: "upload", current: onUpload }
+] %}
+
 <nav class="app-side-nav" aria-label="Guidance hub">
   <div class="app-side-nav__header">
     <div class="app-side-nav__identity">
@@ -16,6 +32,58 @@
       </p>
     </div>
   </div>
+
+  {% if not hideNavSearch %}
+  <form class="app-side-nav__search" method="get" action="/hub" role="search">
+    <label class="govuk-visually-hidden" for="side-nav-search">Search or ask question</label>
+    <span class="app-side-nav__search-icon">{{ icon("search") }}</span>
+    <input class="app-side-nav__search-input" id="side-nav-search" name="search" type="search" autocomplete="off" placeholder="Search or ask question">
+    <button type="submit" class="govuk-visually-hidden-focusable">Search</button>
+  </form>
+  {% endif %}
+
+  <ul class="app-side-nav__list">
+    {% for item in listItems %}
+      <li>
+        <a class="app-side-nav__link{% if item.current %} app-side-nav__link--current{% endif %}" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>
+          {{ icon(item.icon) }}
+          <span class="app-side-nav__text">{{ item.text }}</span>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+
+  {% if isDesigner %}
+    <h2 class="app-side-nav__label" id="side-nav-designing">Designing</h2>
+    <ul class="app-side-nav__list" aria-labelledby="side-nav-designing">
+      {% for item in designerItems %}
+        <li>
+          <a class="app-side-nav__link{% if item.current %} app-side-nav__link--current{% endif %}" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>
+            {{ icon(item.icon) }}
+            <span class="app-side-nav__text">{{ item.text }}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <details class="app-side-nav__section" id="side-nav-pinned" open>
+    <summary class="app-side-nav__section-summary">
+      <span class="app-side-nav__label">Pinned guidance</span>
+      <span class="app-side-nav__section-count">0<span class="govuk-visually-hidden"> pinned</span></span>
+      {{ icon("chevron-down", "app-side-nav__chevron") }}
+    </summary>
+    <p class="app-side-nav__empty">You haven't pinned any guidance yet.</p>
+  </details>
+
+  <details class="app-side-nav__section" id="side-nav-bookmarks" open>
+    <summary class="app-side-nav__section-summary">
+      <span class="app-side-nav__label">Case bookmarks</span>
+      <span class="app-side-nav__section-count">0<span class="govuk-visually-hidden"> bookmarked</span></span>
+      {{ icon("chevron-down", "app-side-nav__chevron") }}
+    </summary>
+    <p class="app-side-nav__empty">You haven't bookmarked any guidance to a case yet.</p>
+  </details>
 
   <ul class="app-side-nav__list app-side-nav__footer">
     {% if userDisplayName %}

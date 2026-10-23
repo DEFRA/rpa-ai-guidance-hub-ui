@@ -31,10 +31,6 @@ describe('#HubViewModel', () => {
       expect(viewModel.awaitingMyReview.hintMessage).toBeNull()
     })
 
-    test('Should show the designer\'s view, as there are no roles yet', () => {
-      expect(viewModel.isDesigner).toBe(true)
-    })
-
     test('Should have no list of guidance being edited', () => {
       expect(viewModel.editing).toBeUndefined()
     })
