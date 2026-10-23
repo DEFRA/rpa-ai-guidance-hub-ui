@@ -4,6 +4,9 @@
   navigation (rpa-ai-guidance-hub-prototype: app/views/partials/side-nav.njk).
 
   Each list opens its tab on the hub, until the lists have pages of their own.
+  Folded away (sideNavCollapsed), it is a strip of icons instead, each with its
+  name for a screen reader and as a tooltip; both fold and unfold through the
+  layout's #side-nav-toggle-form.
 #}
 {% from "common/icon.njk" import icon %}
 
@@ -19,6 +22,49 @@
   { text: "Upload guidance", href: "/create-guidance/upload-guide", icon: "upload", current: onUpload }
 ] %}
 
+{% macro railItem(text, iconName, href, current) %}
+  <a class="app-side-nav__rail-item{% if current %} app-side-nav__rail-item--current{% endif %}" href="{{ href }}"{% if current %} aria-current="page"{% endif %} data-side-nav-tooltip>
+    {{ icon(iconName) }}
+    <span class="app-side-nav__rail-label">{{ text }}</span>
+    <span class="app-side-nav__tooltip" aria-hidden="true">{{ text }}</span>
+  </a>
+{% endmacro %}
+
+{% macro railExpand(text, iconName) %}
+  <button type="submit" form="side-nav-toggle-form" class="app-side-nav__rail-item" data-side-nav-tooltip>
+    {{ icon(iconName) }}
+    <span class="app-side-nav__rail-label">{{ text }}</span>
+    <span class="app-side-nav__tooltip" aria-hidden="true">{{ text }}</span>
+  </button>
+{% endmacro %}
+
+{% if sideNavCollapsed %}
+<nav class="app-side-nav app-side-nav--rail" aria-label="Guidance hub">
+  <ul class="app-side-nav__rail-list">
+    <li>{{ railExpand("Expand navigation", "expand") }}</li>
+  </ul>
+
+  <ul class="app-side-nav__rail-list">
+    {% for item in listItems %}
+      <li>{{ railItem(item.text, item.icon, item.href, item.current) }}</li>
+    {% endfor %}
+    {% if isDesigner %}
+      {% for item in designerItems %}
+        <li>{{ railItem(item.text, item.icon, item.href, item.current) }}</li>
+      {% endfor %}
+    {% endif %}
+  </ul>
+
+  <ul class="app-side-nav__rail-list">
+    <li>{{ railExpand("Pinned guidance", "star") }}</li>
+    <li>{{ railExpand("Case bookmarks", "hash") }}</li>
+  </ul>
+
+  <ul class="app-side-nav__rail-list app-side-nav__rail-footer">
+    <li>{{ railItem("Sign out", "sign-out", "/logout") }}</li>
+  </ul>
+</nav>
+{% else %}
 <nav class="app-side-nav" aria-label="Guidance hub">
   <div class="app-side-nav__header">
     <div class="app-side-nav__identity">
@@ -31,6 +77,10 @@
         <a href="/hub" class="app-side-nav__service-link">{{ serviceName }}</a>
       </p>
     </div>
+    <button type="submit" form="side-nav-toggle-form" class="app-side-nav__icon-button">
+      {{ icon("collapse") }}
+      <span class="govuk-visually-hidden">Collapse navigation</span>
+    </button>
   </div>
 
   {% if not hideNavSearch %}
@@ -92,3 +142,4 @@
     <li><a class="app-side-nav__link" href="/logout">Sign out</a></li>
   </ul>
 </nav>
+{% endif %}
