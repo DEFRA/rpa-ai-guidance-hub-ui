@@ -14,9 +14,9 @@ describe('#HubViewModel', () => {
 
     test.each([
       ['recentlyOpened', 'Recently opened'],
-      ['savedGuidance', 'Saved guidance'],
-      ['editing', 'Editing'],
-      ['awaitingApproval', 'Awaiting approval'],
+      ['pinned', 'Pinned'],
+      ['bookmarkedGuides', 'Bookmarked guides'],
+      ['awaitingMyReview', 'Awaiting my review'],
       ['allGuides', 'All guides']
     ])('Should return an empty %s table', (key, heading) => {
       expect(viewModel[key]).toEqual(expect.objectContaining({
@@ -28,12 +28,19 @@ describe('#HubViewModel', () => {
     })
 
     test('Should not hint on tables with no hint copy', () => {
-      expect(viewModel.editing.hintMessage).toBeNull()
-      expect(viewModel.awaitingApproval.hintMessage).toBeNull()
+      expect(viewModel.awaitingMyReview.hintMessage).toBeNull()
+    })
+
+    test('Should show the designer\'s view, as there are no roles yet', () => {
+      expect(viewModel.isDesigner).toBe(true)
+    })
+
+    test('Should have no list of guidance being edited', () => {
+      expect(viewModel.editing).toBeUndefined()
     })
   })
 
-  describe('recentlyOpened and savedGuidance', () => {
+  describe('recentlyOpened, pinned and bookmarkedGuides', () => {
     test('Should build a title/lastModified/version/action row, defaulting status to Published', () => {
       const viewModel = new HubViewModel({ recentlyOpened: [item] })
 
@@ -46,11 +53,17 @@ describe('#HubViewModel', () => {
     })
 
     test('Should use a provided status over the Published default', () => {
-      const viewModel = new HubViewModel({ savedGuidance: [{ ...item, status: 'Archived' }] })
+      const viewModel = new HubViewModel({ pinned: [{ ...item, status: 'Archived' }] })
 
-      expect(viewModel.savedGuidance.rows[0][0]).toEqual(
+      expect(viewModel.pinned.rows[0][0]).toEqual(
         expect.objectContaining({ statusText: 'Archived', statusColour: 'green' })
       )
+    })
+
+    test('Should build bookmarked guides rows as it does pinned ones', () => {
+      const viewModel = new HubViewModel({ pinned: [item], bookmarkedGuides: [item] })
+
+      expect(viewModel.bookmarkedGuides.rows).toEqual(viewModel.pinned.rows)
     })
 
     test('Should count the recently opened items into the hint message', () => {
@@ -98,26 +111,13 @@ describe('#HubViewModel', () => {
     })
   })
 
-  describe('editing', () => {
-    test('Should build a title/version/lastModified/action row tagged Draft', () => {
-      const viewModel = new HubViewModel({ editing: [item] })
-
-      expect(viewModel.editing.rows).toEqual([[
-        { type: 'title', text: item.title, href: item.href, statusText: 'Draft', statusColour: 'grey' },
-        { type: 'version', version: item.version, colour: 'green' },
-        { type: 'text', text: item.lastModified },
-        { type: 'removeAction', text: item.title, href: item.removeHref }
-      ]])
-    })
-  })
-
-  describe('awaitingApproval', () => {
+  describe('awaitingMyReview', () => {
     test('Should build a title/version/publishingChecks/changesRequested row', () => {
       const viewModel = new HubViewModel({
-        awaitingApproval: [{ ...item, publishingChecks: 'Broken link', changesRequested: 'Fix heading' }]
+        awaitingMyReview: [{ ...item, publishingChecks: 'Broken link', changesRequested: 'Fix heading' }]
       })
 
-      expect(viewModel.awaitingApproval.rows).toEqual([[
+      expect(viewModel.awaitingMyReview.rows).toEqual([[
         { type: 'title', text: item.title, href: item.href, statusText: 'Awaiting approval', statusColour: 'yellow' },
         { type: 'version', version: item.version, colour: 'green' },
         { type: 'text', text: 'Broken link' },
@@ -126,10 +126,10 @@ describe('#HubViewModel', () => {
     })
 
     test('Should default missing publishing checks and changes requested', () => {
-      const viewModel = new HubViewModel({ awaitingApproval: [item] })
+      const viewModel = new HubViewModel({ awaitingMyReview: [item] })
 
-      expect(viewModel.awaitingApproval.rows[0][2]).toEqual({ type: 'text', text: 'No issues' })
-      expect(viewModel.awaitingApproval.rows[0][3]).toEqual({ type: 'text', text: 'None' })
+      expect(viewModel.awaitingMyReview.rows[0][2]).toEqual({ type: 'text', text: 'No issues' })
+      expect(viewModel.awaitingMyReview.rows[0][3]).toEqual({ type: 'text', text: 'None' })
     })
   })
 
