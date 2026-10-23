@@ -103,7 +103,7 @@ describe('Side navigation', () => {
         ['Recently opened', '/hub#recently-opened'],
         ['Pinned', '/hub#pinned'],
         ['Bookmarked guides', '/hub#bookmarked-guides'],
-        ['Awaiting my review', '/hub'],
+        ['Awaiting my review', '/hub#awaiting-my-review'],
         ['Upload guidance', '/create-guidance/upload-guide']
       ])
       expect(nav).toContain('>Designing</h2>')
@@ -163,11 +163,25 @@ describe('Side navigation', () => {
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(response.headers.location).toBe('/hub')
       expect(payload).toContain('<nav class="app-side-nav app-side-nav--rail" aria-label="Guidance hub">')
-      for (const name of ['Expand navigation', 'Hub', 'Recently opened', 'Pinned', 'Bookmarked guides', 'Awaiting my review', 'Upload guidance', 'Pinned guidance', 'Case bookmarks', 'Sign out']) {
+      for (const name of ['Expand navigation', 'Hub', 'Recently opened', 'Pinned', 'Bookmarked guides', 'Awaiting my review', 'Upload guidance', 'Sign out']) {
         expect(payload).toContain(`<span class="app-side-nav__rail-label">${name}</span>`)
       }
+      expect(payload).not.toContain('<span class="app-side-nav__rail-label">Pinned guidance</span>')
+      expect(payload).not.toContain('<span class="app-side-nav__rail-label">Case bookmarks</span>')
       expect(payload).not.toContain('app-side-nav__search')
       expect(payload).toMatch(/name="collapsed" value="false"/)
+    })
+
+    test('keeps a designer\'s work in a list of its own, after the lists of guides', async () => {
+      const signedIn = await loginAsDevUser(server)
+
+      const { cookie } = await fold(signedIn, true, '/hub')
+      const payload = await pageOf(cookie, '/hub')
+
+      const designing = payload.indexOf('<ul class="app-side-nav__rail-list" aria-label="Designing">')
+      expect(designing).toBeGreaterThan(payload.indexOf('<span class="app-side-nav__rail-label">Bookmarked guides</span>'))
+      expect(payload.indexOf('<span class="app-side-nav__rail-label">Awaiting my review</span>')).toBeGreaterThan(designing)
+      expect(payload.indexOf('<span class="app-side-nav__rail-label">Upload guidance</span>')).toBeGreaterThan(designing)
     })
 
     test('stays folded on the next page, for the session', async () => {
