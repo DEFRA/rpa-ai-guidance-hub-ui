@@ -18,7 +18,7 @@
   { text: "Bookmarked guides", href: "/hub#bookmarked-guides", icon: "bookmark" }
 ] %}
 {% set designerItems = [
-  { text: "Awaiting my review", href: "/hub", icon: "hourglass" },
+  { text: "Awaiting my review", href: "/hub#awaiting-my-review", icon: "hourglass" },
   { text: "Upload guidance", href: "/create-guidance/upload-guide", icon: "upload", current: onUpload }
 ] %}
 
@@ -48,17 +48,16 @@
     {% for item in listItems %}
       <li>{{ railItem(item.text, item.icon, item.href, item.current) }}</li>
     {% endfor %}
-    {% if isDesigner %}
+  </ul>
+
+  {# A designer's work in a list of its own: the strip draws a line above it. #}
+  {% if isDesigner %}
+    <ul class="app-side-nav__rail-list" aria-label="Designing">
       {% for item in designerItems %}
         <li>{{ railItem(item.text, item.icon, item.href, item.current) }}</li>
       {% endfor %}
-    {% endif %}
-  </ul>
-
-  <ul class="app-side-nav__rail-list">
-    <li>{{ railExpand("Pinned guidance", "star") }}</li>
-    <li>{{ railExpand("Case bookmarks", "hash") }}</li>
-  </ul>
+    </ul>
+  {% endif %}
 
   <ul class="app-side-nav__rail-list app-side-nav__rail-footer">
     <li>{{ railItem("Sign out", "sign-out", "/logout") }}</li>
