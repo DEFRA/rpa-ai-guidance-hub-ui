@@ -274,7 +274,7 @@ function _build (parts) {
       subheadings,
       markdown: raw.join('').trim()
     }))
-    .filter(part => part.markdown || part.title !== INTRODUCTION_TITLE)
+    .filter(part => part.markdown || part.slug !== null)
     .map((part, index) => ({ id: `section-${index + 1}`, ...part }))
 }
 
