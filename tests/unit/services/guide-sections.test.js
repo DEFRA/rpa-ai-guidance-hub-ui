@@ -128,6 +128,20 @@ describe('splitIntoSections', () => {
 
       expect(intro.slug).toBeNull()
     })
+
+    test('include headings inside quotes and lists, in order, without splitting on them', () => {
+      const sections = splitIntoSections('## Section\n\n> ## Note\n\n- ### In a list\n\n### Details')
+
+      expect(sections).toHaveLength(1)
+      expect(sections[0].headingIds).toEqual(['note', 'in-a-list', 'details'])
+      expect(sections[0].subheadings).toEqual([{ title: 'Details', slug: 'details' }])
+    })
+
+    test('include headings inside quotes when there are no section headings', () => {
+      const [intro] = splitIntoSections('Preface.\n\n> ### Note')
+
+      expect(intro.headingIds).toEqual(['note'])
+    })
   })
 })
 
