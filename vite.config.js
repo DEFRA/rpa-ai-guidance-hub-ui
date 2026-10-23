@@ -11,7 +11,16 @@ export default defineConfig({
         htmlAssets: 'src/client/assets.html',
         application: 'src/client/javascripts/application.js',
         applicationCss: 'src/client/stylesheets/application.scss',
-        defraLogo: 'src/client/images/defra-logo.svg'
+        defraLogo: 'src/client/images/defra-logo.svg',
+        tiptap: 'src/client/javascripts/tiptap/viewer.js',
+      },
+      output: {
+        advancedChunks: {
+          groups: [
+            { name: 'prosemirror', test: /node_modules[\\/](prosemirror-|@tiptap[\\/]pm)/ },
+            { name: 'tiptap-vendor', test: /node_modules[\\/](@tiptap|marked|linkifyjs)/ }
+          ]
+        }
       }
     },
     sourcemap: true

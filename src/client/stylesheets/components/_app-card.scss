@@ -1,4 +1,5 @@
 @use '../variables/colours' as *;
+@use 'govuk-frontend' as govuk;
 
 // Action cards, used on landing pages (e.g. Home and Designer dashboard) to
 // offer the key actions a user can take when they arrive.
@@ -54,5 +55,5 @@
 .app-card__description {
   position: relative;
   margin-bottom: 0;
-  color: $govuk-secondary-text-colour;
+  color: govuk.$govuk-secondary-text-colour;
 }

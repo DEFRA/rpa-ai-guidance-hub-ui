@@ -1,5 +1,7 @@
 $defra-green: #008531;
 $defra-green-aa: #00a33b;
+// Text on the light grey panels: $defra-green alone only reaches ~4.3:1 there.
+$defra-green-hover: #006a27;
 
 $defra-light-green: #eefdf4;
 $defra-brand-colour: $defra-green;
@@ -11,7 +13,5 @@ $govuk-light-grey: #f3f2f1;
 $govuk-mid-grey: #b1b4b6;
 $govuk-red: #d4351c;
 $govuk-yellow: #ffdd00;
-$govuk-focus-colour: #ffdd00;
-$govuk-secondary-text-colour: #484949;
 
 $app-light-grey: #f8f8f8;

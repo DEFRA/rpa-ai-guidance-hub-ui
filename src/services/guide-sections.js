@@ -37,7 +37,11 @@ function splitIntoSections (markdown) {
   const depth = _sectionDepth(tokens)
 
   if (depth === null) {
-    return _build([_part(INTRODUCTION_TITLE, null, tokens.map(_raw))])
+    const introduction = _part(INTRODUCTION_TITLE, null, [])
+
+    tokens.forEach(token => _addToken(introduction, token, slugs, depth))
+
+    return _build([introduction])
   }
 
   const parts = []
@@ -58,28 +62,36 @@ function splitIntoSections (markdown) {
 }
 
 /**
- * Add a token to the section it falls in, recording it if it is a heading.
+ * Add a token to the section it falls in, recording the headings in it. The
+ * renderers give out `headingIds` to every heading they draw, in order, so
+ * headings inside quotes and lists are recorded too.
  *
  * @private
  * @param {ReturnType<typeof _part>} part
  * @param {import('marked').Token} token
  * @param {Map<import('marked').Token, string>} slugs
- * @param {number} depth - The section heading depth
+ * @param {number|null} depth - The section heading depth
  */
 function _addToken (part, token, slugs, depth) {
   part.raw.push(_raw(token))
 
-  if (token.type !== 'heading') {
-    return
+  for (const heading of _headingsIn([token])) {
+    part.headingIds.push(slugs.get(heading))
   }
 
-  const slug = slugs.get(token)
-
-  part.headingIds.push(slug)
-
-  if (token.depth === depth + 1) {
-    part.subheadings.push({ title: _plainText(token), slug })
+  if (token.type === 'heading' && token.depth === depth + 1) {
+    part.subheadings.push({ title: _plainText(token), slug: slugs.get(token) })
   }
+}
+
+/**
+ * @private
+ * @param {import('marked').Token[]} tokens
+ * @returns {import('marked').Token[]} The headings in `tokens`, including
+ *   those inside quotes and lists, in source order
+ */
+function _headingsIn (tokens) {
+  return tokens.flatMap(token => token.type === 'heading' ? [token] : _headingsIn(_children(token)))
 }
 
 /**
@@ -274,7 +286,7 @@ function _build (parts) {
       subheadings,
       markdown: raw.join('').trim()
     }))
-    .filter(part => part.markdown || part.title !== INTRODUCTION_TITLE)
+    .filter(part => part.markdown || part.slug !== null)
     .map((part, index) => ({ id: `section-${index + 1}`, ...part }))
 }
 
@@ -291,7 +303,7 @@ function _slugsOf (tokens) {
   const slugs = new Map()
   const seen = new Map()
 
-  for (const token of tokens.filter(({ type }) => type === 'heading')) {
+  for (const token of _headingsIn(tokens)) {
     const base = _plainText(token)
       .toLowerCase()
       .replaceAll(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, '')
