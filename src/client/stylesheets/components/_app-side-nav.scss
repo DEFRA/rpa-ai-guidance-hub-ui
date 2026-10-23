@@ -272,6 +272,11 @@ $app-side-nav-muted: #505a5f;
   min-width: 0;
 }
 
+// Folded away to its icons (side-nav.njk), the column is the rail's width.
+.app-layout--collapsed .app-layout__nav {
+  width: $app-side-nav-rail-width;
+}
+
 // Beside the nav the page runs the full width of its column, and everything in
 // it starts the same distance from the column's edge, as in the prototype
 // ($app-content-gutter there). Width containers nested in the page's own (the

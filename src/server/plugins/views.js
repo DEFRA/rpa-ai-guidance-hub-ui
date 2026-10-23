@@ -6,6 +6,7 @@ import nunjucks from 'nunjucks'
 
 import { config } from '../../config/config.js'
 import { jsonScript, renderMarkdownFallback } from '../../pages/guide/markdown.js'
+import { isNavCollapsed } from '../../pages/side-nav/collapsed.js'
 
 const nunjucksEnvironment = nunjucks.configure(
   [
@@ -87,6 +88,9 @@ const viewPlugin = {
       // The hub has no roles yet, so everyone gets the designer's view; an
       // operator's view is the same without the designer's functions.
       isDesigner: true,
+      sideNavCollapsed: request ? isNavCollapsed(request) : false,
+      // Where a form on the page sends the user back to: this page.
+      currentUrl: request?.url ? `${request.url.pathname}${request.url.search}` : null,
       userDisplayName: request?.auth?.credentials?.profile?.displayName ?? null
     })
   }
