@@ -49,7 +49,9 @@ function _markCurrent (links, current) {
  * @returns {void}
  */
 function initSideNavCurrent () {
-  const links = Array.from(document.querySelectorAll('.app-side-nav a[href^="/hub"]'))
+  // Only the navigation's items, never the service name, which also links to the hub
+  const items = Object.keys(CURRENT_CLASSES).map((name) => `.${name}[href^="/hub"]`).join(', ')
+  const links = Array.from(document.querySelectorAll(items))
 
   if (links.length === 0) {
     return
