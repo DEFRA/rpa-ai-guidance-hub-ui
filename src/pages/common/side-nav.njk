@@ -3,7 +3,8 @@
   place of the header. Its look and behaviour follow the prototype's side
   navigation (rpa-ai-guidance-hub-prototype: app/views/partials/side-nav.njk).
 
-  Each list opens its tab on the hub, until the lists have pages of their own.
+  Each list has a page of its own on the hub (/hub/pinned), so the server
+  marks the current item.
   Folded away (sideNavCollapsed), it is a strip of icons instead, each with its
   name for a screen reader and as a tooltip; both fold and unfold through the
   layout's #side-nav-toggle-form.
@@ -13,12 +14,12 @@
 {% set onUpload = currentPath and currentPath.indexOf('/create-guidance') == 0 %}
 {% set listItems = [
   { text: "Hub", href: "/hub", icon: "home", current: currentPath == "/hub" },
-  { text: "Recently opened", href: "/hub#recently-opened", icon: "clock" },
-  { text: "Pinned", href: "/hub#pinned", icon: "star" },
-  { text: "Bookmarked guides", href: "/hub#bookmarked-guides", icon: "bookmark" }
+  { text: "Recently opened", href: "/hub/recently-opened", icon: "clock", current: currentPath == "/hub/recently-opened" },
+  { text: "Pinned", href: "/hub/pinned", icon: "star", current: currentPath == "/hub/pinned" },
+  { text: "Bookmarked guides", href: "/hub/bookmarked-guides", icon: "bookmark", current: currentPath == "/hub/bookmarked-guides" }
 ] %}
 {% set designerItems = [
-  { text: "Awaiting my review", href: "/hub#awaiting-my-review", icon: "hourglass" },
+  { text: "Awaiting my review", href: "/hub/awaiting-my-review", icon: "hourglass", current: currentPath == "/hub/awaiting-my-review" },
   { text: "Upload guidance", href: "/create-guidance/upload-guide", icon: "upload", current: onUpload }
 ] %}
 

@@ -3,9 +3,7 @@
 {% from "govuk/components/phase-banner/macro.njk" import govukPhaseBanner %}
 {% from "govuk/components/input/macro.njk" import govukInput %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
-{% from "govuk/components/tabs/macro.njk" import govukTabs %}
 {% from "common/guidance-table.njk" import guidanceTablePanel %}
-{% from "common/tab-label.njk" import tabLabel %}
 
 {% set pageTitle = 'RPA Guidance Hub' %}
 {% set page = 'hub' %}
@@ -57,44 +55,7 @@
 
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-full">
-        {% set recentlyOpenedPanelHtml %}{{ guidanceTablePanel(recentlyOpened) }}{% endset %}
-        {% set pinnedPanelHtml %}{{ guidanceTablePanel(pinned) }}{% endset %}
-        {% set bookmarkedGuidesPanelHtml %}{{ guidanceTablePanel(bookmarkedGuides) }}{% endset %}
-        {% set allGuidesPanelHtml %}{{ guidanceTablePanel(allGuides) }}{% endset %}
-
-        {{ govukTabs({
-          title: "Contents",
-          items: [
-            {
-              label: tabLabel(allGuides.heading, allGuides.count),
-              id: "all-guides",
-              panel: {
-                html: allGuidesPanelHtml
-              }
-            },
-            {
-              label: tabLabel(recentlyOpened.heading, recentlyOpened.count),
-              id: "recently-opened",
-              panel: {
-                html: recentlyOpenedPanelHtml
-              }
-            },
-            {
-              label: tabLabel(pinned.heading, pinned.count),
-              id: "pinned",
-              panel: {
-                html: pinnedPanelHtml
-              }
-            },
-            {
-              label: tabLabel(bookmarkedGuides.heading, bookmarkedGuides.count),
-              id: "bookmarked-guides",
-              panel: {
-                html: bookmarkedGuidesPanelHtml
-              }
-            }
-          ]
-        }) }}
+        {{ guidanceTablePanel(shown) }}
       </div>
     </div>
 

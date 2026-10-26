@@ -100,10 +100,10 @@ describe('Side navigation', () => {
 
       expect(linkTexts(nav)).toEqual([
         ['Hub', '/hub'],
-        ['Recently opened', '/hub#recently-opened'],
-        ['Pinned', '/hub#pinned'],
-        ['Bookmarked guides', '/hub#bookmarked-guides'],
-        ['Awaiting my review', '/hub#awaiting-my-review'],
+        ['Recently opened', '/hub/recently-opened'],
+        ['Pinned', '/hub/pinned'],
+        ['Bookmarked guides', '/hub/bookmarked-guides'],
+        ['Awaiting my review', '/hub/awaiting-my-review'],
         ['Upload guidance', '/create-guidance/upload-guide']
       ])
       expect(nav).toContain('>Designing</h2>')
@@ -118,6 +118,10 @@ describe('Side navigation', () => {
 
     test.each([
       ['/hub', 'Hub'],
+      ['/hub/recently-opened', 'Recently opened'],
+      ['/hub/pinned', 'Pinned'],
+      ['/hub/bookmarked-guides', 'Bookmarked guides'],
+      ['/hub/awaiting-my-review', 'Awaiting my review'],
       ['/create-guidance/upload-guide', 'Upload guidance']
     ])('marks the current page on %s', async (url, current) => {
       const nav = await navOf(url)

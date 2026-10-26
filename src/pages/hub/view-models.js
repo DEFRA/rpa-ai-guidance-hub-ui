@@ -139,6 +139,8 @@ class HubViewModel {
    * @param {Array<object>} [data.awaitingMyReview=[]]
    * @param {Array<object>} [data.allGuides=[]] - Items are
    *   `{title, href, lastModified, owner}`
+   * @param {string} [data.shown='allGuides'] - The table that the page
+   *   shows
    */
   constructor (data = {}) {
     const {
@@ -146,7 +148,8 @@ class HubViewModel {
       pinned = [],
       bookmarkedGuides = [],
       awaitingMyReview = [],
-      allGuides = []
+      allGuides = [],
+      shown = 'allGuides'
     } = data
 
     this.recentlyOpened = _buildTable({
@@ -193,6 +196,8 @@ class HubViewModel {
       head: ALL_GUIDES_TABLE_HEAD,
       rows: _buildAllGuidesRows(allGuides)
     })
+
+    this.shown = this[shown]
   }
 }
 

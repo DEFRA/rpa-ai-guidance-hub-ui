@@ -33,7 +33,7 @@ describe('#hubController', () => {
   })
 
   describe('When logged in as a dev user', () => {
-    test('Should respond with 200 and render the hub page with its 4 tabs', async () => {
+    test('Should respond with 200 and render the hub page with all guides', async () => {
       const cookie = await loginAsDevUser(server)
 
       const { statusCode, payload } = await server.inject({
@@ -44,31 +44,22 @@ describe('#hubController', () => {
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(payload).toContain('RPA Guidance hub')
-      expect(payload).toContain('Recently opened (0)')
-      expect(payload).toContain('Pinned (0)')
-      expect(payload).toContain('Bookmarked guides (0)')
-      expect(payload).toContain('href="#pinned"')
-      expect(payload).toContain('href="#bookmarked-guides"')
+      expect(payload).toContain('<h2 class="govuk-heading-m">All guides</h2>')
       expect(payload).not.toContain('Editing')
       expect(payload).not.toContain('Saved guidance')
-      expect(payload).toContain('All guides (1)')
-      expect(payload).toContain('href="#all-guides"')
-      expect(payload).toContain('Upload guidance')
-      expect(payload).toContain('You haven&#39;t opened any guidance yet.')
       expect(payload).not.toContain('defra-service-navigation')
-      expect(payload).toContain('class="govuk-tabs" data-module="govuk-tabs"')
-      expect(payload).toContain('href="#recently-opened"')
     })
 
-    test('lists everyone\'s guides in tabs, all guides first, in the side navigation\'s order', async () => {
+    test('shows one list at a time, not tabs', async () => {
       const cookie = await loginAsDevUser(server)
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
-      const order = ['All guides (', 'Recently opened (', 'Pinned (', 'Bookmarked guides ('].map((label) => payload.indexOf(label))
-      expect(order).toEqual([...order].sort((a, b) => a - b))
-      expect(order).not.toContain(-1)
-      expect(payload).not.toContain('href="#awaiting-my-review"')
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      expect(main).not.toContain('govuk-tabs')
+      for (const heading of ['Recently opened', 'Pinned', 'Bookmarked guides', 'Awaiting my review']) {
+        expect(main).not.toContain(`<h2 class="govuk-heading-m">${heading}</h2>`)
+      }
     })
 
     test('leaves a designer\'s work to the side navigation', async () => {
@@ -94,7 +85,7 @@ describe('#hubController', () => {
         }
       ]
 
-      const renderedHtml = await server.render('hub/page.njk', new HubViewModel({ recentlyOpened: items }))
+      const renderedHtml = await server.render('hub/page.njk', new HubViewModel({ recentlyOpened: items, shown: 'recentlyOpened' }))
 
       expect(renderedHtml).toContain('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;')
       expect(renderedHtml).not.toContain(xssTitle)
@@ -112,7 +103,7 @@ describe('#hubController', () => {
         }
       ]
 
-      const renderedHtml = await server.render('hub/page.njk', new HubViewModel({ recentlyOpened: items }))
+      const renderedHtml = await server.render('hub/page.njk', new HubViewModel({ recentlyOpened: items, shown: 'recentlyOpened' }))
 
       expect(renderedHtml).not.toContain('javascript:alert')
       expect(renderedHtml).not.toContain('evil.example.com')
@@ -120,7 +111,35 @@ describe('#hubController', () => {
     })
   })
 
-  describe('the All guides tab', () => {
+  describe('a list of guides', () => {
+    test.each([
+      ['/hub/recently-opened', 'Recently opened', 'You haven&#39;t opened any guidance yet.'],
+      ['/hub/pinned', 'Pinned', 'You haven&#39;t pinned any guidance yet.'],
+      ['/hub/bookmarked-guides', 'Bookmarked guides', 'You haven&#39;t bookmarked any guidance yet.'],
+      ['/hub/awaiting-my-review', 'Awaiting my review', 'There is no guidance awaiting your review.']
+    ])('%s shows only the %s list', async (url, heading, emptyMessage) => {
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode, payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
+
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(main).toContain(`<h2 class="govuk-heading-m">${heading}</h2>`)
+      expect(main).toContain(emptyMessage)
+      expect(main).not.toContain('All guides')
+      expect(main).not.toContain('govuk-tabs')
+    })
+
+    test('is not found when there is no such list', async () => {
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode } = await server.inject({ method: 'GET', url: '/hub/no-such-list', headers: { cookie } })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_NOT_FOUND)
+    })
+  })
+
+  describe('the All guides list', () => {
     test('Should list each guide, linking to it', async () => {
       nock.cleanAll()
       nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({
@@ -143,7 +162,6 @@ describe('#hubController', () => {
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
-      expect(payload).toContain('All guides (0)')
       expect(payload).toContain('There are no guides yet.')
     })
   })
