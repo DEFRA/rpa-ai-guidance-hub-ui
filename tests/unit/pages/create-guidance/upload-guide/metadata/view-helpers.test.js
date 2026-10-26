@@ -19,11 +19,29 @@ describe('#formatStagedDocumentDate', () => {
 })
 
 describe('#toCheckboxOptions', () => {
-  test('uses each label as both the form value and the text', () => {
-    expect(toCheckboxOptions([{ label: 'CRM' }, { label: 'Siti Agri', shortLabel: 'SA' }])).toEqual([
-      { value: 'CRM', text: 'CRM' },
-      { value: 'Siti Agri', text: 'Siti Agri' }
+  test('appends the short label in brackets to the text when it is distinct from the label', () => {
+    expect(toCheckboxOptions([
+      { label: 'Sustainable Farming Incentive', shortLabel: 'SFI' }
+    ])).toEqual([
+      { value: 'sustainable-farming-incentive', text: 'Sustainable Farming Incentive (SFI)' }
     ])
+  })
+
+  test('uses the label as the text when the short label is the same or missing', () => {
+    expect(toCheckboxOptions([
+      { label: 'CRM', shortLabel: 'CRM' },
+      { label: 'Siti Agri' }
+    ])).toEqual([
+      { value: 'crm', text: 'CRM' },
+      { value: 'siti-agri', text: 'Siti Agri' }
+    ])
+  })
+
+  test('values are the lower-case, hyphenated label', () => {
+    expect(toCheckboxOptions([
+      { label: 'Siti Agri' },
+      { label: 'Team leader (SFI)' }
+    ]).map(({ value }) => value)).toEqual(['siti-agri', 'team-leader-sfi'])
   })
 
   test('defaults to an empty array when no options are given', () => {

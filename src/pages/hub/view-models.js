@@ -28,6 +28,7 @@ const DOCUMENT_TABLE_HEAD = [
 
 const ALL_GUIDES_TABLE_HEAD = [
   { text: 'Title', classes: tableHeadClasses.HALF_WIDTH },
+  { text: 'Scheme' },
   { text: 'Last updated' },
   { text: 'Owner' }
 ]
@@ -93,6 +94,7 @@ function _buildDocumentRows (items) {
 function _buildAllGuidesRows (items) {
   return items.map((item) => [
     _linkCell(item),
+    _textCell(item.schemes),
     _textCell(item.lastModified),
     _textCell(item.owner)
   ])
@@ -154,7 +156,7 @@ class HubViewModel {
    * @param {Array<object>} [data.editing=[]]
    * @param {Array<object>} [data.awaitingApproval=[]]
    * @param {Array<object>} [data.allGuides=[]] - Items are
-   *   `{title, href, lastModified, owner}`
+   *   `{title, href, schemes, lastModified, owner}`
    */
   constructor (data = {}) {
     const {

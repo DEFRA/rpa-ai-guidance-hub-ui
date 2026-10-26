@@ -5,7 +5,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
-import { guidePageResponse, guideSummaryResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse, guideSummaryResponse, schemesResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -20,6 +20,7 @@ describe('#hubController', () => {
   })
 
   beforeEach(() => {
+    nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').optionally().reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
     nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
   })
 
@@ -98,6 +99,7 @@ describe('#hubController', () => {
   describe('the All guides tab', () => {
     test('Should list each guide, linking to it', async () => {
       nock.cleanAll()
+      nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
       nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({
         items: [guideSummaryResponse({ id: '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90' })]
       }))
@@ -113,6 +115,7 @@ describe('#hubController', () => {
 
     test('Should say there are no guides when there are none', async () => {
       nock.cleanAll()
+      nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
       nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items: [] }))
       const cookie = await loginAsDevUser(server)
 

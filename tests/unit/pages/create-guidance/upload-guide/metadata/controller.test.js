@@ -62,8 +62,8 @@ describe('upload-guide metadata controller', () => {
       expect(h.view).toHaveBeenCalledWith(METADATA_VIEW, expect.objectContaining({
         values: expect.objectContaining({ guideTitle: 'Existing Title' }),
         schemeOptions: [
-          { value: 'Sustainable Farming Incentive', text: 'Sustainable Farming Incentive' },
-          { value: 'Not scheme-specific', text: 'Not scheme-specific', divider: 'or' }
+          { value: 'sustainable-farming-incentive', text: 'Sustainable Farming Incentive' },
+          { value: 'not-scheme-specific', text: 'Not scheme-specific', divider: 'or' }
         ],
         notification: null
       }))
@@ -236,7 +236,7 @@ describe('upload-guide metadata controller', () => {
       expect(h.view).toHaveBeenCalledWith(METADATA_VIEW, expect.objectContaining({
         errors: { guideTitle: 'Enter the guidance title' },
         schemeOptions: [
-          { value: 'Not scheme-specific', text: 'Not scheme-specific', divider: 'or' }
+          { value: 'not-scheme-specific', text: 'Not scheme-specific', divider: 'or' }
         ]
       }))
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
@@ -244,10 +244,13 @@ describe('upload-guide metadata controller', () => {
     })
 
     test('redisplays a normalized scheme selection when "Not scheme-specific" is submitted alongside another scheme', async () => {
-      referenceDataService.getSchemes.mockResolvedValue([])
+      referenceDataService.getSchemes.mockResolvedValue([
+        { label: 'Sustainable Farming Incentive', shortLabel: 'SFI' },
+        { label: 'Not scheme-specific', shortLabel: 'Not scheme-specific' }
+      ])
 
       request = {
-        payload: { guideTitle: '', schemes: ['Not scheme-specific', 'Sustainable Farming Incentive'] },
+        payload: { guideTitle: '', schemes: ['not-scheme-specific', 'sustainable-farming-incentive'] },
         yar: { get: vi.fn() }
       }
       const err = {
@@ -257,7 +260,7 @@ describe('upload-guide metadata controller', () => {
       await metadataFailAction(request, h, err)
 
       expect(h.view).toHaveBeenCalledWith(METADATA_VIEW, expect.objectContaining({
-        values: expect.objectContaining({ schemes: ['Sustainable Farming Incentive'] })
+        values: expect.objectContaining({ schemes: ['sustainable-farming-incentive'] })
       }))
     })
 

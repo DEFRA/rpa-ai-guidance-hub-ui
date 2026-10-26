@@ -87,4 +87,23 @@ describe('buildGuideSummaryCards', () => {
     expect(guideDetailsCard.actions.items[0].href).toBe('/create-guidance/upload-guide/metadata?from=check')
     expect(ownerPurposeCard.actions.items[0].href).toBe('/create-guidance/upload-guide/metadata/purpose?from=check')
   })
+
+  test('adds each answer\'s short label from the reference options, leaving unmatched labels as stored', () => {
+    const { guideDetailsCard, ownerPurposeCard } = buildGuideSummaryCards({
+      metadata: {
+        schemes: ['Sustainable Farming Incentive', 'Retired scheme'],
+        systems: ['CRM'],
+        audience: ['Processor']
+      },
+      referenceOptions: {
+        schemes: [{ label: 'Sustainable Farming Incentive', shortLabel: 'SFI' }],
+        systems: [{ label: 'CRM', shortLabel: 'CRM' }],
+        audience: [{ label: 'Processor' }]
+      }
+    })
+
+    expect(guideDetailsCard.rows[3].value.text).toBe('Sustainable Farming Incentive (SFI), Retired scheme')
+    expect(ownerPurposeCard.rows[3].value.text).toBe('CRM')
+    expect(ownerPurposeCard.rows[4].value.text).toBe('Processor')
+  })
 })

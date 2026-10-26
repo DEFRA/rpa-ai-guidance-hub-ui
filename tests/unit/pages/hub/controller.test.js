@@ -2,12 +2,13 @@ import { statusCodes } from '../../../../src/constants/status-codes.js'
 
 import { getHubPage } from '../../../../src/pages/hub/controller.js'
 import * as guidesService from '../../../../src/services/guides.js'
+import * as referenceDataService from '../../../../src/services/reference-data.js'
 
 const listedGuide = {
   id: 'guide-1',
   title: 'Claiming the SFI payment',
   owner: 'owner@example.com',
-  schemes: [],
+  schemes: ['Sustainable Farming Incentive (SFI)', 'Retired scheme'],
   systems: [],
   audience: [],
   lastUpdated: '2026-10-06T08:00:00Z'
@@ -21,6 +22,9 @@ describe('#hubController', () => {
     code = vi.fn()
     h = { view: vi.fn(() => ({ code })) }
     vi.spyOn(guidesService, 'listGuides').mockResolvedValue({ guides: [], nextCursor: null })
+    vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([
+      { label: 'Sustainable Farming Incentive (SFI)', shortLabel: 'SFI' }
+    ])
   })
 
   describe('getHubPage', () => {
@@ -62,14 +66,15 @@ describe('#hubController', () => {
       expect(viewModel.allGuides.count).toBe(1)
       expect(viewModel.allGuides.rows).toEqual([[
         { type: 'link', text: 'Claiming the SFI payment', href: '/guides/guide-1' },
+        { type: 'text', text: 'SFI, Retired scheme' },
         { type: 'text', text: '6 October 2026' },
         { type: 'text', text: 'owner@example.com' }
       ]])
     })
 
-    test('Should say when a guide has no title, date or owner', async () => {
+    test('Should say when a guide has no title, schemes, date or owner', async () => {
       guidesService.listGuides.mockResolvedValue({
-        guides: [{ ...listedGuide, title: null, owner: null, lastUpdated: null }],
+        guides: [{ ...listedGuide, title: null, schemes: [], owner: null, lastUpdated: null }],
         nextCursor: null
       })
 
@@ -79,6 +84,7 @@ describe('#hubController', () => {
 
       expect(viewModel.allGuides.rows[0].map(cell => cell.text)).toEqual([
         'Untitled guide',
+        'Not recorded',
         'Not recorded',
         'Not recorded'
       ])

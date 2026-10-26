@@ -103,7 +103,7 @@ async function completeAllMetadata (server, cookie) {
   const guideDetailsResponse = await server.inject({
     method: 'POST',
     url: '/create-guidance/upload-guide/metadata',
-    payload: { guideTitle: 'Complete Guide Title', schemes: ['Sustainable Farming Incentive (SFI)'] },
+    payload: { guideTitle: 'Complete Guide Title', schemes: ['sustainable-farming-incentive-sfi'] },
     headers: { cookie: sessionCookie }
   })
 
@@ -127,8 +127,8 @@ async function completeAllMetadata (server, cookie) {
       owner: 'designer@example.com',
       goal: 'Clear guidance purpose',
       requirements: 'Standard training required',
-      systems: ['CRM'],
-      audience: ['Processor']
+      systems: ['crm'],
+      audience: ['processor']
     },
     headers: { cookie: sessionCookie }
   })

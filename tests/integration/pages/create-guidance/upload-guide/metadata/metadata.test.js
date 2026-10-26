@@ -131,7 +131,7 @@ describe('#metadataController Integration', () => {
       const response = await server.inject({
         method: 'POST',
         url: '/create-guidance/upload-guide/metadata',
-        payload: { guideTitle: 'A valid title', schemes: ['Not scheme-specific', 'Sustainable Farming Incentive (SFI)'] },
+        payload: { guideTitle: 'A valid title', schemes: ['not-scheme-specific', 'sustainable-farming-incentive-sfi'] },
         headers: { cookie }
       })
 

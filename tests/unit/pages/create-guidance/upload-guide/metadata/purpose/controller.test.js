@@ -76,9 +76,9 @@ describe('upload-guide metadata purpose controller', () => {
       await getPurposeForm(request, h)
 
       expect(h.view).toHaveBeenCalledWith(PURPOSE_VIEW, expect.objectContaining({
-        values: expect.objectContaining({ owner: 'owner@example.com', systems: ['CRM'], audience: [] }),
-        systemOptions: [{ value: 'CRM', text: 'CRM' }],
-        audienceOptions: [{ value: 'Processor', text: 'Processor' }]
+        values: expect.objectContaining({ owner: 'owner@example.com', systems: ['crm'], audience: [] }),
+        systemOptions: [{ value: 'crm', text: 'CRM' }],
+        audienceOptions: [{ value: 'processor', text: 'Processor' }]
       }))
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
     })
@@ -103,7 +103,7 @@ describe('upload-guide metadata purpose controller', () => {
   describe('purposeFailAction', () => {
     test('re-renders with 400, the validation errors and normalized selections', async () => {
       mockReferenceData()
-      request.payload = { owner: '', systems: 'CRM' }
+      request.payload = { owner: '', systems: 'crm' }
       const err = { details: [{ path: ['owner'], message: 'Enter an email address' }] }
 
       await purposeFailAction(request, h, err)
@@ -111,8 +111,8 @@ describe('upload-guide metadata purpose controller', () => {
       expect(h.view).toHaveBeenCalledWith(PURPOSE_VIEW, expect.objectContaining({
         errors: { owner: 'Enter an email address' },
         errorList: [{ text: 'Enter an email address', href: '#owner' }],
-        values: { owner: '', systems: ['CRM'], audience: [] },
-        systemOptions: [{ value: 'CRM', text: 'CRM' }]
+        values: { owner: '', systems: ['crm'], audience: [] },
+        systemOptions: [{ value: 'crm', text: 'CRM' }]
       }))
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
       expect(takeover).toHaveBeenCalled()
@@ -121,7 +121,7 @@ describe('upload-guide metadata purpose controller', () => {
     test('sets backUrl and formAction with from=check when validation fails from check-answers', async () => {
       mockReferenceData()
       request.query = { from: 'check' }
-      request.payload = { owner: '', systems: 'CRM' }
+      request.payload = { owner: '', systems: 'crm' }
       const err = { details: [{ path: ['owner'], message: 'Enter an email address' }] }
 
       await purposeFailAction(request, h, err)

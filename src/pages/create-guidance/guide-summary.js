@@ -1,5 +1,6 @@
 import {
   buildSummaryCard,
+  displayLabel,
   buildSummaryRow,
   formatStagedDocumentDate
 } from './upload-guide/metadata/view-helpers.js'
@@ -12,8 +13,21 @@ function _valueOrNotProvided (value) {
   return value || NOT_PROVIDED
 }
 
-function _labelsOrNotProvided (labels = []) {
-  return labels.length ? labels.join(', ') : NOT_PROVIDED
+/**
+ * The stored labels as the user reads them, with each one's short label
+ * added where the reference options have it. A label with no matching
+ * option (e.g. since retired) is shown as stored.
+ *
+ * @private
+ * @param {string[]} [labels]
+ * @param {Array<{label: string, shortLabel?: string}>} [options]
+ * @returns {string}
+ */
+function _labelsOrNotProvided (labels = [], options = []) {
+  const optionsByLabel = new Map(options.map((option) => [option.label, option]))
+  const shown = labels.map((label) => displayLabel(optionsByLabel.get(label) ?? { label }))
+
+  return shown.length ? shown.join(', ') : NOT_PROVIDED
 }
 
 /**
@@ -26,11 +40,14 @@ function _labelsOrNotProvided (labels = []) {
  * @param {Object} data
  * @param {Object} data.metadata
  * @param {Object|null} data.stagedDocument
+ * @param {Object} [data.referenceOptions] - Reference options by field, to
+ *   show short labels
  * @param {string} [data.changeHref] - Defaults to the metadata screen
  */
 function buildGuideDetailsCard ({
   metadata,
   stagedDocument,
+  referenceOptions = {},
   changeHref = `${METADATA_URL}?from=check`
 }) {
   return buildSummaryCard({
@@ -44,7 +61,7 @@ function buildGuideDetailsCard ({
         'Last modified date',
         _valueOrNotProvided(formatStagedDocumentDate(stagedDocument?.lastModified))
       ),
-      buildSummaryRow('Scheme', _labelsOrNotProvided(metadata.schemes))
+      buildSummaryRow('Scheme', _labelsOrNotProvided(metadata.schemes, referenceOptions.schemes))
     ]
   })
 }
@@ -58,10 +75,13 @@ function buildGuideDetailsCard ({
  *
  * @param {Object} data
  * @param {Object} data.metadata
+ * @param {Object} [data.referenceOptions] - Reference options by field, to
+ *   show short labels
  * @param {string} [data.changeHref] - Defaults to the purpose screen
  */
 function buildOwnerPurposeCard ({
   metadata,
+  referenceOptions = {},
   changeHref = `${PURPOSE_URL}?from=check`
 }) {
   return buildSummaryCard({
@@ -75,10 +95,10 @@ function buildOwnerPurposeCard ({
         'Required knowledge and training',
         _valueOrNotProvided(metadata.requirements)
       ),
-      buildSummaryRow('Systems', _labelsOrNotProvided(metadata.systems)),
+      buildSummaryRow('Systems', _labelsOrNotProvided(metadata.systems, referenceOptions.systems)),
       buildSummaryRow(
         'Who is this guidance for?',
-        _labelsOrNotProvided(metadata.audience)
+        _labelsOrNotProvided(metadata.audience, referenceOptions.audience)
       )
     ]
   })
@@ -92,15 +112,17 @@ function buildOwnerPurposeCard ({
  * @param {Object} [data={}]
  * @param {Object} [data.metadata={}]
  * @param {Object|null} [data.stagedDocument=null]
+ * @param {{schemes?: Array<Object>, systems?: Array<Object>, audience?: Array<Object>}} [data.referenceOptions={}]
  * @returns {{guideDetailsCard: Object, ownerPurposeCard: Object}}
  */
 function buildGuideSummaryCards ({
   metadata = {},
-  stagedDocument = null
+  stagedDocument = null,
+  referenceOptions = {}
 } = {}) {
   return {
-    guideDetailsCard: buildGuideDetailsCard({ metadata, stagedDocument }),
-    ownerPurposeCard: buildOwnerPurposeCard({ metadata })
+    guideDetailsCard: buildGuideDetailsCard({ metadata, stagedDocument, referenceOptions }),
+    ownerPurposeCard: buildOwnerPurposeCard({ metadata, referenceOptions })
   }
 }
 

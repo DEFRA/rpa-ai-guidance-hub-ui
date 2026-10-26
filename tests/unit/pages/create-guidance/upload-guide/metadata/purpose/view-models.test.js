@@ -22,14 +22,14 @@ describe('#OwnerAndPurposeViewModel', () => {
       owner: 'owner@example.com',
       goal: 'A purpose',
       requirements: 'Some training',
-      systems: ['CRM'],
-      audience: ['Processor']
+      systems: ['crm'],
+      audience: ['processor']
     })
     expect(viewModel.systemOptions).toEqual([
-      { value: 'CRM', text: 'CRM' },
-      { value: 'SITI Agri', text: 'SITI Agri' }
+      { value: 'crm', text: 'CRM' },
+      { value: 'siti-agri', text: 'SITI Agri' }
     ])
-    expect(viewModel.audienceOptions).toEqual([{ value: 'Processor', text: 'Processor' }])
+    expect(viewModel.audienceOptions).toEqual([{ value: 'processor', text: 'Processor' }])
     expect(viewModel.errors).toEqual({})
     expect(viewModel.errorList).toEqual([])
   })

@@ -1,4 +1,5 @@
 import { getSchemes } from '../../../../services/reference-data.js'
+import { toLabels } from './view-helpers.js'
 import * as metadataController from './controller.js'
 import { buildMetadataSchema } from './schemas/metadata-schema.js'
 
@@ -17,7 +18,12 @@ const routes = [
           const schemeOptions = await getSchemes()
           const schema = buildMetadataSchema(schemeOptions)
 
-          return schema.validateAsync(payload, options)
+          // The form posts option values; the schema and handlers work in labels.
+          const labelled = payload.schemes === undefined
+            ? payload
+            : { ...payload, schemes: toLabels(payload.schemes, schemeOptions) }
+
+          return schema.validateAsync(labelled, options)
         },
         failAction: metadataController.metadataFailAction
       }

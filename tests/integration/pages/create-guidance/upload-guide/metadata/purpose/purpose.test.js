@@ -31,8 +31,8 @@ function validPayload (overrides = {}) {
     owner: 'owner@example.com',
     goal: 'Explains how to process a claim',
     requirements: 'CRM access and claims training',
-    systems: ['CRM'],
-    audience: ['Processor', 'Team leader'],
+    systems: ['crm'],
+    audience: ['processor', 'team-leader'],
     ...overrides
   }
 }
@@ -59,7 +59,7 @@ async function completeGuideDetails (server, cookie) {
   const post = await server.inject({
     method: 'POST',
     url: '/create-guidance/upload-guide/metadata',
-    payload: { guideTitle: 'A valid title', schemes: ['Sustainable Farming Incentive (SFI)'] },
+    payload: { guideTitle: 'A valid title', schemes: ['sustainable-farming-incentive-sfi'] },
     headers: { cookie }
   })
 
@@ -169,7 +169,7 @@ describe('#purposeController Integration', () => {
       const response = await server.inject({
         method: 'POST',
         url: PURPOSE_URL,
-        payload: validPayload({ owner: 'not-an-email', systems: 'SITI Agri' }),
+        payload: validPayload({ owner: 'not-an-email', systems: 'siti-agri' }),
         headers: { cookie }
       })
 
@@ -177,8 +177,8 @@ describe('#purposeController Integration', () => {
       expect(response.payload).toContain('Enter an email address in the correct format')
       expect(response.payload).toContain('value="not-an-email"')
       expect(response.payload).toContain('Explains how to process a claim')
-      expect(response.payload).toMatch(/value="SITI Agri"\s+checked/)
-      expect(response.payload).toMatch(/value="Team leader"\s+checked/)
+      expect(response.payload).toMatch(/value="siti-agri"\s+checked/)
+      expect(response.payload).toMatch(/value="team-leader"\s+checked/)
     })
 
     test('POST with valid answers saves them and redirects to check answers', async () => {
@@ -209,7 +209,7 @@ describe('#purposeController Integration', () => {
       const purpose = await server.inject({ method: 'GET', url: PURPOSE_URL, headers: { cookie: savedCookie } })
 
       expect(purpose.payload).toContain('value="owner@example.com"')
-      expect(purpose.payload).toMatch(/value="CRM"\s+checked/)
+      expect(purpose.payload).toMatch(/value="crm"\s+checked/)
 
       // ...and the guide details, proving the two screens merged into one session object
       mockSchemes()
