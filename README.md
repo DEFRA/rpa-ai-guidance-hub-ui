@@ -84,7 +84,8 @@ cp .env.example .env
 # - SESSION_COOKIE_PASSWORD to a random string of at least 32 characters
 # - ENTRA_TENANT_ID=your-tenant-guid
 # - ENTRA_CLIENT_ID=your-client-id
-# - ENTRA_CLIENT_SECRET=your-client-secret
+# - ENTRA_CLIENT_AUTH=secret, with ENTRA_CLIENT_SECRET=your-client-secret
+#   (or ENTRA_CLIENT_AUTH=federated on CDP - see Client authentication)
 # - ENTRA_REDIRECT_HOST=https://your-production-domain.gov.uk
 # - AUTH_PROVIDER=entra
 
@@ -102,20 +103,21 @@ The application supports two authentication providers controlled by the `AUTH_PR
 
 **Entra ID** (Microsoft Azure AD) is the default authentication provider and is used for production environments.
 
-Users authenticate through an OpenID Connect (OIDC) flow with Microsoft Entra ID. After initial authentication, sessions are maintained using secure HTTP-only cookies to avoid repeated authentication prompts.
+#### Client authentication
 
-#### Environment Variables
+`ENTRA_CLIENT_AUTH` controls how the app authenticates itself to Entra's token endpoint:
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `AUTH_PROVIDER` | No | `entra` | Set to `entra` to enable Entra ID authentication |
-| `ENTRA_TENANT_ID` | Yes* | - | The GUID of your Azure tenant that issues tokens (e.g., `00000000-0000-0000-0000-000000000000`) |
-| `ENTRA_CLIENT_ID` | Yes* | - | The application (client) ID of your app registration in Entra ID |
-| `ENTRA_CLIENT_SECRET` | Yes* | - | The client secret generated for your app registration |
-| `ENTRA_AUTHORITY_HOST` | No | `https://login.microsoftonline.com` | The Entra authority host used to build authorization endpoints |
-| `ENTRA_REDIRECT_HOST` | Yes* | - | The redirect URI for the OIDC flow (e.g., `http://localhost:3000` for development, `https://your-domain.gov.uk` for production) |
+- `secret` (default) - sends `ENTRA_CLIENT_SECRET`.
+- `federated` - sends a short-lived web identity token from AWS STS (`GetWebIdentityToken`) as a client assertion, which the app registration trusts via a federated identity credential. No secret is held. The STS call uses the ambient AWS credentials (the ECS task role on CDP) and `AWS_REGION`.
 
-**\* Required when using Entra ID in production mode. No errors will be thrown if these variables are missing in local development / test environments, but authentication will fail.**
+For `federated`, the app registration's federated credential must match the STS token:
+- **Issuer** - the account's STS issuer, `CDP_JWT_ISSUER` (set automatically on CDP)
+- **Audience** - `ENTRA_FEDERATED_AUDIENCE` (default `api://AzureADTokenExchange`)
+- **Subject** - the AWS identity making the call (the service's task role)
+
+The app fails to start if `secret` is chosen without `ENTRA_CLIENT_SECRET`.
+
+See the [Environment Variables Reference](#environment-variables-reference) for the `ENTRA_*` settings.
 
 ### Local Development
 
@@ -144,13 +146,19 @@ When using local authentication:
 |----------|----------|---------|-------------|
 | `SERVICE_VERSION` | No | `null` | Service version (injected by CDP environments) |
 | `AUTH_PROVIDER` | No | `entra` | Authentication provider: `entra` (default) or `local` |
-| `ENTRA_TENANT_ID` | Yes* | `null` | Entra ID tenant GUID that issues tokens for this app registration |
+| `ENTRA_TENANT_ID` | Yes* | `null` | Entra ID tenant GUID that issues tokens for this app registration (e.g., `00000000-0000-0000-0000-000000000000`) |
 | `ENTRA_CLIENT_ID` | Yes* | `null` | Entra ID application (client) ID registered for this portal |
-| `ENTRA_CLIENT_SECRET` | Yes* | `null` | Entra ID application client secret |
+| `ENTRA_CLIENT_AUTH` | No | `secret` | `secret` or `federated` - see [Client authentication](#client-authentication) |
+| `ENTRA_CLIENT_SECRET` | When `secret`† | `null` | Entra ID application client secret |
+| `ENTRA_FEDERATED_AUDIENCE` | No | `api://AzureADTokenExchange` | Audience requested for the STS web identity token - must match the app registration's federated credential |
+| `ENTRA_FEDERATED_DURATION_SECONDS` | No | `300` | Lifetime requested for the STS web identity token (60-3600) |
+| `ENTRA_FEDERATED_EARLY_REFRESH_MS` | No | `60000` | Fetch a new STS web identity token this long before the cached one expires |
 | `ENTRA_AUTHORITY_HOST` | No | `https://login.microsoftonline.com` | Entra authority host used to build authorization endpoints |
-| `ENTRA_REDIRECT_HOST` | Yes* | `null` | Redirect URI for the OIDC flow (e.g., `http://localhost:3000` for dev, `https://your-domain.gov.uk` for prod) |
+| `ENTRA_REDIRECT_HOST` | Yes* | `null` | Base URL for the OIDC redirect URI `<host>/login/callback`, which must match the app registration (e.g., `http://localhost:3000` for dev, `https://your-domain.gov.uk` for prod) |
 
-**\* Required when `AUTH_PROVIDER=entra` and `NODE_ENV=production`. Optional for development/test environments.*
+**\* Required when `AUTH_PROVIDER=entra` and `NODE_ENV=production`. Optional for development/test environments.**
+
+**† Required in every environment when `AUTH_PROVIDER=entra` and `ENTRA_CLIENT_AUTH=secret` - the app fails at config load without it. Not needed with `AUTH_PROVIDER=local` or `ENTRA_CLIENT_AUTH=federated`.**
 
 See `.env.example` for a complete list of all configurable variables and their documentation.
 

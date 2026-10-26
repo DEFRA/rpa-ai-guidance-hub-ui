@@ -25,11 +25,11 @@ describe('#loginController', () => {
     await server.stop({ timeout: 0 })
   })
 
-  describe('#handleLoginCallback', () => {
-    test('Should establish a dev-session and redirect to /hub when hitting the callback under the local provider', async () => {
+  describe('#loginAsDevUser', () => {
+    test('Should establish a dev-session and redirect to /hub when hitting /login under the local provider', async () => {
       const callback = await server.inject({
         method: 'GET',
-        url: '/login/callback'
+        url: '/login'
       })
 
       expect(callback.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
@@ -56,6 +56,15 @@ describe('#loginController', () => {
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(payload).toContain('Dev User')
+    })
+
+    test('Should not expose the Entra callback under the local provider', async () => {
+      const { statusCode } = await server.inject({
+        method: 'POST',
+        url: '/login/callback'
+      })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_NOT_FOUND)
     })
   })
 
