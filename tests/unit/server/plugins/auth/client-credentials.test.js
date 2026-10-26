@@ -91,7 +91,7 @@ describe('#getClientAuthParams', () => {
       await getParams()
 
       expect(mockSend.mock.calls[0][0].input).toEqual({
-        Audience: ['api://AzureADTokenExchange'],
+        Audience: ['rpa_ai_guidance_hub_ui'],
         SigningAlgorithm: 'RS256',
         DurationSeconds: 300
       })

@@ -75,7 +75,7 @@ describe('#config', () => {
       const { config } = await loadConfig()
 
       expect(config.get('auth.entra.federated')).toEqual({
-        audience: 'api://AzureADTokenExchange',
+        audience: 'rpa_ai_guidance_hub_ui',
         durationSeconds: 300,
         earlyRefreshMs: 60000
       })
