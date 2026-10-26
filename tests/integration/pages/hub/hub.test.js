@@ -9,7 +9,12 @@ import { guidePageResponse, guideSummaryResponse } from '../../../fixtures/guida
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
-const LIST_HEADINGS = ['Recently opened', 'Pinned', 'Bookmarked guides', 'Awaiting my review']
+const LIST_HEADING = '<h2 class="govuk-heading-m">'
+
+/** The headings of the lists that the page's main area shows. */
+function listHeadings (main) {
+  return main.split(LIST_HEADING).slice(1).map((rest) => rest.slice(0, rest.indexOf('</h2>')))
+}
 
 describe('#hubController', () => {
   let server
@@ -58,9 +63,7 @@ describe('#hubController', () => {
 
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
       expect(main).not.toContain('govuk-tabs')
-      for (const heading of ['Recently opened', 'Pinned', 'Bookmarked guides', 'Awaiting my review']) {
-        expect(main).not.toContain(`<h2 class="govuk-heading-m">${heading}</h2>`)
-      }
+      expect(listHeadings(main)).toEqual(['All guides'])
     })
 
     test('leaves a designer\'s work to the side navigation', async () => {
@@ -125,12 +128,8 @@ describe('#hubController', () => {
 
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(main).toContain(`<h2 class="govuk-heading-m">${heading}</h2>`)
+      expect(listHeadings(main)).toEqual([heading])
       expect(main).toContain(emptyMessage)
-      for (const other of LIST_HEADINGS.filter((name) => name !== heading)) {
-        expect(main).not.toContain(`<h2 class="govuk-heading-m">${other}</h2>`)
-      }
-      expect(main).not.toContain('All guides')
       expect(main).not.toContain('govuk-tabs')
     })
 
