@@ -173,20 +173,20 @@ describe('#auth', () => {
       vi.resetModules()
     })
 
-    test('Should register the OIDC state cookie as Lax over plain HTTP', async () => {
+    test('Should register the OIDC state cookie as Secure and SameSite=None, so the form_post callback carries it', async () => {
       const server = await buildServer()
 
       expect(server.states.cookies['entra-oidc']).toMatchObject({
         encoding: 'iron',
         path: '/login/callback',
         isHttpOnly: true,
-        isSecure: false,
-        isSameSite: 'Lax'
+        isSecure: true,
+        isSameSite: 'None'
       })
     })
 
-    test('Should register the OIDC state cookie as SameSite=None when cookies are secure, so the form_post callback carries it', async () => {
-      process.env.SESSION_COOKIE_SECURE = 'true'
+    test('Should keep the OIDC state cookie Secure over plain HTTP localhost, where SESSION_COOKIE_SECURE is false', async () => {
+      process.env.SESSION_COOKIE_SECURE = 'false'
       vi.resetModules()
 
       const server = await buildServer()

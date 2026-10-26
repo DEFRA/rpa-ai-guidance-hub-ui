@@ -112,7 +112,7 @@ The application supports two authentication providers controlled by the `AUTH_PR
 
 For `federated`, the app registration's federated credential must match the STS token:
 - **Issuer** - the account's STS issuer, `CDP_JWT_ISSUER` (set automatically on CDP)
-- **Audience** - `ENTRA_FEDERATED_AUDIENCE` (default `api://AzureADTokenExchange`)
+- **Audience** - `ENTRA_FEDERATED_AUDIENCE` (default `rpa_ai_guidance_hub_ui`)
 - **Subject** - the AWS identity making the call (the service's task role)
 
 The app fails to start if `secret` is chosen without `ENTRA_CLIENT_SECRET`.
@@ -150,7 +150,7 @@ When using local authentication:
 | `ENTRA_CLIENT_ID` | Yes* | `null` | Entra ID application (client) ID registered for this portal |
 | `ENTRA_CLIENT_AUTH` | No | `secret` | `secret` or `federated` - see [Client authentication](#client-authentication) |
 | `ENTRA_CLIENT_SECRET` | When `secret`† | `null` | Entra ID application client secret |
-| `ENTRA_FEDERATED_AUDIENCE` | No | `api://AzureADTokenExchange` | Audience requested for the STS web identity token - must match the app registration's federated credential |
+| `ENTRA_FEDERATED_AUDIENCE` | No | `rpa_ai_guidance_hub_ui` | Audience requested for the STS web identity token - must match the app registration's federated credential |
 | `ENTRA_FEDERATED_DURATION_SECONDS` | No | `300` | Lifetime requested for the STS web identity token (60-3600) |
 | `ENTRA_FEDERATED_EARLY_REFRESH_MS` | No | `60000` | Fetch a new STS web identity token this long before the cached one expires |
 | `ENTRA_AUTHORITY_HOST` | No | `https://login.microsoftonline.com` | Entra authority host used to build authorization endpoints |

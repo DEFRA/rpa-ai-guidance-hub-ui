@@ -115,9 +115,12 @@ async function verifyIdToken (idToken, { nonce }) {
   Jwt.token.verifySignature(artifacts, signingKey.getPublicKey())
   Jwt.token.verifyPayload(artifacts, {
     aud: entraClientId,
-    iss: `${_tenantUrl()}/v2.0`,
-    nonce
+    iss: `${_tenantUrl()}/v2.0`
   })
+
+  if (!nonce || artifacts.decoded.payload.nonce !== nonce) {
+    throw new Error('Entra id_token nonce mismatch')
+  }
 
   return artifacts.decoded.payload
 }
@@ -187,6 +190,7 @@ function _tenantUrl () {
 
 /**
  * @private
+ *
  * @returns {string} a URL-safe random value suitable for state, nonce or a
  *   PKCE code verifier
  */

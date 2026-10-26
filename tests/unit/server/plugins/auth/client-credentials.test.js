@@ -1,45 +1,15 @@
 import Https from 'node:https'
 
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import nock from 'nock'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 
-const { mockSend, mockClientConstructor } = vi.hoisted(() => ({
-  mockSend: vi.fn(),
-  mockClientConstructor: vi.fn()
-}))
-
-vi.mock('@aws-sdk/client-sts', () => ({
-  STSClient: class {
-    constructor (options) {
-      mockClientConstructor(options)
-    }
-
-    send (command) {
-      return mockSend(command)
-    }
-  },
-  GetWebIdentityTokenCommand: class {
-    constructor (input) {
-      this.input = input
-    }
-  }
-}))
+import * as sts from '../../../../fixtures/sts.js'
 
 vi.mock('../../../../../src/infra/logging/logger.js', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() })
 }))
 
 const ASSERTION_TYPE = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
-
-/**
- * Builds a GetWebIdentityToken response for an (opaque, test-only) token
- * expiring `expiresInSec` from now.
- */
-function stsResponse (token, expiresInSec) {
-  return {
-    WebIdentityToken: token,
-    Expiration: new Date(Date.now() + expiresInSec * 1000)
-  }
-}
 
 async function getClientAuthParams () {
   const module = await import('../../../../../src/server/plugins/auth/client-credentials.js')
@@ -48,23 +18,37 @@ async function getClientAuthParams () {
 }
 
 describe('#getClientAuthParams', () => {
+  beforeAll(() => {
+    nock.disableNetConnect()
+  })
+
+  afterAll(() => {
+    nock.enableNetConnect()
+  })
+
   beforeEach(() => {
     vi.resetModules()
+    vi.stubEnv('AWS_REGION', sts.STS_REGION)
+    vi.stubEnv('AWS_ACCESS_KEY_ID', 'test-access-key')
+    vi.stubEnv('AWS_SECRET_ACCESS_KEY', 'test-secret-key')
   })
 
   afterEach(() => {
+    nock.cleanAll()
+    vi.restoreAllMocks()
     vi.unstubAllEnvs()
   })
 
   describe('when ENTRA_CLIENT_AUTH is "secret"', () => {
     test('returns the configured client secret without calling STS', async () => {
       vi.stubEnv('ENTRA_CLIENT_AUTH', 'secret')
+      const { scope } = sts.interceptGetWebIdentityToken()
 
       const getParams = await getClientAuthParams()
 
       // ENTRA_CLIENT_SECRET is a test placeholder set in vitest.setup.js
       await expect(getParams()).resolves.toEqual({ client_secret: process.env.ENTRA_CLIENT_SECRET })
-      expect(mockClientConstructor).not.toHaveBeenCalled()
+      expect(scope.isDone()).toBe(false)
     })
   })
 
@@ -74,7 +58,7 @@ describe('#getClientAuthParams', () => {
     })
 
     test('returns an STS web identity token as the client assertion', async () => {
-      mockSend.mockResolvedValue(stsResponse('sts-jwt-a', 300))
+      sts.interceptGetWebIdentityToken({ body: sts.getWebIdentityTokenResponse({ token: 'sts-jwt-a' }) })
 
       const getParams = await getClientAuthParams()
 
@@ -84,101 +68,102 @@ describe('#getClientAuthParams', () => {
       })
     })
 
-    test('requests an RS256 token for the default Entra token exchange audience', async () => {
-      mockSend.mockResolvedValue(stsResponse('sts-jwt-a', 300))
+    test('sends a GetWebIdentityToken request for an RS256 token with the default audience', async () => {
+      const { captured } = sts.interceptGetWebIdentityToken()
 
       const getParams = await getClientAuthParams()
       await getParams()
 
-      expect(mockSend.mock.calls[0][0].input).toEqual({
-        Audience: ['rpa_ai_guidance_hub_ui'],
+      expect(captured.body).toMatchObject({
+        Action: 'GetWebIdentityToken',
+        'Audience.member.1': 'rpa_ai_guidance_hub_ui',
         SigningAlgorithm: 'RS256',
-        DurationSeconds: 300
+        DurationSeconds: '300'
       })
     })
 
     test('requests the configured audience and duration', async () => {
       vi.stubEnv('ENTRA_FEDERATED_AUDIENCE', 'api://custom-audience')
       vi.stubEnv('ENTRA_FEDERATED_DURATION_SECONDS', '900')
-      mockSend.mockResolvedValue(stsResponse('sts-jwt-a', 900))
+      const { captured } = sts.interceptGetWebIdentityToken({ audience: 'api://custom-audience' })
 
       const getParams = await getClientAuthParams()
       await getParams()
 
-      expect(mockSend.mock.calls[0][0].input).toMatchObject({
-        Audience: ['api://custom-audience'],
-        DurationSeconds: 900
+      expect(captured.body).toMatchObject({
+        DurationSeconds: '900'
       })
     })
 
     test('routes STS requests through the global https agent so the egress proxy applies', async () => {
-      mockSend.mockResolvedValue(stsResponse('sts-jwt-a', 300))
+      sts.interceptGetWebIdentityToken()
+      const requestSpy = vi.spyOn(Https, 'request')
 
       const getParams = await getClientAuthParams()
       await getParams()
 
-      expect(mockClientConstructor).toHaveBeenCalledWith({
-        requestHandler: { httpsAgent: Https.globalAgent }
-      })
+      const stsCall = requestSpy.mock.calls.find(([options]) => options?.host === `sts.${sts.STS_REGION}.amazonaws.com`)
+
+      expect(stsCall[0].agent).toBe(Https.globalAgent)
     })
 
     test('reuses the cached token while it is outside the early-refresh window', async () => {
-      mockSend.mockResolvedValue(stsResponse('sts-jwt-a', 300))
+      const { scope } = sts.interceptGetWebIdentityToken({ body: sts.getWebIdentityTokenResponse({ expiresInSec: 300 }) })
 
       const getParams = await getClientAuthParams()
       await getParams()
       const second = await getParams()
 
+      // Only one interceptor is registered and net connect is disabled, so a
+      // second STS call would have rejected.
       expect(second.client_assertion).toBe('sts-jwt-a')
-      expect(mockSend).toHaveBeenCalledOnce()
+      expect(scope.isDone()).toBe(true)
     })
 
     test('fetches a new token once the cached one is within the early-refresh window', async () => {
-      mockSend
-        .mockResolvedValueOnce(stsResponse('sts-jwt-a', 30))
-        .mockResolvedValueOnce(stsResponse('sts-jwt-b', 300))
+      sts.interceptGetWebIdentityToken({ body: sts.getWebIdentityTokenResponse({ token: 'sts-jwt-a', expiresInSec: 30 }) })
+      sts.interceptGetWebIdentityToken({ body: sts.getWebIdentityTokenResponse({ token: 'sts-jwt-b', expiresInSec: 300 }) })
 
       const getParams = await getClientAuthParams()
       await getParams()
       const second = await getParams()
 
       expect(second.client_assertion).toBe('sts-jwt-b')
-      expect(mockSend).toHaveBeenCalledTimes(2)
     })
 
     test('falls back to the requested duration when STS omits the expiration', async () => {
-      mockSend.mockResolvedValue({ WebIdentityToken: 'sts-jwt-a' })
+      const { scope } = sts.interceptGetWebIdentityToken({ body: sts.getWebIdentityTokenResponse({ expiresInSec: null }) })
 
       const getParams = await getClientAuthParams()
       await getParams()
-      await getParams()
+      const second = await getParams()
 
-      expect(mockSend).toHaveBeenCalledOnce()
+      expect(second.client_assertion).toBe('sts-jwt-a')
+      expect(scope.isDone()).toBe(true)
     })
 
     test('shares a single in-flight request between concurrent callers', async () => {
-      mockSend.mockResolvedValue(stsResponse('sts-jwt-a', 300))
+      const { scope } = sts.interceptGetWebIdentityToken()
 
       const getParams = await getClientAuthParams()
       const [first, second] = await Promise.all([getParams(), getParams()])
 
       expect(first.client_assertion).toBe(second.client_assertion)
-      expect(mockSend).toHaveBeenCalledOnce()
+      expect(scope.isDone()).toBe(true)
     })
 
     test('throws when STS fails, and retries on the next call', async () => {
-      mockSend
-        .mockRejectedValueOnce(new Error('AccessDenied'))
-        .mockResolvedValueOnce(stsResponse('sts-jwt-a', 300))
+      sts.interceptGetWebIdentityToken({ body: sts.stsErrorResponse({ message: 'not allowed' }), status: 403 })
+      sts.interceptGetWebIdentityToken({ body: sts.getWebIdentityTokenResponse({ token: 'sts-jwt-a' }) })
 
       const getParams = await getClientAuthParams()
 
-      await expect(getParams()).rejects.toThrow('AccessDenied')
+      await expect(getParams()).rejects.toThrow('not allowed')
       await expect(getParams()).resolves.toHaveProperty('client_assertion', 'sts-jwt-a')
     })
 
     test('throws when STS returns no token', async () => {
-      mockSend.mockResolvedValue({})
+      sts.interceptGetWebIdentityToken({ body: sts.getWebIdentityTokenResponse({ token: '' }) })
 
       const getParams = await getClientAuthParams()
 

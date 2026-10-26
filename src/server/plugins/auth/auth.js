@@ -36,24 +36,17 @@ const auth = {
  * Options for the short-lived cookie holding the OIDC `state`, `nonce` and
  * PKCE verifier between `/login` and `/login/callback`.
  *
- * Entra returns to the callback with a cross-site form POST
- * (`response_mode=form_post`), so the cookie must be `SameSite=None` to be
- * sent with it - which browsers only accept on a `Secure` cookie. Over plain
- * HTTP it falls back to `Lax`.
- *
  * @returns {import('@hapi/hapi').ServerStateCookieOptions}
  */
 function _getOidcStateCookieOptions () {
-  const isSecure = config.get('session.cookie.secure')
-
   return {
     encoding: 'iron',
     password: config.get('session.cookie.password'),
     path: '/login/callback',
     ttl: tenMinutesMs,
     isHttpOnly: true,
-    isSecure,
-    isSameSite: isSecure ? 'None' : 'Lax',
+    isSecure: true,
+    isSameSite: 'None',
     clearInvalid: true,
     ignoreErrors: true
   }
