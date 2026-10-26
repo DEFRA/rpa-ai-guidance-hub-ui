@@ -28,7 +28,7 @@ describe('#serveStaticFiles', () => {
     })
 
     afterAll(async () => {
-      await server.stop({ timeout: 0 })
+      await server?.stop({ timeout: 0 })
       vi.unstubAllEnvs()
       vi.resetModules()
     })

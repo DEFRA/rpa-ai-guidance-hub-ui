@@ -12,7 +12,7 @@ describe('#homepageController', () => {
   })
 
   afterAll(async () => {
-    await server.stop({ timeout: 0 })
+    await server?.stop({ timeout: 0 })
   })
 
   describe('When not signed in, the sign-in page', () => {
