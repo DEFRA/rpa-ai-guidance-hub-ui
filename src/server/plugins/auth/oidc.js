@@ -10,6 +10,8 @@ const SCOPES = ['User.Read', 'openid', 'profile', 'email', 'offline_access']
 
 const CALLBACK_PATH = '/login/callback'
 
+const entraClientId = config.get('auth.entra.clientId')
+
 let jwksClient = null
 
 /**
@@ -31,7 +33,7 @@ function buildAuthorizationRequest () {
   const url = new URL(`${_tenantUrl()}/oauth2/v2.0/authorize`)
 
   url.search = new URLSearchParams({
-    client_id: config.get('auth.entra.clientId'),
+    client_id: entraClientId,
     response_type: 'code',
     response_mode: 'form_post',
     redirect_uri: getRedirectUri(),
@@ -112,7 +114,7 @@ async function verifyIdToken (idToken, { nonce }) {
 
   Jwt.token.verifySignature(artifacts, signingKey.getPublicKey())
   Jwt.token.verifyPayload(artifacts, {
-    aud: config.get('auth.entra.clientId'),
+    aud: entraClientId,
     iss: `${_tenantUrl()}/v2.0`,
     nonce
   })
@@ -150,7 +152,7 @@ function profileFromClaims (claims) {
  */
 async function _requestTokens (params) {
   const body = new URLSearchParams({
-    client_id: config.get('auth.entra.clientId'),
+    client_id: entraClientId,
     ...params,
     ...(await getClientAuthParams())
   })

@@ -3,13 +3,8 @@ import { randomUUID as uuidv4, timingSafeEqual } from 'node:crypto'
 import Boom from '@hapi/boom'
 import Jwt from '@hapi/jwt'
 
+import * as oidc from '../../server/plugins/auth/oidc.js'
 import { config } from '../../config/config.js'
-import {
-  buildAuthorizationRequest,
-  exchangeCode,
-  profileFromClaims,
-  verifyIdToken
-} from '../../server/plugins/auth/oidc.js'
 import { createLogger } from '../../infra/logging/logger.js'
 import { buildErrorLog } from '../../infra/logging/utils/build-error-log.js'
 import { OIDC_STATE_COOKIE } from '../../server/plugins/auth/auth.js'
@@ -24,12 +19,12 @@ const AUTH_FAIL_MESSAGE = 'Authentication failed. Please try again.'
  * holds the state, nonce and PKCE verifier in the (encrypted) OIDC state
  * cookie and redirects to Entra's authorize endpoint.
  *
- * @param {Hapi.Request} request
+ * @param {Hapi.Request} _request
  * @param {Hapi.ResponseToolkit} h
  * @returns {Hapi.ResponseObject}
  */
-function startEntraLogin (request, h) {
-  const { url, state, nonce, codeVerifier } = buildAuthorizationRequest()
+function startEntraLogin (_request, h) {
+  const { url, state, nonce, codeVerifier } = oidc.buildAuthorizationRequest()
 
   return h
     .redirect(url)
@@ -69,7 +64,7 @@ async function handleEntraCallback (request, h) {
   let tokens
 
   try {
-    tokens = await exchangeCode({ code, codeVerifier: oidcState.codeVerifier })
+    tokens = await oidc.exchangeCode({ code, codeVerifier: oidcState.codeVerifier })
   } catch (err) {
     _failLogin(err, 'entra_token_exchange_failed')
   }
@@ -77,9 +72,9 @@ async function handleEntraCallback (request, h) {
   let profile
 
   try {
-    const claims = await verifyIdToken(tokens.id_token, { nonce: oidcState.nonce })
+    const claims = await oidc.verifyIdToken(tokens.id_token, { nonce: oidcState.nonce })
 
-    profile = profileFromClaims(claims)
+    profile = oidc.profileFromClaims(claims)
   } catch (err) {
     _failLogin(err, 'entra_token_verification_failed')
   }
