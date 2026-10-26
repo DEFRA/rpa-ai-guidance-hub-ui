@@ -283,6 +283,7 @@ $app-side-nav-muted: #505a5f;
 // it starts the same distance from the column's edge, as in the prototype
 // ($app-content-gutter there). Width containers nested in the page's own (the
 // hub's) take no margins of their own, or the content would be inset twice.
+// A page that bleeds to the edges (the guide's) keeps its own gutters.
 $app-content-gutter: govuk-spacing(4);
 
 .app-layout__main .govuk-width-container {
@@ -291,7 +292,7 @@ $app-content-gutter: govuk-spacing(4);
   margin-left: 0;
 }
 
-.app-layout__main > .govuk-width-container {
+.app-layout__main > .govuk-width-container:not(.app-width-container--bleed) {
   padding-right: $app-content-gutter;
   padding-left: $app-content-gutter;
 }
