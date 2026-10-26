@@ -9,6 +9,7 @@ import { guidePageResponse, guideSummaryResponse } from '../../../fixtures/guida
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
+const LIST_HEADINGS = ['Recently opened', 'Pinned', 'Bookmarked guides', 'Awaiting my review']
 
 describe('#hubController', () => {
   let server
@@ -126,8 +127,26 @@ describe('#hubController', () => {
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(main).toContain(`<h2 class="govuk-heading-m">${heading}</h2>`)
       expect(main).toContain(emptyMessage)
+      for (const other of LIST_HEADINGS.filter((name) => name !== heading)) {
+        expect(main).not.toContain(`<h2 class="govuk-heading-m">${other}</h2>`)
+      }
       expect(main).not.toContain('All guides')
       expect(main).not.toContain('govuk-tabs')
+    })
+
+    test.each([
+      ['/hub/recently-opened'],
+      ['/hub/pinned'],
+      ['/hub/bookmarked-guides'],
+      ['/hub/awaiting-my-review']
+    ])('%s does not ask the API for the guides', async (url) => {
+      nock.cleanAll()
+      const guides = nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
+      const cookie = await loginAsDevUser(server)
+
+      await server.inject({ method: 'GET', url, headers: { cookie } })
+
+      expect(guides.isDone()).toBe(false)
     })
 
     test('is not found when there is no such list', async () => {
