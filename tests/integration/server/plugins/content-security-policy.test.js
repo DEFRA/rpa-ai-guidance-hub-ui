@@ -9,7 +9,7 @@ describe('#contentSecurityPolicy', () => {
   })
 
   afterAll(async () => {
-    await server.stop({ timeout: 0 })
+    await server?.stop({ timeout: 0 })
   })
 
   test('Should set the CSP policy header', async () => {
@@ -56,7 +56,7 @@ describe('when CDP_UPLOADER_BROWSER_URL is set', () => {
   })
 
   afterAll(async () => {
-    await server.stop({ timeout: 0 })
+    await server?.stop({ timeout: 0 })
     vi.unstubAllEnvs()
     vi.resetModules()
   })
