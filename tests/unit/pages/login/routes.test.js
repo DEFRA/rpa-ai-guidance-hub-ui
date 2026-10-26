@@ -6,6 +6,14 @@ async function getRoutes () {
   return routes
 }
 
+async function getController () {
+  return import('../../../../src/pages/login/controller.js')
+}
+
+function findRoute (routes, method, path) {
+  return routes.find((route) => route.method === method && route.path === path)
+}
+
 describe('#loginRoutes', () => {
   afterEach(() => {
     vi.unstubAllEnvs()
@@ -18,11 +26,19 @@ describe('#loginRoutes', () => {
       vi.resetModules()
     })
 
-    test('disables auth on the login callback route', async () => {
+    test('signs in as the dev user from an unauthenticated /login route', async () => {
       const routes = await getRoutes()
-      const callbackRoute = routes.find((route) => route.path === '/login/callback')
+      const controller = await getController()
+      const loginRoute = findRoute(routes, 'GET', '/login')
 
-      expect(callbackRoute.options.auth).toBe(false)
+      expect(loginRoute.options.auth).toBe(false)
+      expect(loginRoute.handler).toBe(controller.loginAsDevUser)
+    })
+
+    test('does not register the Entra callback route', async () => {
+      const routes = await getRoutes()
+
+      expect(routes.some((route) => route.path === '/login/callback')).toBe(false)
     })
   })
 
@@ -32,11 +48,22 @@ describe('#loginRoutes', () => {
       vi.resetModules()
     })
 
-    test('uses the entra bell strategy on the login callback route', async () => {
+    test('starts the Entra flow from an unauthenticated /login route', async () => {
       const routes = await getRoutes()
-      const callbackRoute = routes.find((route) => route.path === '/login/callback')
+      const controller = await getController()
+      const loginRoute = findRoute(routes, 'GET', '/login')
 
-      expect(callbackRoute.options.auth).toEqual({ mode: 'try', strategy: 'entra' })
+      expect(loginRoute.options.auth).toBe(false)
+      expect(loginRoute.handler).toBe(controller.startEntraLogin)
+    })
+
+    test('accepts the form_post callback on an unauthenticated POST /login/callback route', async () => {
+      const routes = await getRoutes()
+      const controller = await getController()
+      const callbackRoute = findRoute(routes, 'POST', '/login/callback')
+
+      expect(callbackRoute.options.auth).toBe(false)
+      expect(callbackRoute.handler).toBe(controller.handleEntraCallback)
     })
   })
 })

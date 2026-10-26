@@ -13,7 +13,7 @@ import { config } from '../config/config.js'
 import { catchAll } from './catch-all.js'
 import { options as loggerOptions } from '../infra/logging/options.js'
 
-import { auth } from './plugins/auth.js'
+import { auth } from './plugins/auth/auth.js'
 import { contentSecurityPolicy } from './plugins/content-security-policy.js'
 import { requestTracing } from './plugins/request-tracing.js'
 import { router } from './plugins/router.js'
@@ -22,6 +22,7 @@ import { sessionCache } from './plugins/session-cache/session-cache.js'
 import { getCacheEngine } from './plugins/session-cache/cache-engine.js'
 import { viewPlugin } from './plugins/views.js'
 import { pulse } from './plugins/pulse.js'
+import { proxyAgents } from './plugins/proxy-agents.js'
 
 /**
  * Creates and configures a Hapi.Server instance
@@ -75,6 +76,7 @@ async function createServer () {
   })
 
   const plugins = [
+    proxyAgents,
     requestTracing,
     metrics,
     secureContext,

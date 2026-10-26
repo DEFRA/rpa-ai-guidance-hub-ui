@@ -1,11 +1,18 @@
-import { randomUUID as uuidv4 } from 'node:crypto'
+import { randomUUID as uuidv4, timingSafeEqual } from 'node:crypto'
 
 import Boom from '@hapi/boom'
 import Jwt from '@hapi/jwt'
 
 import { config } from '../../config/config.js'
+import {
+  buildAuthorizationRequest,
+  exchangeCode,
+  profileFromClaims,
+  verifyIdToken
+} from '../../server/plugins/auth/oidc.js'
 import { createLogger } from '../../infra/logging/logger.js'
 import { buildErrorLog } from '../../infra/logging/utils/build-error-log.js'
+import { OIDC_STATE_COOKIE } from '../../server/plugins/auth/auth.js'
 import { mockUser } from './mock-user.js'
 
 const logger = createLogger()
@@ -13,32 +20,99 @@ const logger = createLogger()
 const AUTH_FAIL_MESSAGE = 'Authentication failed. Please try again.'
 
 /**
- * GET /login/callback (Redirect URI) — shared by both auth providers.
+ * GET /login — 'entra' provider. Starts the OIDC authorization code flow:
+ * holds the state, nonce and PKCE verifier in the (encrypted) OIDC state
+ * cookie and redirects to Entra's authorize endpoint.
  *
- * For the 'entra' provider this is a genuine OIDC redirect URI: Bell
- * provides request.auth.isAuthenticated and request.auth.credentials, and
- * the id_token is verified against Entra's JWKS. For the 'local' provider
- * this route has no strategy attached at all (see `login/router.js`) - it
- * shadows the same URL and just writes a fixed mock session, with no OAuth
- * round-trip.
+ * @param {Hapi.Request} request
+ * @param {Hapi.ResponseToolkit} h
+ * @returns {Hapi.ResponseObject}
+ */
+function startEntraLogin (request, h) {
+  const { url, state, nonce, codeVerifier } = buildAuthorizationRequest()
+
+  return h
+    .redirect(url)
+    .state(OIDC_STATE_COOKIE, { state, nonce, codeVerifier })
+}
+
+/**
+ * POST /login/callback (Redirect URI) — 'entra' provider. Entra posts the
+ * authorization response here (`response_mode=form_post`). Checks it against
+ * the OIDC state cookie, exchanges the code for tokens, verifies the
+ * id_token and starts a session.
+ *
+ * Every failure is logged with its cause and surfaced to the user as the
+ * same generic 401.
  *
  * @param {Hapi.Request} request
  * @param {Hapi.ResponseToolkit} h
  * @returns {Promise<any>}
  */
-async function handleLoginCallback (request, h) {
-  const { profile, token, refreshToken } = config.get('auth.provider') === 'entra'
-    ? await _getEntraSession(request)
-    : _getDevSession()
+async function handleEntraCallback (request, h) {
+  const { code, state, error, error_description: errorDescription } = request.payload ?? {}
+  const oidcState = request.state[OIDC_STATE_COOKIE]
 
-  const sessionId = uuidv4()
-  const storedSessionId = `auth-session:${sessionId}`
+  h.unstate(OIDC_STATE_COOKIE)
 
-  await request.server.app.cache.set(storedSessionId, { profile, token, refreshToken })
+  if (error) {
+    _failLogin(new Error(`${error}: ${errorDescription}`), 'entra_callback_error')
+  }
 
-  request.cookieAuth.set({ sessionId })
+  if (!code || !oidcState?.nonce || !_isSameValue(state, oidcState.state)) {
+    _failLogin(
+      new Error(oidcState ? 'State mismatch or missing code' : 'Missing OIDC state cookie'),
+      'entra_state_mismatch'
+    )
+  }
 
-  return h.redirect('/hub')
+  let tokens
+
+  try {
+    tokens = await exchangeCode({ code, codeVerifier: oidcState.codeVerifier })
+  } catch (err) {
+    _failLogin(err, 'entra_token_exchange_failed')
+  }
+
+  let profile
+
+  try {
+    const claims = await verifyIdToken(tokens.id_token, { nonce: oidcState.nonce })
+
+    profile = profileFromClaims(claims)
+  } catch (err) {
+    _failLogin(err, 'entra_token_verification_failed')
+  }
+
+  return _startSession(request, h, {
+    profile,
+    token: tokens.access_token,
+    refreshToken: tokens.refresh_token
+  })
+}
+
+/**
+ * GET /login — 'local' provider. Signs in as a fixed mock user for local
+ * development, standing in for a completed Entra ID sign-in without
+ * performing any OAuth round-trip.
+ *
+ * The token must still be a well-formed JWT (with a future `exp`) because
+ * `_validateSessionToken` in `auth.js` decodes and time-checks whatever
+ * token is stored in the session on every subsequent request, regardless
+ * of provider - it just isn't signature-verified for local auth.
+ *
+ * @param {Hapi.Request} request
+ * @param {Hapi.ResponseToolkit} h
+ * @returns {Promise<any>}
+ */
+async function loginAsDevUser (request, h) {
+  const token = Jwt.token.generate(
+    { sub: 'dev-user-123' },
+    { key: 'dev-auth-mock-key', algorithm: 'HS256' },
+    { ttlSec: config.get('session.cookie.ttl') / 1000 }
+  )
+
+  return _startSession(request, h, { profile: mockUser, token })
 }
 
 /**
@@ -61,62 +135,58 @@ async function logout (request, h) {
 
 /**
  * @private
- * Validates the Bell-authenticated Entra callback and verifies its
- * id_token against Entra's JWKS.
+ * Stores the session server-side, sets the session cookie and redirects to
+ * the hub.
  *
  * @param {Hapi.Request} request
- * @returns {Promise<{ profile: object, token: string }>}
+ * @param {Hapi.ResponseToolkit} h
+ * @param {{ profile: object, token: string, refreshToken?: string }} session
+ * @returns {Promise<any>}
  */
-async function _getEntraSession (request) {
-  if (!request.auth.isAuthenticated) {
-    logger.warn(buildErrorLog(request.auth.error, {
-      type: 'entra_bell_authentication_failed'
-    }))
+async function _startSession (request, h, { profile, token, refreshToken }) {
+  const sessionId = uuidv4()
 
-    throw Boom.unauthorized(AUTH_FAIL_MESSAGE)
-  }
+  await request.server.app.cache.set(`auth-session:${sessionId}`, { profile, token, refreshToken })
 
-  const { profile, token, idToken, refreshToken } = request.auth.credentials
+  request.cookieAuth.set({ sessionId })
 
-  try {
-    await request.server.verifyEntraToken(idToken)
-  } catch (error) {
-    logger.warn(buildErrorLog(error, {
-      type: 'entra_token_verification_failed'
-    }))
-
-    throw Boom.unauthorized(AUTH_FAIL_MESSAGE)
-  }
-
-  return { profile, token, refreshToken }
+  return h.redirect('/hub')
 }
 
 /**
  * @private
- * Builds a mock user session for local development, standing in for a
- * completed Entra ID sign-in without performing any OAuth round-trip.
- *
- * The token must still be a well-formed JWT (with a future `exp`) because
- * `_validateSessionToken` in `auth.js` decodes and time-checks whatever
- * token is stored in the session on every subsequent request, regardless
- * of provider - it just isn't signature-verified for local auth.
- *
- * @returns {{ token: string, profile: object }}
+ * @param {Error} error
+ * @param {string} type
+ * @throws {Boom.Boom} always - a generic 401 that hides the cause
  */
-function _getDevSession () {
-  const token = Jwt.token.generate(
-    { sub: 'dev-user-123' },
-    { key: 'dev-auth-mock-key', algorithm: 'HS256' },
-    { ttlSec: config.get('session.cookie.ttl') / 1000 }
-  )
+function _failLogin (error, type) {
+  logger.warn(buildErrorLog(error, { type }))
 
-  return {
-    token,
-    profile: mockUser
+  throw Boom.unauthorized(AUTH_FAIL_MESSAGE)
+}
+
+/**
+ * @private
+ * Constant-time comparison of the returned and expected `state`.
+ *
+ * @param {unknown} actual
+ * @param {unknown} expected
+ * @returns {boolean}
+ */
+function _isSameValue (actual, expected) {
+  if (typeof actual !== 'string' || typeof expected !== 'string') {
+    return false
   }
+
+  const a = Buffer.from(actual)
+  const b = Buffer.from(expected)
+
+  return a.length === b.length && timingSafeEqual(a, b)
 }
 
 export {
-  handleLoginCallback,
-  logout
+  handleEntraCallback,
+  loginAsDevUser,
+  logout,
+  startEntraLogin
 }
