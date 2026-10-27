@@ -1,13 +1,11 @@
 /**
  * Logs an integration-test request in via the 'local' auth provider's dev
- * session shortcut (see `pages/login/controller.js` and
- * `pages/login/dev-session.js`) - no OAuth round-trip, no Entra fixtures
- * required.
+ * session shortcut (`loginAsDevUser` in `pages/login/controller.js`) - no
+ * OAuth round-trip, no Entra fixtures required.
  *
  * Only meaningful while `AUTH_PROVIDER` is 'local' (the test default, see
- * `config/config.js`) - hitting this route under the 'entra' provider would
- * hit the real Bell-authenticated branch and fail, since no genuine OAuth
- * callback was performed.
+ * `vitest.setup.js`) - under the 'entra' provider `/login` instead redirects
+ * to Entra and sets no session.
  *
  * @param {import('@hapi/hapi').Server} server
  * @returns {Promise<string>} a `Cookie` header value carrying the
@@ -16,7 +14,7 @@
 async function loginAsDevUser (server) {
   const response = await server.inject({
     method: 'GET',
-    url: '/login/callback'
+    url: '/login'
   })
 
   const cookies = response.headers['set-cookie'] ?? []

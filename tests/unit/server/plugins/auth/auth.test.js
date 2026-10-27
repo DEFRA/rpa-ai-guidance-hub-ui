@@ -1,21 +1,18 @@
 import { randomUUID } from 'node:crypto'
-import Http from 'node:http'
-import Https from 'node:https'
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import Hapi from '@hapi/hapi'
 import HapiCookie from '@hapi/cookie'
-import Wreck from '@hapi/wreck'
 import nock from 'nock'
 
-import { generateEntraJwt, getJwks, ENTRA_TEST_KID } from '../../../utils/oidc.js'
+import { generateEntraJwt } from '../../../../utils/oidc.js'
 
 const { mockLoggerWarn } = vi.hoisted(() => ({
   mockLoggerWarn: vi.fn()
 }))
 
-vi.mock('../../../../src/infra/logging/logger.js', () => ({
+vi.mock('../../../../../src/infra/logging/logger.js', () => ({
   createLogger: () => ({
     info: vi.fn(),
     warn: mockLoggerWarn,
@@ -25,18 +22,17 @@ vi.mock('../../../../src/infra/logging/logger.js', () => ({
 
 const originalEnv = { ...process.env }
 
-// Not a real credential - Bell just requires the client secret to be a
-// non-empty string, hence the deliberately-obvious placeholder text.
+// Not a real credential - a deliberately-obvious placeholder for the Entra
+// tenant/client IDs and client secret.
 const ENTRA_TEST_FIXTURE_VALUE = 'not-a-real-value-used-only-in-tests'
 
 /**
  * Boots a minimal Hapi server with the real `auth` plugin registered -
- * enough to observe which strategy/decoration it sets up for the currently
- * configured `AUTH_PROVIDER`, without exercising a real request (Bell/JWKS
- * do no I/O at registration time).
+ * enough to observe what it sets up for the currently configured
+ * `AUTH_PROVIDER`, without exercising a real request.
  */
 async function buildServer () {
-  const { auth } = await import('../../../../src/server/plugins/auth.js')
+  const { auth } = await import('../../../../../src/server/plugins/auth/auth.js')
 
   const server = Hapi.server()
 
@@ -53,9 +49,9 @@ async function buildServer () {
  * via `server.inject` rather than exported and unit tested directly.
  */
 async function buildServerWithSession () {
-  const { auth } = await import('../../../../src/server/plugins/auth.js')
-  const { getCacheEngine } = await import('../../../../src/server/plugins/session-cache/cache-engine.js')
-  const { config } = await import('../../../../src/config/config.js')
+  const { auth } = await import('../../../../../src/server/plugins/auth/auth.js')
+  const { getCacheEngine } = await import('../../../../../src/server/plugins/session-cache/cache-engine.js')
+  const { config } = await import('../../../../../src/config/config.js')
 
   const server = Hapi.server({
     cache: [
@@ -160,18 +156,10 @@ describe('#auth', () => {
       vi.resetModules()
     })
 
-    test('Should not set up the entra strategy or verifyEntraToken', async () => {
+    test('Should not register the OIDC state cookie', async () => {
       const server = await buildServer()
 
-      expect(server.verifyEntraToken).toBeUndefined()
-      expect(() =>
-        server.route({
-          method: 'GET',
-          path: '/uses-entra',
-          options: { auth: 'entra' },
-          handler: () => 'ok'
-        })
-      ).toThrow(/Unknown authentication strategy entra/)
+      expect(server.states.cookies['entra-oidc']).toBeUndefined()
     })
   })
 
@@ -185,180 +173,27 @@ describe('#auth', () => {
       vi.resetModules()
     })
 
-    test('Should set up the entra strategy and verifyEntraToken', async () => {
+    test('Should register the OIDC state cookie as Secure and SameSite=None, so the form_post callback carries it', async () => {
       const server = await buildServer()
 
-      expect(typeof server.verifyEntraToken).toBe('function')
-      expect(() =>
-        server.route({
-          method: 'GET',
-          path: '/uses-entra',
-          options: { auth: 'entra' },
-          handler: () => 'ok'
-        })
-      ).not.toThrow()
+      expect(server.states.cookies['entra-oidc']).toMatchObject({
+        encoding: 'iron',
+        path: '/login/callback',
+        isHttpOnly: true,
+        isSecure: true,
+        isSameSite: 'None'
+      })
     })
 
-    test('Should point Wreck at the global http/https agents, so bell requests honour the egress proxy', async () => {
-      await buildServer()
+    test('Should keep the OIDC state cookie Secure over plain HTTP localhost, where SESSION_COOKIE_SECURE is false', async () => {
+      process.env.SESSION_COOKIE_SECURE = 'false'
+      vi.resetModules()
 
-      expect(Wreck.agents.http).toBe(Http.globalAgent)
-      expect(Wreck.agents.https).toBe(Https.globalAgent)
-    })
+      const server = await buildServer()
 
-    describe('#server.verifyEntraToken', () => {
-      beforeEach(() => {
-        nock.disableNetConnect()
-      })
-
-      afterEach(() => {
-        nock.cleanAll()
-        nock.enableNetConnect()
-      })
-
-      test('Should resolve with the decoded payload for a validly-signed token with matching kid, aud and iss', async () => {
-        const server = await buildServer()
-        const token = generateEntraJwt()
-
-        nock('https://login.microsoftonline.com')
-          .get(`/${ENTRA_TEST_FIXTURE_VALUE}/discovery/v2.0/keys`)
-          .reply(200, getJwks())
-
-        const result = await server.verifyEntraToken(token)
-
-        expect(result).toMatchObject({
-          aud: ENTRA_TEST_FIXTURE_VALUE,
-          iss: `https://login.microsoftonline.com/${ENTRA_TEST_FIXTURE_VALUE}/v2.0`,
-          sub: 'user-id'
-        })
-      })
-
-      test('Should reject when the signature does not match the resolved public key', async () => {
-        const server = await buildServer()
-        const token = generateEntraJwt()
-
-        // Serve a JWKS with a different key under the same kid
-        nock('https://login.microsoftonline.com')
-          .get(`/${ENTRA_TEST_FIXTURE_VALUE}/discovery/v2.0/keys`)
-          .reply(200, {
-            keys: [
-              {
-                kty: 'RSA',
-                kid: ENTRA_TEST_KID,
-                use: 'sig',
-                n: 'xGOr-H7A-PWLt',
-                e: 'AQAB'
-              }
-            ]
-          })
-
-        await expect(server.verifyEntraToken(token)).rejects.toThrow()
-      })
-
-      test('Should reject when the audience does not match the configured Entra client ID', async () => {
-        const server = await buildServer()
-        const token = generateEntraJwt({ aud: 'wrong-client-id' })
-
-        nock('https://login.microsoftonline.com')
-          .get(`/${ENTRA_TEST_FIXTURE_VALUE}/discovery/v2.0/keys`)
-          .reply(200, getJwks())
-
-        await expect(server.verifyEntraToken(token)).rejects.toThrow()
-      })
-
-      test('Should reject when the issuer does not match the configured authority/tenant', async () => {
-        const server = await buildServer()
-        const token = generateEntraJwt({
-          iss: 'https://login.microsoftonline.com/wrong-tenant-id/v2.0'
-        })
-
-        nock('https://login.microsoftonline.com')
-          .get(`/${ENTRA_TEST_FIXTURE_VALUE}/discovery/v2.0/keys`)
-          .reply(200, getJwks())
-
-        await expect(server.verifyEntraToken(token)).rejects.toThrow()
-      })
-
-      test('Should reject when the JWKS response has no key matching the token kid', async () => {
-        const server = await buildServer()
-        const token = generateEntraJwt({ kid: 'unknown-kid' }, { kid: 'unknown-kid' })
-
-        nock('https://login.microsoftonline.com')
-          .get(`/${ENTRA_TEST_FIXTURE_VALUE}/discovery/v2.0/keys`)
-          .reply(200, getJwks({ kid: 'different-kid' }))
-
-        await expect(server.verifyEntraToken(token)).rejects.toThrow()
-      })
-
-      test('Should reject when the JWKS endpoint returns an error', async () => {
-        const server = await buildServer()
-        const token = generateEntraJwt()
-
-        nock('https://login.microsoftonline.com')
-          .get(`/${ENTRA_TEST_FIXTURE_VALUE}/discovery/v2.0/keys`)
-          .reply(500, { error: 'Internal Server Error' })
-
-        await expect(server.verifyEntraToken(token)).rejects.toThrow()
-      })
-
-      test('Should request keys from a custom ENTRA_AUTHORITY_HOST', async () => {
-        const customAuthority = 'https://custom.login.example.com'
-        process.env.ENTRA_AUTHORITY_HOST = customAuthority
-        vi.resetModules()
-
-        const server = await buildServer()
-
-        const token = generateEntraJwt({
-          iss: `${customAuthority}/${ENTRA_TEST_FIXTURE_VALUE}/v2.0`
-        })
-
-        nock(customAuthority)
-          .get(`/${ENTRA_TEST_FIXTURE_VALUE}/discovery/v2.0/keys`)
-          .reply(200, getJwks())
-
-        const result = await server.verifyEntraToken(token)
-
-        expect(result).toBeDefined()
-        expect(result.aud).toBe(ENTRA_TEST_FIXTURE_VALUE)
-      })
-
-      test('Should cache JWKS keys across multiple token verifications with the same kid', async () => {
-        const server = await buildServer()
-        const token1 = generateEntraJwt()
-        const token2 = generateEntraJwt({ sub: 'user-2' })
-
-        nock('https://login.microsoftonline.com')
-          .get(`/${ENTRA_TEST_FIXTURE_VALUE}/discovery/v2.0/keys`)
-          .once()
-          .reply(200, getJwks())
-
-        await server.verifyEntraToken(token1)
-
-        const result = await server.verifyEntraToken(token2)
-
-        expect(result).toBeDefined()
-        expect(result.sub).toBe('user-2')
-      })
-
-      test('Should reject with expired token', async () => {
-        const server = await buildServer()
-        const expiredToken = generateEntraJwt({
-          exp: Math.floor(Date.now() / 1000) - 3600
-        })
-
-        nock('https://login.microsoftonline.com')
-          .get(`/${ENTRA_TEST_FIXTURE_VALUE}/discovery/v2.0/keys`)
-          .reply(200, getJwks())
-
-        await expect(server.verifyEntraToken(expiredToken)).rejects.toThrow()
-      })
-
-      test('Should reject when token has malformed structure', async () => {
-        const server = await buildServer()
-
-        await expect(
-          server.verifyEntraToken('malformed.jwt')
-        ).rejects.toThrow()
+      expect(server.states.cookies['entra-oidc']).toMatchObject({
+        isSecure: true,
+        isSameSite: 'None'
       })
     })
   })
@@ -463,7 +298,7 @@ describe('#auth', () => {
           return params.get('client_id') === ENTRA_TEST_FIXTURE_VALUE &&
             params.get('client_secret') === ENTRA_TEST_FIXTURE_VALUE &&
             params.get('grant_type') === 'refresh_token' &&
-            params.get('scope') === 'User.Read openid profile email' &&
+            params.get('scope') === 'User.Read openid profile email offline_access' &&
             params.get('refresh_token') === 'old-refresh-token'
         })
         .reply(200, { access_token: 'new-access-token', refresh_token: 'new-refresh-token' })
@@ -484,6 +319,35 @@ describe('#auth', () => {
       expect(refreshScope.isDone()).toBe(true)
     })
 
+    test('Should preserve the old refresh token when the refresh response omits it', async () => {
+      const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
+      const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
+
+      const refreshScope = nock('https://login.microsoftonline.com')
+        .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`, (body) => {
+          const params = new URLSearchParams(body)
+
+          return params.get('grant_type') === 'refresh_token' &&
+            params.get('refresh_token') === 'old-refresh-token'
+        })
+        .reply(200, { access_token: 'new-access-token' })
+
+      const { statusCode, result } = await server.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(200)
+      expect(result).toMatchObject({
+        token: 'new-access-token',
+        refreshToken: 'old-refresh-token',
+        profile: { id: 'user-123' },
+        sessionId: expect.any(String)
+      })
+      expect(refreshScope.isDone()).toBe(true)
+    })
+
     test('Should redirect to / when refreshing the expired session token fails', async () => {
       const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
       const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
@@ -491,6 +355,42 @@ describe('#auth', () => {
       nock('https://login.microsoftonline.com')
         .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
         .reply(400, { error: 'invalid_grant' })
+
+      const { statusCode, headers } = await server.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(302)
+      expect(headers.location).toBe('/')
+    })
+
+    test('Should redirect to / when Entra requires interaction to refresh', async () => {
+      const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
+      const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
+
+      nock('https://login.microsoftonline.com')
+        .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
+        .reply(400, { error: 'interaction_required', error_description: 'AADSTS50076: MFA required' })
+
+      const { statusCode, headers } = await server.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(302)
+      expect(headers.location).toBe('/')
+    })
+
+    test('Should redirect to / when the token endpoint is unavailable', async () => {
+      const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
+      const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
+
+      nock('https://login.microsoftonline.com')
+        .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
+        .reply(502, 'Bad Gateway')
 
       const { statusCode, headers } = await server.inject({
         method: 'GET',

@@ -39,6 +39,56 @@ describe('#config', () => {
     })
   })
 
+  describe('#auth.entra client credentials', () => {
+    async function loadConfig () {
+      vi.resetModules()
+
+      return import('../../../src/config/config.js')
+    }
+
+    beforeEach(() => {
+      vi.stubEnv('AUTH_PROVIDER', 'entra')
+      vi.stubEnv('ENTRA_CLIENT_AUTH', undefined)
+    })
+
+    afterEach(() => {
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    })
+
+    test('Should default to client secret auth', async () => {
+      const { config } = await loadConfig()
+
+      expect(config.get('auth.entra.clientAuth')).toBe('secret')
+    })
+
+    test('Should fail to load with client secret auth and no client secret', async () => {
+      vi.stubEnv('ENTRA_CLIENT_SECRET', undefined)
+
+      await expect(loadConfig()).rejects.toThrow('auth.entra.clientSecret: must be of type String')
+    })
+
+    test('Should load with federated auth and no client secret, defaulting the STS token request', async () => {
+      vi.stubEnv('ENTRA_CLIENT_AUTH', 'federated')
+      vi.stubEnv('ENTRA_CLIENT_SECRET', undefined)
+
+      const { config } = await loadConfig()
+
+      expect(config.get('auth.entra.federated')).toEqual({
+        audience: 'rpa_ai_guidance_hub_ui',
+        durationSeconds: 300,
+        earlyRefreshMs: 60000
+      })
+    })
+
+    test('Should load with local auth and no client secret', async () => {
+      vi.stubEnv('AUTH_PROVIDER', 'local')
+      vi.stubEnv('ENTRA_CLIENT_SECRET', undefined)
+
+      await expect(loadConfig()).resolves.toBeDefined()
+    })
+  })
+
   describe('When running in the production environment', () => {
     beforeEach(() => {
       vi.stubEnv('NODE_ENV', 'production')
