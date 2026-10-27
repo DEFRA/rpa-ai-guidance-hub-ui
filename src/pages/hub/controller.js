@@ -19,6 +19,19 @@ function _toAllGuidesItem (guide) {
   }
 }
 
+/**
+ * Each of the side navigation's lists, by the last part of its address
+ * (`/hub/pinned`), and the HubViewModel table that it shows.
+ */
+const LISTS = {
+  'recently-opened': 'recentlyOpened',
+  pinned: 'pinned',
+  'bookmarked-guides': 'bookmarkedGuides',
+  'awaiting-my-review': 'awaitingMyReview'
+}
+
+const LIST_PATHS = Object.keys(LISTS)
+
 async function getHubPage (_request, h) {
   const { guides } = await guidesService.listGuides()
   const viewModel = new HubViewModel({ allGuides: guides.map(_toAllGuidesItem) })
@@ -28,6 +41,20 @@ async function getHubPage (_request, h) {
     .code(statusCodes.HTTP_STATUS_OK)
 }
 
+/**
+ * One of the side navigation's lists on its own. None of them has a source
+ * of guides yet, so each shows its empty message.
+ */
+function getHubListPage (request, h) {
+  const viewModel = new HubViewModel({ shown: LISTS[request.params.list] })
+
+  return h
+    .view('hub/page.njk', viewModel)
+    .code(statusCodes.HTTP_STATUS_OK)
+}
+
 export {
-  getHubPage
+  getHubListPage,
+  getHubPage,
+  LIST_PATHS
 }
