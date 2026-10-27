@@ -1,4 +1,4 @@
-import { randomUUID as uuidv4, timingSafeEqual } from 'node:crypto'
+import { randomUUID as uuidv4 } from 'node:crypto'
 
 import Boom from '@hapi/boom'
 import Jwt from '@hapi/jwt'
@@ -38,9 +38,6 @@ function startEntraLogin (_request, h) {
  * the OIDC state cookie, exchanges the code for tokens, verifies the
  * id_token and starts a session.
  *
- * Every failure is logged with its cause and surfaced to the user as the
- * same generic 401.
- *
  * @param {Hapi.Request} request
  * @param {Hapi.ResponseToolkit} h
  * @returns {Promise<any>}
@@ -52,13 +49,14 @@ async function handleEntraCallback (request, h) {
   h.unstate(OIDC_STATE_COOKIE)
 
   if (error) {
-    _failLogin(new Error(`${error}: ${errorDescription}`), 'entra_callback_error')
+    _failLogin(new Error(`${error}: ${errorDescription}`), 'entra_callback_error', 'warn')
   }
 
-  if (!code || !oidcState?.nonce || !_isSameValue(state, oidcState.state)) {
+  if (!_isValidCallback({ code, state }, oidcState)) {
     _failLogin(
       new Error(oidcState ? 'State mismatch or missing code' : 'Missing OIDC state cookie'),
-      'entra_state_mismatch'
+      'entra_state_mismatch',
+      'warn'
     )
   }
 
@@ -67,7 +65,7 @@ async function handleEntraCallback (request, h) {
   try {
     tokens = await oidc.exchangeCode({ code, codeVerifier: oidcState.codeVerifier })
   } catch (err) {
-    _failLogin(err, 'entra_token_exchange_failed')
+    _failLogin(err, 'entra_token_exchange_failed', 'error')
   }
 
   let profile
@@ -77,7 +75,7 @@ async function handleEntraCallback (request, h) {
 
     profile = oidc.profileFromClaims(claims)
   } catch (err) {
-    _failLogin(err, 'entra_token_verification_failed')
+    _failLogin(err, 'entra_token_verification_failed', 'error')
   }
 
   return _startSession(request, h, {
@@ -153,31 +151,35 @@ async function _startSession (request, h, { profile, token, refreshToken }) {
  * @private
  * @param {Error} error
  * @param {string} type
+ * @param {'warn' | 'error'} level - `warn` for failures a user can cause,
+ *   `error` for ones that indicate a fault on our side
  * @throws {Boom.Boom} always - a generic 401 that hides the cause
  */
-function _failLogin (error, type) {
-  logger.warn(buildErrorLog(error, { type }))
+function _failLogin (error, type, level) {
+  logger[level](buildErrorLog(error, { type }), `Entra callback failed: ${error.message}`)
 
   throw Boom.unauthorized(AUTH_FAIL_MESSAGE)
 }
 
 /**
  * @private
- * Constant-time comparison of the returned and expected `state`.
+ * Whether the callback carries a code and a `state` matching the one held in
+ * the OIDC state cookie.
  *
- * @param {unknown} actual
- * @param {unknown} expected
+ * @param {{ code?: string, state?: string }} params
+ * @param {{ state?: string, nonce?: string } | undefined} oidcState
  * @returns {boolean}
  */
-function _isSameValue (actual, expected) {
-  if (typeof actual !== 'string' || typeof expected !== 'string') {
+function _isValidCallback ({ code, state }, oidcState) {
+  if (!code || !oidcState?.nonce) {
     return false
   }
 
-  const a = Buffer.from(actual)
-  const b = Buffer.from(expected)
+  if (!state) {
+    return false
+  }
 
-  return a.length === b.length && timingSafeEqual(a, b)
+  return state === oidcState.state
 }
 
 export {

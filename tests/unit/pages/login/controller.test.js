@@ -6,15 +6,16 @@ import nock from 'nock'
 
 import { ENTRA_TEST_KID, generateEntraJwt, getJwks } from '../../../utils/oidc.js'
 
-const { mockLoggerWarn } = vi.hoisted(() => ({
-  mockLoggerWarn: vi.fn()
+const { mockLoggerWarn, mockLoggerError } = vi.hoisted(() => ({
+  mockLoggerWarn: vi.fn(),
+  mockLoggerError: vi.fn()
 }))
 
 vi.mock('../../../../src/infra/logging/logger.js', () => ({
   createLogger: () => ({
     info: vi.fn(),
     warn: mockLoggerWarn,
-    error: vi.fn()
+    error: mockLoggerError
   })
 }))
 
@@ -106,11 +107,17 @@ function mockJwks () {
     .reply(200, getJwks())
 }
 
-function expectFailureLogged (type) {
-  expect(mockLoggerWarn).toHaveBeenCalledWith(
+function expectFailureLogged (type, level = 'error') {
+  const [logged, other] = level === 'warn'
+    ? [mockLoggerWarn, mockLoggerError]
+    : [mockLoggerError, mockLoggerWarn]
+
+  expect(other).not.toHaveBeenCalled()
+  expect(logged).toHaveBeenCalledWith(
     expect.objectContaining({
       event: expect.objectContaining({ type, outcome: 'failure' })
-    })
+    }),
+    expect.stringContaining('Entra callback failed:')
   )
 }
 
@@ -242,7 +249,7 @@ describe('#loginController', () => {
 
       expect(callback.statusCode).toBe(401)
       expect(tokenScope.isDone()).toBe(false)
-      expectFailureLogged('entra_state_mismatch')
+      expectFailureLogged('entra_state_mismatch', 'warn')
     })
 
     test('rejects a callback without the OIDC state cookie', async () => {
@@ -251,7 +258,7 @@ describe('#loginController', () => {
       const callback = await sendCallback(server, { params: { code: 'auth-code', state } })
 
       expect(callback.statusCode).toBe(401)
-      expectFailureLogged('entra_state_mismatch')
+      expectFailureLogged('entra_state_mismatch', 'warn')
     })
 
     test('rejects a callback without a code', async () => {
@@ -260,7 +267,7 @@ describe('#loginController', () => {
       const callback = await sendCallback(server, { cookie, params: { state } })
 
       expect(callback.statusCode).toBe(401)
-      expectFailureLogged('entra_state_mismatch')
+      expectFailureLogged('entra_state_mismatch', 'warn')
     })
 
     test('rejects and logs an error returned by Entra', async () => {
@@ -272,7 +279,7 @@ describe('#loginController', () => {
       })
 
       expect(callback.statusCode).toBe(401)
-      expectFailureLogged('entra_callback_error')
+      expectFailureLogged('entra_callback_error', 'warn')
     })
 
     test('rejects when the code exchange fails', async () => {
@@ -284,11 +291,12 @@ describe('#loginController', () => {
 
       expect(callback.statusCode).toBe(401)
       expect(callback.result.message).toBe('Authentication failed. Please try again.')
-      expect(mockLoggerWarn).toHaveBeenCalledWith(
+      expect(mockLoggerError).toHaveBeenCalledWith(
         expect.objectContaining({
           event: expect.objectContaining({ type: 'entra_token_exchange_failed' }),
           error: expect.objectContaining({ message: expect.stringContaining('invalid_grant: AADSTS70008') })
-        })
+        }),
+        expect.stringContaining('invalid_grant: AADSTS70008')
       )
     })
 

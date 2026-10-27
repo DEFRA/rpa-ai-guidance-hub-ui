@@ -27,7 +27,7 @@ describe('#homepageController', () => {
 
       expect(payload).toContain('<div class="app-sign-in-hero">')
       expect(payload).toContain('<p class="app-sign-in-hero__caption">Rural Payments Agency</p>')
-      expect(payload).toMatch(/<a href="\/login\/callback" class="govuk-button govuk-button--start app-sign-in-hero__start-button"[^>]*>\s*Sign in/)
+      expect(payload).toMatch(/<a href="\/login" class="govuk-button govuk-button--start app-sign-in-hero__start-button"[^>]*>\s*Sign in/)
       expect(payload).toMatch(/class="app-sign-in-hero__panel"[^]*What you can do in the hub/)
     })
 
@@ -44,7 +44,7 @@ describe('#homepageController', () => {
       expect(header).toContain('class="defra-header__logo"')
       expect(header).not.toContain('defra-header__service-name')
       expect(header).not.toContain('Sign in')
-      expect(payload.split('href="/login/callback"')).toHaveLength(2)
+      expect(payload.split('href="/login"')).toHaveLength(2)
     })
 
     test('says what to do if you cannot sign in', async () => {
