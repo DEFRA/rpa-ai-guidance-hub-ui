@@ -40,8 +40,9 @@ describe('#toCheckboxOptions', () => {
   test('values are the lower-case, hyphenated label', () => {
     expect(toCheckboxOptions([
       { label: 'Siti Agri' },
-      { label: 'Team leader (SFI)' }
-    ]).map(({ value }) => value)).toEqual(['siti-agri', 'team-leader-sfi'])
+      { label: 'Team leader (SFI)' },
+      { label: '"Quoted" label' }
+    ]).map(({ value }) => value)).toEqual(['siti-agri', 'team-leader-sfi', 'quoted-label'])
   })
 
   test('defaults to an empty array when no options are given', () => {

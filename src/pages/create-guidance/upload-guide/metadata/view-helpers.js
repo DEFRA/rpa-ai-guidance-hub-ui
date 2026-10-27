@@ -33,7 +33,7 @@ function displayLabel ({ label, shortLabel }) {
  * @returns {string}
  */
 function toOptionValue (label) {
-  return label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  return label.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).join('-')
 }
 
 /**
