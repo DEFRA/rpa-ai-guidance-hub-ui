@@ -71,27 +71,6 @@
   gap: 8px;
 }
 
-.defra-header__account-icon {
-  flex-shrink: 0;
-  color: $defra-green;
-}
-
-.defra-header__account-name {
-  font-family: Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-size: 16px;
-  font-weight: 400;
-  color: $govuk-black;
-  white-space: nowrap;
-}
-
-.defra-header__account-divider {
-  width: 1px;
-  height: 20px;
-  background-color: $govuk-mid-grey;
-}
-
 .defra-header__account-link {
   font-family: Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -246,7 +225,6 @@
     height: 40px;
   }
 
-  .defra-header__account-name,
   .defra-header__account-link {
     font-size: 14px;
   }

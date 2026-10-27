@@ -1,0 +1,145 @@
+{#
+  The side navigation, on every page once signed in (common/layout.njk), in
+  place of the header. Its look and behaviour follow the prototype's side
+  navigation (rpa-ai-guidance-hub-prototype: app/views/partials/side-nav.njk).
+
+  Each list has a page of its own on the hub (/hub/pinned), so the server
+  marks the current item.
+  Folded away (sideNavCollapsed), it is a strip of icons instead, each with its
+  name for a screen reader and as a tooltip; both fold and unfold through the
+  layout's #side-nav-toggle-form.
+#}
+{% from "common/icon.njk" import icon %}
+
+{% set onUpload = currentPath and currentPath.indexOf('/create-guidance') == 0 %}
+{% set listItems = [
+  { text: "Hub", href: "/hub", icon: "home", current: currentPath == "/hub" },
+  { text: "Recently opened", href: "/hub/recently-opened", icon: "clock", current: currentPath == "/hub/recently-opened" },
+  { text: "Pinned", href: "/hub/pinned", icon: "star", current: currentPath == "/hub/pinned" },
+  { text: "Bookmarked guides", href: "/hub/bookmarked-guides", icon: "bookmark", current: currentPath == "/hub/bookmarked-guides" }
+] %}
+{% set designerItems = [
+  { text: "Awaiting my review", href: "/hub/awaiting-my-review", icon: "hourglass", current: currentPath == "/hub/awaiting-my-review" },
+  { text: "Upload guidance", href: "/create-guidance/upload-guide", icon: "upload", current: onUpload }
+] %}
+
+{% macro railItem(text, iconName, href, current) %}
+  <a class="app-side-nav__rail-item{% if current %} app-side-nav__rail-item--current{% endif %}" href="{{ href }}"{% if current %} aria-current="page"{% endif %} data-side-nav-tooltip>
+    {{ icon(iconName) }}
+    <span class="app-side-nav__rail-label">{{ text }}</span>
+    <span class="app-side-nav__tooltip" aria-hidden="true">{{ text }}</span>
+  </a>
+{% endmacro %}
+
+{% macro railExpand(text, iconName) %}
+  <button type="submit" form="side-nav-toggle-form" class="app-side-nav__rail-item" data-side-nav-tooltip>
+    {{ icon(iconName) }}
+    <span class="app-side-nav__rail-label">{{ text }}</span>
+    <span class="app-side-nav__tooltip" aria-hidden="true">{{ text }}</span>
+  </button>
+{% endmacro %}
+
+{% if sideNavCollapsed %}
+<nav class="app-side-nav app-side-nav--rail" aria-label="Guidance hub">
+  <ul class="app-side-nav__rail-list">
+    <li>{{ railExpand("Expand navigation", "expand") }}</li>
+  </ul>
+
+  <ul class="app-side-nav__rail-list">
+    {% for item in listItems %}
+      <li>{{ railItem(item.text, item.icon, item.href, item.current) }}</li>
+    {% endfor %}
+  </ul>
+
+  {# A designer's work in a list of its own: the strip draws a line above it. #}
+  {% if isDesigner %}
+    <ul class="app-side-nav__rail-list" aria-label="Designing">
+      {% for item in designerItems %}
+        <li>{{ railItem(item.text, item.icon, item.href, item.current) }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <ul class="app-side-nav__rail-list app-side-nav__rail-footer">
+    <li>{{ railItem("Sign out", "sign-out", "/logout") }}</li>
+  </ul>
+</nav>
+{% else %}
+<nav class="app-side-nav" aria-label="Guidance hub">
+  <div class="app-side-nav__header">
+    <div class="app-side-nav__identity">
+      <img
+        src="{{ getAssetPath('src/client/images/defra-logo.svg') }}"
+        alt="Department for Environment, Food &amp; Rural Affairs"
+        class="app-side-nav__logo"
+      />
+      <p class="app-side-nav__service">
+        <a href="/hub" class="app-side-nav__service-link">{{ serviceName }}</a>
+      </p>
+    </div>
+    <button type="submit" form="side-nav-toggle-form" class="app-side-nav__icon-button">
+      {{ icon("collapse") }}
+      <span class="govuk-visually-hidden">Collapse navigation</span>
+    </button>
+  </div>
+
+  {% if not hideNavSearch %}
+  <form class="app-side-nav__search" method="get" action="/hub" role="search">
+    <label class="govuk-visually-hidden" for="side-nav-search">Search or ask question</label>
+    <span class="app-side-nav__search-icon">{{ icon("search") }}</span>
+    <input class="app-side-nav__search-input" id="side-nav-search" name="search" type="search" autocomplete="off" placeholder="Search or ask question">
+    <button type="submit" class="govuk-visually-hidden-focusable">Search</button>
+  </form>
+  {% endif %}
+
+  <ul class="app-side-nav__list">
+    {% for item in listItems %}
+      <li>
+        <a class="app-side-nav__link{% if item.current %} app-side-nav__link--current{% endif %}" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>
+          {{ icon(item.icon) }}
+          <span class="app-side-nav__text">{{ item.text }}</span>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+
+  {% if isDesigner %}
+    <h2 class="app-side-nav__label" id="side-nav-designing">Designing</h2>
+    <ul class="app-side-nav__list" aria-labelledby="side-nav-designing">
+      {% for item in designerItems %}
+        <li>
+          <a class="app-side-nav__link{% if item.current %} app-side-nav__link--current{% endif %}" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>
+            {{ icon(item.icon) }}
+            <span class="app-side-nav__text">{{ item.text }}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <details class="app-side-nav__section" id="side-nav-pinned" open>
+    <summary class="app-side-nav__section-summary">
+      <span class="app-side-nav__label">Pinned guidance</span>
+      <span class="app-side-nav__section-count">0<span class="govuk-visually-hidden"> pinned</span></span>
+      {{ icon("chevron-down", "app-side-nav__chevron") }}
+    </summary>
+    <p class="app-side-nav__empty">You haven't pinned any guidance yet.</p>
+  </details>
+
+  <details class="app-side-nav__section" id="side-nav-bookmarks" open>
+    <summary class="app-side-nav__section-summary">
+      <span class="app-side-nav__label">Case bookmarks</span>
+      <span class="app-side-nav__section-count">0<span class="govuk-visually-hidden"> bookmarked</span></span>
+      {{ icon("chevron-down", "app-side-nav__chevron") }}
+    </summary>
+    <p class="app-side-nav__empty">You haven't bookmarked any guidance to a case yet.</p>
+  </details>
+
+  <ul class="app-side-nav__list app-side-nav__footer">
+    {% if userDisplayName %}
+      <li class="app-side-nav__user">{{ userDisplayName }}</li>
+    {% endif %}
+    <li><a class="app-side-nav__link" href="/logout">Sign out</a></li>
+  </ul>
+</nav>
+{% endif %}

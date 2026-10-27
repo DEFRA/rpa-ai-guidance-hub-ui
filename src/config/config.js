@@ -14,6 +14,9 @@ const isProduction = process.env.NODE_ENV === 'production'
 const isTest = process.env.NODE_ENV === 'test'
 const isDevelopment = process.env.NODE_ENV === 'development'
 
+const isLocalAuth = process.env.AUTH_PROVIDER === 'local'
+const isFederatedAuth = process.env.ENTRA_CLIENT_AUTH === 'federated'
+
 convict.addFormats(formats)
 
 const config = convict({
@@ -293,13 +296,39 @@ const config = convict({
         nullable: !isProduction,
         env: 'ENTRA_CLIENT_ID'
       },
+      clientAuth: {
+        doc: 'Entra ID client auth mode: "secret" (client secret) or "federated" (AWS STS web identity token as client assertion)',
+        format: ['secret', 'federated'],
+        default: 'secret',
+        env: 'ENTRA_CLIENT_AUTH'
+      },
       clientSecret: {
-        doc: 'Entra ID application client secret',
+        doc: 'Entra ID application client secret - only required when ENTRA_CLIENT_AUTH is "secret"',
         format: String,
         default: null,
-        nullable: !isProduction,
+        nullable: isLocalAuth || isFederatedAuth,
         env: 'ENTRA_CLIENT_SECRET',
         sensitive: true
+      },
+      federated: {
+        audience: {
+          doc: 'Audience requested for the STS web identity token - must match the audience of the federated credential on the app registration',
+          format: String,
+          default: 'rpa_ai_guidance_hub_ui',
+          env: 'ENTRA_FEDERATED_AUDIENCE'
+        },
+        durationSeconds: {
+          doc: 'Lifetime in seconds requested for the STS web identity token (60-3600)',
+          format: 'nat',
+          default: 300,
+          env: 'ENTRA_FEDERATED_DURATION_SECONDS'
+        },
+        earlyRefreshMs: {
+          doc: 'Fetch a new STS web identity token this many milliseconds before the cached one expires',
+          format: Number,
+          default: 60000,
+          env: 'ENTRA_FEDERATED_EARLY_REFRESH_MS'
+        }
       },
       authorityHost: {
         doc: 'Entra authority host used to build the authorize/token/JWKS/logout endpoints',

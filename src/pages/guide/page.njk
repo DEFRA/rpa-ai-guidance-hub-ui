@@ -1,0 +1,150 @@
+{% extends "common/layout.njk" %}
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+{% from "common/icon.njk" import icon %}
+
+{% set pageTitle = title %}
+{% set page = 'guide' %}
+{# The page is a shell that runs the full width, banner to panel. #}
+{% set containerClasses = 'app-width-container--bleed' %}
+{% set mainClasses = 'app-main-wrapper app-main-wrapper--bleed' %}
+
+{% block head %}
+  {{ super() }}
+  {# The CSP does not allow a style attribute, so the width is set here. #}
+  <style nonce="{{ cspNonce.style }}" data-progress-style>
+    {% for item in pages %}
+    #guide-progress-bar-{{ item.pageNumber }} {
+      --progress-width: {{ item.progressPercentage }}%;
+    }
+    {% endfor %}
+  </style>
+{% endblock %}
+
+{% block beforeContent %}{% endblock %}
+
+{% block content %}
+  <div class="app-shell">
+    <div class="app-shell__main">
+      <div class="app-guide-gutter">
+        {{ govukBackLink({ text: "Back", href: "/hub" }) }}
+
+        <div class="app-guide-reading app-guide-reading--{{ readingWidth }}">
+          <div class="app-guide-byline">
+            {{ govukTag({ text: version.text, classes: "govuk-tag--" + version.colour }) }}
+            {{ govukTag({ text: "Live", classes: "govuk-tag--turquoise" }) }}
+            {% if lastUpdated %}
+              <span class="app-guide-byline__updated">Updated {{ lastUpdated }}</span>
+            {% endif %}
+          </div>
+
+          <h1 class="app-guide-title">{{ title }}</h1>
+
+          <div class="app-guide-tools">
+            <form class="app-guide-reading-width" method="post" action="/guides/reading-width">
+              <input type="hidden" name="returnTo" value="{{ returnTo }}">
+              <span class="app-guide-reading-width__label" id="guide-reading-width-label">Page width</span>
+              <div class="app-guide-format-toggle app-guide-reading-width__options" role="group" aria-labelledby="guide-reading-width-label">
+                {% for option in readingWidths %}
+                  <button type="submit" name="width" value="{{ option.value }}"
+                    class="app-guide-format-toggle__option{{ ' app-guide-format-toggle__option--active' if option.value == readingWidth }}"
+                    aria-pressed="{{ 'true' if option.value == readingWidth else 'false' }}">{{ option.text }}</button>
+                {% endfor %}
+              </div>
+            </form>
+          </div>
+
+          <nav class="app-guide-contents" aria-labelledby="guide-contents-heading">
+            <h2 class="govuk-heading-s" id="guide-contents-heading">Contents</h2>
+            {% for item in contents %}
+              <p class="app-guide-contents__section{{ ' app-guide-contents__section--current' if item.isCurrent }}" data-guide-contents-page="{{ loop.index }}">
+                <a class="govuk-link app-guide-contents__section-link" href="{{ item.href }}"{% if item.isCurrent %} aria-current="page"{% endif %}>{{ item.title }}</a>
+              </p>
+              {% if item.subheadings.length %}
+                <ol class="govuk-list app-guide-contents__list">
+                  {% for subheading in item.subheadings %}
+                    <li><a class="govuk-link app-guide-contents__link" href="{{ subheading.href }}">{{ subheading.title }}</a></li>
+                  {% endfor %}
+                </ol>
+              {% endif %}
+            {% endfor %}
+          </nav>
+
+          {# Every section is here so the browser's find-in-page can search them
+             all; the ones not being read are hidden until it finds a match in
+             one. Only the current one is handed to the viewer: swapping the
+             others' HTML would lose the match. #}
+          {% for item in pages %}
+            <div class="app-guide-page" data-guide-page="{{ item.pageNumber }}"{% if not item.isCurrent %} hidden="until-found"{% endif %}>
+              <p class="app-guide-section__eyebrow">Page {{ item.pageNumber }} of {{ totalPages }}</p>
+              <div class="app-progress__track app-guide-progress" role="presentation">
+                <div class="app-progress__bar" id="guide-progress-bar-{{ item.pageNumber }}"></div>
+              </div>
+
+              <div class="app-guide-heading-row">
+                <h2 class="app-guide-heading-1"{% if item.section.slug %} id="{{ item.section.slug }}"{% endif %}>{{ item.section.title }}</h2>
+              </div>
+
+              {% if item.isCurrent %}
+                <div class="app-guide-markdown app-guide-body-text" data-tiptap-markdown data-heading-ids="{{ item.section.headingIds | dump }}">
+                  <script type="application/json">{{ item.section.markdown | jsonScript }}</script>
+                  <div class="app-guide-markdown__fallback">{{ item.section.markdown | markdownFallback(item.section.headingIds) }}</div>
+                </div>
+              {% else %}
+                <div class="app-guide-markdown app-guide-body-text">
+                  <div class="app-guide-markdown__fallback">{{ item.section.markdown | markdownFallback(item.section.headingIds) }}</div>
+                </div>
+              {% endif %}
+
+              {% if item.previous or item.next %}
+                {{ govukPagination({
+                  previous: { href: item.previous.href, labelText: item.previous.labelText } if item.previous else undefined,
+                  next: { href: item.next.href, labelText: item.next.labelText } if item.next else undefined
+                }) }}
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <form id="guide-panel-toggle-form" method="post" action="/guides/panel-toggle" hidden>
+      <input type="hidden" name="collapsed" value="{{ 'false' if panelCollapsed else 'true' }}">
+      <input type="hidden" name="returnTo" value="{{ returnTo }}">
+    </form>
+
+    <aside class="app-guide-panel{{ ' app-guide-panel--collapsed' if panelCollapsed }}" aria-label="About this guide">
+      {% if panelCollapsed %}
+        <nav class="app-side-nav app-side-nav--rail" aria-label="About this guide">
+          <ul class="app-side-nav__rail-list">
+            <li>
+              <button type="submit" form="guide-panel-toggle-form" class="app-side-nav__rail-item" aria-expanded="false" data-side-nav-tooltip>
+                {{ icon("collapse") }}
+                <span class="app-side-nav__rail-label">Show guide details</span>
+                <span class="app-side-nav__tooltip" aria-hidden="true">Show guide details</span>
+              </button>
+            </li>
+          </ul>
+        </nav>
+      {% else %}
+        <div class="app-guide-panel__header">
+          <h2 class="govuk-heading-s govuk-!-margin-bottom-0">About this guide</h2>
+          <button type="submit" form="guide-panel-toggle-form" class="app-side-nav__icon-button" aria-controls="guide-panel-body" aria-expanded="true">
+            {{ icon("expand") }}
+            <span class="govuk-visually-hidden">Hide guide details</span>
+          </button>
+        </div>
+
+        <div class="app-guide-panel__body" id="guide-panel-body">
+          {% include "guide/partials/metadata-list.njk" %}
+        </div>
+      {% endif %}
+    </aside>
+  </div>
+{% endblock %}
+
+{% block bodyEnd %}
+  {{ super() }}
+  <script type="module" src="{{ getAssetPath('src/client/javascripts/tiptap/viewer.js') }}"></script>
+{% endblock %}

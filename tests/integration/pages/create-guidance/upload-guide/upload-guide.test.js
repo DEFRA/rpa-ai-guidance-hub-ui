@@ -47,7 +47,7 @@ describe('#uploadGuideController', () => {
 
   afterAll(async () => {
     nock.enableNetConnect()
-    await server.stop({ timeout: 0 })
+    await server?.stop({ timeout: 0 })
   })
 
   afterEach(() => {

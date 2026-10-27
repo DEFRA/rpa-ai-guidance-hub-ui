@@ -56,7 +56,7 @@ describe('upload guide processing page', () => {
 
   afterAll(async () => {
     nock.enableNetConnect()
-    await server.stop({ timeout: 0 })
+    await server?.stop({ timeout: 0 })
   })
 
   afterEach(() => {

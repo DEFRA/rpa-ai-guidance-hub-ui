@@ -1,16 +1,8 @@
 {% extends "govuk/template.njk" %}
 {% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
 
-{% set mainClasses = "app-main-wrapper" %}
-
-{% if isAuthenticated %}
-  {% set serviceNameLink = "/hub" %}
-{% else %}
-  {% set serviceNameLink = "/" %}
-{% endif %}
-
-{% if showNav is not defined %}
-  {% set showNav = true %}
+{% if mainClasses is not defined %}
+  {% set mainClasses = "app-main-wrapper" %}
 {% endif %}
 
 {% block head %}
@@ -18,6 +10,8 @@
 {% endblock %}
 
 {% block header %}
+  {# Signed in, the side navigation takes the header's place. #}
+  {% if not isAuthenticated %}
   <header class="defra-header" role="banner">
     <div class="defra-header__inner">
     <div class="defra-header__brand-group">
@@ -26,36 +20,29 @@
         alt="Department for Environment, Food &amp; Rural Affairs"
         class="defra-header__logo"
       />
-      <a href="{{ serviceNameLink }}" class="defra-header__service-name">{{ serviceName }}</a>
-    </div>
-    <div class="defra-header__account">
-      {% if isAuthenticated %}
-        <svg class="defra-header__account-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <circle cx="12" cy="12" r="12" fill="currentColor" />
-          <circle cx="12" cy="9.5" r="3.5" fill="#ffffff" />
-          <path fill="#ffffff" d="M4.5 19.5c1.2-3.2 4-5 7.5-5s6.3 1.8 7.5 5c-1.9 2-4.6 3-7.5 3s-5.6-1-7.5-3z" />
-        </svg>
-        {% if userDisplayName %}
-          <span class="defra-header__account-name">{{ userDisplayName }}</span>
-          <span class="defra-header__account-divider" aria-hidden="true"></span>
-        {% endif %}
-        <a href="/logout" class="defra-header__account-link">Sign out</a>
-      {% else %}
-        <a href="/login/callback" class="defra-header__account-link">Sign in</a>
-      {% endif %}
+      {# Only the logo: the sign-in page names the service and offers sign-in. #}
     </div>
     </div>
   </header>
-  {% if showNav and isAuthenticated %}
-  <nav class="defra-service-navigation" aria-label="Service navigation">
-    <div class="defra-service-navigation__inner">
-      <ul class="defra-service-navigation__list">
-        <li class="defra-service-navigation__item">
-          <a class="defra-service-navigation__link" href="/hub" {% if page == 'hub' %}aria-current="page"{% endif %}>Hub</a>
-        </li>
-      </ul>
+  {% endif %}
+{% endblock %}
+
+{# Signed in, every page has the side navigation beside its content. #}
+{% block container %}
+  {% if isAuthenticated %}
+    {# Folds the side navigation away or opens it out, then comes back here. #}
+    <form id="side-nav-toggle-form" method="post" action="/side-nav/toggle" hidden>
+      <input type="hidden" name="collapsed" value="{{ 'false' if sideNavCollapsed else 'true' }}">
+      <input type="hidden" name="returnTo" value="{{ currentUrl }}">
+    </form>
+    <div class="app-layout{% if sideNavCollapsed %} app-layout--collapsed{% endif %}">
+      <div class="app-layout__nav">
+        {% include "common/side-nav.njk" %}
+      </div>
+      <div class="app-layout__main">{{ super() }}</div>
     </div>
-  </nav>
+  {% else %}
+    {{ super() }}
   {% endif %}
 {% endblock %}
 

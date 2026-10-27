@@ -1,0 +1,559 @@
+// The pieces of the prototype's side navigation
+// (rpa-ai-guidance-hub-prototype: app/assets/sass/components/_app-side-nav.scss)
+// that the guide page's "About this guide" panel is built from: its tokens,
+// focus style, the shell it sits in, the icon button, and the collapsed icon
+// rail with its tooltip. Copied as they are, so the side navigation ticket
+// can add the rest of the file without anything here changing.
+
+// Kept as the prototype has it, so a change there can be copied across as it
+// is; these rules are disabled rather than the code reshaped to satisfy them.
+// stylelint-disable shorthand-property-no-redundant-values
+
+@use 'govuk-frontend' as *;
+@use '../variables/colours' as *;
+
+$app-side-nav-width: 280px;
+// Match NAV_WIDTH in app/data/side-nav.js.
+$app-side-nav-min-width: 220px;
+$app-side-nav-max-width: 440px;
+$app-side-nav-rail-width: 64px;
+// Below this (and above the drawer breakpoint) the nav auto-collapses to the
+// rail, until it's been collapsed or expanded by hand.
+$app-side-nav-auto-collapse: 1200px;
+$app-side-nav-hover: #e3e2e0;
+$app-side-nav-divider: $govuk-mid-grey;
+$app-side-nav-muted: #505a5f;
+
+@mixin app-side-nav-focus {
+  outline: 3px solid transparent;
+  background-color: $govuk-yellow;
+  box-shadow: inset 0 0 0 3px $govuk-black;
+  color: $govuk-black;
+  text-decoration: none;
+}
+
+.app-shell {
+  display: flex;
+  align-items: flex-start;
+  border-top: 1px solid $app-side-nav-divider;
+}
+
+.app-shell__main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.app-side-nav {
+  @include govuk-font($size: 16);
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: govuk-spacing(3) govuk-spacing(2) govuk-spacing(3);
+  color: $govuk-black;
+
+  summary {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+}
+
+.app-side-nav-icon {
+  flex: none;
+}
+
+.app-side-nav__icon-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: $app-side-nav-muted;
+  cursor: pointer;
+
+  &:hover {
+    background-color: $app-side-nav-hover;
+    color: $govuk-black;
+  }
+
+  &:focus {
+    @include app-side-nav-focus;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Collapsed icon rail
+// ---------------------------------------------------------------------------
+
+.app-side-nav--rail {
+  align-items: center;
+  padding: govuk-spacing(2) 0;
+}
+
+.app-side-nav__rail-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: govuk-spacing(2) 0;
+  list-style: none;
+
+  & + & {
+    border-top: 1px solid $app-side-nav-divider;
+  }
+}
+
+.app-side-nav__rail-footer {
+  position: sticky;
+  z-index: 5;
+  bottom: 0;
+  margin-top: auto;
+  background-color: $govuk-light-grey;
+}
+
+.app-side-nav__rail-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: $app-side-nav-muted;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:link,
+  &:visited {
+    color: $app-side-nav-muted;
+  }
+
+  &:hover {
+    background-color: $app-side-nav-hover;
+    color: $govuk-black;
+  }
+
+  &:focus {
+    @include app-side-nav-focus;
+  }
+}
+
+.app-side-nav__rail-item--current {
+  background-color: $defra-light-green;
+  box-shadow: inset 4px 0 0 $defra-green;
+
+  &:link,
+  &:visited {
+    color: $defra-green-hover;
+  }
+}
+
+.app-side-nav__rail-dot {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border: 1px solid $app-side-nav-muted;
+  border-radius: 9px;
+  background-color: $govuk-white;
+  color: $govuk-black;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+// The label is the item's real accessible name — hidden in the desktop
+// rail, shown when the rail opens as the mobile drawer.
+@include govuk-media-query($from: desktop) {
+  .app-side-nav__rail-label {
+    @include govuk-visually-hidden;
+  }
+}
+
+// Tooltip: hover and keyboard focus, stays while hovered (the transparent
+// left border bridges the gap), Esc dismisses (side-nav.js adds
+// --tooltip-dismissed until the pointer/focus leaves).
+.app-side-nav__tooltip {
+  position: absolute;
+  z-index: 30;
+  top: 50%;
+  left: 100%;
+  display: none;
+  padding: 6px 10px;
+  border-left: 10px solid transparent;
+  border-radius: 4px;
+  background-clip: padding-box;
+  background-color: $govuk-black;
+  color: $govuk-white;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.3;
+  white-space: nowrap;
+  transform: translateY(-50%);
+}
+
+@include govuk-media-query($from: desktop) {
+  .app-side-nav__rail-item:hover .app-side-nav__tooltip,
+  .app-side-nav__rail-item:focus-visible .app-side-nav__tooltip {
+    display: block;
+  }
+
+  .app-side-nav__rail-item.app-side-nav__rail-item--tooltip-dismissed
+    .app-side-nav__tooltip {
+    display: none;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Narrow screens: the shell stacks, and the rail's items become rows.
+// ---------------------------------------------------------------------------
+
+@include govuk-media-query($until: desktop) {
+  .app-shell {
+    display: block;
+  }
+
+  .app-side-nav--rail {
+    align-items: stretch;
+    padding: govuk-spacing(2);
+  }
+
+  .app-side-nav__rail-list {
+    align-items: stretch;
+  }
+
+  .app-side-nav__rail-item {
+    justify-content: flex-start;
+    gap: 10px;
+    width: auto;
+    padding: 0 govuk-spacing(3);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The side navigation on every page once signed in (common/layout.njk), as
+// the prototype's shell places it (app-shell__nav). Named app-layout, not
+// app-shell, as the guide page uses app-shell for its own panel.
+// ---------------------------------------------------------------------------
+
+.app-layout {
+  display: flex;
+  align-items: flex-start;
+}
+
+.app-layout__nav {
+  position: sticky;
+  top: 0;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: $app-side-nav-width;
+  height: 100vh;
+  overflow-y: auto;
+  border-right: 1px solid $app-side-nav-divider;
+  background-color: $govuk-light-grey;
+}
+
+.app-layout__main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+// Folded away to its icons (side-nav.njk), the column is the rail's width,
+// and does not clip, so each icon's tooltip can show beside it.
+.app-layout--collapsed .app-layout__nav {
+  width: $app-side-nav-rail-width;
+  overflow: visible;
+}
+
+// Beside the nav the page runs the full width of its column, and everything in
+// it starts the same distance from the column's edge, as in the prototype
+// ($app-content-gutter there). Width containers nested in the page's own (the
+// hub's) take no margins of their own, or the content would be inset twice.
+// A page that bleeds to the edges (the guide's) keeps its own gutters.
+$app-content-gutter: govuk-spacing(4);
+
+.app-layout__main .govuk-width-container {
+  max-width: none;
+  margin-right: 0;
+  margin-left: 0;
+}
+
+.app-layout__main > .govuk-width-container:not(.app-width-container--bleed) {
+  padding-right: $app-content-gutter;
+  padding-left: $app-content-gutter;
+}
+
+// The hub's banner spans the column from the nav's edge, its content inset by
+// the same gutter, in place of the 100vw band it is on a page without the nav.
+.app-layout__main .defra-hero {
+  left: auto;
+  transform: none;
+  width: auto;
+  margin-right: -$app-content-gutter;
+  margin-left: -$app-content-gutter;
+  padding-right: $app-content-gutter;
+  padding-left: $app-content-gutter;
+}
+
+// The nav fills the column's height with its padding inside it, or the
+// padding overflows the window and the column scrolls with nothing to show.
+.app-layout__nav .app-side-nav {
+  box-sizing: border-box;
+}
+
+// From the prototype's side navigation, as it has them.
+
+.app-side-nav__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: govuk-spacing(2);
+  padding: govuk-spacing(1) govuk-spacing(1) govuk-spacing(3) govuk-spacing(2);
+}
+
+.app-side-nav__identity {
+  min-width: 0;
+}
+
+.app-side-nav__logo {
+  display: block;
+  height: 48px;
+  width: auto;
+  margin-bottom: govuk-spacing(2);
+}
+
+.app-side-nav__service {
+  @include govuk-font($size: 19, $weight: bold);
+  margin: 0;
+}
+
+.app-side-nav__service-link {
+  &:link,
+  &:visited {
+    color: $govuk-text-colour;
+    text-decoration: none;
+  }
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus {
+    @include app-side-nav-focus;
+  }
+}
+
+.app-side-nav__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-side-nav__link {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 6px 10px 6px 12px;
+  border-radius: 6px;
+  color: $govuk-black;
+  line-height: 1.25;
+  text-decoration: none;
+
+  &:link,
+  &:visited {
+    color: $govuk-black;
+  }
+
+  &:hover {
+    background-color: $app-side-nav-hover;
+  }
+
+  &:focus {
+    @include app-side-nav-focus;
+  }
+}
+
+.app-side-nav__footer {
+  position: sticky;
+  z-index: 5;
+  bottom: 0;
+  margin: auto 0 (- govuk-spacing(3));
+  padding: govuk-spacing(2) 0 govuk-spacing(3);
+  border-top: 1px solid $app-side-nav-divider;
+  background-color: $govuk-light-grey;
+}
+
+// Who is signed in, above Sign out: the prototype has no sign-in, so this is
+// the production service's own.
+.app-side-nav__user {
+  padding: 6px 10px 6px 12px;
+  color: $app-side-nav-muted;
+  overflow-wrap: anywhere;
+}
+
+.app-side-nav__chevron {
+  width: 16px;
+  height: 16px;
+  vertical-align: -3px;
+  transition: transform 0.15s ease;
+}
+
+details:not([open]) > summary .app-side-nav__chevron {
+  transform: rotate(-90deg);
+}
+
+.app-side-nav__search {
+  position: relative;
+  margin: 0 0 govuk-spacing(3);
+}
+
+.app-side-nav__search-icon {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: $app-side-nav-muted;
+  pointer-events: none;
+}
+
+.app-side-nav__search-input {
+  @include govuk-font($size: 16);
+  box-sizing: border-box;
+  width: 100%;
+  height: 40px;
+  padding: 0 govuk-spacing(3) 0 36px;
+  border: 1px solid $app-side-nav-muted;
+  border-radius: 6px;
+  background-color: $govuk-white;
+  color: $govuk-black;
+
+  &::placeholder {
+    color: $app-side-nav-muted;
+    opacity: 1;
+  }
+
+  &:focus {
+    outline: 3px solid $govuk-yellow;
+    outline-offset: 0;
+    box-shadow: inset 0 0 0 2px $govuk-black;
+  }
+}
+
+.app-side-nav__link .app-side-nav-icon {
+  color: $app-side-nav-muted;
+}
+
+.app-side-nav__link:focus .app-side-nav-icon {
+  color: $govuk-black;
+}
+
+.app-side-nav__link--current {
+  background-color: $defra-light-green;
+  font-weight: 700;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 0;
+    width: 4px;
+    border-radius: 2px;
+    background-color: $defra-green;
+  }
+
+  .app-side-nav-icon {
+    color: $defra-green-hover;
+  }
+
+  &:hover {
+    background-color: $defra-light-green;
+    text-decoration: underline;
+  }
+}
+
+.app-side-nav__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-side-nav__label {
+  margin: govuk-spacing(4) govuk-spacing(3) govuk-spacing(1);
+  color: $app-side-nav-muted;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+// Collapsible sections (Pinned guidance, Case bookmarks)
+
+.app-side-nav__section {
+  margin-top: govuk-spacing(3);
+  padding-top: govuk-spacing(1);
+  border-top: 1px solid $app-side-nav-divider;
+}
+
+.app-side-nav__section-summary {
+  display: flex;
+  align-items: center;
+  gap: govuk-spacing(2);
+  min-height: 40px;
+  padding: 0 govuk-spacing(2) 0 govuk-spacing(3);
+  border-radius: 6px;
+
+  .app-side-nav__label {
+    margin: 0;
+  }
+
+  .app-side-nav__chevron {
+    margin-left: auto;
+    color: $app-side-nav-muted;
+  }
+
+  &:hover {
+    background-color: $app-side-nav-hover;
+  }
+
+  &:focus {
+    @include app-side-nav-focus;
+
+    .app-side-nav__label,
+    .app-side-nav__section-count,
+    .app-side-nav__chevron {
+      color: $govuk-black;
+    }
+  }
+}
+
+.app-side-nav__section-count {
+  color: $app-side-nav-muted;
+  font-size: 14px;
+}
+
+.app-side-nav__empty {
+  margin: 0;
+  padding: govuk-spacing(1) govuk-spacing(3) govuk-spacing(2);
+  color: $app-side-nav-muted;
+  font-size: 14px;
+}

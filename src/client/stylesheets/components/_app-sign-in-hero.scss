@@ -1,0 +1,129 @@
+// The sign-in page's hero (home/page.njk), as the design has it: the
+// prototype's sign-in hero (rpa-ai-guidance-hub-prototype:
+// app/assets/sass/components/_app-v3.scss, .app-v3-hero), which follows the
+// Defra AI toolkit's. Copied as the prototype has it, so a change there can be
+// copied across as it is.
+
+@use 'govuk-frontend' as *;
+@use '../variables/colours' as *;
+
+.app-sign-in-hero {
+  background-color: $defra-green;
+  color: $govuk-white;
+  margin-top: -20px;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding: govuk-spacing(8) 0;
+
+  @include govuk-media-query($from: tablet) {
+    margin-top: -40px;
+  }
+}
+
+// Re-applies page gutters the full bleed just discarded; the section below
+// the hero (.app-sign-in-section) uses the same, so the two line up.
+.app-sign-in-hero__inner {
+  margin: 0 govuk-spacing(4);
+
+  @include govuk-media-query($from: tablet) {
+    margin: 0 govuk-spacing(7);
+  }
+
+  @include govuk-media-query($from: desktop) {
+    margin: 0 govuk-spacing(9);
+    display: flex;
+    gap: govuk-spacing(9);
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+.app-sign-in-hero__content {
+  max-width: 640px;
+}
+
+.app-sign-in-hero__caption {
+  @include govuk-font($size: 24);
+  color: rgb(255, 255, 255, 0.8);
+  margin: 0 0 govuk-spacing(1);
+}
+
+.app-sign-in-hero__title,
+.app-sign-in-hero__description,
+.app-sign-in-hero__note {
+  color: $govuk-white;
+}
+
+.app-sign-in-hero__note {
+  margin-bottom: 0;
+}
+
+// The AI toolkit's start button, colour for colour: white on the green band,
+// green text, a grey underside shadow, and the standard GOV.UK focus state.
+.app-sign-in-hero__start-button.govuk-button--start {
+  background-color: $govuk-white;
+  color: $defra-green;
+  box-shadow: 0 2px 0 #b3b3b3;
+
+  &:hover {
+    background-color: #f2f2f2;
+    color: $defra-green-hover;
+  }
+
+  &:focus {
+    color: $govuk-black;
+    background-color: $govuk-yellow;
+    box-shadow: 0 2px 0 $govuk-black;
+  }
+
+  .govuk-button__start-icon {
+    fill: currentcolor;
+  }
+}
+
+// The bordered panel beside the sign-in pitch — the same translucent-border
+// treatment as the toolkit hero's "what's new" box.
+.app-sign-in-hero__panel {
+  border: 1px solid rgb(255, 255, 255, 0.6);
+  padding: govuk-spacing(4) govuk-spacing(5);
+  margin-top: govuk-spacing(6);
+
+  @include govuk-media-query($from: desktop) {
+    flex: 0 1 400px;
+    margin-top: 0;
+  }
+
+  h2,
+  p,
+  li {
+    color: $govuk-white;
+  }
+
+  ul {
+    margin-bottom: 0;
+  }
+}
+
+// The page below the hero runs the full width too, as the design's sign-in
+// page does, its content inset by the hero's own gutters.
+.app-sign-in-section {
+  margin-right: calc(50% - 50vw);
+  margin-left: calc(50% - 50vw);
+}
+
+// The header's logo starts where the hero's content does, as on the design's
+// full-width sign-in page, not in the centred column of other pages.
+.app-sign-in-page .defra-header__inner {
+  max-width: none;
+  margin: 0 govuk-spacing(4);
+  padding-right: 0;
+  padding-left: 0;
+
+  @include govuk-media-query($from: tablet) {
+    margin: 0 govuk-spacing(7);
+  }
+
+  @include govuk-media-query($from: desktop) {
+    margin: 0 govuk-spacing(9);
+  }
+}

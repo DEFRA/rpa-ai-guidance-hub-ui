@@ -1,7 +1,10 @@
+import { globalIgnores } from 'eslint/config'
 import neostandard from 'neostandard'
 
-export default neostandard({
-  env: ['node', 'vitest'],
-  ignores: [...neostandard.resolveIgnoresFromGitignore()],
-  noJsx: true
-})
+export default [
+  globalIgnores(neostandard.resolveIgnoresFromGitignore()),
+  ...neostandard({
+    env: ['node', 'vitest'],
+    noJsx: true
+  })
+]
