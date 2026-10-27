@@ -319,6 +319,35 @@ describe('#auth', () => {
       expect(refreshScope.isDone()).toBe(true)
     })
 
+    test('Should preserve the old refresh token when the refresh response omits it', async () => {
+      const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
+      const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
+
+      const refreshScope = nock('https://login.microsoftonline.com')
+        .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`, (body) => {
+          const params = new URLSearchParams(body)
+
+          return params.get('grant_type') === 'refresh_token' &&
+            params.get('refresh_token') === 'old-refresh-token'
+        })
+        .reply(200, { access_token: 'new-access-token' })
+
+      const { statusCode, result } = await server.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(200)
+      expect(result).toMatchObject({
+        token: 'new-access-token',
+        refreshToken: 'old-refresh-token',
+        profile: { id: 'user-123' },
+        sessionId: expect.any(String)
+      })
+      expect(refreshScope.isDone()).toBe(true)
+    })
+
     test('Should redirect to / when refreshing the expired session token fails', async () => {
       const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
       const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
@@ -326,6 +355,42 @@ describe('#auth', () => {
       nock('https://login.microsoftonline.com')
         .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
         .reply(400, { error: 'invalid_grant' })
+
+      const { statusCode, headers } = await server.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(302)
+      expect(headers.location).toBe('/')
+    })
+
+    test('Should redirect to / when Entra requires interaction to refresh', async () => {
+      const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
+      const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
+
+      nock('https://login.microsoftonline.com')
+        .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
+        .reply(400, { error: 'interaction_required', error_description: 'AADSTS50076: MFA required' })
+
+      const { statusCode, headers } = await server.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(302)
+      expect(headers.location).toBe('/')
+    })
+
+    test('Should redirect to / when the token endpoint is unavailable', async () => {
+      const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
+      const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
+
+      nock('https://login.microsoftonline.com')
+        .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
+        .reply(502, 'Bad Gateway')
 
       const { statusCode, headers } = await server.inject({
         method: 'GET',

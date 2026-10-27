@@ -84,6 +84,16 @@ describe('#entraOidc', () => {
       )
     })
 
+    test('exposes Entra\'s error code on the thrown error', async () => {
+      const { refreshTokens } = await getOidc()
+
+      nock(ENTRA_HOST)
+        .post(`${TENANT_PATH}/oauth2/v2.0/token`)
+        .reply(400, { error: 'invalid_grant', error_description: 'AADSTS70000: expired' })
+
+      await expect(refreshTokens('old-refresh')).rejects.toMatchObject({ code: 'invalid_grant' })
+    })
+
     test('throws on a non-JSON error response', async () => {
       const { refreshTokens } = await getOidc()
 

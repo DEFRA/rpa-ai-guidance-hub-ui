@@ -10,6 +10,8 @@ const OIDC_STATE_COOKIE = 'entra-oidc'
 
 const tenMinutesMs = 10 * 60 * 1000
 
+const REJECTED_REFRESH_ERRORS = new Set(['invalid_grant', 'interaction_required'])
+
 const auth = {
   plugin: {
     name: 'auth',
@@ -107,18 +109,47 @@ async function _validateSessionToken (request, session) {
       return { isValid: false }
     }
 
-    const {
-      access_token: token,
-      refresh_token: refreshToken
-    } = await refreshTokens(userSession.refreshToken)
+    const tokens = await _tryRefreshTokens(userSession.refreshToken)
 
-    userSession.token = token
-    userSession.refreshToken = refreshToken
+    if (!tokens) {
+      return { isValid: false }
+    }
+
+    userSession.token = tokens.access_token
+    userSession.refreshToken = tokens.refresh_token ?? userSession.refreshToken
 
     await request.server.app.cache.set(`auth-session:${session.sessionId}`, userSession)
   }
 
   return { isValid: true, credentials: { ...userSession, sessionId: session.sessionId } }
+}
+
+/**
+ * @private
+ * Arranges for the refresh token to be used to obtain a new access token, and
+ * returns the new token response. If the refresh fails due to a user-caused
+ * error (e.g. the refresh token has been revoked), it returns `null` instead of
+ * throwing.
+ *
+ * If the refresh fails due to a non-user-caused error (e.g. network failure), it throws the error.
+ *
+ * @param {string} refreshToken
+ * @returns {Promise<object|null>} Entra's token response
+ */
+async function _tryRefreshTokens (refreshToken) {
+  try {
+    return await refreshTokens(refreshToken)
+  } catch (error) {
+    if (!REJECTED_REFRESH_ERRORS.has(error.code)) {
+      logger.error({ type: 'entra_refresh_failed', error }, 'Token refresh failed')
+
+      throw error
+    }
+
+    logger.warn({ type: 'entra_refresh_rejected', error }, 'Refresh token rejected')
+
+    return null
+  }
 }
 
 export { auth, OIDC_STATE_COOKIE }

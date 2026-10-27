@@ -172,9 +172,12 @@ async function _requestTokens (params) {
     // distinguishes a bad grant from a misconfigured client credential.
     const { error, error_description: description } = await response.json().catch(() => ({}))
 
-    throw new Error(
-      `Entra token request failed: ${response.status} ${response.statusText}` +
-      (error ? ` - ${error}: ${description}` : '')
+    throw Object.assign(
+      new Error(
+        `Entra token request failed: ${response.status} ${response.statusText}` +
+        (error ? ` - ${error}: ${description}` : '')
+      ),
+      { code: error }
     )
   }
 
