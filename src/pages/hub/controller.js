@@ -4,6 +4,8 @@ import * as referenceDataService from '../../services/reference-data.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { HubViewModel } from './view-models.js'
 
+const NOT_RECORDED = 'Not recorded'
+
 /**
  * A listed guide as the "All guides" table shows it.
  *
@@ -20,9 +22,9 @@ function _toAllGuidesItem (guide, shortLabels) {
   return {
     title: guide.title ?? 'Untitled guide',
     href: `/guides/${encodeURIComponent(guide.id)}`,
-    schemes: guide.schemes.map((label) => shortLabels.get(label) ?? label).join(', ') || 'Not recorded',
-    lastModified: formatIsoDate(guide.lastUpdated) ?? 'Not recorded',
-    owner: guide.owner ?? 'Not recorded'
+    schemes: guide.schemes.map((label) => shortLabels.get(label) ?? label).join(', ') || NOT_RECORDED,
+    lastModified: formatIsoDate(guide.lastUpdated) ?? NOT_RECORDED,
+    owner: guide.owner ?? NOT_RECORDED
   }
 }
 
