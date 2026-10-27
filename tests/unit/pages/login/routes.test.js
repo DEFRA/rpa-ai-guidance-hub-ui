@@ -11,7 +11,7 @@ async function getController () {
 }
 
 function findRoute (routes, method, path) {
-  return routes.find((route) => route.method === method && route.path === path)
+  return routes.find((route) => [route.method].flat().includes(method) && route.path === path)
 }
 
 describe('#loginRoutes', () => {
@@ -57,10 +57,10 @@ describe('#loginRoutes', () => {
       expect(loginRoute.handler).toBe(controller.startEntraLogin)
     })
 
-    test('accepts the form_post callback on an unauthenticated POST /login/callback route', async () => {
+    test.each(['GET', 'POST'])('accepts the callback on an unauthenticated %s /login/callback route', async (method) => {
       const routes = await getRoutes()
       const controller = await getController()
-      const callbackRoute = findRoute(routes, 'POST', '/login/callback')
+      const callbackRoute = findRoute(routes, method, '/login/callback')
 
       expect(callbackRoute.options.auth).toBe(false)
       expect(callbackRoute.handler).toBe(controller.handleEntraCallback)

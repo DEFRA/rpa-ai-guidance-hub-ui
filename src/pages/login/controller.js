@@ -32,8 +32,9 @@ function startEntraLogin (_request, h) {
 }
 
 /**
- * POST /login/callback (Redirect URI) — 'entra' provider. Entra posts the
- * authorization response here (`response_mode=form_post`). Checks it against
+ * GET|POST /login/callback (Redirect URI) — 'entra' provider. Entra returns
+ * the authorization response here, on the query string for `response_mode=query`
+ * (what we request) or in a POST body for `form_post`. Checks it against
  * the OIDC state cookie, exchanges the code for tokens, verifies the
  * id_token and starts a session.
  *
@@ -45,7 +46,7 @@ function startEntraLogin (_request, h) {
  * @returns {Promise<any>}
  */
 async function handleEntraCallback (request, h) {
-  const { code, state, error, error_description: errorDescription } = request.payload ?? {}
+  const { code, state, error, error_description: errorDescription } = request.payload ?? request.query ?? {}
   const oidcState = request.state[OIDC_STATE_COOKIE]
 
   h.unstate(OIDC_STATE_COOKIE)

@@ -16,7 +16,7 @@ const routes = [
   // 'local' provider signs in directly from `/login`.
   ...(isEntra
     ? [{
-        method: 'POST',
+        method: ['GET', 'POST'],
         path: '/login/callback',
         options: {
           auth: false
