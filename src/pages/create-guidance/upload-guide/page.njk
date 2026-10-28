@@ -1,8 +1,10 @@
+{% from "govuk/components/file-upload/macro.njk" import govukFileUpload %}
+
 {% extends "common/layout.njk" %}
 
 {% block content %}
   <div class="govuk-grid-row">
-    <div class="govuk-grid-column-two-thirds app-content">
+    <div class="govuk-grid-column-two-thirds">
       <h1 class="govuk-heading-l">Upload guidance</h1>
 
       <p class="govuk-body">
@@ -10,28 +12,40 @@
       </p>
 
       <form
+        class="app-upload-panel"
         action="{{ uploadUrl }}"
         method="post"
         enctype="multipart/form-data"
       >
-        <div class="govuk-form-group">
-          <label class="govuk-label govuk-label--s" for="guidanceDocumentUpload">
-            Word document
-          </label>
-          <p class="govuk-hint">Must be a .docx file</p>
-          <input
-            class="govuk-file-upload"
-            id="guidanceDocumentUpload"
-            name="guidanceDocument"
-            type="file"
-            accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          >
-        </div>
+        {{ govukFileUpload({
+          id: "guidanceDocumentUpload",
+          name: "guidanceDocument",
+          label: {
+            text: "Upload a file",
+            classes: "govuk-label--m"
+          },
+          hint: {
+            text: "Word document (.docx). One guide per file."
+          },
+          attributes: {
+            accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          },
+          javascript: true
+        }) }}
 
         <button class="govuk-button" data-module="govuk-button" type="submit">
           Upload
         </button>
       </form>
+
+      <h2 class="govuk-heading-m">What happens next</h2>
+
+      <ol class="govuk-list govuk-list--number">
+        <li>We scan the file for viruses.</li>
+        <li>You check the title and choose the schemes it relates to.</li>
+        <li>You add the owner and who the guidance is for.</li>
+        <li>You check your answers and convert it into a guide.</li>
+      </ol>
     </div>
   </div>
 {% endblock %}
