@@ -85,6 +85,7 @@ describe('#uploadGuideController', () => {
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(payload).toContain('Upload guidance')
       expect(payload).toContain(`/upload-and-scan/${uploadId}`)
+      expect(payload).toMatch(/<input[^>]*type="file"[^>]*accept="\.docx,application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document"/)
     })
 
     test('redirects to the processing page while the upload is still being scanned', async () => {
