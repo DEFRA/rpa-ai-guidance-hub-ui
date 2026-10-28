@@ -195,6 +195,14 @@ describe('ApiClient', () => {
 
       expect(captured.authorization).toBe('Bearer own-token')
     })
+
+    test('lets a request\'s own headers override the auth headers whatever their case', async () => {
+      const captured = interceptItemsCapturingAuthorization()
+
+      await client.request('/items', { headers: { authorization: 'Bearer own-token' } })
+
+      expect(captured.authorization).toBe('Bearer own-token')
+    })
   })
 
   describe('when getting the auth headers fails', () => {
