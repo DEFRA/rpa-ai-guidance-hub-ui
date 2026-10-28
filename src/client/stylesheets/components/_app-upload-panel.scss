@@ -1,0 +1,18 @@
+@use '../variables/colours' as *;
+@use 'govuk-frontend' as govuk;
+
+// Grey panel around a file upload form. It is plain markup rather than
+// something the file upload JavaScript adds, so the panel is still there when
+// JavaScript is off and the browser shows its native file input.
+
+.app-upload-panel {
+  padding: govuk.govuk-spacing(4);
+  margin-bottom: govuk.govuk-spacing(6);
+  border-radius: 5px;
+  background-color: $govuk-light-grey;
+
+  // The panel's padding already spaces the button from the edge.
+  .govuk-button {
+    margin-bottom: 0;
+  }
+}
