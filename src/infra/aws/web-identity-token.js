@@ -9,29 +9,76 @@ const logger = createLogger()
 
 const SIGNING_ALGORITHM = 'RS256'
 
-let stsClient = null
-
-/** @type {Map<string, CachedWebIdentityToken>} */
-const cachedTokensByAudience = new Map()
-
 /**
- * Returns an AWS STS web identity token (`GetWebIdentityToken`) for
- * `audience`, signed by the account's STS issuer and representing the
- * ambient AWS identity (the ECS task role on CDP).
+ * Issues AWS STS web identity tokens (`GetWebIdentityToken`), signed by the
+ * account's STS issuer and representing the ambient AWS identity (the ECS
+ * task role on CDP).
  *
  * Each audience has its own cached token, so a token issued for one
  * recipient is never presented to another.
- *
- * @param {string} audience - Who the token is for, e.g. the Entra app
- *   registration's federated credential or a backend service
- * @returns {Promise<string>}
  */
-async function getWebIdentityToken (audience) {
-  if (!cachedTokensByAudience.has(audience)) {
-    cachedTokensByAudience.set(audience, new CachedWebIdentityToken(audience))
+class WebIdentityTokenProvider {
+  /** @type {Map<string, CachedWebIdentityToken>} */
+  #cachedTokensByAudience = new Map()
+  #stsClient = null
+
+  /**
+   * @param {Object} options
+   * @param {number} options.durationSeconds - Lifetime requested for each token
+   * @param {number} options.earlyRefreshMs - Replace a cached token this long
+   *   before it expires
+   */
+  constructor ({ durationSeconds, earlyRefreshMs }) {
+    this.durationSeconds = durationSeconds
+    this.earlyRefreshMs = earlyRefreshMs
   }
 
-  return cachedTokensByAudience.get(audience).getOrRefresh()
+  /**
+   * @param {string} audience - Who the token is for, e.g. the Entra app
+   *   registration's federated credential or a backend service
+   * @returns {Promise<string>}
+   */
+  async getToken (audience) {
+    if (!this.#cachedTokensByAudience.has(audience)) {
+      this.#cachedTokensByAudience.set(audience, new CachedWebIdentityToken({
+        earlyRefreshMs: this.earlyRefreshMs,
+        fetchToken: () => this.#fetchToken(audience)
+      }))
+    }
+
+    return this.#cachedTokensByAudience.get(audience).getOrRefresh()
+  }
+
+  async #fetchToken (audience) {
+    const { WebIdentityToken: token, Expiration: expiration } = await this.#getStsClient().send(
+      new clientSts.GetWebIdentityTokenCommand({
+        Audience: [audience],
+        SigningAlgorithm: SIGNING_ALGORITHM,
+        DurationSeconds: this.durationSeconds
+      })
+    )
+
+    if (!token) {
+      throw new Error(`STS returned no web identity token for audience ${audience}`)
+    }
+
+    logger.info({ audience, expiration }, 'Issued STS web identity token')
+
+    return {
+      token,
+      expiresAt: expiration?.getTime() ?? Date.now() + this.durationSeconds * 1000
+    }
+  }
+
+  #getStsClient () {
+    // The SDK creates its own https agent by default, which bypasses the
+    // egress proxy that `--use-env-proxy` wires into the global agent.
+    this.#stsClient ??= new clientSts.STSClient({
+      requestHandler: { httpsAgent: Https.globalAgent }
+    })
+
+    return this.#stsClient
+  }
 }
 
 /**
@@ -42,12 +89,14 @@ class CachedWebIdentityToken {
   #expiresAt = 0
   #refreshInFlight = null
 
-  constructor (audience) {
-    const { durationSeconds, earlyRefreshMs } = config.get('webIdentityToken')
-
-    this.audience = audience
-    this.durationSeconds = durationSeconds
+  /**
+   * @param {Object} options
+   * @param {number} options.earlyRefreshMs
+   * @param {() => Promise<{token: string, expiresAt: number}>} options.fetchToken
+   */
+  constructor ({ earlyRefreshMs, fetchToken }) {
     this.earlyRefreshMs = earlyRefreshMs
+    this.fetchToken = fetchToken
   }
 
   /**
@@ -70,38 +119,26 @@ class CachedWebIdentityToken {
   }
 
   async #refresh () {
-    const { WebIdentityToken: token, Expiration: expiration } = await _getStsClient().send(
-      new clientSts.GetWebIdentityTokenCommand({
-        Audience: [this.audience],
-        SigningAlgorithm: SIGNING_ALGORITHM,
-        DurationSeconds: this.durationSeconds
-      })
-    )
-
-    if (!token) {
-      throw new Error(`STS returned no web identity token for audience ${this.audience}`)
-    }
-
-    logger.info({ audience: this.audience, expiration }, 'Issued STS web identity token')
+    const { token, expiresAt } = await this.fetchToken()
 
     this.#token = token
-    this.#expiresAt = expiration?.getTime() ?? Date.now() + this.durationSeconds * 1000
+    this.#expiresAt = expiresAt
 
     return token
   }
 }
 
-/**
- * @private
- */
-function _getStsClient () {
-  // The SDK creates its own https agent by default, which bypasses the
-  // egress proxy that `--use-env-proxy` wires into the global agent.
-  stsClient ??= new clientSts.STSClient({
-    requestHandler: { httpsAgent: Https.globalAgent }
-  })
+const defaultProvider = new WebIdentityTokenProvider(config.get('webIdentityToken'))
 
-  return stsClient
+/**
+ * Returns a web identity token for `audience` from the app-wide provider,
+ * configured by `webIdentityToken`.
+ *
+ * @param {string} audience
+ * @returns {Promise<string>}
+ */
+async function getWebIdentityToken (audience) {
+  return defaultProvider.getToken(audience)
 }
 
-export { getWebIdentityToken }
+export { WebIdentityTokenProvider, getWebIdentityToken }

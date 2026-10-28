@@ -89,6 +89,35 @@ describe('#config', () => {
     })
   })
 
+  describe('guidanceApi auth', () => {
+    async function loadConfig () {
+      vi.resetModules()
+
+      return import('../../../src/config/config.js')
+    }
+
+    afterEach(() => {
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    })
+
+    test('defaults to no auth', async () => {
+      vi.stubEnv('GUIDANCE_API_AUTH', undefined)
+      vi.stubEnv('GUIDANCE_API_AUDIENCE', undefined)
+
+      const { config } = await loadConfig()
+
+      expect(config.get('guidanceApi.auth')).toBe('none')
+      expect(config.get('guidanceApi.audience')).toBe('rpa_ai_guidance_hub_api')
+    })
+
+    test('fails to load when GUIDANCE_API_AUTH is not a known mode', async () => {
+      vi.stubEnv('GUIDANCE_API_AUTH', 'webidentity')
+
+      await expect(loadConfig()).rejects.toThrow('guidanceApi.auth')
+    })
+  })
+
   describe('When running in the production environment', () => {
     beforeEach(() => {
       vi.stubEnv('NODE_ENV', 'production')

@@ -122,11 +122,9 @@ The app fails to start if `secret` is chosen without `ENTRA_CLIENT_SECRET`.
 Entra is only used for user sign-in. Requests to the guidance API are authenticated separately, controlled by `GUIDANCE_API_AUTH`:
 
 - `none` (default) - no `Authorization` header, for local development.
-- `web-identity` - sends a web identity token from AWS STS as a bearer token. It is requested for the API's own audience, `GUIDANCE_API_AUDIENCE` (default `rpa-ai-guidance-hub-api`), never the Entra one, so a token sent to the API cannot be used as this app's Entra client assertion. The API must verify the issuer (`CDP_JWT_ISSUER`), the audience and the subject (this service's task role).
+- `web-identity` - sends a web identity token from AWS STS as a bearer token. It is requested for the API's own audience, `GUIDANCE_API_AUDIENCE` (default `rpa_ai_guidance_hub_api`), never the Entra one, so a token sent to the API cannot be used as this app's Entra client assertion. The API must verify the issuer (`CDP_JWT_ISSUER`), the audience and the subject (this service's task role).
 
 Each audience has its own cached token. `WEB_IDENTITY_TOKEN_DURATION_SECONDS` and `WEB_IDENTITY_TOKEN_EARLY_REFRESH_MS` apply to all of them.
-
-See the [Environment Variables Reference](#environment-variables-reference) for the `ENTRA_*` settings.
 
 ### Local Development
 
@@ -163,7 +161,7 @@ When using local authentication:
 | `WEB_IDENTITY_TOKEN_DURATION_SECONDS` | No | `300` | Lifetime requested for STS web identity tokens (60-3600) |
 | `WEB_IDENTITY_TOKEN_EARLY_REFRESH_MS` | No | `60000` | Fetch a new STS web identity token this long before the cached one expires |
 | `GUIDANCE_API_AUTH` | No | `none` | `none` or `web-identity` - see [Calling the guidance API](#calling-the-guidance-api) |
-| `GUIDANCE_API_AUDIENCE` | No | `rpa-ai-guidance-hub-api` | Audience requested for the STS web identity token sent to the guidance API |
+| `GUIDANCE_API_AUDIENCE` | No | `rpa_ai_guidance_hub_api` | Audience requested for the STS web identity token sent to the guidance API |
 | `ENTRA_AUTHORITY_HOST` | No | `https://login.microsoftonline.com` | Entra authority host used to build authorization endpoints |
 | `ENTRA_REDIRECT_HOST` | Yes* | `null` | Base URL for the OIDC redirect URI `<host>/login/callback`, which must match the app registration (e.g., `http://localhost:3000` for dev, `https://your-domain.gov.uk` for prod) |
 
