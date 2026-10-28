@@ -133,17 +133,19 @@ describe('#HubViewModel', () => {
     const guide = {
       title: 'Claiming the SFI payment',
       href: '/guides/guide-1',
+      schemes: 'SFI, Countryside Stewardship',
       lastModified: '20 July 2026',
       owner: 'owner@example.com'
     }
 
-    test('Should build a link/lastModified/owner row', () => {
+    test('Should build a link/schemes/lastModified/owner row', () => {
       const { allGuides } = new HubViewModel({ allGuides: [guide] })
 
       expect(allGuides.count).toBe(1)
       expect(allGuides.isEmpty).toBe(false)
       expect(allGuides.rows).toEqual([[
         { type: 'link', text: guide.title, href: '/guides/guide-1' },
+        { type: 'text', text: 'SFI, Countryside Stewardship' },
         { type: 'text', text: '20 July 2026' },
         { type: 'text', text: 'owner@example.com' }
       ]])

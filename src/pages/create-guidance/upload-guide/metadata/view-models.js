@@ -1,6 +1,6 @@
 import { NOT_SCHEME_SPECIFIC } from '../../../../services/reference-data.js'
 import { mapValidationError } from '../../form-errors.js'
-import { formatStagedDocumentDate, toCheckboxOptions } from './view-helpers.js'
+import { formatStagedDocumentDate, toCheckboxOptions, toOptionValue, toOptionValues } from './view-helpers.js'
 
 const BACK_URL = '/create-guidance/upload-guide'
 const NOT_AVAILABLE = 'Not available'
@@ -28,7 +28,7 @@ class GuideDetailsViewModel {
   constructor (data = {}) {
     const schemeOptions = toCheckboxOptions(data.schemeOptions).map((option) => ({
       ...option,
-      ...(option.value === NOT_SCHEME_SPECIFIC ? { divider: 'or' } : {})
+      ...(option.value === toOptionValue(NOT_SCHEME_SPECIFIC) ? { divider: 'or' } : {})
     }))
 
     this.values = data.values || {}
@@ -72,7 +72,7 @@ class GuideDetailsViewModel {
     return new GuideDetailsViewModel({
       values: {
         guideTitle: values.guideTitle ?? stagedDocument?.title ?? '',
-        schemes: values.schemes ?? ''
+        schemes: values.schemes ? toOptionValues(values.schemes) : ''
       },
       versionNumber: values.versionNumber || stagedDocument?.version || NOT_AVAILABLE,
       lastModifiedDate: values.lastModifiedDate ||

@@ -3,6 +3,7 @@ import { getGuideUpload, setGuideUploadMetadata } from '../../session.js'
 import { getSchemes, normalizeSchemes } from '../../../../services/reference-data.js'
 import { getStagedDocumentById } from '../../../../services/staged-documents.js'
 import { GuideDetailsViewModel } from './view-models.js'
+import { toLabels, toOptionValues } from './view-helpers.js'
 
 const METADATA_VIEW = 'create-guidance/upload-guide/metadata/page.njk'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
@@ -55,9 +56,11 @@ async function metadataFailAction (request, h, err) {
     : null
   const schemeOptions = await getSchemes()
 
+  // Redisplayed as submitted, as option values; "Not scheme-specific" is
+  // still exclusive of the others.
   const payload = {
     ...request.payload,
-    schemes: normalizeSchemes(request.payload.schemes)
+    schemes: toOptionValues(normalizeSchemes(toLabels(request.payload.schemes, schemeOptions)))
   }
 
   const viewModel = GuideDetailsViewModel.fromValidationError(

@@ -4,7 +4,7 @@ import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
-import { guidePageResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse, schemesResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 describe('#loginController', () => {
@@ -51,7 +51,10 @@ describe('#loginController', () => {
         .join('; ')
       expect(cookie).not.toBe('')
 
-      // The hub lists the guides.
+      // The hub lists the guides, showing each one's schemes by short label.
+      nock(config.get('guidanceApi.baseUrl'))
+        .get('/reference/schemes')
+        .reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
       nock(config.get('guidanceApi.baseUrl'))
         .get('/guides')
         .reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())

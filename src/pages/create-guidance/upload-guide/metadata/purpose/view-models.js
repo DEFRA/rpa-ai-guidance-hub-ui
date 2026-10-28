@@ -1,5 +1,5 @@
 import { mapValidationError } from '../../../form-errors.js'
-import { toCheckboxOptions } from '../view-helpers.js'
+import { toCheckboxOptions, toOptionValues } from '../view-helpers.js'
 
 const BACK_URL = '/create-guidance/upload-guide/metadata'
 const FORM_ACTION = '/create-guidance/upload-guide/metadata/purpose'
@@ -56,8 +56,8 @@ class OwnerAndPurposeViewModel {
         owner: values.owner ?? '',
         goal: values.goal ?? '',
         requirements: values.requirements ?? '',
-        systems: values.systems ?? [],
-        audience: values.audience ?? []
+        systems: toOptionValues(values.systems),
+        audience: toOptionValues(values.audience)
       },
       systemOptions,
       audienceOptions,

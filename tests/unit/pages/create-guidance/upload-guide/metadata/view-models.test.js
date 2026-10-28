@@ -15,12 +15,12 @@ describe('#GuideDetailsViewModel', () => {
     })
 
     expect(viewModel.values.guideTitle).toBe('Saved Title')
-    expect(viewModel.values.schemes).toBe('Sustainable Farming Incentive')
+    expect(viewModel.values.schemes).toEqual(['sustainable-farming-incentive'])
     expect(viewModel.versionNumber).toBe('1.2')
     expect(viewModel.lastModifiedDate).toBe('10 May 2026')
     expect(viewModel.schemeOptions).toEqual([
-      { value: 'Sustainable Farming Incentive', text: 'Sustainable Farming Incentive' },
-      { value: 'Not scheme-specific', text: 'Not scheme-specific', divider: 'or' }
+      { value: 'sustainable-farming-incentive', text: 'Sustainable Farming Incentive' },
+      { value: 'not-scheme-specific', text: 'Not scheme-specific', divider: 'or' }
     ])
     expect(viewModel.errors).toEqual({})
     expect(viewModel.errorList).toEqual([])

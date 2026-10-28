@@ -144,7 +144,7 @@ describe('#checkAnswersController Integration', () => {
       const postChangeResponse = await server.inject({
         method: 'POST',
         url: '/create-guidance/upload-guide/metadata?from=check',
-        payload: { guideTitle: 'Updated Guide Title', schemes: ['Sustainable Farming Incentive (SFI)'] },
+        payload: { guideTitle: 'Updated Guide Title', schemes: ['sustainable-farming-incentive-sfi'] },
         headers: { cookie }
       })
 
