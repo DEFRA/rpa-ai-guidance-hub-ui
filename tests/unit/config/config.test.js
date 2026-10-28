@@ -74,8 +74,8 @@ describe('#config', () => {
 
       const { config } = await loadConfig()
 
-      expect(config.get('auth.entra.federated')).toEqual({
-        audience: 'rpa_ai_guidance_hub_ui',
+      expect(config.get('auth.entra.federatedAudience')).toBe('rpa_ai_guidance_hub_ui')
+      expect(config.get('webIdentityToken')).toEqual({
         durationSeconds: 300,
         earlyRefreshMs: 60000
       })

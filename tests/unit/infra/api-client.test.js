@@ -144,5 +144,31 @@ describe('ApiClient', () => {
 
       expect(response.data).toEqual({ done: true })
     })
+
+    test('adds the auth headers to every request', async () => {
+      const getAuthHeaders = async () => ({ Authorization: 'Bearer token-a' })
+      const client = new ApiClient({ baseUrl: TEST_BASE_URL, errorClass: TestApiError, getAuthHeaders })
+
+      const scope = nock(TEST_BASE_URL, { reqheaders: { authorization: 'Bearer token-a' } })
+        .get('/items')
+        .reply(statusCodes.HTTP_STATUS_OK, {})
+
+      await client.request('/items')
+
+      expect(scope.isDone()).toBe(true)
+    })
+
+    test('lets a request\'s own headers override the auth headers', async () => {
+      const getAuthHeaders = async () => ({ Authorization: 'Bearer token-a' })
+      const client = new ApiClient({ baseUrl: TEST_BASE_URL, errorClass: TestApiError, getAuthHeaders })
+
+      const scope = nock(TEST_BASE_URL, { reqheaders: { authorization: 'Bearer token-b' } })
+        .get('/items')
+        .reply(statusCodes.HTTP_STATUS_OK, {})
+
+      await client.request('/items', { headers: { Authorization: 'Bearer token-b' } })
+
+      expect(scope.isDone()).toBe(true)
+    })
   })
 })

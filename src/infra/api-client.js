@@ -20,11 +20,14 @@ class ApiClient {
    * @param {number} [options.timeout] - Request timeout in ms
    * @param {typeof Error} options.errorClass - Thrown on unexpected non-ok
    *   statuses; must provide `fromResponse(method, path, response)`
+   * @param {() => Promise<Object<string, string>>} [options.getAuthHeaders] -
+   *   Headers added to every request, e.g. `Authorization`
    */
-  constructor ({ baseUrl, timeout, errorClass }) {
+  constructor ({ baseUrl, timeout, errorClass, getAuthHeaders }) {
     this.baseUrl = baseUrl
     this.timeout = timeout
     this.errorClass = errorClass
+    this.getAuthHeaders = getAuthHeaders
   }
 
   /**
@@ -39,7 +42,8 @@ class ApiClient {
   async request (path, options = {}) {
     const url = _buildUrl(this.baseUrl, path, options.query)
     const timeout = options.timeout === undefined ? this.timeout : options.timeout
-    const fetchOptions = _buildFetchOptions(options, timeout)
+    const authHeaders = this.getAuthHeaders ? await this.getAuthHeaders() : {}
+    const fetchOptions = _buildFetchOptions(options, timeout, authHeaders)
     const response = await fetch(url, fetchOptions)
 
     return _handleResponse(response, {
@@ -73,11 +77,12 @@ function _buildUrl (baseUrl, path, query = {}) {
  *
  * @private
  */
-function _buildFetchOptions (options, timeout) {
+function _buildFetchOptions (options, timeout, authHeaders) {
   const method = options.method || 'GET'
 
   const headers = {
     ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+    ...authHeaders,
     ...options.headers
   }
 

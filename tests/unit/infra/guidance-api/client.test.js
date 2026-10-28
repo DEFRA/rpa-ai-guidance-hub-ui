@@ -1,5 +1,7 @@
 import nock from 'nock'
 
+import * as sts from '../../../fixtures/sts.js'
+
 import { GuidanceApiClient, GuidanceApiError } from '../../../../src/infra/guidance-api/client.js'
 
 const TEST_BASE_URL = 'http://test-guidance-api'
@@ -66,5 +68,51 @@ describe('GuidanceApiClient', () => {
 
     expect(err.statusCode).toBe(500)
     expect(err.message).toBe('guidance API POST /guides failed: 500 Internal Server Error')
+  })
+})
+
+describe('GuidanceApiClient authentication', () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  async function createClient () {
+    const module = await import('../../../../src/infra/guidance-api/client.js')
+
+    return new module.GuidanceApiClient(TEST_BASE_URL)
+  }
+
+  test('sends no Authorization header by default', async () => {
+    const scope = nock(TEST_BASE_URL, { badheaders: ['authorization'] }).get('/guides').reply(200, {})
+
+    const client = await createClient()
+    await client.request('/guides')
+
+    expect(scope.isDone()).toBe(true)
+  })
+
+  test('sends an STS web identity token for the API\'s audience as a bearer token when GUIDANCE_API_AUTH is "web-identity"', async () => {
+    vi.stubEnv('GUIDANCE_API_AUTH', 'web-identity')
+    vi.stubEnv('GUIDANCE_API_AUDIENCE', 'guidance-api-audience')
+    vi.stubEnv('AWS_REGION', sts.STS_REGION)
+    vi.stubEnv('AWS_ACCESS_KEY_ID', 'test-access-key')
+    vi.stubEnv('AWS_SECRET_ACCESS_KEY', 'test-secret-key')
+    sts.interceptGetWebIdentityToken({
+      audience: 'guidance-api-audience',
+      body: sts.getWebIdentityTokenResponse({ token: 'sts-jwt-a' })
+    })
+
+    const scope = nock(TEST_BASE_URL, { reqheaders: { authorization: 'Bearer sts-jwt-a' } })
+      .get('/guides')
+      .reply(200, {})
+
+    const client = await createClient()
+    await client.request('/guides')
+
+    expect(scope.isDone()).toBe(true)
   })
 })

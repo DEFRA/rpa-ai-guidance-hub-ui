@@ -226,7 +226,33 @@ const config = convict({
       env: 'TRACING_HEADER'
     }
   },
+  webIdentityToken: {
+    durationSeconds: {
+      doc: 'Lifetime in seconds requested for the STS web identity token (60-3600)',
+      format: 'nat',
+      default: 300,
+      env: 'WEB_IDENTITY_TOKEN_DURATION_SECONDS'
+    },
+    earlyRefreshMs: {
+      doc: 'Fetch a new STS web identity token this many milliseconds before the cached one expires',
+      format: Number,
+      default: 60000,
+      env: 'WEB_IDENTITY_TOKEN_EARLY_REFRESH_MS'
+    }
+  },
   guidanceApi: {
+    auth: {
+      doc: 'How requests to the guidance API are authenticated: "none", or "web-identity" (an AWS STS web identity token as a bearer token)',
+      format: ['none', 'web-identity'],
+      default: 'none',
+      env: 'GUIDANCE_API_AUTH'
+    },
+    audience: {
+      doc: 'Audience requested for the STS web identity token sent to the guidance API - the backend service, which must reject tokens for any other audience',
+      format: String,
+      default: 'rpa-ai-guidance-hub-api',
+      env: 'GUIDANCE_API_AUDIENCE'
+    },
     baseUrl: {
       doc: 'Backend API base URL for guidance operations',
       format: String,
@@ -310,25 +336,11 @@ const config = convict({
         env: 'ENTRA_CLIENT_SECRET',
         sensitive: true
       },
-      federated: {
-        audience: {
-          doc: 'Audience requested for the STS web identity token - must match the audience of the federated credential on the app registration',
-          format: String,
-          default: 'rpa_ai_guidance_hub_ui',
-          env: 'ENTRA_FEDERATED_AUDIENCE'
-        },
-        durationSeconds: {
-          doc: 'Lifetime in seconds requested for the STS web identity token (60-3600)',
-          format: 'nat',
-          default: 300,
-          env: 'ENTRA_FEDERATED_DURATION_SECONDS'
-        },
-        earlyRefreshMs: {
-          doc: 'Fetch a new STS web identity token this many milliseconds before the cached one expires',
-          format: Number,
-          default: 60000,
-          env: 'ENTRA_FEDERATED_EARLY_REFRESH_MS'
-        }
+      federatedAudience: {
+        doc: 'Audience requested for the STS web identity token used as the client assertion - must match the audience of the federated credential on the app registration',
+        format: String,
+        default: 'rpa_ai_guidance_hub_ui',
+        env: 'ENTRA_FEDERATED_AUDIENCE'
       },
       authorityHost: {
         doc: 'Entra authority host used to build the authorize/token/JWKS/logout endpoints',
