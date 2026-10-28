@@ -86,6 +86,16 @@ describe('upload-guide metadata controller', () => {
       expect(stagedDocumentsService.getStagedDocumentById).not.toHaveBeenCalled()
     })
 
+    test('lets a failure to fetch the schemes through rather than rendering an empty form', async () => {
+      const failure = new Error('metadata unavailable')
+      session.getGuideUpload.mockReturnValue({ hasUpload: () => true, fileId: null, metadata: {} })
+      referenceDataService.getSchemes.mockRejectedValue(failure)
+      request = { yar: { get: vi.fn(), flash: vi.fn(() => []) } }
+
+      await expect(getMetadataForm(request, h)).rejects.toBe(failure)
+      expect(h.view).not.toHaveBeenCalled()
+    })
+
     test('loads staged document title, version and formatted last modified date into the view model', async () => {
       const uploadMock = {
         hasUpload: vi.fn(() => true),

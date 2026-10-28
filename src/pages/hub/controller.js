@@ -1,10 +1,32 @@
 import { statusCodes } from '../../constants/status-codes.js'
 import * as guidesService from '../../services/guides.js'
 import * as referenceDataService from '../../services/reference-data.js'
+import { createLogger } from '../../infra/logging/logger.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { HubViewModel } from './view-models.js'
 
+const logger = createLogger()
+
 const NOT_RECORDED = 'Not recorded'
+
+/**
+ * Each scheme's short label by its label. Short labels only decorate the
+ * guide list, so when the schemes are unavailable the page still shows,
+ * with every scheme as stored.
+ *
+ * @private
+ * @returns {Promise<Map<string, string>>}
+ */
+async function _getSchemeShortLabels () {
+  try {
+    const schemes = await referenceDataService.getSchemes()
+
+    return new Map(schemes.map(({ label, shortLabel }) => [label, shortLabel]))
+  } catch (error) {
+    logger.warn(error, 'Reference schemes unavailable; showing scheme labels as stored')
+    return new Map()
+  }
+}
 
 /**
  * A listed guide as the "All guides" table shows it.
@@ -42,11 +64,11 @@ const LISTS = {
 const LIST_PATHS = Object.keys(LISTS)
 
 async function getHubPage (_request, h) {
-  const [{ guides }, schemes] = await Promise.all([
+  const [{ guides }, shortLabels] = await Promise.all([
     guidesService.listGuides(),
-    referenceDataService.getSchemes()
+    _getSchemeShortLabels()
   ])
-  const shortLabels = new Map(schemes.map(({ label, shortLabel }) => [label, shortLabel]))
+
   const viewModel = new HubViewModel({
     allGuides: guides.map((guide) => _toAllGuidesItem(guide, shortLabels))
   })

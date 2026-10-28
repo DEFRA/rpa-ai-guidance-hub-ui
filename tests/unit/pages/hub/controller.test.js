@@ -97,5 +97,18 @@ describe('#hubController', () => {
 
       await expect(getHubPage({}, h)).rejects.toBe(failure)
     })
+
+    test('Should show stored scheme labels when the schemes are unavailable', async () => {
+      guidesService.listGuides.mockResolvedValue({ guides: [listedGuide], nextCursor: null })
+      referenceDataService.getSchemes.mockRejectedValue(new Error('metadata unavailable'))
+
+      await getHubPage({}, h)
+
+      const [, viewModel] = h.view.mock.calls[0]
+      expect(viewModel.allGuides.rows[0][1].text).toBe(
+        'Sustainable Farming Incentive (SFI), Retired scheme'
+      )
+      expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
+    })
   })
 })
