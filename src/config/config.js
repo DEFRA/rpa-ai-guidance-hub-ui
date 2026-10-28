@@ -250,7 +250,7 @@ const config = convict({
     audience: {
       doc: 'Audience requested for the STS web identity token sent to the guidance API - the backend service, which must reject tokens for any other audience',
       format: String,
-      default: 'rpa-ai-guidance-hub-api',
+      default: 'rpa_ai_guidance_hub_api',
       env: 'GUIDANCE_API_AUDIENCE'
     },
     baseUrl: {
