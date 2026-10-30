@@ -1,5 +1,6 @@
 import { config } from '../../config/config.js'
 import { ApiClient } from '../api-client.js'
+import { getWebIdentityToken } from '../aws/web-identity-token.js'
 
 /**
  * GuidanceApiError - Error class for unexpected guidance API responses
@@ -29,9 +30,22 @@ class GuidanceApiClient extends ApiClient {
     super({
       baseUrl: baseUrl || config.get('guidanceApi.baseUrl'),
       timeout: config.get('guidanceApi.timeout'),
-      errorClass: GuidanceApiError
+      errorClass: GuidanceApiError,
+      getAuthHeaders: config.get('guidanceApi.auth') === 'web-identity' ? _getWebIdentityHeaders : undefined
     })
   }
+}
+
+/**
+ * Presents an STS web identity token issued for the API's own audience as a
+ * bearer token, which the API verifies against the account's STS issuer.
+ *
+ * @private
+ */
+async function _getWebIdentityHeaders () {
+  const token = await getWebIdentityToken(config.get('guidanceApi.audience'))
+
+  return { Authorization: `Bearer ${token}` }
 }
 
 const guidanceApiClient = new GuidanceApiClient()

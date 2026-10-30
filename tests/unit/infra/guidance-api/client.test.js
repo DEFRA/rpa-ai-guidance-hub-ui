@@ -1,5 +1,7 @@
 import nock from 'nock'
 
+import * as sts from '../../../fixtures/sts.js'
+
 import { GuidanceApiClient, GuidanceApiError } from '../../../../src/infra/guidance-api/client.js'
 
 const TEST_BASE_URL = 'http://test-guidance-api'
@@ -66,5 +68,95 @@ describe('GuidanceApiClient', () => {
 
     expect(err.statusCode).toBe(500)
     expect(err.message).toBe('guidance API POST /guides failed: 500 Internal Server Error')
+  })
+})
+
+describe('GuidanceApiClient authentication', () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  async function createClient () {
+    const module = await import('../../../../src/infra/guidance-api/client.js')
+
+    return new module.GuidanceApiClient(TEST_BASE_URL)
+  }
+
+  // Records the Authorization header the request carried, or null if none
+  function interceptGuidesCapturingAuthorization () {
+    const captured = { authorization: null }
+
+    const scope = nock(TEST_BASE_URL)
+      .matchHeader('authorization', (value) => {
+        captured.authorization = value ?? null
+        return true
+      })
+      .get('/guides')
+      .reply(200, {})
+
+    return { scope, captured }
+  }
+
+  describe('when GUIDANCE_API_AUTH is not set', () => {
+    beforeEach(() => {
+      vi.stubEnv('GUIDANCE_API_AUTH', undefined)
+    })
+
+    test('sends no Authorization header', async () => {
+      const { captured } = interceptGuidesCapturingAuthorization()
+
+      const client = await createClient()
+      await client.request('/guides')
+
+      expect(captured.authorization).toBeNull()
+    })
+  })
+
+  describe('when GUIDANCE_API_AUTH is "web-identity"', () => {
+    beforeEach(() => {
+      vi.stubEnv('GUIDANCE_API_AUTH', 'web-identity')
+      vi.stubEnv('AWS_REGION', sts.STS_REGION)
+      vi.stubEnv('AWS_ACCESS_KEY_ID', 'test-access-key')
+      vi.stubEnv('AWS_SECRET_ACCESS_KEY', 'test-secret-key')
+    })
+
+    test('sends an STS web identity token for the configured audience as a bearer token', async () => {
+      vi.stubEnv('GUIDANCE_API_AUDIENCE', 'guidance-api-audience')
+      sts.interceptGetWebIdentityToken({
+        audience: 'guidance-api-audience',
+        body: sts.getWebIdentityTokenResponse({ token: 'sts-jwt-a' })
+      })
+      const { captured } = interceptGuidesCapturingAuthorization()
+
+      const client = await createClient()
+      await client.request('/guides')
+
+      expect(captured.authorization).toBe('Bearer sts-jwt-a')
+    })
+
+    test('requests the token for rpa_ai_guidance_hub_api when GUIDANCE_API_AUDIENCE is not set', async () => {
+      vi.stubEnv('GUIDANCE_API_AUDIENCE', undefined)
+      const { captured } = sts.interceptGetWebIdentityToken()
+      interceptGuidesCapturingAuthorization()
+
+      const client = await createClient()
+      await client.request('/guides')
+
+      expect(captured.body['Audience.member.1']).toBe('rpa_ai_guidance_hub_api')
+    })
+
+    test('rejects without calling the API when STS refuses the token', async () => {
+      sts.interceptGetWebIdentityToken({ body: sts.stsErrorResponse({ message: 'not allowed' }), status: 403 })
+      const { scope: api } = interceptGuidesCapturingAuthorization()
+
+      const client = await createClient()
+
+      await expect(client.request('/guides')).rejects.toThrow('not allowed')
+      expect(api.isDone()).toBe(false)
+    })
   })
 })

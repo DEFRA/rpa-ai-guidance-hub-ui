@@ -4,7 +4,7 @@ import Jwt from '@hapi/jwt'
 import JwksRsa from 'jwks-rsa'
 
 import { config } from '../../../config/config.js'
-import { getClientAuthParams } from './client-credentials.js'
+import { getClientAuthParams } from './client-auth.js'
 
 const SCOPES = ['User.Read', 'openid', 'profile', 'email', 'offline_access']
 

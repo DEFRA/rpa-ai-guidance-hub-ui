@@ -1,9 +1,9 @@
 /**
  * AWS STS `GetWebIdentityToken` responses and interception.
  *
- * Single owner of the STS wire format, so that every caller of
- * `GetWebIdentityToken` - the Entra federated client assertion today, and
- * web identity service-to-service auth next - is tested against the same
+ * Single owner of the STS wire format, so that every test that reaches
+ * `GetWebIdentityToken` - directly, via the Entra federated client
+ * assertion, or via the guidance API's bearer token - uses the same
  * shapes. Each factory returns a fresh value - nothing here is shared
  * mutable state.
  *
@@ -73,7 +73,7 @@ function requestedAudiences (body) {
  *
  * With `audience` set, only a request for that audience matches. Use this
  * whenever the code under test may fetch tokens for more than one audience
- * (e.g. an Entra client assertion and a token for another CDP service), so
+ * (e.g. an Entra client assertion and a token for the guidance API), so
  * that one caller cannot consume the interceptor meant for the other.
  *
  * @param {Object} [options]

@@ -74,8 +74,8 @@ describe('#config', () => {
 
       const { config } = await loadConfig()
 
-      expect(config.get('auth.entra.federated')).toEqual({
-        audience: 'rpa_ai_guidance_hub_ui',
+      expect(config.get('auth.entra.federatedAudience')).toBe('rpa_ai_guidance_hub_ui')
+      expect(config.get('webIdentityToken')).toEqual({
         durationSeconds: 300,
         earlyRefreshMs: 60000
       })
@@ -86,6 +86,35 @@ describe('#config', () => {
       vi.stubEnv('ENTRA_CLIENT_SECRET', undefined)
 
       await expect(loadConfig()).resolves.toBeDefined()
+    })
+  })
+
+  describe('guidanceApi auth', () => {
+    async function loadConfig () {
+      vi.resetModules()
+
+      return import('../../../src/config/config.js')
+    }
+
+    afterEach(() => {
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    })
+
+    test('defaults to no auth', async () => {
+      vi.stubEnv('GUIDANCE_API_AUTH', undefined)
+      vi.stubEnv('GUIDANCE_API_AUDIENCE', undefined)
+
+      const { config } = await loadConfig()
+
+      expect(config.get('guidanceApi.auth')).toBe('none')
+      expect(config.get('guidanceApi.audience')).toBe('rpa_ai_guidance_hub_api')
+    })
+
+    test('fails to load when GUIDANCE_API_AUTH is not a known mode', async () => {
+      vi.stubEnv('GUIDANCE_API_AUTH', 'webidentity')
+
+      await expect(loadConfig()).rejects.toThrow('guidanceApi.auth')
     })
   })
 

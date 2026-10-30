@@ -145,4 +145,74 @@ describe('ApiClient', () => {
       expect(response.data).toEqual({ done: true })
     })
   })
+
+  describe('when configured with auth headers', () => {
+    let client
+
+    function interceptItemsCapturingAuthorization () {
+      const captured = {}
+
+      nock(TEST_BASE_URL)
+        .matchHeader('authorization', (value) => {
+          captured.authorization = value
+          return true
+        })
+        .get('/items')
+        .reply(statusCodes.HTTP_STATUS_OK, {})
+
+      return captured
+    }
+
+    beforeEach(() => {
+      let calls = 0
+      const getAuthHeaders = async () => ({ Authorization: `Bearer token-${++calls}` })
+
+      client = new ApiClient({ baseUrl: TEST_BASE_URL, errorClass: TestApiError, getAuthHeaders })
+    })
+
+    test('adds the auth headers to the request', async () => {
+      const captured = interceptItemsCapturingAuthorization()
+
+      await client.request('/items')
+
+      expect(captured.authorization).toBe('Bearer token-1')
+    })
+
+    test('gets the auth headers afresh for each request', async () => {
+      interceptItemsCapturingAuthorization()
+      const second = interceptItemsCapturingAuthorization()
+
+      await client.request('/items')
+      await client.request('/items')
+
+      expect(second.authorization).toBe('Bearer token-2')
+    })
+
+    test('lets a request\'s own headers override the auth headers', async () => {
+      const captured = interceptItemsCapturingAuthorization()
+
+      await client.request('/items', { headers: { Authorization: 'Bearer own-token' } })
+
+      expect(captured.authorization).toBe('Bearer own-token')
+    })
+
+    test('lets a request\'s own headers override the auth headers whatever their case', async () => {
+      const captured = interceptItemsCapturingAuthorization()
+
+      await client.request('/items', { headers: { authorization: 'Bearer own-token' } })
+
+      expect(captured.authorization).toBe('Bearer own-token')
+    })
+  })
+
+  describe('when getting the auth headers fails', () => {
+    test('rejects without sending the request', async () => {
+      const getAuthHeaders = async () => { throw new Error('no token') }
+      const client = new ApiClient({ baseUrl: TEST_BASE_URL, errorClass: TestApiError, getAuthHeaders })
+      const api = nock(TEST_BASE_URL).get('/items').reply(statusCodes.HTTP_STATUS_OK, {})
+
+      await expect(client.request('/items')).rejects.toThrow('no token')
+      expect(api.isDone()).toBe(false)
+    })
+  })
 })

@@ -20,11 +20,14 @@ class ApiClient {
    * @param {number} [options.timeout] - Request timeout in ms
    * @param {typeof Error} options.errorClass - Thrown on unexpected non-ok
    *   statuses; must provide `fromResponse(method, path, response)`
+   * @param {() => Promise<Object<string, string>>} [options.getAuthHeaders] -
+   *   Headers added to every request, e.g. `Authorization`
    */
-  constructor ({ baseUrl, timeout, errorClass }) {
+  constructor ({ baseUrl, timeout, errorClass, getAuthHeaders }) {
     this.baseUrl = baseUrl
     this.timeout = timeout
     this.errorClass = errorClass
+    this.getAuthHeaders = getAuthHeaders
   }
 
   /**
@@ -39,7 +42,8 @@ class ApiClient {
   async request (path, options = {}) {
     const url = _buildUrl(this.baseUrl, path, options.query)
     const timeout = options.timeout === undefined ? this.timeout : options.timeout
-    const fetchOptions = _buildFetchOptions(options, timeout)
+    const authHeaders = this.getAuthHeaders ? await this.getAuthHeaders() : {}
+    const fetchOptions = _buildFetchOptions(options, timeout, authHeaders)
     const response = await fetch(url, fetchOptions)
 
     return _handleResponse(response, {
@@ -71,20 +75,38 @@ function _buildUrl (baseUrl, path, query = {}) {
 /**
  * Builds the options object passed to fetch.
  *
+ * Headers are merged case-insensitively, later sources winning, so a
+ * request's own `authorization` replaces the auth `Authorization` rather
+ * than being combined with it.
+ *
  * @private
  */
-function _buildFetchOptions (options, timeout) {
+function _buildFetchOptions (options, timeout, authHeaders) {
   const method = options.method || 'GET'
 
-  const headers = {
-    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-    ...options.headers
-  }
+  const headers = _mergeHeaders(
+    options.body ? { 'Content-Type': 'application/json' } : {},
+    authHeaders,
+    options.headers
+  )
 
   const signal = timeout ? AbortSignal.timeout(timeout) : undefined
   const body = options.body ? JSON.stringify(options.body) : undefined
 
   return { method, headers, signal, body }
+}
+
+/**
+ * @private
+ */
+function _mergeHeaders (...sources) {
+  const headers = new Headers()
+
+  sources.forEach(source => {
+    new Headers(source).forEach((value, name) => headers.set(name, value))
+  })
+
+  return headers
 }
 
 /**
