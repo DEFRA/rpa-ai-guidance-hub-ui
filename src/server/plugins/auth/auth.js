@@ -13,6 +13,20 @@ const tenMinutesMs = 10 * 60 * 1000
 
 const REJECTED_REFRESH_ERRORS = new Set(['invalid_grant', 'interaction_required'])
 
+/**
+ * The `request.auth.credentials` of every signed-in request. Built only here,
+ * so code reading it can rely on this shape without fallbacks.
+ *
+ * @typedef {object} SessionCredentials
+ * @property {string} sessionId
+ * @property {{ id: string, displayName: string, email: string, roles: string[] }} profile
+ *   - as `profileFromClaims` (Entra) or the local mock user builds it
+ * @property {string[]} roles - the user's app roles, as `profile.roles`
+ * @property {string[]} scope - the roles again, for hapi route `access.scope`
+ * @property {string} token
+ * @property {string} [refreshToken]
+ */
+
 const auth = {
   plugin: {
     name: 'auth',
@@ -152,20 +166,6 @@ async function _validateSessionToken (request, session) {
     credentials: _toCredentials(userSession, session.sessionId)
   }
 }
-
-/**
- * The `request.auth.credentials` of every signed-in request. Built only here,
- * so code reading it can rely on this shape without fallbacks.
- *
- * @typedef {object} SessionCredentials
- * @property {string} sessionId
- * @property {{ id: string, displayName: string, email: string, roles: string[] }} profile
- *   - as `profileFromClaims` (Entra) or the local mock user builds it
- * @property {string[]} roles - the user's app roles, as `profile.roles`
- * @property {string[]} scope - the roles again, for hapi route `access.scope`
- * @property {string} token
- * @property {string} [refreshToken]
- */
 
 /**
  * @private
