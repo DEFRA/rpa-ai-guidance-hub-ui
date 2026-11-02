@@ -107,11 +107,11 @@ describe('#loginController under the entra provider', () => {
     })
 
     test.each([
-      ['Viewer role', ['Hub.Viewer']],
-      ['Editor role', ['Hub.Editor']],
-      ['both roles', ['Hub.Editor', 'Hub.Viewer']],
-      ['neither role', []]
-    ])('accepts sign-in and enriches session for user with %s', async (_desc, roles) => {
+      ['Viewer role', ['Hub.Viewer'], 'Viewer'],
+      ['Editor role', ['Hub.Editor'], 'Designer'],
+      ['both roles', ['Hub.Editor', 'Hub.Viewer'], 'Designer, Viewer'],
+      ['neither role', [], null]
+    ])('accepts sign-in and enriches session for user with %s', async (_desc, roles, caption) => {
       const login = await server.inject({ method: 'GET', url: '/login' })
       const authorizeUrl = new URL(login.headers.location)
       const state = authorizeUrl.searchParams.get('state')
@@ -152,6 +152,12 @@ describe('#loginController under the entra provider', () => {
 
       expect(hub.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(hub.payload).toContain('Test User')
+
+      if (caption) {
+        expect(hub.payload).toContain(`class="app-side-nav__user-roles">${caption}</div>`)
+      } else {
+        expect(hub.payload).not.toContain('app-side-nav__user-roles')
+      }
     })
   })
 })

@@ -118,6 +118,16 @@ describe('#entraOidc', () => {
       })
     })
 
+    test('does not require a nonce for a refresh token id_token', async () => {
+      const { verifyIdToken, GRANT_TYPES } = await getOidc()
+
+      mockJwks()
+
+      await expect(verifyIdToken(generateEntraJwt(), { grantType: GRANT_TYPES.REFRESH_TOKEN })).resolves.toMatchObject({
+        sub: 'user-id'
+      })
+    })
+
     test('rejects when the nonce does not match', async () => {
       const { verifyIdToken } = await getOidc()
 

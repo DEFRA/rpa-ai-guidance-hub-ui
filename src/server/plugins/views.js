@@ -46,10 +46,10 @@ function loadManifest () {
   return JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
 }
 
-const ROLE_DISPLAY_NAMES = {
-  [ROLES.EDITOR]: 'Designer',
-  [ROLES.VIEWER]: 'Viewer'
-}
+const ROLE_DISPLAY_NAMES = new Map([
+  [ROLES.EDITOR, 'Designer'],
+  [ROLES.VIEWER, 'Viewer']
+])
 
 function _formatRolesCaption (roles) {
   if (!roles?.length) {
@@ -57,7 +57,7 @@ function _formatRolesCaption (roles) {
   }
 
   return roles
-    .map((role) => ROLE_DISPLAY_NAMES[role] ?? role)
+    .map((role) => ROLE_DISPLAY_NAMES.get(role) ?? role)
     .join(', ')
 }
 

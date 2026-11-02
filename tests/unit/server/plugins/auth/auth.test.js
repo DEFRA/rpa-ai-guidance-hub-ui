@@ -6,7 +6,7 @@ import Hapi from '@hapi/hapi'
 import HapiCookie from '@hapi/cookie'
 import nock from 'nock'
 
-import { generateEntraJwt } from '../../../../utils/oidc.js'
+import { generateEntraJwt, getJwks } from '../../../../utils/oidc.js'
 
 const { mockLoggerWarn } = vi.hoisted(() => ({
   mockLoggerWarn: vi.fn()
@@ -175,6 +175,12 @@ async function loginWithToken (server, { token, refreshToken, roles } = {}) {
     .join('; ')
 }
 
+function mockRefreshJwks () {
+  return nock('https://login.microsoftonline.com')
+    .get(`/${ENTRA_TEST_FIXTURE_VALUE}/discovery/v2.0/keys`)
+    .reply(200, getJwks())
+}
+
 describe('#auth', () => {
   afterEach(() => {
     process.env = { ...originalEnv }
@@ -332,7 +338,8 @@ describe('#auth', () => {
             params.get('scope') === 'User.Read openid profile email offline_access' &&
             params.get('refresh_token') === 'old-refresh-token'
         })
-        .reply(200, { access_token: 'new-access-token', refresh_token: 'new-refresh-token' })
+        .reply(200, { access_token: 'new-access-token', refresh_token: 'new-refresh-token', id_token: generateEntraJwt({ oid: 'user-123', roles: ['Hub.Viewer'] }) })
+      mockRefreshJwks()
 
       const { statusCode, result } = await server.inject({
         method: 'GET',
@@ -361,7 +368,8 @@ describe('#auth', () => {
           return params.get('grant_type') === 'refresh_token' &&
             params.get('refresh_token') === 'old-refresh-token'
         })
-        .reply(200, { access_token: 'new-access-token' })
+        .reply(200, { access_token: 'new-access-token', id_token: generateEntraJwt({ oid: 'user-123' }) })
+      mockRefreshJwks()
 
       const { statusCode, result } = await server.inject({
         method: 'GET',
@@ -377,6 +385,57 @@ describe('#auth', () => {
         sessionId: expect.any(String)
       })
       expect(refreshScope.isDone()).toBe(true)
+    })
+
+    test('Should drop roles removed from the refreshed id_token', async () => {
+      const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
+      const cookie = await loginWithToken(server, {
+        token: expiredToken,
+        refreshToken: 'old-refresh-token',
+        roles: ['Hub.Editor', 'Hub.Viewer']
+      })
+
+      nock('https://login.microsoftonline.com')
+        .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
+        .reply(200, {
+          access_token: generateEntraJwt(),
+          id_token: generateEntraJwt({ oid: 'user-123', roles: ['Hub.Viewer'] })
+        })
+      mockRefreshJwks()
+
+      const editor = await server.inject({ method: 'GET', url: '/editor-only', headers: { cookie } })
+      const viewer = await server.inject({ method: 'GET', url: '/viewer-only', headers: { cookie } })
+
+      expect(editor.statusCode).toBe(403)
+      expect(viewer.statusCode).toBe(200)
+    })
+
+    test('Should redirect to / when the refresh response has no id_token', async () => {
+      const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
+      const cookie = await loginWithToken(server, { token: expiredToken, refreshToken: 'old-refresh-token', roles: ['Hub.Editor'] })
+
+      nock('https://login.microsoftonline.com')
+        .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
+        .reply(200, { access_token: 'new-access-token' })
+
+      const { statusCode, headers } = await server.inject({ method: 'GET', url: '/editor-only', headers: { cookie } })
+
+      expect(statusCode).toBe(302)
+      expect(headers.location).toBe('/')
+    })
+
+    test('Should redirect to / when the refreshed id_token fails verification', async () => {
+      const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
+      const cookie = await loginWithToken(server, { token: expiredToken, refreshToken: 'old-refresh-token' })
+
+      nock('https://login.microsoftonline.com')
+        .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
+        .reply(200, { access_token: 'new-access-token', id_token: generateEntraJwt({ oid: 'user-123', aud: 'other-client' }) })
+      mockRefreshJwks()
+
+      const { statusCode } = await server.inject({ method: 'GET', url: '/protected', headers: { cookie } })
+
+      expect(statusCode).toBe(302)
     })
 
     test('Should redirect to / when refreshing the expired session token fails', async () => {

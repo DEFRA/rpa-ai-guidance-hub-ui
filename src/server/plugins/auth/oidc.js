@@ -10,6 +10,15 @@ const SCOPES = ['User.Read', 'openid', 'profile', 'email', 'offline_access']
 
 const CALLBACK_PATH = '/login/callback'
 
+/**
+ * The grant that produced an id_token. Only the authorization code flow
+ * sends a nonce, so only it can (and must) be checked against one.
+ */
+const GRANT_TYPES = Object.freeze({
+  AUTHORIZATION_CODE: 'authorization_code',
+  REFRESH_TOKEN: 'refresh_token'
+})
+
 const entraClientId = config.get('auth.entra.clientId')
 
 let jwksClient = null
@@ -98,10 +107,13 @@ async function refreshTokens (refreshToken) {
  *
  * @param {string} idToken
  * @param {object} params
- * @param {string} params.nonce - the nonce sent in the authorization request
+ * @param {string} [params.nonce] - the nonce sent in the authorization request
+ * (required unless `grantType` is `GRANT_TYPES.REFRESH_TOKEN`)
+ * @param {string} [params.grantType] - one of `GRANT_TYPES`: the grant that issued the
+ * token. Refresh grant id_tokens carry no nonce, so it is not checked for them.
  * @returns {Promise<object>} the verified token payload
  */
-async function verifyIdToken (idToken, { nonce }) {
+async function verifyIdToken (idToken, { nonce, grantType = GRANT_TYPES.AUTHORIZATION_CODE }) {
   const artifacts = Jwt.token.decode(idToken)
   const { kid } = artifacts.decoded.header
 
@@ -119,7 +131,7 @@ async function verifyIdToken (idToken, { nonce }) {
     iss: `${_tenantUrl()}/v2.0`
   })
 
-  if (!nonce || artifacts.decoded.payload.nonce !== nonce) {
+  if (grantType !== GRANT_TYPES.REFRESH_TOKEN && (!nonce || artifacts.decoded.payload.nonce !== nonce)) {
     throw new Error('Entra id_token nonce mismatch')
   }
 
@@ -213,5 +225,6 @@ export {
   getRedirectUri,
   profileFromClaims,
   refreshTokens,
+  GRANT_TYPES,
   verifyIdToken
 }
