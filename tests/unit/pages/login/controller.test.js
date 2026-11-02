@@ -220,9 +220,36 @@ describe('#loginController', () => {
         profile: {
           id: USER_OID,
           displayName: 'Test User',
-          email: 'testuser@example.com'
+          email: 'testuser@example.com',
+          roles: []
         }
       })
+    })
+
+    test('exchanges the code and populates roles from id_token into session profile', async () => {
+      const { state, nonce, cookie } = await startLogin(server)
+      const accessToken = generateEntraJwt()
+
+      mockTokenEndpoint({
+        access_token: accessToken,
+        refresh_token: 'refresh-token',
+        id_token: generateEntraJwt({ nonce, oid: USER_OID, roles: ['Hub.Editor', 'Hub.Viewer'] })
+      })
+      mockJwks()
+
+      const callback = await sendCallback(server, { cookie, params: { code: 'auth-code', state } })
+
+      expect(callback.statusCode).toBe(302)
+
+      const { result } = await server.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie: cookieHeader(callback) }
+      })
+
+      expect(result.roles).toEqual(['Hub.Editor', 'Hub.Viewer'])
+      expect(result.scope).toEqual(['Hub.Editor', 'Hub.Viewer'])
+      expect(result.profile.roles).toEqual(['Hub.Editor', 'Hub.Viewer'])
     })
 
     test('clears the OIDC state cookie so it cannot be replayed', async () => {
@@ -358,6 +385,59 @@ describe('#loginController', () => {
       })
 
       expect(statusCode).toBe(302)
+    })
+  })
+
+  describe('#loginAsDevUser', () => {
+    test('assigns roles from DEV_USER_ROLES configuration', async () => {
+      vi.stubEnv('AUTH_PROVIDER', 'local')
+      vi.stubEnv('DEV_USER_ROLES', 'Hub.Editor,Hub.Viewer')
+      vi.resetModules()
+
+      const localServer = await buildServer()
+
+      const response = await localServer.inject({
+        method: 'GET',
+        url: '/login'
+      })
+
+      expect(response.statusCode).toBe(302)
+      expect(response.headers.location).toBe('/hub')
+
+      const { result } = await localServer.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie: cookieHeader(response) }
+      })
+
+      expect(result.roles).toEqual(['Hub.Editor', 'Hub.Viewer'])
+      expect(result.profile.roles).toEqual(['Hub.Editor', 'Hub.Viewer'])
+
+      await localServer.stop({ timeout: 0 })
+    })
+
+    test('handles empty or whitespace in DEV_USER_ROLES configuration', async () => {
+      vi.stubEnv('AUTH_PROVIDER', 'local')
+      vi.stubEnv('DEV_USER_ROLES', '  ')
+      vi.resetModules()
+
+      const localServer = await buildServer()
+
+      const response = await localServer.inject({
+        method: 'GET',
+        url: '/login'
+      })
+
+      const { result } = await localServer.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie: cookieHeader(response) }
+      })
+
+      expect(result.roles).toEqual([])
+      expect(result.profile.roles).toEqual([])
+
+      await localServer.stop({ timeout: 0 })
     })
   })
 })

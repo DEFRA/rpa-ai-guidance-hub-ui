@@ -5,6 +5,7 @@ import hapiVision from '@hapi/vision'
 import nunjucks from 'nunjucks'
 
 import { config } from '../../config/config.js'
+import { ROLES } from '../../constants/roles.js'
 import { jsonScript, renderMarkdownFallback } from '../../pages/guide/markdown.js'
 import { isNavCollapsed } from '../../pages/side-nav/collapsed.js'
 
@@ -45,6 +46,21 @@ function loadManifest () {
   return JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
 }
 
+const ROLE_DISPLAY_NAMES = new Map([
+  [ROLES.EDITOR, 'Designer'],
+  [ROLES.VIEWER, 'Viewer']
+])
+
+function _formatRolesCaption (roles) {
+  if (!roles?.length) {
+    return null
+  }
+
+  return roles
+    .map((role) => ROLE_DISPLAY_NAMES.get(role) ?? role)
+    .join(', ')
+}
+
 const assetPath = config.get('assetPath')
 const serviceName = config.get('serviceName')
 
@@ -68,33 +84,39 @@ const viewPlugin = {
     relativeTo: config.get('root'),
     path: 'src/pages',
     isCached: config.get('env') === 'production',
-    context: (request) => ({
-      assetPath: `${assetPath}/assets`,
-      getAssetPath (asset) {
-        const manifestEntry = viteManifest?.[asset]
+    context: (request) => {
+      const roles = request?.auth?.credentials?.profile?.roles ?? request?.auth?.credentials?.roles ?? []
 
-        const viteAsset = typeof manifestEntry === 'object'
-          ? manifestEntry?.file
-          : manifestEntry
+      return {
+        assetPath: `${assetPath}/assets`,
+        getAssetPath (asset) {
+          const manifestEntry = viteManifest?.[asset]
 
-        return `${assetPath}/${viteAsset ?? asset}`
-      },
-      serviceName,
-      currentPath: request?.path,
-      // Blankie generates nonces when configured with generateNonces: true
-      // Returns { script, style } when enabled, undefined otherwise
-      cspNonce: request?.plugins?.blankie?.nonces,
-      isAuthenticated: Boolean(request?.auth?.isAuthenticated),
-      // The hub has no roles yet, so everyone gets the designer's view; an
-      // operator's view is the same without the designer's functions.
-      isDesigner: true,
-      // Read only when signed in, when the nav shows: a page no route matches
-      // has no session to read.
-      sideNavCollapsed: request?.auth?.isAuthenticated ? isNavCollapsed(request) : false,
-      // Where a form on the page sends the user back to: this page.
-      currentUrl: request?.url ? `${request.url.pathname}${request.url.search}` : null,
-      userDisplayName: request?.auth?.credentials?.profile?.displayName ?? null
-    })
+          const viteAsset = typeof manifestEntry === 'object'
+            ? manifestEntry?.file
+            : manifestEntry
+
+          return `${assetPath}/${viteAsset ?? asset}`
+        },
+        serviceName,
+        currentPath: request?.path,
+        // Blankie generates nonces when configured with generateNonces: true
+        // Returns { script, style } when enabled, undefined otherwise
+        cspNonce: request?.plugins?.blankie?.nonces,
+        isAuthenticated: Boolean(request?.auth?.isAuthenticated),
+        // The hub has no roles yet, so everyone gets the designer's view; an
+        // operator's view is the same without the designer's functions.
+        isDesigner: true,
+        roles,
+        userRolesCaption: _formatRolesCaption(roles),
+        // Read only when signed in, when the nav shows: a page no route matches
+        // has no session to read.
+        sideNavCollapsed: request?.auth?.isAuthenticated ? isNavCollapsed(request) : false,
+        // Where a form on the page sends the user back to: this page.
+        currentUrl: request?.url ? `${request.url.pathname}${request.url.search}` : null,
+        userDisplayName: request?.auth?.credentials?.profile?.displayName ?? null
+      }
+    }
   }
 }
 

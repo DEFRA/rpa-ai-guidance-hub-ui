@@ -1,7 +1,7 @@
 import Jwt from '@hapi/jwt'
 
 import { config } from '../../../config/config.js'
-import { refreshTokens } from './oidc.js'
+import { profileFromClaims, refreshTokens, GRANT_TYPES, verifyIdToken } from './oidc.js'
 import { createLogger } from '../../../infra/logging/logger.js'
 
 const logger = createLogger()
@@ -115,13 +115,57 @@ async function _validateSessionToken (request, session) {
       return { isValid: false }
     }
 
+    const profile = await _profileFromRefreshedTokens(tokens)
+
+    if (!profile) {
+      return { isValid: false }
+    }
+
+    userSession.profile = { ...userSession.profile, ...profile }
     userSession.token = tokens.access_token
     userSession.refreshToken = tokens.refresh_token ?? userSession.refreshToken
 
     await request.server.app.cache.set(`auth-session:${session.sessionId}`, userSession)
   }
 
-  return { isValid: true, credentials: { ...userSession, sessionId: session.sessionId } }
+  const roles = userSession.profile?.roles ?? []
+
+  return {
+    isValid: true,
+    credentials: {
+      ...userSession,
+      sessionId: session.sessionId,
+      roles,
+      scope: roles
+    }
+  }
+}
+
+/**
+ * @private
+ * Re-derives the session profile (notably its roles) from the verified ID
+ * token returned by a refresh, so revoked roles stop granting access. Returns
+ * `null` (forcing a new sign-in) if there is no valid ID token to take them from.
+ *
+ * @param {object} tokens - Entra's token response
+ * @returns {Promise<object|null>}
+ */
+async function _profileFromRefreshedTokens (tokens) {
+  if (!tokens.id_token) {
+    logger.warn({ type: 'entra_refresh_no_id_token' }, 'Refresh response has no id_token; cannot refresh roles')
+
+    return null
+  }
+
+  try {
+    const claims = await verifyIdToken(tokens.id_token, { grantType: GRANT_TYPES.REFRESH_TOKEN })
+
+    return profileFromClaims(claims)
+  } catch (error) {
+    logger.warn({ type: 'entra_refresh_id_token_invalid', error }, 'Refreshed id_token could not be verified')
+
+    return null
+  }
 }
 
 /**

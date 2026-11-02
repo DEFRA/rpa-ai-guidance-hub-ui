@@ -128,7 +128,7 @@ describe('views plugin', () => {
         auth: {
           isAuthenticated: true,
           credentials: {
-            profile: { displayName: 'Jane Doe' }
+            profile: { displayName: 'Jane Doe', roles: ['Hub.Viewer'] }
           }
         }
       }
@@ -137,6 +137,87 @@ describe('views plugin', () => {
 
       expect(ctx.isAuthenticated).toBe(true)
       expect(ctx.userDisplayName).toBe('Jane Doe')
+      expect(ctx.roles).toEqual(['Hub.Viewer'])
+    })
+
+    test('Should expose roles from credentials.roles or credentials.profile.roles', async () => {
+      const { viewPlugin } = await import('../../../../src/server/plugins/views.js')
+
+      const mockRequestWithProfileRoles = {
+        auth: {
+          isAuthenticated: true,
+          credentials: {
+            profile: { roles: ['Hub.Editor'] }
+          }
+        }
+      }
+
+      expect(viewPlugin.options.context(mockRequestWithProfileRoles).roles).toEqual(['Hub.Editor'])
+
+      const mockRequestWithCredentialsRoles = {
+        auth: {
+          isAuthenticated: true,
+          credentials: {
+            roles: ['Hub.Viewer']
+          }
+        }
+      }
+
+      expect(viewPlugin.options.context(mockRequestWithCredentialsRoles).roles).toEqual(['Hub.Viewer'])
+    })
+
+    test('Should expose userRolesCaption formatted as friendly role names', async () => {
+      const { viewPlugin } = await import('../../../../src/server/plugins/views.js')
+
+      const singleRoleRequest = {
+        auth: {
+          isAuthenticated: true,
+          credentials: { profile: { roles: ['Hub.Editor'] } }
+        }
+      }
+      expect(viewPlugin.options.context(singleRoleRequest).userRolesCaption).toBe('Designer')
+
+      const viewerRoleRequest = {
+        auth: {
+          isAuthenticated: true,
+          credentials: { profile: { roles: ['Hub.Viewer'] } }
+        }
+      }
+      expect(viewPlugin.options.context(viewerRoleRequest).userRolesCaption).toBe('Viewer')
+
+      const bothRolesRequest = {
+        auth: {
+          isAuthenticated: true,
+          credentials: { profile: { roles: ['Hub.Editor', 'Hub.Viewer'] } }
+        }
+      }
+      expect(viewPlugin.options.context(bothRolesRequest).userRolesCaption).toBe('Designer, Viewer')
+
+      const unknownRoleRequest = {
+        auth: {
+          isAuthenticated: true,
+          credentials: { profile: { roles: ['CustomRole'] } }
+        }
+      }
+      expect(viewPlugin.options.context(unknownRoleRequest).userRolesCaption).toBe('CustomRole')
+
+      const emptyRolesRequest = {
+        auth: {
+          isAuthenticated: true,
+          credentials: { profile: { roles: [] } }
+        }
+      }
+      expect(viewPlugin.options.context(emptyRolesRequest).userRolesCaption).toBeNull()
+
+      expect(viewPlugin.options.context().userRolesCaption).toBeNull()
+    })
+
+    test('Should default roles to empty array when unauthenticated or roles missing', async () => {
+      const { viewPlugin } = await import('../../../../src/server/plugins/views.js')
+
+      expect(viewPlugin.options.context().roles).toEqual([])
+      expect(viewPlugin.options.context({ auth: { isAuthenticated: false } }).roles).toEqual([])
+      expect(viewPlugin.options.context({ auth: { isAuthenticated: true, credentials: {} } }).roles).toEqual([])
     })
 
     test('Should have isAuthenticated false and userDisplayName null when no request is provided', async () => {

@@ -137,7 +137,12 @@
 
   <ul class="app-side-nav__list app-side-nav__footer">
     {% if userDisplayName %}
-      <li class="app-side-nav__user">{{ userDisplayName }}</li>
+      <li class="app-side-nav__user">
+        <div class="app-side-nav__user-name">{{ userDisplayName }}</div>
+        {% if userRolesCaption %}
+          <div class="app-side-nav__user-roles">{{ userRolesCaption }}</div>
+        {% endif %}
+      </li>
     {% endif %}
     <li><a class="app-side-nav__link" href="/logout">Sign out</a></li>
   </ul>
