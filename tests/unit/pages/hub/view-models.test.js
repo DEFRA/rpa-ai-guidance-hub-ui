@@ -30,7 +30,7 @@ describe('#HubViewModel', () => {
       expect(viewModel.allGuides.hintMessage).toBeNull()
     })
 
-    test('Should have no list awaiting review', () => {
+    test('has no list awaiting review', () => {
       expect(viewModel.awaitingMyReview).toBeUndefined()
     })
 
