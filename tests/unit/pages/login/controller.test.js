@@ -250,9 +250,9 @@ describe('#loginController', () => {
         headers: { cookie: cookieHeader(callback) }
       })
 
-      expect(result.roles).toEqual(['Hub.Editor', 'Hub.Viewer'])
-      expect(result.scope).toEqual(['Hub.Editor', 'Hub.Viewer'])
-      expect(result.profile.roles).toEqual(['Hub.Editor', 'Hub.Viewer'])
+      expect(result.roles).toEqual(['Hub.Viewer', 'Hub.Editor'])
+      expect(result.scope).toEqual(['Hub.Viewer', 'Hub.Editor'])
+      expect(result.profile.roles).toEqual(['Hub.Viewer', 'Hub.Editor'])
     })
 
     test('clears the OIDC state cookie so it cannot be replayed', async () => {
@@ -413,8 +413,8 @@ describe('#loginController', () => {
         headers: { cookie: cookieHeader(response) }
       })
 
-      expect(result.roles).toEqual(['Hub.Editor', 'Hub.Viewer'])
-      expect(result.profile.roles).toEqual(['Hub.Editor', 'Hub.Viewer'])
+      expect(result.roles).toEqual(['Hub.Viewer', 'Hub.Editor'])
+      expect(result.profile.roles).toEqual(['Hub.Viewer', 'Hub.Editor'])
 
       await localServer.stop({ timeout: 0 })
     })

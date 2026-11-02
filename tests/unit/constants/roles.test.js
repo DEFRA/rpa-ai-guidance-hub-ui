@@ -1,18 +1,22 @@
-import { ROLES, roleDisplayNames } from '../../../src/constants/roles.js'
+import { ROLES, knownRoles, roleDisplayNames } from '../../../src/constants/roles.js'
 
 describe('roles', () => {
   test('knows the hub\'s three roles, in the hub\'s order', () => {
     expect(Object.values(ROLES)).toEqual(['Hub.Viewer', 'Hub.Editor', 'Hub.Admin'])
   })
 
-  describe('roleDisplayNames', () => {
+  describe('knownRoles', () => {
     test.each([
-      [['Hub.Viewer'], ['Viewer']],
-      [['Hub.Admin', 'Hub.Editor', 'Hub.Viewer'], ['Viewer', 'Designer', 'Administrator']],
-      [['Hub.Admin', 'Hub.Viewer'], ['Viewer', 'Administrator']],
-      [['Hub.Other', 'Hub.Viewer', 'toString'], ['Viewer']]
-    ])('names %j, in the hub\'s order, as %j', (roles, expected) => {
-      expect(roleDisplayNames(roles)).toEqual(expected)
+      ['in the hub\'s order', ['Hub.Admin', 'Hub.Editor', 'Hub.Viewer'], ['Hub.Viewer', 'Hub.Editor', 'Hub.Admin']],
+      ['without roles the hub does not know', ['Hub.Other', 'Hub.Viewer', 'toString'], ['Hub.Viewer']],
+      ['once each', ['Hub.Viewer', 'Hub.Viewer'], ['Hub.Viewer']],
+      ['as none for a session stored before roles', undefined, []]
+    ])('gives the roles %s', (_desc, roles, expected) => {
+      expect(knownRoles(roles)).toEqual(expected)
     })
+  })
+
+  test('roleDisplayNames names each role as the hub shows it, in its order', () => {
+    expect(roleDisplayNames(['Hub.Admin', 'Hub.Editor', 'Hub.Viewer'])).toEqual(['Viewer', 'Designer', 'Administrator'])
   })
 })
