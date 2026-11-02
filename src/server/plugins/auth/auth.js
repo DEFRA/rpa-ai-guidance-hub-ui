@@ -1,7 +1,7 @@
 import Jwt from '@hapi/jwt'
 
 import { config } from '../../../config/config.js'
-import { ROLES } from '../../../constants/roles.js'
+import { ROLES, knownRoles } from '../../../constants/roles.js'
 import { roleEnforcementEnabled } from '../../access-control/hub-access.js'
 import { profileFromClaims, refreshTokens, GRANT_TYPES, verifyIdToken } from './oidc.js'
 import { createLogger } from '../../../infra/logging/logger.js'
@@ -22,9 +22,9 @@ const REJECTED_REFRESH_ERRORS = new Set(['invalid_grant', 'interaction_required'
  * @property {string} sessionId
  * @property {{ id: string, displayName: string, email: string, roles: string[] }} profile
  *   - as `profileFromClaims` (Entra) or the local mock user builds it
- * @property {string[]} roles - the user's app roles, as `profile.roles`, or
- *   none if the session predates roles. The one place anything that checks or
- *   shows a role reads them from.
+ * @property {string[]} roles - the user's roles as the hub knows them
+ *   (`knownRoles`), also in `profile.roles`. The one place anything that checks
+ *   or shows a role reads them from.
  * @property {string[]} scope - the roles again, for hapi route `access.scope`
  * @property {string} token
  * @property {string} [refreshToken]
@@ -172,16 +172,21 @@ async function _validateSessionToken (request, session) {
 
 /**
  * @private
+ * The one place a request's roles are read from the session, whatever made it:
+ * an Entra sign-in or refresh, the local sign-in, or a session stored before
+ * roles were added. The profile's roles are replaced too, so nothing sees
+ * the raw ones.
+ *
  * @param {{ profile: SessionCredentials['profile'], token: string, refreshToken?: string }} userSession
  * @param {string} sessionId
  * @returns {SessionCredentials}
  */
 function _toCredentials (userSession, sessionId) {
-  // A session stored before roles were added has none: it holds no roles.
-  const roles = userSession.profile.roles ?? []
+  const roles = knownRoles(userSession.profile.roles)
 
   return {
     ...userSession,
+    profile: { ...userSession.profile, roles },
     sessionId,
     roles,
     scope: roles

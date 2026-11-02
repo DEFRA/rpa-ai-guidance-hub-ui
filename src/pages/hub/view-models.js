@@ -33,13 +33,6 @@ const ALL_GUIDES_TABLE_HEAD = [
   { text: 'Owner' }
 ]
 
-const AWAITING_APPROVAL_TABLE_HEAD = [
-  { text: 'Document name', classes: tableHeadClasses.HALF_WIDTH },
-  { text: 'Version' },
-  { text: 'Publishing checks' },
-  { text: 'Changes requested' }
-]
-
 function _textCell (text) {
   return { type: CELL_TYPES.TEXT, text }
 }
@@ -93,15 +86,6 @@ function _buildAllGuidesRows (items) {
   ])
 }
 
-function _buildAwaitingApprovalRows (items) {
-  return items.map((item) => [
-    _titleCell(item, 'Awaiting approval', 'yellow'),
-    _versionCell(item.version),
-    _textCell(item.publishingChecks || 'No issues'),
-    _textCell(item.changesRequested || 'None')
-  ])
-}
-
 /**
  * @private
  * @param {Array<object>} items
@@ -138,7 +122,6 @@ class HubViewModel {
    * @param {Array<object>} [data.recentlyOpened=[]]
    * @param {Array<object>} [data.pinned=[]]
    * @param {Array<object>} [data.bookmarkedGuides=[]]
-   * @param {Array<object>} [data.awaitingMyReview=[]]
    * @param {Array<object>} [data.allGuides=[]] - Items are
    *   `{title, href, schemes, lastModified, owner}`
    * @param {string} [data.shown='allGuides'] - The table that the page
@@ -149,7 +132,6 @@ class HubViewModel {
       recentlyOpened = [],
       pinned = [],
       bookmarkedGuides = [],
-      awaitingMyReview = [],
       allGuides = [],
       shown = 'allGuides'
     } = data
@@ -179,15 +161,6 @@ class HubViewModel {
       hintMessage: "Guidance you've bookmarked a section of.",
       head: DOCUMENT_TABLE_HEAD,
       rows: _buildDocumentRows(bookmarkedGuides)
-    })
-
-    this.awaitingMyReview = _buildTable({
-      items: awaitingMyReview,
-      heading: 'Awaiting my review',
-      emptyMessage: 'There is no guidance awaiting your review.',
-      hintMessage: null,
-      head: AWAITING_APPROVAL_TABLE_HEAD,
-      rows: _buildAwaitingApprovalRows(awaitingMyReview)
     })
 
     this.allGuides = _buildTable({

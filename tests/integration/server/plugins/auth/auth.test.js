@@ -615,9 +615,20 @@ describe('#auth', () => {
       })
 
       expect(statusCode).toBe(200)
-      expect(result.roles).toEqual(['Hub.Editor', 'Hub.Viewer'])
-      expect(result.scope).toEqual(['Hub.Editor', 'Hub.Viewer'])
-      expect(result.profile.roles).toEqual(['Hub.Editor', 'Hub.Viewer'])
+      expect(result.roles).toEqual(['Hub.Viewer', 'Hub.Editor'])
+      expect(result.scope).toEqual(['Hub.Viewer', 'Hub.Editor'])
+      expect(result.profile.roles).toEqual(['Hub.Viewer', 'Hub.Editor'])
+    })
+
+    test('exposes only the roles the hub knows, in its order', async () => {
+      const token = generateEntraJwt()
+      const cookie = await loginWithToken(server, { token, roles: ['Hub.Admin', 'Hub.Other', 'Hub.Editor', 'Hub.Viewer'] })
+
+      const { result } = await server.inject({ method: 'GET', url: '/protected', headers: { cookie } })
+
+      expect(result.roles).toEqual(['Hub.Viewer', 'Hub.Editor', 'Hub.Admin'])
+      expect(result.scope).toEqual(['Hub.Viewer', 'Hub.Editor', 'Hub.Admin'])
+      expect(result.profile.roles).toEqual(['Hub.Viewer', 'Hub.Editor', 'Hub.Admin'])
     })
 
     test('exposes empty roles and scope for a user with no roles', async () => {
@@ -649,6 +660,7 @@ describe('#auth', () => {
       expect(statusCode).toBe(200)
       expect(result.roles).toEqual([])
       expect(result.scope).toEqual([])
+      expect(result.profile.roles).toEqual([])
     })
 
     test('enforces route scope auth for Hub.Editor and Hub.Viewer', async () => {

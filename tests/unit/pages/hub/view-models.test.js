@@ -16,7 +16,6 @@ describe('#HubViewModel', () => {
       ['recentlyOpened', 'Recently opened'],
       ['pinned', 'Pinned'],
       ['bookmarkedGuides', 'Bookmarked guides'],
-      ['awaitingMyReview', 'Awaiting my review'],
       ['allGuides', 'All guides']
     ])('Should return an empty %s table', (key, heading) => {
       expect(viewModel[key]).toEqual(expect.objectContaining({
@@ -28,7 +27,11 @@ describe('#HubViewModel', () => {
     })
 
     test('Should not hint on tables with no hint copy', () => {
-      expect(viewModel.awaitingMyReview.hintMessage).toBeNull()
+      expect(viewModel.allGuides.hintMessage).toBeNull()
+    })
+
+    test('has no list awaiting review', () => {
+      expect(viewModel.awaitingMyReview).toBeUndefined()
     })
 
     test('Should have no list of guidance being edited', () => {
@@ -104,28 +107,6 @@ describe('#HubViewModel', () => {
 
       expect(viewModel.recentlyOpened.rows[0][0].href).toBe(item.href)
       expect(viewModel.recentlyOpened.rows[0][3].href).toBe(item.removeHref)
-    })
-  })
-
-  describe('awaitingMyReview', () => {
-    test('Should build a title/version/publishingChecks/changesRequested row', () => {
-      const viewModel = new HubViewModel({
-        awaitingMyReview: [{ ...item, publishingChecks: 'Broken link', changesRequested: 'Fix heading' }]
-      })
-
-      expect(viewModel.awaitingMyReview.rows).toEqual([[
-        { type: 'title', text: item.title, href: item.href, statusText: 'Awaiting approval', statusColour: 'yellow' },
-        { type: 'version', version: item.version, colour: 'green' },
-        { type: 'text', text: 'Broken link' },
-        { type: 'text', text: 'Fix heading' }
-      ]])
-    })
-
-    test('Should default missing publishing checks and changes requested', () => {
-      const viewModel = new HubViewModel({ awaitingMyReview: [item] })
-
-      expect(viewModel.awaitingMyReview.rows[0][2]).toEqual({ type: 'text', text: 'No issues' })
-      expect(viewModel.awaitingMyReview.rows[0][3]).toEqual({ type: 'text', text: 'None' })
     })
   })
 
