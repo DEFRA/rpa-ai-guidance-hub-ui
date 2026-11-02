@@ -155,6 +155,12 @@ describe('buildMetadataRows', () => {
     ])
   })
 
+  test('says a guide with no scheme is not scheme-specific', () => {
+    expect(buildMetadataRows({ schemes: [] })).toEqual([
+      { label: 'Scheme', text: 'Not scheme-specific' }
+    ])
+  })
+
   test('leaves out what the guide does not say', () => {
     expect(buildMetadataRows({ goal: 'Only this.', owner: 'a@example.com' })).toEqual([
       { label: 'Purpose', text: 'Only this.' },

@@ -1,3 +1,4 @@
+import { NOT_SCHEME_SPECIFIC } from '../../services/reference-data.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { READING_WIDTHS } from './reading-width.js'
 
@@ -29,7 +30,7 @@ function _list (values) {
  */
 function buildMetadataRows (metadata = {}) {
   return [
-    _listRow('Scheme', metadata.schemes),
+    _schemesRow(metadata.schemes),
     _listRow("Who it's for", metadata.audience),
     _listRow('Systems used', metadata.systems),
     _textRow('Purpose', metadata.goal),
@@ -46,6 +47,18 @@ function buildMetadataRows (metadata = {}) {
  */
 function _listRow (label, values) {
   return values?.length > 0 ? { label, text: _list(values) } : null
+}
+
+/**
+ * @private
+ * @param {string[]} [schemes]
+ * @returns {MetadataRow|null} "Not scheme-specific" for a guide with none,
+ *   which is what it was uploaded as; null when it does not say
+ */
+function _schemesRow (schemes) {
+  return schemes?.length === 0
+    ? { label: 'Scheme', text: NOT_SCHEME_SPECIFIC }
+    : _listRow('Scheme', schemes)
 }
 
 /**

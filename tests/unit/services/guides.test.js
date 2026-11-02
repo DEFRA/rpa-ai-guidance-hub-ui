@@ -44,6 +44,16 @@ describe('guides service', () => {
     })
   })
 
+  test('sends a guide not specific to any scheme with no scheme, never the words', async () => {
+    const createGuideSpy = mockApiResponse(statusCodes.HTTP_STATUS_CREATED)
+
+    await guideService.createGuide({ ...guide, metadata: { ...guide.metadata, schemes: ['Not scheme-specific'] } })
+
+    expect(createGuideSpy).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: { guideTitle: 'A title', schemes: [] }
+    }))
+  })
+
   test.each([
     statusCodes.HTTP_STATUS_CREATED,
     statusCodes.HTTP_STATUS_OK

@@ -111,6 +111,17 @@ function normalizeSchemes (rawSchemes) {
 }
 
 /**
+ * The schemes a guide is kept with: a guide specific to no scheme has none.
+ * "Not scheme-specific" is the form's words for that choice, never a scheme.
+ *
+ * @param {Array<string>} schemes - As chosen
+ * @returns {Array<string>}
+ */
+function schemesAsKept (schemes) {
+  return schemes.filter((scheme) => scheme !== NOT_SCHEME_SPECIFIC)
+}
+
+/**
  * Normalize a submitted checkbox group to an array.
  *
  * GOV.UK checkboxes submit differently depending on how many boxes are
@@ -135,6 +146,7 @@ export {
   getSystems,
   getGuidanceTypes,
   NOT_SCHEME_SPECIFIC,
+  schemesAsKept,
   normalizeSchemes,
   normalizeSelection
 }

@@ -1,6 +1,7 @@
 import { statusCodes } from '../constants/status-codes.js'
 
 import * as guidesApi from '../infra/guidance-api/guides.js'
+import { schemesAsKept } from './reference-data.js'
 import * as stagedDocumentsService from './staged-documents.js'
 
 /**
@@ -73,7 +74,7 @@ const ALLOWED_ASSET_CONTENT_TYPES = new Set([
 async function createGuide ({ uploadId, fileId, metadata, user }) {
   const res = await guidesApi.createGuide({
     source: { uploadId, fileId },
-    metadata,
+    metadata: metadata.schemes ? { ...metadata, schemes: schemesAsKept(metadata.schemes) } : metadata,
     createdBy: { id: user.id, displayName: user.displayName }
   })
 
