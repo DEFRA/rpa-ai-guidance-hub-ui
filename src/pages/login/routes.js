@@ -30,7 +30,9 @@ const routes = [
     options: {
       auth: {
         mode: 'try',
-        strategy: 'session'
+        strategy: 'session',
+        // Users without Hub.Viewer must still be able to sign out
+        access: { scope: false }
       }
     },
     handler: controller.logout

@@ -44,6 +44,9 @@ async function buildServer () {
   server.route({
     method: 'GET',
     path: '/protected',
+    // Reads back any session, whatever its roles: the Viewer scope is
+    // covered by the access-control tests.
+    options: { auth: { access: { scope: false } } },
     handler: (request) => request.auth.credentials
   })
 

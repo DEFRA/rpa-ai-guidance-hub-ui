@@ -1,0 +1,36 @@
+// A plain GOV.UK error page shown outside the side-nav layout (e.g. the
+// access-denied page). Runs full width and insets its content by the same
+// gutters as the sign-in page (_app-sign-in-hero.scss), so the text lines up
+// under the header's logo on `.app-sign-in-page`.
+
+@use 'govuk-frontend' as *;
+@use '../variables/colours' as *;
+
+@mixin _app-error-page-gutters {
+  padding-right: govuk-spacing(4);
+  padding-left: govuk-spacing(4);
+
+  @include govuk-media-query($from: tablet) {
+    padding-right: govuk-spacing(7);
+    padding-left: govuk-spacing(7);
+  }
+
+  @include govuk-media-query($from: desktop) {
+    padding-right: govuk-spacing(9);
+    padding-left: govuk-spacing(9);
+  }
+}
+
+.app-error-page {
+  @include _app-error-page-gutters;
+
+  margin-right: calc(50% - 50vw);
+  margin-left: calc(50% - 50vw);
+}
+
+// GOV.UK inset text with the Defra green border, for the next step.
+// Long words (the contact email) wrap rather than widen the page on mobile.
+.app-error-page__inset {
+  border-left-color: $defra-green;
+  overflow-wrap: anywhere;
+}

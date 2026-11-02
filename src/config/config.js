@@ -50,6 +50,12 @@ const config = convict({
     format: String,
     default: 'RPA Guidance Hub'
   },
+  accessRequestEmail: {
+    doc: 'Email address users are told to contact to request access to the service',
+    format: String,
+    default: 'AICapabilityAndEnablement@defra.gov.uk',
+    env: 'ACCESS_REQUEST_EMAIL'
+  },
   root: {
     doc: 'Project root',
     format: String,
@@ -306,6 +312,12 @@ const config = convict({
       format: isProduction ? ['entra'] : ['entra', 'local'],
       default: 'entra',
       env: 'AUTH_PROVIDER'
+    },
+    requireViewerRole: {
+      doc: 'Restrict the service to users holding the Hub.Viewer role (the UAT pilot group). When false (the default), any signed-in user can use it.',
+      format: Boolean,
+      default: false,
+      env: 'AUTH_REQUIRE_VIEWER_ROLE'
     },
     entra: {
       tenantId: {

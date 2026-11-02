@@ -71,10 +71,9 @@ describe('Side navigation', () => {
   })
 
   test.each([
-    ['Hub.Editor', 'Designer'],
     ['Hub.Viewer', 'Viewer'],
     ['Hub.Editor,Hub.Viewer', 'Designer, Viewer'],
-    ['toString', 'toString']
+    ['Hub.Viewer,toString', 'Viewer, toString']
   ])('displays the user name and role caption for DEV_USER_ROLES=%s', async (roles, caption) => {
     vi.stubEnv('DEV_USER_ROLES', roles)
     const cookie = await loginAsDevUser(server)
@@ -83,16 +82,6 @@ describe('Side navigation', () => {
 
     expect(payload).toContain('class="app-side-nav__user-name">Dev User</div>')
     expect(payload).toContain(`class="app-side-nav__user-roles">${caption}</div>`)
-  })
-
-  test('omits the role caption when the user has no roles', async () => {
-    vi.stubEnv('DEV_USER_ROLES', '')
-    const cookie = await loginAsDevUser(server)
-
-    const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
-
-    expect(payload).toContain('class="app-side-nav__user-name">Dev User</div>')
-    expect(payload).not.toContain('app-side-nav__user-roles')
   })
 
   describe('contents', () => {
