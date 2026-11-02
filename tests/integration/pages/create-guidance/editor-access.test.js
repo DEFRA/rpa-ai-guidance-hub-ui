@@ -3,6 +3,7 @@ import { constants as statusCodes } from 'node:http2'
 import nock from 'nock'
 
 import { createServer } from '../../../../src/server/server.js'
+import { MISSING_ROLES_FLASH_KEY } from '../../../../src/server/access-control/hub-access.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const EDITOR_ROUTES = [
@@ -131,6 +132,27 @@ describe('Access control (Hub.Editor)', () => {
 
       expect(again.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(again.headers.location).toBe('/hub')
+    })
+
+    test('names every missing role, joined, with "roles" for more than one', async () => {
+      // No route needs two roles yet, so a route made for the test refuses as one would.
+      server.route({
+        method: 'GET',
+        path: '/test/refused-for-two-roles',
+        options: { auth: { strategy: 'session', access: { scope: false } } },
+        handler: (request, h) => {
+          request.yar.flash(MISSING_ROLES_FLASH_KEY, { missingRoles: ['Designer', 'Administrator'], reason: 'do both' }, true)
+          return h.redirect('/access-denied/role-required')
+        }
+      })
+      vi.stubEnv('DEV_USER_ROLES', 'Hub.Viewer')
+      const cookie = await loginAsDevUser(server)
+      const refused = await server.inject({ method: 'GET', url: '/test/refused-for-two-roles', headers: { cookie } })
+
+      const page = await followRedirect(cookie, refused)
+
+      expect(page.statusCode).toBe(statusCodes.HTTP_STATUS_FORBIDDEN)
+      expect(page.payload).toContain('You need the <strong>Designer and Administrator</strong> roles to do both.')
     })
 
     test('sends a direct visit with nothing refused to the hub', async () => {

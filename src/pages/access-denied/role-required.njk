@@ -2,7 +2,8 @@
 
 {# For a user who can use the hub but lacks a role this page needs: the side
    navigation stays, so the content sits in the usual width container rather
-   than the full-width `app-error-page` of the pages shown without it. #}
+   than the full-width `app-error-page` layout of the pages shown without it,
+   borrowing only its inset. #}
 {% block content %}
   <div class="govuk-width-container">
     <div class="govuk-grid-row">
@@ -10,7 +11,7 @@
         <h1 class="govuk-heading-l">You do not have permission to do this</h1>
 
         <p class="govuk-body">
-          You need the <strong>{{ missingRoles }}</strong> {{ "role" if missingRoles.indexOf(" and ") == -1 else "roles" }} to {{ reason }}.
+          You need the <strong>{{ missingRoles | join(" and ") }}</strong> {{ "role" if missingRoles | length == 1 else "roles" }} to {{ reason }}.
         </p>
 
         <div class="govuk-inset-text app-error-page__inset">
