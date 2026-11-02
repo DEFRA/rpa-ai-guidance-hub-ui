@@ -63,8 +63,8 @@ const LISTS = {
 const LIST_PATHS = Object.keys(LISTS)
 
 async function getHubPage (_request, h) {
-  const [{ guides }, shortLabels] = await Promise.all([
-    guidesService.listGuides(),
+  const [guides, shortLabels] = await Promise.all([
+    guidesService.listEveryGuide(),
     _getSchemeShortLabels()
   ])
 

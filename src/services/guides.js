@@ -46,6 +46,9 @@ const RESULTS = {
   PARSE_FAILED: 'parseFailed' // the staged file could not be parsed
 }
 
+// The most guides the API lists on one page.
+const LARGEST_PAGE = 100
+
 const ALLOWED_ASSET_CONTENT_TYPES = new Set([
   'image/png',
   'image/jpeg',
@@ -121,6 +124,27 @@ async function listGuides (filters) {
     guides: res.data.items.map(item => _toSummary(item)),
     nextCursor: res.data.nextCursor ?? null
   }
+}
+
+/**
+ * Every guide there is, in the order the API lists them, following each
+ * page's cursor until the last. Pages are as large as the API allows, to ask
+ * as few times as it can.
+ *
+ * @returns {Promise<GuideSummary[]>}
+ */
+async function listEveryGuide () {
+  const guides = []
+  let cursor
+
+  do {
+    const page = await listGuides({ limit: LARGEST_PAGE, cursor })
+
+    guides.push(...page.guides)
+    cursor = page.nextCursor
+  } while (cursor)
+
+  return guides
 }
 
 /**
@@ -245,6 +269,7 @@ export {
   getGuideAsset,
   getGuideById,
   getGuideContent,
+  listEveryGuide,
   listGuides,
   RESULTS
 }

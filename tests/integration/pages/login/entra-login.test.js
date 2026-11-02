@@ -94,6 +94,7 @@ describe('#loginController under the entra provider', () => {
         .reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
       nock(config.get('guidanceApi.baseUrl'))
         .get('/guides')
+        .query(true)
         .reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
 
       const hub = await server.inject({
@@ -175,6 +176,7 @@ describe('#loginController under the entra provider', () => {
 
       nock(config.get('guidanceApi.baseUrl'))
         .get('/guides')
+        .query(true)
         .reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
 
       const hub = await server.inject({

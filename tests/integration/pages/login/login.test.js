@@ -57,6 +57,7 @@ describe('#loginController', () => {
         .reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
       nock(config.get('guidanceApi.baseUrl'))
         .get('/guides')
+        .query(true)
         .reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
 
       // Confirms the dev-session profile was actually stored against the

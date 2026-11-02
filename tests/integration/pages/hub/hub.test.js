@@ -27,7 +27,7 @@ describe('#hubController', () => {
 
   beforeEach(() => {
     nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').optionally().reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
-    nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
+    nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
   })
 
   afterEach(() => {
@@ -139,7 +139,7 @@ describe('#hubController', () => {
       ['/hub/bookmarked-guides']
     ])('%s does not ask the API for the guides', async (url) => {
       nock.cleanAll()
-      const guides = nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
+      const guides = nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
       const cookie = await loginAsDevUser(server)
 
       await server.inject({ method: 'GET', url, headers: { cookie } })
@@ -163,7 +163,7 @@ describe('#hubController', () => {
     test('Should list each guide, linking to it', async () => {
       nock.cleanAll()
       nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
-      nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({
+      nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({
         items: [guideSummaryResponse({ id: '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90' })]
       }))
       const cookie = await loginAsDevUser(server)
@@ -176,10 +176,29 @@ describe('#hubController', () => {
       expect(payload).toContain('owner@example.com')
     })
 
+    test('lists every guide, following the API\'s pages to the last, in its order', async () => {
+      const FIRST = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
+      const SECOND = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
+      nock.cleanAll()
+      nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').optionally().reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
+      const guides = nock(GUIDANCE_API_BASE_URL)
+        .get('/guides').query({ limit: '100' })
+        .reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items: [guideSummaryResponse({ id: SECOND })], nextCursor: SECOND }))
+        .get('/guides').query({ limit: '100', cursor: SECOND })
+        .reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items: [guideSummaryResponse({ id: FIRST })], nextCursor: null }))
+      const cookie = await loginAsDevUser(server)
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+
+      expect(guides.isDone()).toBe(true)
+      expect(payload.indexOf(`href="/guides/${SECOND}"`)).toBeGreaterThan(-1)
+      expect(payload.indexOf(`href="/guides/${FIRST}"`)).toBeGreaterThan(payload.indexOf(`href="/guides/${SECOND}"`))
+    })
+
     test('Should say there are no guides when there are none', async () => {
       nock.cleanAll()
       nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
-      nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items: [] }))
+      nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items: [] }))
       const cookie = await loginAsDevUser(server)
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })

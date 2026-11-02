@@ -110,6 +110,41 @@ describe('guides service: reading', () => {
     vi.resetAllMocks()
   })
 
+  describe('listEveryGuide', () => {
+    function page (ids, nextCursor) {
+      return {
+        ok: true,
+        status: 200,
+        data: guidanceApiFixtures.guidePageResponse({
+          items: ids.map(id => guidanceApiFixtures.guideSummaryResponse({ id })),
+          nextCursor
+        })
+      }
+    }
+
+    test('lists every guide, following each page\'s cursor to the last, in the API\'s order', async () => {
+      guidesApi.listGuides
+        .mockResolvedValueOnce(page(['guide-3', 'guide-2'], 'guide-2'))
+        .mockResolvedValueOnce(page(['guide-1'], null))
+
+      const guides = await guideService.listEveryGuide()
+
+      expect(guides.map(guide => guide.id)).toEqual(['guide-3', 'guide-2', 'guide-1'])
+      expect(guidesApi.listGuides.mock.calls).toEqual([
+        [{ limit: 100, cursor: undefined }],
+        [{ limit: 100, cursor: 'guide-2' }]
+      ])
+    })
+
+    test('asks once when every guide is on the first page', async () => {
+      guidesApi.listGuides.mockResolvedValueOnce(page(['guide-1'], null))
+
+      await guideService.listEveryGuide()
+
+      expect(guidesApi.listGuides).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('listGuides', () => {
     test('shapes each guide and passes the cursor on', async () => {
       guidesApi.listGuides.mockResolvedValue({

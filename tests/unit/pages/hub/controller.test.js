@@ -21,7 +21,7 @@ describe('#hubController', () => {
     vi.restoreAllMocks()
     code = vi.fn()
     h = { view: vi.fn(() => ({ code })) }
-    vi.spyOn(guidesService, 'listGuides').mockResolvedValue({ guides: [], nextCursor: null })
+    vi.spyOn(guidesService, 'listEveryGuide').mockResolvedValue([])
     vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([
       { label: 'Sustainable Farming Incentive (SFI)', shortLabel: 'SFI' }
     ])
@@ -54,7 +54,7 @@ describe('#hubController', () => {
     })
 
     test('Should list every guide, each linking to the guide', async () => {
-      guidesService.listGuides.mockResolvedValue({ guides: [listedGuide], nextCursor: null })
+      guidesService.listEveryGuide.mockResolvedValue([listedGuide])
 
       await getHubPage({}, h)
 
@@ -70,10 +70,9 @@ describe('#hubController', () => {
     })
 
     test('Should say when a guide has no title, schemes, date or owner', async () => {
-      guidesService.listGuides.mockResolvedValue({
-        guides: [{ ...listedGuide, title: null, schemes: [], owner: null, lastUpdated: null }],
-        nextCursor: null
-      })
+      guidesService.listEveryGuide.mockResolvedValue([
+        { ...listedGuide, title: null, schemes: [], owner: null, lastUpdated: null }
+      ])
 
       await getHubPage({}, h)
 
@@ -89,13 +88,13 @@ describe('#hubController', () => {
 
     test('Should let a failure to list the guides through', async () => {
       const failure = new Error('connection refused')
-      guidesService.listGuides.mockRejectedValue(failure)
+      guidesService.listEveryGuide.mockRejectedValue(failure)
 
       await expect(getHubPage({}, h)).rejects.toBe(failure)
     })
 
     test('Should show stored scheme labels when the schemes are unavailable', async () => {
-      guidesService.listGuides.mockResolvedValue({ guides: [listedGuide], nextCursor: null })
+      guidesService.listEveryGuide.mockResolvedValue([listedGuide])
       referenceDataService.getSchemes.mockRejectedValue(new Error('metadata unavailable'))
 
       await getHubPage({}, h)

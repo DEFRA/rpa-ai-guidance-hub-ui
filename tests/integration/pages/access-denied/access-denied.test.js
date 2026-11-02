@@ -95,7 +95,7 @@ describe('Access control (Hub.Viewer)', () => {
   describe('a signed-in user with Hub.Viewer', () => {
     test('can use the hub', async () => {
       nock(config.get('guidanceApi.baseUrl')).get('/reference/schemes').optionally().reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
-      nock(config.get('guidanceApi.baseUrl')).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
+      nock(config.get('guidanceApi.baseUrl')).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
       const cookie = await loginWithRoles('Hub.Viewer')
 
       const { statusCode } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
@@ -148,7 +148,7 @@ describe('Access control (Hub.Viewer)', () => {
       vi.stubEnv('DEV_USER_ROLES', '')
       const cookie = await loginAsDevUser(openServer)
       nock(config.get('guidanceApi.baseUrl')).get('/reference/schemes').optionally().reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
-      nock(config.get('guidanceApi.baseUrl')).get('/guides').optionally().reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
+      nock(config.get('guidanceApi.baseUrl')).get('/guides').query(true).optionally().reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
 
       const { payload } = await openServer.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
@@ -159,7 +159,7 @@ describe('Access control (Hub.Viewer)', () => {
       vi.stubEnv('DEV_USER_ROLES', '')
       const cookie = await loginAsDevUser(openServer)
       nock(config.get('guidanceApi.baseUrl')).get('/reference/schemes').optionally().reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
-      nock(config.get('guidanceApi.baseUrl')).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
+      nock(config.get('guidanceApi.baseUrl')).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
 
       const { statusCode } = await openServer.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
