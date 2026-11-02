@@ -52,7 +52,7 @@ const ROLE_DISPLAY_NAMES = {
 }
 
 function _formatRolesCaption (roles) {
-  if (!roles || !roles.length) {
+  if (!roles?.length) {
     return null
   }
 
