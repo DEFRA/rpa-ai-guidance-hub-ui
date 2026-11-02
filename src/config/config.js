@@ -313,11 +313,11 @@ const config = convict({
       default: 'entra',
       env: 'AUTH_PROVIDER'
     },
-    requireViewerRole: {
-      doc: 'Restrict the service to users holding the Hub.Viewer role (the UAT pilot group). When false (the default), any signed-in user can use it.',
+    enforceRoles: {
+      doc: 'Enforce roles: the service is restricted to users holding Hub.Viewer (the UAT pilot group), and editor pages to users also holding Hub.Editor. When false (the default), any signed-in user can use everything.',
       format: Boolean,
       default: false,
-      env: 'AUTH_REQUIRE_VIEWER_ROLE'
+      env: 'AUTH_ENFORCE_ROLES'
     },
     entra: {
       tenantId: {

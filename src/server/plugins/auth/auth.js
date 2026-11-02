@@ -2,6 +2,7 @@ import Jwt from '@hapi/jwt'
 
 import { config } from '../../../config/config.js'
 import { ROLES } from '../../../constants/roles.js'
+import { roleEnforcementEnabled } from '../../access-control/hub-access.js'
 import { profileFromClaims, refreshTokens, GRANT_TYPES, verifyIdToken } from './oidc.js'
 import { createLogger } from '../../../infra/logging/logger.js'
 
@@ -21,7 +22,9 @@ const REJECTED_REFRESH_ERRORS = new Set(['invalid_grant', 'interaction_required'
  * @property {string} sessionId
  * @property {{ id: string, displayName: string, email: string, roles: string[] }} profile
  *   - as `profileFromClaims` (Entra) or the local mock user builds it
- * @property {string[]} roles - the user's app roles, as `profile.roles`
+ * @property {string[]} roles - the user's app roles, as `profile.roles`, or
+ *   none if the session predates roles. The one place anything that checks or
+ *   shows a role reads them from.
  * @property {string[]} scope - the roles again, for hapi route `access.scope`
  * @property {string} token
  * @property {string} [refreshToken]
@@ -50,7 +53,7 @@ const auth = {
 
 /**
  * @private
- * Every route needs a session. With `auth.requireViewerRole` on, it must also
+ * Every route needs a session. With `auth.enforceRoles` on, it must also
  * hold Hub.Viewer (credentials carry the roles as `scope`), unless the route
  * sets `auth: false` or `auth.access.scope: false`. hapi checks scope only
  * once the session is valid, so a signed-out user is still sent to sign in
@@ -59,7 +62,7 @@ const auth = {
  * @returns {import('@hapi/hapi').RouteOptionsAccess & { strategy: string }}
  */
 function _getDefaultAuth () {
-  if (!config.get('auth.requireViewerRole')) {
+  if (!roleEnforcementEnabled()) {
     return { strategy: 'session' }
   }
 
@@ -174,7 +177,8 @@ async function _validateSessionToken (request, session) {
  * @returns {SessionCredentials}
  */
 function _toCredentials (userSession, sessionId) {
-  const { roles } = userSession.profile
+  // A session stored before roles were added has none: it holds no roles.
+  const roles = userSession.profile.roles ?? []
 
   return {
     ...userSession,

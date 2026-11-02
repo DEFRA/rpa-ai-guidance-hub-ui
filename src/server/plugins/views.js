@@ -5,7 +5,8 @@ import hapiVision from '@hapi/vision'
 import nunjucks from 'nunjucks'
 
 import { config } from '../../config/config.js'
-import { ROLES } from '../../constants/roles.js'
+import { ROLES, roleDisplayNames } from '../../constants/roles.js'
+import { roleEnforcementEnabled } from '../access-control/hub-access.js'
 import { jsonScript, renderMarkdownFallback } from '../../pages/guide/markdown.js'
 import { isNavCollapsed } from '../../pages/side-nav/collapsed.js'
 
@@ -46,19 +47,14 @@ function loadManifest () {
   return JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
 }
 
-const ROLE_DISPLAY_NAMES = new Map([
-  [ROLES.EDITOR, 'Designer'],
-  [ROLES.VIEWER, 'Viewer']
-])
-
 function _formatRolesCaption (roles) {
-  if (!roles?.length) {
+  const names = roleDisplayNames(roles)
+
+  if (names.length === 0) {
     return null
   }
 
-  return roles
-    .map((role) => ROLE_DISPLAY_NAMES.get(role) ?? role)
-    .join(', ')
+  return names.join(', ')
 }
 
 // Signed-out pages render too, with no credentials; signed in, they are always
@@ -124,9 +120,9 @@ const viewPlugin = {
         // Returns { script, style } when enabled, undefined otherwise
         cspNonce: request?.plugins?.blankie?.nonces,
         isAuthenticated: Boolean(request?.auth?.isAuthenticated),
-        // The hub has no roles yet, so everyone gets the designer's view; an
-        // operator's view is the same without the designer's functions.
-        isDesigner: true,
+        // The editor's functions are not rendered at all for anyone else, unless
+        // roles are not enforced, when everyone gets them.
+        isEditor: !roleEnforcementEnabled() || roles.includes(ROLES.EDITOR),
         roles,
         userRolesCaption: _formatRolesCaption(roles),
         // Read only when signed in, when the nav shows: a page no route matches

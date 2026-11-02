@@ -128,19 +128,30 @@ describe('Access control (Hub.Viewer)', () => {
     })
   })
 
-  describe('with AUTH_REQUIRE_VIEWER_ROLE off', () => {
+  describe('with AUTH_ENFORCE_ROLES off', () => {
     let openServer
-    const original = config.get('auth.requireViewerRole')
+    const original = config.get('auth.enforceRoles')
 
     beforeAll(async () => {
-      config.set('auth.requireViewerRole', false)
+      config.set('auth.enforceRoles', false)
       openServer = await createServer()
       await openServer.initialize()
     })
 
     afterAll(async () => {
-      config.set('auth.requireViewerRole', original)
+      config.set('auth.enforceRoles', original)
       await openServer.stop()
+    })
+
+    test('the side navigation shows the editor section to a user with no roles', async () => {
+      vi.stubEnv('DEV_USER_ROLES', '')
+      const cookie = await loginAsDevUser(openServer)
+      nock(config.get('guidanceApi.baseUrl')).get('/reference/schemes').optionally().reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
+      nock(config.get('guidanceApi.baseUrl')).get('/guides').optionally().reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
+
+      const { payload } = await openServer.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+
+      expect(payload).toContain('Upload guidance')
     })
 
     test('a user without Hub.Viewer can use the hub', async () => {

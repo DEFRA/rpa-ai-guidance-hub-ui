@@ -179,7 +179,7 @@ describe('views plugin', () => {
           credentials: { roles: ['Hub.Editor', 'Hub.Viewer'], profile: { roles: ['Hub.Editor', 'Hub.Viewer'] } }
         }
       }
-      expect(viewPlugin.options.context(bothRolesRequest).userRolesCaption).toBe('Designer, Viewer')
+      expect(viewPlugin.options.context(bothRolesRequest).userRolesCaption).toBe('Viewer, Designer')
 
       const unknownRoleRequest = {
         auth: {
@@ -187,7 +187,7 @@ describe('views plugin', () => {
           credentials: { roles: ['CustomRole'], profile: { roles: ['CustomRole'] } }
         }
       }
-      expect(viewPlugin.options.context(unknownRoleRequest).userRolesCaption).toBe('CustomRole')
+      expect(viewPlugin.options.context(unknownRoleRequest).userRolesCaption).toBeNull()
 
       const emptyRolesRequest = {
         auth: {
