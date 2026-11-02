@@ -410,6 +410,16 @@ $app-content-gutter: govuk-spacing(4);
   overflow-wrap: anywhere;
 }
 
+.app-side-nav__user-name {
+  color: $govuk-black;
+  font-weight: 700;
+}
+
+.app-side-nav__user-roles {
+  color: $app-side-nav-muted;
+  font-size: 14px;
+}
+
 .app-side-nav__chevron {
   width: 16px;
   height: 16px;

@@ -69,6 +69,14 @@ describe('Side navigation', () => {
     expect(payload).toMatch(/app-side-nav__footer"[^]*href="\/logout"[^>]*>[^<]*Sign out/)
   })
 
+  test('displays user display name and role caption in footer', async () => {
+    const cookie = await loginAsDevUser(server)
+
+    const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+
+    expect(payload).toContain('class="app-side-nav__user-name">Dev User</div>')
+  })
+
   describe('contents', () => {
     async function navOf (url) {
       const cookie = await loginAsDevUser(server)
