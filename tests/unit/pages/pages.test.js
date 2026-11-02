@@ -1,6 +1,8 @@
 import path from 'node:path'
 
+import { ROLES } from '../../../src/constants/roles.js'
 import { registerRoutes } from '../../../src/pages/pages.js'
+import { requireRoles } from '../../../src/server/access-control/require-roles.js'
 
 describe('#registerRoutes', () => {
   test('registers routes for modules that export a routes array', () => {
@@ -18,6 +20,35 @@ describe('#registerRoutes', () => {
     registerRoutes(server, [{}])
 
     expect(server.route).not.toHaveBeenCalled()
+  })
+
+  test('requires the editor role on every create-guidance route, keeping its other options', () => {
+    const server = { route: vi.fn() }
+    const validate = { payload: vi.fn() }
+    const routes = [{
+      method: 'POST',
+      path: '/create-guidance/example',
+      options: { app: { roleRequiredReason: 'do an example' }, validate },
+      handler: vi.fn()
+    }]
+
+    registerRoutes(server, [{ routes }])
+
+    const [registered] = server.route.mock.calls[0][0]
+    expect(registered.options).toEqual({
+      auth: requireRoles(ROLES.EDITOR),
+      app: { roleRequiredReason: 'do an example' },
+      validate
+    })
+  })
+
+  test('leaves routes outside create-guidance as they are', () => {
+    const server = { route: vi.fn() }
+    const route = { method: 'GET', path: '/hub/create-guidance', handler: vi.fn() }
+
+    registerRoutes(server, [{ routes: [route] }])
+
+    expect(server.route.mock.calls[0][0][0]).toBe(route)
   })
 })
 

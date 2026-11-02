@@ -1,5 +1,3 @@
-import { requireRoles } from '../../../../server/access-control/require-roles.js'
-import { ROLES } from '../../../../constants/roles.js'
 import { getSchemes } from '../../../../services/reference-data.js'
 import { toLabels } from './view-helpers.js'
 import * as metadataController from './controller.js'
@@ -10,7 +8,6 @@ const routes = [
     method: 'GET',
     path: '/create-guidance/upload-guide/metadata',
     options: {
-      auth: requireRoles(ROLES.EDITOR),
       app: { roleRequiredReason: 'add details to a new guide' }
     },
     handler: metadataController.getMetadataForm
@@ -19,7 +16,6 @@ const routes = [
     method: 'POST',
     path: '/create-guidance/upload-guide/metadata',
     options: {
-      auth: requireRoles(ROLES.EDITOR),
       app: { roleRequiredReason: 'add details to a new guide' },
       validate: {
         payload: async (payload, options) => {
