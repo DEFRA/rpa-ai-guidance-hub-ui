@@ -1,3 +1,4 @@
+import { SCHEME_YEAR } from '../../../../constants/scheme-year.js'
 import { NOT_SCHEME_SPECIFIC } from '../../../../services/reference-data.js'
 import { mapValidationError } from '../../form-errors.js'
 import { formatStagedDocumentDate, toCheckboxOptions, toOptionValue, toOptionValues } from './view-helpers.js'
@@ -37,6 +38,7 @@ class GuideDetailsViewModel {
     this.versionNumber = data.versionNumber || NOT_AVAILABLE
     this.lastModifiedDate = data.lastModifiedDate || NOT_AVAILABLE
     this.schemeOptions = schemeOptions
+    this.schemeYear = String(SCHEME_YEAR)
     this.backUrl = data.backUrl || BACK_URL
     this.formAction = data.formAction || '/create-guidance/upload-guide/metadata'
     this.notification = data.notification || null

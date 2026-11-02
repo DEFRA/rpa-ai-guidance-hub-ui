@@ -1,3 +1,4 @@
+import { SCHEME_YEAR } from '../../constants/scheme-year.js'
 import {
   buildSummaryCard,
   displayLabel,
@@ -61,6 +62,7 @@ function buildGuideDetailsCard ({
         'Last modified date',
         _valueOrNotProvided(formatStagedDocumentDate(stagedDocument?.lastModified))
       ),
+      buildSummaryRow('Scheme year', String(SCHEME_YEAR)),
       buildSummaryRow('Scheme', _labelsOrNotProvided(metadata.schemes, referenceOptions.schemes))
     ]
   })

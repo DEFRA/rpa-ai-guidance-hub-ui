@@ -39,7 +39,7 @@ describe('guides service', () => {
 
     expect(createGuideSpy).toHaveBeenCalledWith({
       source: { uploadId: 'upload-1', fileId: 'file-1' },
-      metadata: { guideTitle: 'A title' },
+      metadata: { guideTitle: 'A title', schemeYear: 2026 },
       createdBy: { id: 'user-1', displayName: 'A User' }
     })
   })
@@ -50,7 +50,7 @@ describe('guides service', () => {
     await guideService.createGuide({ ...guide, metadata: { ...guide.metadata, schemes: ['Not scheme-specific'] } })
 
     expect(createGuideSpy).toHaveBeenCalledWith(expect.objectContaining({
-      metadata: { guideTitle: 'A title', schemes: [] }
+      metadata: { guideTitle: 'A title', schemes: [], schemeYear: 2026 }
     }))
   })
 

@@ -37,6 +37,7 @@ describe('buildGuideSummaryCards', () => {
         { key: { text: 'Guidance title' }, value: { text: 'A title' } },
         { key: { text: 'Version number' }, value: { text: '1.2' } },
         { key: { text: 'Last modified date' }, value: { text: '29 June 2026' } },
+        { key: { text: 'Scheme year' }, value: { text: '2026' } },
         {
           key: { text: 'Scheme' },
           value: { text: 'Sustainable Farming Incentive (SFI), Not scheme-specific' }
@@ -70,6 +71,7 @@ describe('buildGuideSummaryCards', () => {
       'Not provided',
       'Not provided',
       'Not provided',
+      '2026',
       'Not provided'
     ])
     expect(ownerPurposeCard.rows.map((row) => row.value.text)).toEqual([
@@ -102,7 +104,7 @@ describe('buildGuideSummaryCards', () => {
       }
     })
 
-    expect(guideDetailsCard.rows[3].value.text).toBe('Sustainable Farming Incentive (SFI), Retired scheme')
+    expect(guideDetailsCard.rows[4].value.text).toBe('Sustainable Farming Incentive (SFI), Retired scheme')
     expect(ownerPurposeCard.rows[3].value.text).toBe('CRM')
     expect(ownerPurposeCard.rows[4].value.text).toBe('Processor')
   })

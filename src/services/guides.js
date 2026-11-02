@@ -1,3 +1,4 @@
+import { SCHEME_YEAR } from '../constants/scheme-year.js'
 import { statusCodes } from '../constants/status-codes.js'
 
 import * as guidesApi from '../infra/guidance-api/guides.js'
@@ -72,9 +73,12 @@ const ALLOWED_ASSET_CONTENT_TYPES = new Set([
  * @returns {Promise<{code: string}>} One of `RESULTS`
  */
 async function createGuide ({ uploadId, fileId, metadata, user }) {
+  const kept = metadata.schemes ? { ...metadata, schemes: schemesAsKept(metadata.schemes) } : metadata
+
   const res = await guidesApi.createGuide({
     source: { uploadId, fileId },
-    metadata: metadata.schemes ? { ...metadata, schemes: schemesAsKept(metadata.schemes) } : metadata,
+    // The scheme year is fixed, so the form does not send it.
+    metadata: { ...kept, schemeYear: SCHEME_YEAR },
     createdBy: { id: user.id, displayName: user.displayName }
   })
 

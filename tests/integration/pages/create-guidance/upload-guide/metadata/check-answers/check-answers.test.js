@@ -168,7 +168,8 @@ describe('#checkAnswersController Integration', () => {
             goal: 'Clear guidance purpose',
             requirements: 'Standard training required',
             systems: ['CRM'],
-            audience: ['Processor']
+            audience: ['Processor'],
+            schemeYear: 2026
           },
           createdBy: { id: 'dev-user-123', displayName: 'Dev User' }
         })

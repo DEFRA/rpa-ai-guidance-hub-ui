@@ -162,6 +162,18 @@ describe('#metadataController Integration', () => {
       expect(response.payload).toContain('2.0')
       expect(response.payload).toContain('10 May 2026')
     })
+
+    test('GET /create-guidance/upload-guide/metadata shows the scheme year, 2026, chosen and fixed', async () => {
+      const devCookie = await loginAsDevUser(server)
+      const cookie = await completeParse(server, devCookie)
+      mockSchemes()
+      nock(GUIDANCE_API_BASE_URL).get('/guides/staging/file-1').once().reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'complete' }))
+
+      const { payload } = await server.inject({ method: 'GET', url: '/create-guidance/upload-guide/metadata', headers: { cookie } })
+
+      expect(payload).toMatch(/<legend class="govuk-fieldset__legend govuk-fieldset__legend--s">\s*Scheme year\s*<\/legend>/)
+      expect(payload).toMatch(/<input class="govuk-radios__input" id="scheme-year" name="schemeYear" type="radio" value="2026" checked disabled>/)
+    })
   })
 
   describe('When not logged in', () => {

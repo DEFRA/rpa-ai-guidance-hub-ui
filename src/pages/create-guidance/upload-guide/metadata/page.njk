@@ -1,5 +1,6 @@
 {% extends "common/layout.njk" %}
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
 
 {% block beforeContent %}
   <a class="govuk-back-link" href="{{ backUrl }}">Back</a>
@@ -74,6 +75,15 @@
             </dd>
           </div>
         </dl>
+
+        {# The only scheme year there is, for now: chosen and fixed. A disabled
+           field is not sent, so the guide is given it when it is converted. #}
+        {{ govukRadios({
+          idPrefix: "scheme-year",
+          name: "schemeYear",
+          fieldset: { legend: { text: "Scheme year", classes: "govuk-fieldset__legend--s" } },
+          items: [{ value: schemeYear, text: schemeYear, checked: true, disabled: true }]
+        }) }}
 
         <div class="govuk-form-group{% if errors.schemes %} govuk-form-group--error{% endif %}">
           <fieldset class="govuk-fieldset" aria-describedby="scheme-hint{% if errors.schemes %} scheme-error{% endif %}">
