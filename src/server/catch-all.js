@@ -1,5 +1,6 @@
 import { statusCodes } from '../constants/status-codes.js'
-import { ACCESS_DENIED_PATH, isRefusedForViewerRole } from './access-control.js'
+import { describeRefusal } from './access-control/describe-refusal.js'
+import { MISSING_ROLES_FLASH_KEY } from './access-control/hub-access.js'
 import { buildErrorLog } from '../infra/logging/utils/build-error-log.js'
 
 const DEFAULT_BOOM_500_MESSAGE = 'An internal server error occurred'
@@ -23,15 +24,28 @@ function statusCodeMessage (boom) {
   return STATUS_CODE_MESSAGES[statusCode] ?? 'Something went wrong'
 }
 
-function catchAll (request, h) {
+async function catchAll (request, h) {
   const { response } = request
 
   if (!('isBoom' in response)) {
     return h.continue
   }
 
-  if (isRefusedForViewerRole(request)) {
-    return h.redirect(ACCESS_DENIED_PATH)
+  const refusal = describeRefusal(request)
+
+  if (refusal) {
+    if (refusal.missingRoles) {
+      request.yar.flash(
+        MISSING_ROLES_FLASH_KEY,
+        { missingRoles: refusal.missingRoles, reason: refusal.reason },
+        true
+      )
+      // yar's own onPreResponse has already committed the session by the time
+      // this runs, so commit again to keep the flash.
+      await request.yar.commit(h)
+    }
+
+    return h.redirect(refusal.redirectTo)
   }
 
   const { payload } = response.output

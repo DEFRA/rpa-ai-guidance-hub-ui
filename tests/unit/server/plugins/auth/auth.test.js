@@ -86,10 +86,12 @@ async function buildServerWithSession () {
 
       if (request.query.token) {
         const roles = request.query.roles ? request.query.roles.split(',') : []
+        // `legacy` stores a profile from before roles were added: no roles key.
+        const profile = request.query.legacy ? { id: 'user-123' } : { id: 'user-123', roles }
         await request.server.app.cache.set(`auth-session:${sessionId}`, {
           token: request.query.token,
           refreshToken: request.query.refreshToken,
-          profile: { id: 'user-123', roles }
+          profile
         })
       }
 
@@ -621,6 +623,22 @@ describe('#auth', () => {
     test('exposes empty roles and scope for a user with no roles', async () => {
       const token = generateEntraJwt()
       const cookie = await loginWithToken(server, { token })
+
+      const { statusCode, result } = await server.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(200)
+      expect(result.roles).toEqual([])
+      expect(result.scope).toEqual([])
+    })
+
+    test('treats a session stored before roles were added as having no roles', async () => {
+      const token = generateEntraJwt()
+      const response = await server.inject({ method: 'GET', url: `/test-login?token=${token}&legacy=true` })
+      const cookie = response.headers['set-cookie'].map((c) => c.split(';')[0]).join('; ')
 
       const { statusCode, result } = await server.inject({
         method: 'GET',

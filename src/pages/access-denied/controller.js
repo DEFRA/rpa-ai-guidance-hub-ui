@@ -1,4 +1,4 @@
-import { canUseHub } from '../../server/access-control.js'
+import { MISSING_ROLES_FLASH_KEY, canUseHub } from '../../server/access-control/hub-access.js'
 import { statusCodes } from '../../constants/status-codes.js'
 
 async function getAccessDenied (request, h) {
@@ -15,4 +15,20 @@ async function getAccessDenied (request, h) {
     .code(statusCodes.HTTP_STATUS_FORBIDDEN)
 }
 
-export { getAccessDenied }
+async function getRoleRequired (request, h) {
+  const { missingRoles, reason } = request.yar.flash(MISSING_ROLES_FLASH_KEY)
+
+  if (!missingRoles) {
+    return h.redirect('/hub')
+  }
+
+  return h
+    .view('access-denied/role-required.njk', {
+      pageTitle: 'You do not have permission to do this',
+      missingRoles: missingRoles.join(' and '),
+      reason
+    })
+    .code(statusCodes.HTTP_STATUS_FORBIDDEN)
+}
+
+export { getAccessDenied, getRoleRequired }

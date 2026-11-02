@@ -1,3 +1,5 @@
+import { requireRoles } from '../../../../server/access-control/require-roles.js'
+import { ROLES } from '../../../../constants/roles.js'
 import { getSchemes } from '../../../../services/reference-data.js'
 import { toLabels } from './view-helpers.js'
 import * as metadataController from './controller.js'
@@ -7,18 +9,23 @@ const routes = [
   {
     method: 'GET',
     path: '/create-guidance/upload-guide/metadata',
+    options: {
+      auth: requireRoles(ROLES.EDITOR),
+      app: { roleRequiredReason: 'add details to a new guide' }
+    },
     handler: metadataController.getMetadataForm
   },
   {
     method: 'POST',
     path: '/create-guidance/upload-guide/metadata',
     options: {
+      auth: requireRoles(ROLES.EDITOR),
+      app: { roleRequiredReason: 'add details to a new guide' },
       validate: {
         payload: async (payload, options) => {
           const schemeOptions = await getSchemes()
           const schema = buildMetadataSchema(schemeOptions)
 
-          // The form posts option values; the schema and handlers work in labels.
           const labelled = payload.schemes === undefined
             ? payload
             : { ...payload, schemes: toLabels(payload.schemes, schemeOptions) }
