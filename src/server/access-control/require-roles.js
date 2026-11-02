@@ -3,8 +3,9 @@ import { roleEnforcementEnabled } from './hub-access.js'
 
 /**
  * Route auth for pages and endpoints that need particular roles, GET and POST
- * alike: `options: { auth: requireRoles(ROLES.EDITOR) }`. The user must hold
- * every role listed (hapi's `+` scope prefix).
+ * alike. The page router gives it to every route under a path that needs a
+ * role (see `src/pages/pages.js`), so routes do not set it themselves. The
+ * user must hold every role listed (hapi's `+` scope prefix).
  *
  * A route's own `access.scope` replaces the default one, so the Viewer
  * requirement is restated while `auth.enforceRoles` is on.
