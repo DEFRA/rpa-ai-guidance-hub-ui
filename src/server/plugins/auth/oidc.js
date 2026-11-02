@@ -128,21 +128,26 @@ async function verifyIdToken (idToken, { nonce }) {
 
 /**
  * Maps verified id_token claims to the session profile shape the rest of the
- * app reads (`id`, `displayName`, `email`). `oid` is the user's object ID -
- * the same value Microsoft Graph returns as `/me` `id`.
+ * app reads (`id`, `displayName`, `email`, `roles`). `oid` is the user's
+ * object ID - the same value Microsoft Graph returns as `/me` `id`.
  *
  * @param {object} claims
- * @returns {{ id: string, displayName: string, email: string }}
+ * @returns {{ id: string, displayName: string, email: string, roles: string[] }}
  */
 function profileFromClaims (claims) {
   if (!claims.oid) {
     throw new Error('Entra id_token has no oid claim')
   }
 
+  const roles = Array.isArray(claims.roles)
+    ? claims.roles.filter((role) => typeof role === 'string')
+    : []
+
   return {
     id: claims.oid,
     displayName: claims.name,
-    email: claims.preferred_username ?? claims.email
+    email: claims.preferred_username ?? claims.email,
+    roles
   }
 }
 

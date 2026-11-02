@@ -121,7 +121,17 @@ async function _validateSessionToken (request, session) {
     await request.server.app.cache.set(`auth-session:${session.sessionId}`, userSession)
   }
 
-  return { isValid: true, credentials: { ...userSession, sessionId: session.sessionId } }
+  const roles = userSession.profile?.roles ?? []
+
+  return {
+    isValid: true,
+    credentials: {
+      ...userSession,
+      sessionId: session.sessionId,
+      roles,
+      scope: roles
+    }
+  }
 }
 
 /**

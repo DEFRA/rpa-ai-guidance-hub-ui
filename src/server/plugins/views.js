@@ -88,6 +88,7 @@ const viewPlugin = {
       // The hub has no roles yet, so everyone gets the designer's view; an
       // operator's view is the same without the designer's functions.
       isDesigner: true,
+      roles: request?.auth?.credentials?.profile?.roles ?? request?.auth?.credentials?.roles ?? [],
       // Read only when signed in, when the nav shows: a page no route matches
       // has no session to read.
       sideNavCollapsed: request?.auth?.isAuthenticated ? isNavCollapsed(request) : false,

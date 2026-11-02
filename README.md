@@ -140,6 +140,7 @@ When using local authentication:
 - The Entra ID configuration variables (`ENTRA_*`) are optional
 - Users can access the application without requiring actual Entra credentials
 - Sessions still use the same cookie-based mechanism as Entra authentication
+- Roles assigned to the mock user can be customized using `DEV_USER_ROLES` (comma-separated, e.g. `DEV_USER_ROLES=Hub.Editor,Hub.Viewer`)
 
 #### When to Use
 
@@ -164,6 +165,7 @@ When using local authentication:
 | `GUIDANCE_API_AUDIENCE` | No | `rpa_ai_guidance_hub_api` | Audience requested for the STS web identity token sent to the guidance API |
 | `ENTRA_AUTHORITY_HOST` | No | `https://login.microsoftonline.com` | Entra authority host used to build authorization endpoints |
 | `ENTRA_REDIRECT_HOST` | Yes* | `null` | Base URL for the OIDC redirect URI `<host>/login/callback`, which must match the app registration (e.g., `http://localhost:3000` for dev, `https://your-domain.gov.uk` for prod) |
+| `DEV_USER_ROLES` | No | `null` | Comma-separated roles assigned to the local mock user when `AUTH_PROVIDER=local` (defaults to no roles if unset) |
 
 **\* Required when `AUTH_PROVIDER=entra` and `NODE_ENV=production`. Optional for development/test environments.**
 

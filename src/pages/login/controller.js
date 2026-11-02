@@ -106,7 +106,12 @@ async function loginAsDevUser (request, h) {
     { ttlSec: config.get('session.cookie.ttl') / 1000 }
   )
 
-  return _startSession(request, h, { profile: mockUser, token })
+  const profile = {
+    ...mockUser,
+    roles: _getMockUserRoles()
+  }
+
+  return _startSession(request, h, { profile, token })
 }
 
 /**
@@ -125,6 +130,26 @@ async function logout (request, h) {
   }
 
   return h.redirect('/')
+}
+
+/**
+ * @private
+ * Parses the comma-separated roles from the `DEV_USER_ROLES` environment
+ * variable for the local development mock user.
+ *
+ * @returns {string[]} Array of role names
+ */
+function _getMockUserRoles () {
+  const rolesConfig = process.env.DEV_USER_ROLES
+
+  if (!rolesConfig) {
+    return []
+  }
+
+  return rolesConfig
+    .split(',')
+    .map((role) => role.trim())
+    .filter(Boolean)
 }
 
 /**

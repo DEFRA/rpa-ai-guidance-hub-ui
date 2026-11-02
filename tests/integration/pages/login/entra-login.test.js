@@ -105,5 +105,53 @@ describe('#loginController under the entra provider', () => {
       expect(hub.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(hub.payload).toContain('Test User')
     })
+
+    test.each([
+      ['Viewer role', ['Hub.Viewer']],
+      ['Editor role', ['Hub.Editor']],
+      ['both roles', ['Hub.Editor', 'Hub.Viewer']],
+      ['neither role', []]
+    ])('accepts sign-in and enriches session for user with %s', async (_desc, roles) => {
+      const login = await server.inject({ method: 'GET', url: '/login' })
+      const authorizeUrl = new URL(login.headers.location)
+      const state = authorizeUrl.searchParams.get('state')
+      const nonce = authorizeUrl.searchParams.get('nonce')
+
+      nock(ENTRA_HOST)
+        .post(`${TENANT_PATH}/oauth2/v2.0/token`)
+        .reply(statusCodes.HTTP_STATUS_OK, {
+          access_token: generateEntraJwt(),
+          refresh_token: 'refresh-token',
+          id_token: generateEntraJwt({ nonce, oid: USER_OID, roles })
+        })
+      nock(ENTRA_HOST)
+        .get(`${TENANT_PATH}/discovery/v2.0/keys`)
+        .reply(statusCodes.HTTP_STATUS_OK, getJwks())
+
+      const callback = await sendCallback(server, {
+        cookie: cookieHeader(login),
+        params: { code: 'auth-code', state }
+      })
+
+      expect(callback.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(callback.headers.location).toBe('/hub')
+
+      nock(config.get('guidanceApi.baseUrl'))
+        .get('/reference/schemes')
+        .reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
+
+      nock(config.get('guidanceApi.baseUrl'))
+        .get('/guides')
+        .reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
+
+      const hub = await server.inject({
+        method: 'GET',
+        url: '/hub',
+        headers: { cookie: cookieHeader(callback) }
+      })
+
+      expect(hub.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(hub.payload).toContain('Test User')
+    })
   })
 })

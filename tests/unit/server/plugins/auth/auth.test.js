@@ -85,10 +85,11 @@ async function buildServerWithSession () {
       const sessionId = randomUUID()
 
       if (request.query.token) {
+        const roles = request.query.roles ? request.query.roles.split(',') : undefined
         await request.server.app.cache.set(`auth-session:${sessionId}`, {
           token: request.query.token,
           refreshToken: request.query.refreshToken,
-          profile: { id: 'user-123' }
+          profile: { id: 'user-123', ...(roles ? { roles } : {}) }
         })
       }
 
@@ -105,6 +106,30 @@ async function buildServerWithSession () {
     handler: (request) => request.auth.credentials
   })
 
+  server.route({
+    method: 'GET',
+    path: '/editor-only',
+    options: {
+      auth: {
+        strategy: 'session',
+        scope: ['Hub.Editor']
+      }
+    },
+    handler: () => ({ status: 'editor-access-granted' })
+  })
+
+  server.route({
+    method: 'GET',
+    path: '/viewer-only',
+    options: {
+      auth: {
+        strategy: 'session',
+        scope: ['Hub.Viewer']
+      }
+    },
+    handler: () => ({ status: 'viewer-access-granted' })
+  })
+
   await server.initialize()
 
   return server
@@ -113,15 +138,17 @@ async function buildServerWithSession () {
 /**
  * Logs in to a `buildServerWithSession` server and returns a `Cookie` header
  * value carrying the authenticated session, for use in a subsequent
- * `server.inject` call. Omit `token` to set the cookieAuth cookie without a
+ * `server.inject` call. Pass `{ token: null }` or omit `token` to set the cookieAuth cookie without a
  * corresponding cached session.
  *
  * @param {import('@hapi/hapi').Server} server
- * @param {string} [token]
- * @param {string} [refreshToken]
+ * @param {object} [overrides]
+ * @param {string} [overrides.token]
+ * @param {string} [overrides.refreshToken]
+ * @param {string[]|string} [overrides.roles]
  * @returns {Promise<string>}
  */
-async function loginWithToken (server, token, refreshToken) {
+async function loginWithToken (server, { token, refreshToken, roles } = {}) {
   const params = new URLSearchParams()
 
   if (token) {
@@ -130,6 +157,10 @@ async function loginWithToken (server, token, refreshToken) {
 
   if (refreshToken) {
     params.append('refreshToken', refreshToken)
+  }
+
+  if (roles) {
+    params.append('roles', Array.isArray(roles) ? roles.join(',') : roles)
   }
 
   const query = params.size ? `?${params.toString()}` : ''
@@ -234,7 +265,7 @@ describe('#auth', () => {
 
     test('Should authenticate the request when the session holds a non-expired token', async () => {
       const token = generateEntraJwt()
-      const cookie = await loginWithToken(server, token)
+      const cookie = await loginWithToken(server, { token })
 
       const { statusCode, result } = await server.inject({
         method: 'GET',
@@ -252,7 +283,7 @@ describe('#auth', () => {
 
     test('Should redirect to / and log when the session token has expired and refresh tokens are disabled', async () => {
       const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
-      const cookie = await loginWithToken(server, expiredToken)
+      const cookie = await loginWithToken(server, { token: expiredToken })
 
       const { statusCode, headers } = await server.inject({
         method: 'GET',
@@ -289,7 +320,7 @@ describe('#auth', () => {
 
     test('Should refresh the expired session token and authenticate the request', async () => {
       const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
-      const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
+      const cookie = await loginWithToken(server, { token: expiredToken, refreshToken: 'old-refresh-token' })
 
       const refreshScope = nock('https://login.microsoftonline.com')
         .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`, (body) => {
@@ -321,7 +352,7 @@ describe('#auth', () => {
 
     test('Should preserve the old refresh token when the refresh response omits it', async () => {
       const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
-      const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
+      const cookie = await loginWithToken(server, { token: expiredToken, refreshToken: 'old-refresh-token' })
 
       const refreshScope = nock('https://login.microsoftonline.com')
         .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`, (body) => {
@@ -350,7 +381,7 @@ describe('#auth', () => {
 
     test('Should redirect to / when refreshing the expired session token fails', async () => {
       const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
-      const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
+      const cookie = await loginWithToken(server, { token: expiredToken, refreshToken: 'old-refresh-token' })
 
       nock('https://login.microsoftonline.com')
         .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
@@ -368,7 +399,7 @@ describe('#auth', () => {
 
     test('Should redirect to / when Entra requires interaction to refresh', async () => {
       const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
-      const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
+      const cookie = await loginWithToken(server, { token: expiredToken, refreshToken: 'old-refresh-token' })
 
       nock('https://login.microsoftonline.com')
         .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
@@ -386,7 +417,7 @@ describe('#auth', () => {
 
     test('Should redirect to / when the token endpoint is unavailable', async () => {
       const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
-      const cookie = await loginWithToken(server, expiredToken, 'old-refresh-token')
+      const cookie = await loginWithToken(server, { token: expiredToken, refreshToken: 'old-refresh-token' })
 
       nock('https://login.microsoftonline.com')
         .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
@@ -404,7 +435,7 @@ describe('#auth', () => {
 
     test('Should redirect to / without calling the token endpoint when the session has no refresh token', async () => {
       const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
-      const cookie = await loginWithToken(server, expiredToken)
+      const cookie = await loginWithToken(server, { token: expiredToken })
 
       const refreshScope = nock('https://login.microsoftonline.com')
         .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
@@ -427,7 +458,7 @@ describe('#auth', () => {
 
     test('Should not attempt to refresh a session token that has not expired', async () => {
       const token = generateEntraJwt()
-      const cookie = await loginWithToken(server, token, 'old-refresh-token')
+      const cookie = await loginWithToken(server, { token, refreshToken: 'old-refresh-token' })
 
       const refreshScope = nock('https://login.microsoftonline.com')
         .post(`/${ENTRA_TEST_FIXTURE_VALUE}/oauth2/v2.0/token`)
@@ -473,7 +504,7 @@ describe('#auth', () => {
 
     test('Should redirect to / without any outbound request when the session token has expired', async () => {
       const expiredToken = generateEntraJwt({ exp: Math.floor(Date.now() / 1000) - 3600 })
-      const cookie = await loginWithToken(server, expiredToken)
+      const cookie = await loginWithToken(server, { token: expiredToken })
 
       const requests = []
 
@@ -493,6 +524,90 @@ describe('#auth', () => {
       } finally {
         nock.emitter.removeListener('no match', onNoMatch)
       }
+    })
+  })
+
+  describe('User role and scope exposure', () => {
+    let server
+
+    beforeEach(async () => {
+      process.env.AUTH_PROVIDER = 'local'
+      vi.resetModules()
+      nock.disableNetConnect()
+      server = await buildServerWithSession()
+    })
+
+    afterEach(async () => {
+      await server.stop({ timeout: 0 })
+      nock.cleanAll()
+      nock.enableNetConnect()
+    })
+
+    test('exposes roles and scope on credentials when roles are present', async () => {
+      const token = generateEntraJwt()
+      const cookie = await loginWithToken(server, { token, roles: ['Hub.Editor', 'Hub.Viewer'] })
+
+      const { statusCode, result } = await server.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(200)
+      expect(result.roles).toEqual(['Hub.Editor', 'Hub.Viewer'])
+      expect(result.scope).toEqual(['Hub.Editor', 'Hub.Viewer'])
+      expect(result.profile.roles).toEqual(['Hub.Editor', 'Hub.Viewer'])
+    })
+
+    test('defaults roles and scope to empty array when profile has no roles', async () => {
+      const token = generateEntraJwt()
+      const cookie = await loginWithToken(server, { token })
+
+      const { statusCode, result } = await server.inject({
+        method: 'GET',
+        url: '/protected',
+        headers: { cookie }
+      })
+
+      expect(statusCode).toBe(200)
+      expect(result.roles).toEqual([])
+      expect(result.scope).toEqual([])
+    })
+
+    test('enforces route scope auth for Hub.Editor and Hub.Viewer', async () => {
+      const token = generateEntraJwt()
+
+      // User with Editor only
+      const editorCookie = await loginWithToken(server, { token, roles: ['Hub.Editor'] })
+      const editorOnEditor = await server.inject({ method: 'GET', url: '/editor-only', headers: { cookie: editorCookie } })
+      const editorOnViewer = await server.inject({ method: 'GET', url: '/viewer-only', headers: { cookie: editorCookie } })
+
+      expect(editorOnEditor.statusCode).toBe(200)
+      expect(editorOnViewer.statusCode).toBe(403)
+
+      // User with Viewer only
+      const viewerCookie = await loginWithToken(server, { token, roles: ['Hub.Viewer'] })
+      const viewerOnEditor = await server.inject({ method: 'GET', url: '/editor-only', headers: { cookie: viewerCookie } })
+      const viewerOnViewer = await server.inject({ method: 'GET', url: '/viewer-only', headers: { cookie: viewerCookie } })
+
+      expect(viewerOnEditor.statusCode).toBe(403)
+      expect(viewerOnViewer.statusCode).toBe(200)
+
+      // User with Both roles
+      const bothCookie = await loginWithToken(server, { token, roles: ['Hub.Editor', 'Hub.Viewer'] })
+      const bothOnEditor = await server.inject({ method: 'GET', url: '/editor-only', headers: { cookie: bothCookie } })
+      const bothOnViewer = await server.inject({ method: 'GET', url: '/viewer-only', headers: { cookie: bothCookie } })
+
+      expect(bothOnEditor.statusCode).toBe(200)
+      expect(bothOnViewer.statusCode).toBe(200)
+
+      // User with Neither role
+      const neitherCookie = await loginWithToken(server, { token, roles: [] })
+      const neitherOnEditor = await server.inject({ method: 'GET', url: '/editor-only', headers: { cookie: neitherCookie } })
+      const neitherOnViewer = await server.inject({ method: 'GET', url: '/viewer-only', headers: { cookie: neitherCookie } })
+
+      expect(neitherOnEditor.statusCode).toBe(403)
+      expect(neitherOnViewer.statusCode).toBe(403)
     })
   })
 })

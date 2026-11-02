@@ -233,7 +233,7 @@ describe('#entraOidc', () => {
       const { profileFromClaims } = await getOidc()
 
       expect(profileFromClaims({ oid: 'oid-1', name: 'Test User', preferred_username: 'test@example.com' }))
-        .toEqual({ id: 'oid-1', displayName: 'Test User', email: 'test@example.com' })
+        .toEqual({ id: 'oid-1', displayName: 'Test User', email: 'test@example.com', roles: [] })
     })
 
     test('falls back to the email claim', async () => {
@@ -241,6 +241,55 @@ describe('#entraOidc', () => {
 
       expect(profileFromClaims({ oid: 'oid-1', name: 'Test User', email: 'test@example.com' }).email)
         .toBe('test@example.com')
+    })
+
+    test('extracts roles array when present in claims', async () => {
+      const { profileFromClaims } = await getOidc()
+
+      expect(profileFromClaims({
+        oid: 'oid-1',
+        name: 'Test User',
+        email: 'test@example.com',
+        roles: ['Hub.Viewer']
+      }).roles).toEqual(['Hub.Viewer'])
+
+      expect(profileFromClaims({
+        oid: 'oid-1',
+        name: 'Test User',
+        email: 'test@example.com',
+        roles: ['Hub.Editor']
+      }).roles).toEqual(['Hub.Editor'])
+
+      expect(profileFromClaims({
+        oid: 'oid-1',
+        name: 'Test User',
+        email: 'test@example.com',
+        roles: ['Hub.Editor', 'Hub.Viewer']
+      }).roles).toEqual(['Hub.Editor', 'Hub.Viewer'])
+    })
+
+    test('defaults roles to an empty array when not present or not an array', async () => {
+      const { profileFromClaims } = await getOidc()
+
+      expect(profileFromClaims({
+        oid: 'oid-1',
+        name: 'Test User',
+        email: 'test@example.com'
+      }).roles).toEqual([])
+
+      expect(profileFromClaims({
+        oid: 'oid-1',
+        name: 'Test User',
+        email: 'test@example.com',
+        roles: 'invalid'
+      }).roles).toEqual([])
+
+      expect(profileFromClaims({
+        oid: 'oid-1',
+        name: 'Test User',
+        email: 'test@example.com',
+        roles: null
+      }).roles).toEqual([])
     })
 
     test('throws without an oid claim', async () => {
