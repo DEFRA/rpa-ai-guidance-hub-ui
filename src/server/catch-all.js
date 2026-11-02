@@ -1,4 +1,5 @@
 import { statusCodes } from '../constants/status-codes.js'
+import { ACCESS_DENIED_PATH, isRefusedForViewerRole } from './access-control.js'
 import { buildErrorLog } from '../infra/logging/utils/build-error-log.js'
 
 const DEFAULT_BOOM_500_MESSAGE = 'An internal server error occurred'
@@ -27,6 +28,10 @@ function catchAll (request, h) {
 
   if (!('isBoom' in response)) {
     return h.continue
+  }
+
+  if (isRefusedForViewerRole(request)) {
+    return h.redirect(ACCESS_DENIED_PATH)
   }
 
   const { payload } = response.output

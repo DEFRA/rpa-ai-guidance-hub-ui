@@ -1,0 +1,36 @@
+{% extends "common/layout.njk" %}
+
+{# The sign-in page's frame (header logo at the same gutter), with a plain
+   GOV.UK error page inside it. #}
+{% set bodyClasses = 'app-sign-in-page' %}
+
+{% block content %}
+  <div class="app-error-page">
+    <div class="govuk-grid-row">
+      <div class="govuk-grid-column-two-thirds app-content">
+        <h1 class="govuk-heading-l">You do not have access to the guidance hub</h1>
+
+        <p class="govuk-body">
+          {% if userEmail %}
+            You are signed in as {{ userEmail }}, but you are not part of the pilot group.
+          {% else %}
+            You are signed in, but you are not part of the pilot group.
+          {% endif %}
+        </p>
+
+        <p class="govuk-body">
+          Only people taking part in the beta can use the hub while it is being piloted.
+        </p>
+
+        <div class="govuk-inset-text app-error-page__inset">
+          If you think you should have access to the pilot, email the AI Capability and Enablement team at
+          <a class="govuk-link" href="mailto:{{ accessRequestEmail }}">{{ accessRequestEmail }}</a>.
+        </div>
+
+        <p class="govuk-body">
+          If you have just been added, <a class="govuk-link" href="/logout">sign out</a> and sign in again.
+        </p>
+      </div>
+    </div>
+  </div>
+{% endblock %}

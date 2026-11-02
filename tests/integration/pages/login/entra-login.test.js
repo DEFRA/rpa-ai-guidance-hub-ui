@@ -75,7 +75,7 @@ describe('#loginController under the entra provider', () => {
         .reply(statusCodes.HTTP_STATUS_OK, {
           access_token: generateEntraJwt(),
           refresh_token: 'refresh-token',
-          id_token: generateEntraJwt({ nonce, oid: USER_OID })
+          id_token: generateEntraJwt({ nonce, oid: USER_OID, roles: ['Hub.Viewer'] })
         })
       nock(ENTRA_HOST)
         .get(`${TENANT_PATH}/discovery/v2.0/keys`)
@@ -107,10 +107,43 @@ describe('#loginController under the entra provider', () => {
     })
 
     test.each([
+      ['Editor role only', ['Hub.Editor']],
+      ['neither role', []]
+    ])('accepts sign-in but confines a user with %s to the access-denied page', async (_desc, roles) => {
+      const login = await server.inject({ method: 'GET', url: '/login' })
+      const authorizeUrl = new URL(login.headers.location)
+      const state = authorizeUrl.searchParams.get('state')
+      const nonce = authorizeUrl.searchParams.get('nonce')
+
+      nock(ENTRA_HOST)
+        .post(`${TENANT_PATH}/oauth2/v2.0/token`)
+        .reply(statusCodes.HTTP_STATUS_OK, {
+          access_token: generateEntraJwt(),
+          refresh_token: 'refresh-token',
+          id_token: generateEntraJwt({ nonce, oid: USER_OID, roles })
+        })
+      nock(ENTRA_HOST)
+        .get(`${TENANT_PATH}/discovery/v2.0/keys`)
+        .reply(statusCodes.HTTP_STATUS_OK, getJwks())
+
+      const callback = await sendCallback(server, {
+        cookie: cookieHeader(login),
+        params: { code: 'auth-code', state }
+      })
+      const cookie = cookieHeader(callback)
+
+      const hub = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+      expect(hub.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(hub.headers.location).toBe('/access-denied')
+
+      const denied = await server.inject({ method: 'GET', url: '/access-denied', headers: { cookie } })
+      expect(denied.statusCode).toBe(statusCodes.HTTP_STATUS_FORBIDDEN)
+      expect(denied.payload).not.toContain('app-side-nav')
+    })
+
+    test.each([
       ['Viewer role', ['Hub.Viewer'], 'Viewer'],
-      ['Editor role', ['Hub.Editor'], 'Designer'],
-      ['both roles', ['Hub.Editor', 'Hub.Viewer'], 'Designer, Viewer'],
-      ['neither role', [], null]
+      ['both roles', ['Hub.Editor', 'Hub.Viewer'], 'Designer, Viewer']
     ])('accepts sign-in and enriches session for user with %s', async (_desc, roles, caption) => {
       const login = await server.inject({ method: 'GET', url: '/login' })
       const authorizeUrl = new URL(login.headers.location)

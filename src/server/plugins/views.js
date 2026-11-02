@@ -61,8 +61,27 @@ function _formatRolesCaption (roles) {
     .join(', ')
 }
 
+// Signed-out pages render too, with no credentials; signed in, they are always
+// the SessionCredentials built in plugins/auth/auth.js.
+function _userRoles (request) {
+  if (!request?.auth?.isAuthenticated) {
+    return []
+  }
+
+  return request.auth.credentials.roles
+}
+
+function _userDisplayName (request) {
+  if (!request?.auth?.isAuthenticated) {
+    return null
+  }
+
+  return request.auth.credentials.profile.displayName
+}
+
 const assetPath = config.get('assetPath')
 const serviceName = config.get('serviceName')
+const accessRequestEmail = config.get('accessRequestEmail')
 
 const viteManifest = loadManifest()
 
@@ -85,7 +104,7 @@ const viewPlugin = {
     path: 'src/pages',
     isCached: config.get('env') === 'production',
     context: (request) => {
-      const roles = request?.auth?.credentials?.profile?.roles ?? request?.auth?.credentials?.roles ?? []
+      const roles = _userRoles(request)
 
       return {
         assetPath: `${assetPath}/assets`,
@@ -99,6 +118,7 @@ const viewPlugin = {
           return `${assetPath}/${viteAsset ?? asset}`
         },
         serviceName,
+        accessRequestEmail,
         currentPath: request?.path,
         // Blankie generates nonces when configured with generateNonces: true
         // Returns { script, style } when enabled, undefined otherwise
@@ -114,7 +134,7 @@ const viewPlugin = {
         sideNavCollapsed: request?.auth?.isAuthenticated ? isNavCollapsed(request) : false,
         // Where a form on the page sends the user back to: this page.
         currentUrl: request?.url ? `${request.url.pathname}${request.url.search}` : null,
-        userDisplayName: request?.auth?.credentials?.profile?.displayName ?? null
+        userDisplayName: _userDisplayName(request)
       }
     }
   }

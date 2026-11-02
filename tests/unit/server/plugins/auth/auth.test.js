@@ -85,11 +85,11 @@ async function buildServerWithSession () {
       const sessionId = randomUUID()
 
       if (request.query.token) {
-        const roles = request.query.roles ? request.query.roles.split(',') : undefined
+        const roles = request.query.roles ? request.query.roles.split(',') : []
         await request.server.app.cache.set(`auth-session:${sessionId}`, {
           token: request.query.token,
           refreshToken: request.query.refreshToken,
-          profile: { id: 'user-123', ...(roles ? { roles } : {}) }
+          profile: { id: 'user-123', roles }
         })
       }
 
@@ -618,7 +618,7 @@ describe('#auth', () => {
       expect(result.profile.roles).toEqual(['Hub.Editor', 'Hub.Viewer'])
     })
 
-    test('defaults roles and scope to empty array when profile has no roles', async () => {
+    test('exposes empty roles and scope for a user with no roles', async () => {
       const token = generateEntraJwt()
       const cookie = await loginWithToken(server, { token })
 

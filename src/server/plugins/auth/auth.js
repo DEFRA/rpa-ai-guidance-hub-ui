@@ -1,6 +1,7 @@
 import Jwt from '@hapi/jwt'
 
 import { config } from '../../../config/config.js'
+import { ROLES } from '../../../constants/roles.js'
 import { profileFromClaims, refreshTokens, GRANT_TYPES, verifyIdToken } from './oidc.js'
 import { createLogger } from '../../../infra/logging/logger.js'
 
@@ -17,7 +18,7 @@ const auth = {
     name: 'auth',
     register: async (server) => {
       server.auth.strategy('session', 'cookie', _getCookieOptions())
-      server.auth.default('session')
+      server.auth.default(_getDefaultAuth())
 
       if (config.get('auth.provider') === 'entra') {
         logger.info(
@@ -31,6 +32,24 @@ const auth = {
       }
     }
   }
+}
+
+/**
+ * @private
+ * Every route needs a session. With `auth.requireViewerRole` on, it must also
+ * hold Hub.Viewer (credentials carry the roles as `scope`), unless the route
+ * sets `auth: false` or `auth.access.scope: false`. hapi checks scope only
+ * once the session is valid, so a signed-out user is still sent to sign in
+ * first.
+ *
+ * @returns {import('@hapi/hapi').RouteOptionsAccess & { strategy: string }}
+ */
+function _getDefaultAuth () {
+  if (!config.get('auth.requireViewerRole')) {
+    return { strategy: 'session' }
+  }
+
+  return { strategy: 'session', access: { scope: [ROLES.VIEWER] } }
 }
 
 /**
@@ -86,7 +105,7 @@ function _getCookieOptions () {
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {object} session
- * @returns {Promise<{isValid: boolean, credentials?: object}>}
+ * @returns {Promise<{isValid: boolean, credentials?: SessionCredentials}>}
  */
 async function _validateSessionToken (request, session) {
   const userSession = await request.server.app.cache.get(`auth-session:${session.sessionId}`)
@@ -128,16 +147,40 @@ async function _validateSessionToken (request, session) {
     await request.server.app.cache.set(`auth-session:${session.sessionId}`, userSession)
   }
 
-  const roles = userSession.profile?.roles ?? []
-
   return {
     isValid: true,
-    credentials: {
-      ...userSession,
-      sessionId: session.sessionId,
-      roles,
-      scope: roles
-    }
+    credentials: _toCredentials(userSession, session.sessionId)
+  }
+}
+
+/**
+ * The `request.auth.credentials` of every signed-in request. Built only here,
+ * so code reading it can rely on this shape without fallbacks.
+ *
+ * @typedef {object} SessionCredentials
+ * @property {string} sessionId
+ * @property {{ id: string, displayName: string, email: string, roles: string[] }} profile
+ *   - as `profileFromClaims` (Entra) or the local mock user builds it
+ * @property {string[]} roles - the user's app roles, as `profile.roles`
+ * @property {string[]} scope - the roles again, for hapi route `access.scope`
+ * @property {string} token
+ * @property {string} [refreshToken]
+ */
+
+/**
+ * @private
+ * @param {{ profile: SessionCredentials['profile'], token: string, refreshToken?: string }} userSession
+ * @param {string} sessionId
+ * @returns {SessionCredentials}
+ */
+function _toCredentials (userSession, sessionId) {
+  const { roles } = userSession.profile
+
+  return {
+    ...userSession,
+    sessionId,
+    roles,
+    scope: roles
   }
 }
 
