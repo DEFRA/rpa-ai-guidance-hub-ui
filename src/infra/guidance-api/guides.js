@@ -49,13 +49,14 @@ async function createGuide (newGuide) {
  * @throws {GuidanceApiError} - When response is not ok
  */
 async function listGuides ({
-  limit, cursor, schemes, systems, audiences, guidanceTypes, sort
+  limit, cursor, schemes, noScheme, systems, audiences, guidanceTypes, sort
 } = {}) {
   return guidanceApiClient.request('/guides', {
     query: {
       limit,
       cursor,
       scheme: schemes,
+      no_scheme: noScheme ? 'true' : undefined,
       system: systems,
       audience: audiences,
       guidance_type: guidanceTypes,

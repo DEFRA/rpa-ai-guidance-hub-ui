@@ -1,6 +1,6 @@
 import { filterPanel, filtersFrom, listHref, sortFrom } from '../../../../src/pages/hub/filters.js'
 
-const NONE = { audience: [], system: [], scheme: [] }
+const NONE = { audience: [], system: [], scheme: [], noScheme: false }
 
 const COUNTS = {
   audience: [{ label: 'Processor', shortLabel: null, count: 3 }, { label: 'Checker', shortLabel: null, count: 1 }],
@@ -13,7 +13,14 @@ describe('filtersFrom', () => {
     expect(filtersFrom({ audience: 'Processor', system: ['CRM', 'SITI Agri'] })).toEqual({
       audience: ['Processor'],
       system: ['CRM', 'SITI Agri'],
-      scheme: []
+      scheme: [],
+      noScheme: false
+    })
+  })
+
+  test('reads whether the guides specific to no scheme are chosen', () => {
+    expect(filtersFrom({ no_scheme: 'true', scheme: 'Countryside Stewardship' })).toEqual({
+      ...NONE, scheme: ['Countryside Stewardship'], noScheme: true
     })
   })
 
@@ -73,6 +80,20 @@ describe('filterPanel', () => {
     expect(panel().groups[2].options).toEqual([
       { value: '2026', text: '2026', count: 3, checked: true, disabled: true }
     ])
+  })
+
+  test('offers the guides specific to no scheme as a scheme of their own, chosen by no_scheme', () => {
+    const withNone = { ...COUNTS, scheme: [...COUNTS.scheme, { label: null, shortLabel: null, count: 2 }] }
+
+    const { groups, selected } = panel({ counts: withNone, filters: { ...NONE, noScheme: true } })
+
+    expect(groups.at(-1).options.at(-1)).toEqual({ name: 'no_scheme', value: 'true', text: 'Not scheme-specific', count: 2, checked: true, disabled: false })
+    expect(selected).toEqual([{ text: 'Not scheme-specific', href: '/hub' }])
+  })
+
+  test('keeps the guides specific to no scheme in a list\'s address', () => {
+    expect(listHref('/hub', { ...NONE, scheme: ['Countryside Stewardship'], noScheme: true }))
+      .toBe('/hub?scheme=Countryside+Stewardship&no_scheme=true')
   })
 
   test('offers the scheme only when the guides have more than one', () => {

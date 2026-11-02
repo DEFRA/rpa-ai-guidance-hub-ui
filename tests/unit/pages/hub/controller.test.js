@@ -102,7 +102,7 @@ describe('#hubController', () => {
 
       const [, viewModel] = h.view.mock.calls[0]
       expect(guidesService.listEveryGuide).toHaveBeenCalledWith({
-        filters: { audience: ['Processor'], system: [], scheme: [] },
+        filters: { audience: ['Processor'], system: [], scheme: [], noScheme: false },
         sort: 'updated-oldest'
       })
       expect(viewModel.filters.action).toBe('/hub')

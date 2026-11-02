@@ -7,6 +7,7 @@
  */
 
 import { SCHEME_YEAR } from '../../constants/scheme-year.js'
+import { NOT_SCHEME_SPECIFIC } from '../../services/reference-data.js'
 import { displayLabel } from '../create-guidance/upload-guide/metadata/view-helpers.js'
 
 /** The filters, by the name each has in the address and in the API. */
@@ -23,6 +24,10 @@ const SORTS = Object.freeze([
 
 const LEGENDS = Object.freeze({ audience: "Who it's for", system: 'System used', scheme: 'Scheme' })
 
+// The address's name for choosing the guides specific to no scheme, beside the
+// schemes chosen.
+const NO_SCHEME = 'no_scheme'
+
 /**
  * @param {unknown} value - A query parameter: missing, one value, or several
  * @returns {string[]} The non-empty values
@@ -38,7 +43,10 @@ function _values (value) {
  * @returns {import('../../services/guides.js').Filters}
  */
 function filtersFrom (query = {}) {
-  return Object.fromEntries(FILTER_NAMES.map((name) => [name, _values(query[name])]))
+  return {
+    ...Object.fromEntries(FILTER_NAMES.map((name) => [name, _values(query[name])])),
+    noScheme: query[NO_SCHEME] === 'true'
+  }
 }
 
 /**
@@ -67,6 +75,10 @@ function listHref (path, filters, sort = DEFAULT_SORT) {
 
   FILTER_NAMES.forEach((name) => filters[name].forEach((value) => params.append(name, value)))
 
+  if (filters.noScheme) {
+    params.append(NO_SCHEME, 'true')
+  }
+
   if (sort !== DEFAULT_SORT) {
     params.set('sort', sort)
   }
@@ -90,22 +102,33 @@ function _without (filters, name, value) {
 
 /**
  * @private
+ * @param {{label: string|null, shortLabel: string|null, count: number}} option
+ *   - Counted; no label for the guides with none of the filter's values, which
+ *   only the scheme counts, as the guides specific to no scheme
+ * @param {import('../../services/guides.js').Filters} filters - Chosen
+ * @param {string} name - The filter's
+ * @returns {Object}
+ */
+function _option (option, filters, name) {
+  if (option.label === null) {
+    return { name: NO_SCHEME, value: 'true', text: NOT_SCHEME_SPECIFIC, count: option.count, checked: filters.noScheme, disabled: false }
+  }
+
+  return { value: option.label, text: displayLabel(option), count: option.count, checked: filters[name].includes(option.label), disabled: false }
+}
+
+/**
+ * @private
  * @param {string} name
- * @param {Array<{label: string, shortLabel: string|null, count: number}>} counted
- * @param {string[]} chosen
+ * @param {Array<{label: string|null, shortLabel: string|null, count: number}>} counted
+ * @param {import('../../services/guides.js').Filters} filters - Chosen
  * @returns {{name: string, legend: string, options: Array<object>}}
  */
-function _group (name, counted, chosen) {
+function _group (name, counted, filters) {
   return {
     name,
     legend: LEGENDS[name],
-    options: counted.map((option) => ({
-      value: option.label,
-      text: displayLabel(option),
-      count: option.count,
-      checked: chosen.includes(option.label),
-      disabled: false
-    }))
+    options: counted.map((option) => _option(option, filters, name))
   }
 }
 
@@ -127,8 +150,8 @@ function _group (name, counted, chosen) {
 function filterPanel ({ path, filters, counts, sort, total, withSort }) {
   const counted = (name) => counts[name] ?? []
   const groups = [
-    _group('audience', counted('audience'), filters.audience),
-    _group('system', counted('system'), filters.system),
+    _group('audience', counted('audience'), filters),
+    _group('system', counted('system'), filters),
     {
       name: 'year',
       legend: 'Scheme year',
@@ -136,14 +159,17 @@ function filterPanel ({ path, filters, counts, sort, total, withSort }) {
       // filtering nothing.
       options: [{ value: String(SCHEME_YEAR), text: String(SCHEME_YEAR), count: total, checked: true, disabled: true }]
     },
-    ...(counted('scheme').length > 1 ? [_group('scheme', counted('scheme'), filters.scheme)] : [])
+    ...(counted('scheme').length > 1 ? [_group('scheme', counted('scheme'), filters)] : [])
   ]
 
-  const selected = FILTER_NAMES.flatMap((name) => filters[name].map((value) => {
-    const option = counted(name).find((known) => known.label === value) ?? { label: value }
+  const selected = [
+    ...FILTER_NAMES.flatMap((name) => filters[name].map((value) => {
+      const option = counted(name).find((known) => known.label === value) ?? { label: value }
 
-    return { text: displayLabel(option), href: listHref(path, _without(filters, name, value), sort) }
-  }))
+      return { text: displayLabel(option), href: listHref(path, _without(filters, name, value), sort) }
+    })),
+    ...(filters.noScheme ? [{ text: NOT_SCHEME_SPECIFIC, href: listHref(path, { ...filters, noScheme: false }, sort) }] : [])
+  ]
 
   return {
     action: path,

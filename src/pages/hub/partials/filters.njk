@@ -33,7 +33,7 @@
       {% set items = [] %}
       {% for option in group.options %}
         {% set optionHtml %}{{ option.text }} <span class="app-hub-filters__count">({{ option.count }})</span>{% endset %}
-        {% set _ = items.push({ value: option.value, html: optionHtml, checked: option.checked, disabled: option.disabled }) %}
+        {% set _ = items.push({ name: option.name, value: option.value, html: optionHtml, checked: option.checked, disabled: option.disabled }) %}
       {% endfor %}
 
       {{ govukCheckboxes({

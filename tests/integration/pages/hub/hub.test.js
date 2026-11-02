@@ -227,6 +227,17 @@ describe('#hubController', () => {
       return { statusCode, payload, listing, main: payload.slice(payload.indexOf('<main'), payload.indexOf('</main>')) }
     }
 
+    test('offer the guides specific to no scheme as a scheme of their own, chosen by no_scheme', async () => {
+      const withNone = { ...COUNTS, scheme: [...COUNTS.scheme, { label: null, shortLabel: null, count: 2 }] }
+
+      const { listing, main } = await hubWith({ no_scheme: 'true' }, guidePageResponse({ counts: withNone }))
+      const filters = main.slice(main.indexOf('<aside class="app-hub-filters"'), main.indexOf('</aside>'))
+
+      expect(listing.isDone()).toBe(true)
+      expect(filters).toMatch(/<legend[^>]*>\s*Scheme\s*<\/legend>/)
+      expect(filters).toMatch(/name="no_scheme" type="checkbox" value="true" checked>\s*<label[^>]*>\s*Not scheme-specific <span class="app-hub-filters__count">\(2\)<\/span>/)
+    })
+
     test('offer who it\'s for, the system used and the scheme year beside the guides, each value with its count', async () => {
       const { main } = await hubWith({})
       const filters = main.slice(main.indexOf('<aside class="app-hub-filters"'), main.indexOf('</aside>'))

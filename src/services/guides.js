@@ -143,7 +143,8 @@ async function listGuides (filters) {
 /**
  * The hub's filters, by name, each with its chosen values.
  *
- * @typedef {{audience: string[], system: string[], scheme: string[]}} Filters
+ * @typedef {{audience: string[], system: string[], scheme: string[], noScheme?: boolean}} Filters
+ *   `noScheme` chooses the guides specific to no scheme too
  */
 
 /**
@@ -159,7 +160,7 @@ async function listGuides (filters) {
  */
 async function listEveryGuide ({ filters, sort } = {}) {
   const narrowing = filters
-    ? { audiences: filters.audience, systems: filters.system, schemes: filters.scheme }
+    ? { audiences: filters.audience, systems: filters.system, schemes: filters.scheme, noScheme: filters.noScheme }
     : {}
   const guides = []
   let cursor
