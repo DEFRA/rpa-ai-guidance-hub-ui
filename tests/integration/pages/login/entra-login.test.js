@@ -143,7 +143,8 @@ describe('#loginController under the entra provider', () => {
 
     test.each([
       ['Viewer role', ['Hub.Viewer'], 'Viewer'],
-      ['both roles', ['Hub.Editor', 'Hub.Viewer'], 'Viewer, Designer']
+      ['both roles', ['Hub.Editor', 'Hub.Viewer'], 'Viewer, Designer'],
+      ['every role and one the hub does not know', ['Hub.Admin', 'Hub.Other', 'Hub.Editor', 'Hub.Viewer'], 'Viewer, Designer, Administrator']
     ])('accepts sign-in and enriches session for user with %s', async (_desc, roles, caption) => {
       const login = await server.inject({ method: 'GET', url: '/login' })
       const authorizeUrl = new URL(login.headers.location)

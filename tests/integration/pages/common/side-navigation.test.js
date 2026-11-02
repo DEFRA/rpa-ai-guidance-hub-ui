@@ -73,6 +73,7 @@ describe('Side navigation', () => {
   test.each([
     ['Hub.Viewer', 'Viewer'],
     ['Hub.Editor,Hub.Viewer', 'Viewer, Designer'],
+    ['Hub.Admin,Hub.Editor,Hub.Viewer', 'Viewer, Designer, Administrator'],
     ['Hub.Viewer,toString', 'Viewer']
   ])('displays the user name and role caption for DEV_USER_ROLES=%s', async (roles, caption) => {
     vi.stubEnv('DEV_USER_ROLES', roles)

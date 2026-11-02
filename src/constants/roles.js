@@ -1,11 +1,13 @@
 const ROLES = {
   VIEWER: 'Hub.Viewer',
-  EDITOR: 'Hub.Editor'
+  EDITOR: 'Hub.Editor',
+  ADMIN: 'Hub.Admin'
 }
 
 const ROLE_DISPLAY_NAMES = new Map([
   [ROLES.VIEWER, 'Viewer'],
-  [ROLES.EDITOR, 'Designer']
+  [ROLES.EDITOR, 'Designer'],
+  [ROLES.ADMIN, 'Administrator']
 ])
 
 /**
