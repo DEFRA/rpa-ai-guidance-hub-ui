@@ -81,6 +81,13 @@ describe('Access control (Hub.Viewer)', () => {
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(response.headers.location).toBe('/')
+
+      // The session is gone, not just the cookie cleared: the original cookie
+      // is now sent to sign in (`/`) rather than to the access-denied page.
+      const reuse = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+
+      expect(reuse.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(reuse.headers.location).toBe('/')
     })
   })
 

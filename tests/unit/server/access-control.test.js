@@ -63,7 +63,13 @@ describe('Hub.Viewer default scope', () => {
     server.route([
       { method: ['GET', 'POST'], path: '/page', handler },
       { method: 'GET', path: '/exempt', options: { auth: { access: { scope: false } } }, handler: () => 'ok' },
-      { method: 'GET', path: '/public', options: { auth: false }, handler: () => 'ok' }
+      { method: 'GET', path: '/public', options: { auth: false }, handler: () => 'ok' },
+      {
+        method: 'GET',
+        path: '/public-forbidden',
+        options: { auth: false },
+        handler: () => { throw Boom.forbidden() }
+      }
     ])
 
     return server
@@ -103,5 +109,11 @@ describe('Hub.Viewer default scope', () => {
 
     expect((await server.inject('/page')).statusCode).toBe(401)
     expect((await server.inject('/public')).statusCode).toBe(200)
+  })
+
+  test('leaves a 403 for a signed-out user as a 403', async () => {
+    const server = await serverFor(null)
+
+    expect((await server.inject('/public-forbidden')).statusCode).toBe(403)
   })
 })
