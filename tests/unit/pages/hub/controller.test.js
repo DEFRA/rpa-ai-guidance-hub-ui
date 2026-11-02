@@ -44,10 +44,6 @@ describe('#hubController', () => {
           isEmpty: expect.any(Boolean),
           count: expect.any(Number)
         }),
-        awaitingMyReview: expect.objectContaining({
-          isEmpty: expect.any(Boolean),
-          count: expect.any(Number)
-        }),
         allGuides: expect.objectContaining({
           isEmpty: true,
           count: 0

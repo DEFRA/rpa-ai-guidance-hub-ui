@@ -120,8 +120,7 @@ describe('#hubController', () => {
     test.each([
       ['/hub/recently-opened', 'Recently opened', 'You haven&#39;t opened any guidance yet.'],
       ['/hub/pinned', 'Pinned', 'You haven&#39;t pinned any guidance yet.'],
-      ['/hub/bookmarked-guides', 'Bookmarked guides', 'You haven&#39;t bookmarked any guidance yet.'],
-      ['/hub/awaiting-my-review', 'Awaiting my review', 'There is no guidance awaiting your review.']
+      ['/hub/bookmarked-guides', 'Bookmarked guides', 'You haven&#39;t bookmarked any guidance yet.']
     ])('%s shows only the %s list', async (url, heading, emptyMessage) => {
       const cookie = await loginAsDevUser(server)
 
@@ -137,8 +136,7 @@ describe('#hubController', () => {
     test.each([
       ['/hub/recently-opened'],
       ['/hub/pinned'],
-      ['/hub/bookmarked-guides'],
-      ['/hub/awaiting-my-review']
+      ['/hub/bookmarked-guides']
     ])('%s does not ask the API for the guides', async (url) => {
       nock.cleanAll()
       const guides = nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
@@ -149,10 +147,13 @@ describe('#hubController', () => {
       expect(guides.isDone()).toBe(false)
     })
 
-    test('is not found when there is no such list', async () => {
+    test.each([
+      ['/hub/no-such-list'],
+      ['/hub/awaiting-my-review']
+    ])('is not found at %s, as there is no such list', async (url) => {
       const cookie = await loginAsDevUser(server)
 
-      const { statusCode } = await server.inject({ method: 'GET', url: '/hub/no-such-list', headers: { cookie } })
+      const { statusCode } = await server.inject({ method: 'GET', url, headers: { cookie } })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_NOT_FOUND)
     })

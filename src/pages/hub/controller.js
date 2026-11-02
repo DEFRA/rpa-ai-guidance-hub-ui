@@ -57,8 +57,7 @@ function _toAllGuidesItem (guide, shortLabels) {
 const LISTS = {
   'recently-opened': 'recentlyOpened',
   pinned: 'pinned',
-  'bookmarked-guides': 'bookmarkedGuides',
-  'awaiting-my-review': 'awaitingMyReview'
+  'bookmarked-guides': 'bookmarkedGuides'
 }
 
 const LIST_PATHS = Object.keys(LISTS)
