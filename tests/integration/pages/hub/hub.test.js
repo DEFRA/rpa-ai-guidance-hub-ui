@@ -182,9 +182,9 @@ describe('#hubController', () => {
       nock.cleanAll()
       nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').optionally().reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
       const guides = nock(GUIDANCE_API_BASE_URL)
-        .get('/guides').query({ limit: '100' })
+        .get('/guides').query({ limit: '100', sort: 'updated-newest' })
         .reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items: [guideSummaryResponse({ id: SECOND })], nextCursor: SECOND }))
-        .get('/guides').query({ limit: '100', cursor: SECOND })
+        .get('/guides').query({ limit: '100', cursor: SECOND, sort: 'updated-newest' })
         .reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items: [guideSummaryResponse({ id: FIRST })], nextCursor: null }))
       const cookie = await loginAsDevUser(server)
 
@@ -204,6 +204,80 @@ describe('#hubController', () => {
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
       expect(payload).toContain('There are no guides yet.')
+    })
+  })
+
+  describe('the filters and sort', () => {
+    const COUNTS = {
+      audience: [{ label: 'Processor', shortLabel: null, count: 3 }, { label: 'Checker', shortLabel: null, count: 1 }],
+      system: [{ label: 'CRM', shortLabel: null, count: 3 }],
+      scheme: [{ label: 'Countryside Stewardship', shortLabel: 'CS', count: 3 }]
+    }
+
+    /** The hub with `params` in its address, and the API asked for its list with them. */
+    async function hubWith (params, reply = guidePageResponse({ counts: COUNTS })) {
+      nock.cleanAll()
+      nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').optionally().reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
+      const query = { limit: '100', sort: 'updated-newest', ...params }
+      const listing = nock(GUIDANCE_API_BASE_URL).get('/guides').query(query).reply(statusCodes.HTTP_STATUS_OK, reply)
+      const cookie = await loginAsDevUser(server)
+      const url = `/hub?${new URLSearchParams(params)}`
+      const { statusCode, payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
+
+      return { statusCode, payload, listing, main: payload.slice(payload.indexOf('<main'), payload.indexOf('</main>')) }
+    }
+
+    test('offer who it\'s for, the system used and the scheme year beside the guides, each value with its count', async () => {
+      const { main } = await hubWith({})
+      const filters = main.slice(main.indexOf('<aside class="app-hub-filters"'), main.indexOf('</aside>'))
+
+      expect(filters).toContain('Filter results')
+      expect(filters).toMatch(/<legend[^>]*>\s*Who it&#39;s for\s*<\/legend>/)
+      expect(filters).toMatch(/value="Processor"[^>]*>\s*<label[^>]*>\s*Processor <span class="app-hub-filters__count">\(3\)<\/span>/)
+      expect(filters).toMatch(/<legend[^>]*>\s*System used\s*<\/legend>/)
+      expect(filters).toMatch(/name="year" type="checkbox" value="2026" checked disabled/)
+      expect(filters).not.toMatch(/<legend[^>]*>\s*Scheme\s*<\/legend>/)
+      expect(filters).toContain('action="/hub#guide-results"')
+      expect(filters).toContain('Apply filters')
+    })
+
+    test('pass the chosen values to the API, check them, and show each as a tag that takes it away', async () => {
+      const { listing, main } = await hubWith({ audience: 'Checker', system: 'CRM' })
+
+      expect(listing.isDone()).toBe(true)
+      expect(main).toMatch(/value="Checker" checked/)
+      expect(main).toContain('<a class="app-filter__tag" href="/hub?system=CRM">')
+      expect(main).toContain('<a class="app-filter__tag" href="/hub?audience=Checker">')
+      expect(main).toContain('<a class="govuk-link app-hub-filters__clear" href="/hub">Clear filters</a>')
+    })
+
+    test('sort the list as chosen, with Most relevant offered only once search exists', async () => {
+      const { listing, main } = await hubWith({ sort: 'updated-oldest' })
+
+      expect(listing.isDone()).toBe(true)
+      expect(main).toMatch(/<select class="govuk-select app-hub-results__sort-select" id="sort" name="sort" form="hub-filters" data-sort-select="true">/)
+      expect(main).toMatch(/<option value="updated-oldest" selected>Oldest updated<\/option>/)
+      expect(main).toMatch(/<option value="most-relevant" disabled>Most relevant<\/option>/)
+      expect(main).toContain('(Most relevant once you search)')
+    })
+
+    test('answer a value the hub does not have as a bad request', async () => {
+      nock.cleanAll()
+      nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').optionally().reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
+      nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(422, { detail: 'Unknown audience Martians' })
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode } = await server.inject({ method: 'GET', url: '/hub?audience=Martians', headers: { cookie } })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
+    })
+
+    test('carry on to the side navigation\'s links to the hub and its lists', async () => {
+      const { payload } = await hubWith({ system: 'CRM' })
+
+      expect(payload).toContain('href="/hub/recently-opened?system=CRM"')
+      expect(payload).toContain('href="/hub/pinned?system=CRM"')
+      expect(payload).toMatch(/class="app-side-nav__link[^"]*" href="\/hub\?system=CRM"/)
     })
   })
 

@@ -121,13 +121,16 @@ describe('guides service: reading', () => {
   })
 
   describe('listEveryGuide', () => {
+    const COUNTS = { scheme: [{ label: 'Countryside Stewardship', shortLabel: 'CS', count: 3 }], system: [], audience: [] }
+
     function page (ids, nextCursor) {
       return {
         ok: true,
         status: 200,
         data: guidanceApiFixtures.guidePageResponse({
           items: ids.map(id => guidanceApiFixtures.guideSummaryResponse({ id })),
-          nextCursor
+          nextCursor,
+          counts: COUNTS
         })
       }
     }
@@ -137,13 +140,34 @@ describe('guides service: reading', () => {
         .mockResolvedValueOnce(page(['guide-3', 'guide-2'], 'guide-2'))
         .mockResolvedValueOnce(page(['guide-1'], null))
 
-      const guides = await guideService.listEveryGuide()
+      const { guides } = await guideService.listEveryGuide()
 
       expect(guides.map(guide => guide.id)).toEqual(['guide-3', 'guide-2', 'guide-1'])
       expect(guidesApi.listGuides.mock.calls).toEqual([
         [{ limit: 100, cursor: undefined }],
         [{ limit: 100, cursor: 'guide-2' }]
       ])
+    })
+
+    test('passes the filters and sort on to every page, and answers each filter\'s counts', async () => {
+      guidesApi.listGuides
+        .mockResolvedValueOnce(page(['guide-2'], 'guide-2'))
+        .mockResolvedValueOnce(page(['guide-1'], null))
+
+      const { counts } = await guideService.listEveryGuide({
+        filters: { audience: ['Processor'], system: ['CRM', 'SITI Agri'], scheme: [] },
+        sort: 'updated-oldest'
+      })
+
+      expect(counts).toEqual(COUNTS)
+      expect(guidesApi.listGuides).toHaveBeenLastCalledWith({
+        limit: 100,
+        cursor: 'guide-2',
+        audiences: ['Processor'],
+        systems: ['CRM', 'SITI Agri'],
+        schemes: [],
+        sort: 'updated-oldest'
+      })
     })
 
     test('asks once when every guide is on the first page', async () => {
@@ -176,7 +200,8 @@ describe('guides service: reading', () => {
           audience: ['Processor'],
           lastUpdated: '2026-10-06T08:00:00Z'
         }],
-        nextCursor: 'next-1'
+        nextCursor: 'next-1',
+        counts: {}
       })
     })
 

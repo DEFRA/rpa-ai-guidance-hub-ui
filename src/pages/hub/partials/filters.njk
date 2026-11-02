@@ -1,0 +1,54 @@
+{% from "govuk/components/checkboxes/macro.njk" import govukCheckboxes %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+
+{#
+  The filter panel beside a list of guides, as the prototype's hub has it
+  (playground/hub/page.njk): one GET form, so it works without JavaScript;
+  the chosen values as tags, each a link that takes it away; each option
+  with its count. Reads `filters` (hub/filters.js's filterPanel).
+#}
+<aside class="app-hub-filters" aria-labelledby="hub-filters-heading">
+  <h2 class="govuk-heading-m app-hub-filters__title" id="hub-filters-heading">Filter results</h2>
+
+  {% if filters.selected.length %}
+    <div class="app-filter__selected app-hub-filters__selected">
+      <h3 class="govuk-visually-hidden">Selected filters</h3>
+      <ul class="app-filter__tags">
+        {% for tag in filters.selected %}
+          <li>
+            <a class="app-filter__tag" href="{{ tag.href }}">
+              <span class="govuk-visually-hidden">Remove filter</span>
+              {{ tag.text }}
+              <span class="app-filter__tag-remove" aria-hidden="true">&times;</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+      <a class="govuk-link app-hub-filters__clear" href="{{ filters.clearHref }}">Clear filters</a>
+    </div>
+  {% endif %}
+
+  <form id="hub-filters" method="get" action="{{ filters.action }}#guide-results">
+    {% for group in filters.groups %}
+      {% set items = [] %}
+      {% for option in group.options %}
+        {% set optionHtml %}{{ option.text }} <span class="app-hub-filters__count">({{ option.count }})</span>{% endset %}
+        {% set _ = items.push({ value: option.value, html: optionHtml, checked: option.checked, disabled: option.disabled }) %}
+      {% endfor %}
+
+      {{ govukCheckboxes({
+        idPrefix: group.name,
+        name: group.name,
+        classes: "govuk-checkboxes--small",
+        formGroup: { classes: "app-hub-filters__group" },
+        fieldset: { legend: { text: group.legend, classes: "govuk-fieldset__legend--s" } },
+        items: items
+      }) }}
+    {% endfor %}
+
+    {{ govukButton({
+      text: "Apply filters",
+      classes: "govuk-!-margin-bottom-0"
+    }) }}
+  </form>
+</aside>

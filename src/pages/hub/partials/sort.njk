@@ -1,0 +1,25 @@
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+
+{#
+  Sort by, in the list's header, as the prototype's hub has it. Part of the
+  filter form (form="hub-filters"): "Apply filters" sends it without
+  JavaScript, and hub-sort.js sends it as soon as it changes. Reads
+  `filters.sort`.
+#}
+{% set sortItems = [] %}
+{% for option in filters.sort.options %}
+  {% set _ = sortItems.push({ value: option.value, text: option.text, selected: option.selected, disabled: option.disabled }) %}
+{% endfor %}
+
+<div class="app-hub-results__sort">
+  {{ govukSelect({
+    id: "sort",
+    name: "sort",
+    label: { text: "Sort by:", classes: "app-hub-results__sort-label" },
+    classes: "app-hub-results__sort-select",
+    formGroup: { classes: "govuk-!-margin-bottom-0 app-hub-results__sort-group" },
+    attributes: { form: "hub-filters", "data-sort-select": true },
+    items: sortItems
+  }) }}
+  <span class="app-hub-results__sort-hint">(Most relevant once you search)</span>
+</div>

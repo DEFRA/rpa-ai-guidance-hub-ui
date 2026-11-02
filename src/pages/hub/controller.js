@@ -1,8 +1,11 @@
+import Boom from '@hapi/boom'
+
 import { statusCodes } from '../../constants/status-codes.js'
 import * as guidesService from '../../services/guides.js'
 import * as referenceDataService from '../../services/reference-data.js'
 import { createLogger } from '../../infra/logging/logger.js'
 import { formatIsoDate } from '../common/format-date.js'
+import { filterPanel, filtersFrom, sortFrom } from './filters.js'
 import { HubViewModel } from './view-models.js'
 
 const logger = createLogger()
@@ -62,14 +65,38 @@ const LISTS = {
 
 const LIST_PATHS = Object.keys(LISTS)
 
-async function getHubPage (_request, h) {
-  const [guides, shortLabels] = await Promise.all([
-    guidesService.listEveryGuide(),
+/**
+ * @private
+ * A filter value the API's reference data does not have is the asker's
+ * mistake (an address made by hand), not the hub's.
+ *
+ * @param {Promise<any>} listing
+ * @returns {Promise<any>}
+ * @throws {Boom.Boom} 400 when the API refuses a filter value
+ */
+async function _refusingUnknownFilters (listing) {
+  try {
+    return await listing
+  } catch (err) {
+    throw err.statusCode === statusCodes.HTTP_STATUS_UNPROCESSABLE_ENTITY ? Boom.badRequest(err.message) : err
+  }
+}
+
+/**
+ * The hub, listing every guide the filters let through, beside the filters
+ * and sort.
+ */
+async function getHubPage (request, h) {
+  const filters = filtersFrom(request.query)
+  const sort = sortFrom(request.query)
+  const [{ guides, counts }, shortLabels] = await Promise.all([
+    _refusingUnknownFilters(guidesService.listEveryGuide({ filters, sort })),
     _getSchemeShortLabels()
   ])
 
   const viewModel = new HubViewModel({
-    allGuides: guides.map((guide) => _toAllGuidesItem(guide, shortLabels))
+    allGuides: guides.map((guide) => _toAllGuidesItem(guide, shortLabels)),
+    filters: filterPanel({ path: '/hub', filters, counts, sort, total: guides.length, withSort: true })
   })
 
   return h

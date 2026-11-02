@@ -1,8 +1,15 @@
 import { statusCodes } from '../../../../src/constants/status-codes.js'
+import { GuidanceApiError } from '../../../../src/infra/guidance-api/client.js'
 
 import { getHubPage } from '../../../../src/pages/hub/controller.js'
 import * as guidesService from '../../../../src/services/guides.js'
 import * as referenceDataService from '../../../../src/services/reference-data.js'
+
+const COUNTS = {
+  audience: [{ label: 'Processor', shortLabel: null, count: 2 }],
+  system: [{ label: 'CRM', shortLabel: null, count: 2 }],
+  scheme: [{ label: 'Countryside Stewardship', shortLabel: 'CS', count: 2 }]
+}
 
 const listedGuide = {
   id: 'guide-1',
@@ -21,7 +28,7 @@ describe('#hubController', () => {
     vi.restoreAllMocks()
     code = vi.fn()
     h = { view: vi.fn(() => ({ code })) }
-    vi.spyOn(guidesService, 'listEveryGuide').mockResolvedValue([])
+    vi.spyOn(guidesService, 'listEveryGuide').mockResolvedValue({ guides: [], counts: COUNTS })
     vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([
       { label: 'Sustainable Farming Incentive (SFI)', shortLabel: 'SFI' }
     ])
@@ -29,7 +36,7 @@ describe('#hubController', () => {
 
   describe('getHubPage', () => {
     test('Should render the hub page with the guidance view models', async () => {
-      await getHubPage({}, h)
+      await getHubPage({ query: {} }, h)
 
       expect(h.view).toHaveBeenCalledWith('hub/page.njk', {
         recentlyOpened: expect.objectContaining({
@@ -48,15 +55,16 @@ describe('#hubController', () => {
           isEmpty: true,
           count: 0
         }),
-        shown: expect.objectContaining({ heading: 'All guides' })
+        shown: expect.objectContaining({ heading: 'All guides' }),
+        filters: expect.objectContaining({ action: '/hub' })
       })
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
     })
 
     test('Should list every guide, each linking to the guide', async () => {
-      guidesService.listEveryGuide.mockResolvedValue([listedGuide])
+      guidesService.listEveryGuide.mockResolvedValue({ guides: [listedGuide], counts: COUNTS })
 
-      await getHubPage({}, h)
+      await getHubPage({ query: {} }, h)
 
       const [, viewModel] = h.view.mock.calls[0]
 
@@ -70,11 +78,12 @@ describe('#hubController', () => {
     })
 
     test('Should say when a guide has no title, schemes, date or owner', async () => {
-      guidesService.listEveryGuide.mockResolvedValue([
-        { ...listedGuide, title: null, schemes: [], owner: null, lastUpdated: null }
-      ])
+      guidesService.listEveryGuide.mockResolvedValue({
+        guides: [{ ...listedGuide, title: null, schemes: [], owner: null, lastUpdated: null }],
+        counts: COUNTS
+      })
 
-      await getHubPage({}, h)
+      await getHubPage({ query: {} }, h)
 
       const [, viewModel] = h.view.mock.calls[0]
 
@@ -86,18 +95,42 @@ describe('#hubController', () => {
       ])
     })
 
+    test('Should list the guides the filters let through, sorted as asked, beside the filters', async () => {
+      const request = { query: { audience: 'Processor', sort: 'updated-oldest' } }
+
+      await getHubPage(request, h)
+
+      const [, viewModel] = h.view.mock.calls[0]
+      expect(guidesService.listEveryGuide).toHaveBeenCalledWith({
+        filters: { audience: ['Processor'], system: [], scheme: [] },
+        sort: 'updated-oldest'
+      })
+      expect(viewModel.filters.action).toBe('/hub')
+      expect(viewModel.filters.selected).toEqual([{ text: 'Processor', href: '/hub?sort=updated-oldest' }])
+      expect(viewModel.filters.sort.options.find(option => option.selected).value).toBe('updated-oldest')
+    })
+
+    test('Should answer a filter value the hub does not have as a bad request', async () => {
+      guidesService.listEveryGuide.mockRejectedValue(new GuidanceApiError('guidance API GET /guides failed: 422', 422))
+
+      await expect(getHubPage({ query: { audience: 'Martians' } }, h)).rejects.toMatchObject({
+        isBoom: true,
+        output: { statusCode: statusCodes.HTTP_STATUS_BAD_REQUEST }
+      })
+    })
+
     test('Should let a failure to list the guides through', async () => {
       const failure = new Error('connection refused')
       guidesService.listEveryGuide.mockRejectedValue(failure)
 
-      await expect(getHubPage({}, h)).rejects.toBe(failure)
+      await expect(getHubPage({ query: {} }, h)).rejects.toBe(failure)
     })
 
     test('Should show stored scheme labels when the schemes are unavailable', async () => {
-      guidesService.listEveryGuide.mockResolvedValue([listedGuide])
+      guidesService.listEveryGuide.mockResolvedValue({ guides: [listedGuide], counts: COUNTS })
       referenceDataService.getSchemes.mockRejectedValue(new Error('metadata unavailable'))
 
-      await getHubPage({}, h)
+      await getHubPage({ query: {} }, h)
 
       const [, viewModel] = h.view.mock.calls[0]
       expect(viewModel.allGuides.rows[0][1].text).toBe(

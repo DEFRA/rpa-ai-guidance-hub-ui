@@ -44,6 +44,8 @@
 #}
 {% macro guidanceTablePanel(table) %}
   <h2 class="govuk-heading-m">{{ table.heading }}</h2>
+  {# Called with a block, it puts what the block gives under the heading (the hub's sort). #}
+  {% if caller %}{{ caller() }}{% endif %}
   {% if table.isEmpty %}
     <p class="govuk-body">{{ table.emptyMessage }}</p>
   {% else %}

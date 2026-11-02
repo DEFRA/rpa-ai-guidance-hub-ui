@@ -126,6 +126,8 @@ class HubViewModel {
    *   `{title, href, schemes, lastModified, owner}`
    * @param {string} [data.shown='allGuides'] - The table that the page
    *   shows
+   * @param {Object|null} [data.filters=null] - The filter panel beside the
+   *   list (`filters.js`), if it has one
    */
   constructor (data = {}) {
     const {
@@ -133,7 +135,8 @@ class HubViewModel {
       pinned = [],
       bookmarkedGuides = [],
       allGuides = [],
-      shown = 'allGuides'
+      shown = 'allGuides',
+      filters = null
     } = data
 
     this.recentlyOpened = _buildTable({
@@ -173,6 +176,7 @@ class HubViewModel {
     })
 
     this.shown = this[shown]
+    this.filters = filters
   }
 }
 

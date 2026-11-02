@@ -55,7 +55,20 @@
 
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-full">
-        {{ guidanceTablePanel(shown) }}
+        {% if filters %}
+          {# The filters beside the list, as the prototype's hub has them. #}
+          <div class="app-hub-columns">
+            {% include "hub/partials/filters.njk" %}
+
+            <div class="app-hub-results" id="guide-results">
+              {% call guidanceTablePanel(shown) %}
+                {% if filters.sort %}{% include "hub/partials/sort.njk" %}{% endif %}
+              {% endcall %}
+            </div>
+          </div>
+        {% else %}
+          {{ guidanceTablePanel(shown) }}
+        {% endif %}
       </div>
     </div>
 

@@ -127,29 +127,53 @@ async function listGuides (filters) {
 
   return {
     guides: res.data.items.map(item => _toSummary(item)),
-    nextCursor: res.data.nextCursor ?? null
+    nextCursor: res.data.nextCursor ?? null,
+    counts: res.data.counts ?? {}
   }
 }
 
 /**
- * Every guide there is, in the order the API lists them, following each
- * page's cursor until the last. Pages are as large as the API allows, to ask
- * as few times as it can.
+ * Each filter's values, labelled as the reference data labels them, with how
+ * many guides have each given the other filters chosen.
  *
- * @returns {Promise<GuideSummary[]>}
+ * @typedef {Object<string, Array<{label: string, shortLabel: string|null, count: number}>>} FilterCounts
+ *   By the filter's name: `audience`, `system`, `scheme`
  */
-async function listEveryGuide () {
+
+/**
+ * The hub's filters, by name, each with its chosen values.
+ *
+ * @typedef {{audience: string[], system: string[], scheme: string[]}} Filters
+ */
+
+/**
+ * Every guide there is that the filters let through, in the order the API
+ * lists them by the sort, following each page's cursor until the last. Pages
+ * are as large as the API allows, to ask as few times as it can.
+ *
+ * @param {Object} [options]
+ * @param {Filters} [options.filters]
+ * @param {string} [options.sort] - `updated-newest` or `updated-oldest`
+ * @returns {Promise<{guides: GuideSummary[], counts: FilterCounts}>} The
+ *   counts are the same on every page, so the first page's are kept
+ */
+async function listEveryGuide ({ filters, sort } = {}) {
+  const narrowing = filters
+    ? { audiences: filters.audience, systems: filters.system, schemes: filters.scheme }
+    : {}
   const guides = []
   let cursor
+  let counts
 
   do {
-    const page = await listGuides({ limit: LARGEST_PAGE, cursor })
+    const page = await listGuides({ limit: LARGEST_PAGE, cursor, ...narrowing, ...(sort ? { sort } : {}) })
 
     guides.push(...page.guides)
+    counts ??= page.counts
     cursor = page.nextCursor
   } while (cursor)
 
-  return guides
+  return { guides, counts }
 }
 
 /**
