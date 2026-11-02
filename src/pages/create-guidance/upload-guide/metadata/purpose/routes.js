@@ -1,5 +1,3 @@
-import { requireRoles } from '../../../../../server/access-control/require-roles.js'
-import { ROLES } from '../../../../../constants/roles.js'
 import { toLabels } from '../view-helpers.js'
 import * as purposeController from './controller.js'
 import { buildPurposeSchema } from './schemas/purpose-schema.js'
@@ -9,7 +7,6 @@ const routes = [
     method: 'GET',
     path: '/create-guidance/upload-guide/metadata/purpose',
     options: {
-      auth: requireRoles(ROLES.EDITOR),
       app: { roleRequiredReason: 'set the purpose of a new guide' }
     },
     handler: purposeController.getPurposeForm
@@ -18,7 +15,6 @@ const routes = [
     method: 'POST',
     path: '/create-guidance/upload-guide/metadata/purpose',
     options: {
-      auth: requireRoles(ROLES.EDITOR),
       app: { roleRequiredReason: 'set the purpose of a new guide' },
       validate: {
         payload: async (payload, options) => {
