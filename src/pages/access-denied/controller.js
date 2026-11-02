@@ -25,7 +25,7 @@ async function getRoleRequired (request, h) {
   return h
     .view('access-denied/role-required.njk', {
       pageTitle: 'You do not have permission to do this',
-      missingRoles: missingRoles.join(' and '),
+      missingRoles,
       reason
     })
     .code(statusCodes.HTTP_STATUS_FORBIDDEN)

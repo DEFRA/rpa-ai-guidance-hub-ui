@@ -69,6 +69,7 @@ describe('Access control (Hub.Viewer)', () => {
       expect(payload).toContain('<h1 class="govuk-heading-l">You do not have access to the guidance hub</h1>')
       expect(payload).toContain('You are signed in as dev@example.com')
       expect(payload).toContain('not part of the pilot group')
+      expect(payload).toContain('Only people taking part in the pilot can use the hub for now.')
       expect(payload).toContain(`href="mailto:${config.get('accessRequestEmail')}"`)
       expect(payload).toContain('href="/logout"')
       expect(payload).not.toContain(SIDE_NAVIGATION)

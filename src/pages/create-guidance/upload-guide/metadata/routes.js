@@ -22,6 +22,7 @@ const routes = [
           const schemeOptions = await getSchemes()
           const schema = buildMetadataSchema(schemeOptions)
 
+          // The form posts option values; the schema and handlers work in labels.
           const labelled = payload.schemes === undefined
             ? payload
             : { ...payload, schemes: toLabels(payload.schemes, schemeOptions) }
