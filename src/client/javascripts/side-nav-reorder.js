@@ -57,7 +57,7 @@ function movedMessage (label, position, count) {
  * The move was not kept - the pins changed since the page showed them, or the
  * hub could not be reached - so show them as they now are.
  */
-function showPinsAsSaved () {
+function reloadPage () {
   window.location.reload()
 }
 
@@ -75,15 +75,18 @@ class PinReorder {
   #list
   #status
   #layout
+  #showPinsAsSaved
   #press = null
   #drag = null
   #suppressClick = false
 
   /**
    * @param {HTMLElement} list - Carries `data-reorder-list`
+   * @param {() => void} showPinsAsSaved - For a move that was not kept
    */
-  constructor (list) {
+  constructor (list, showPinsAsSaved) {
     this.#list = list
+    this.#showPinsAsSaved = showPinsAsSaved
     this.#status = list.parentElement.querySelector('[data-reorder-status]')
     this.#layout = list.closest('.app-layout') ?? document.body
   }
@@ -213,7 +216,7 @@ class PinReorder {
     }
     this.#list.insertBefore(item, others[index] ?? null)
     this.#refreshMenus()
-    this.#save(item.dataset.reorderId, startIndex, index).catch(showPinsAsSaved)
+    this.#save(item.dataset.reorderId, startIndex, index).catch(this.#showPinsAsSaved)
     if (this.#status) {
       this.#status.textContent = movedMessage(item.dataset.reorderLabel, index, others.length + 1)
     }
@@ -239,7 +242,7 @@ class PinReorder {
     const response = await window.fetch(this.#list.dataset.reorderList, { method: 'POST', body })
 
     if (!response.ok) {
-      showPinsAsSaved()
+      this.#showPinsAsSaved()
     }
   }
 }
@@ -248,10 +251,13 @@ class PinReorder {
  * Lets the user drag their pinned guides into a new order, if the page lists
  * any.
  *
+ * @param {Object} [options]
+ * @param {() => void} [options.showPinsAsSaved] - For a move that was not
+ *   kept; reloads the page unless given
  * @returns {void}
  */
-function initPinReorder () {
-  document.querySelectorAll('[data-reorder-list]').forEach(list => new PinReorder(list).attach())
+function initPinReorder ({ showPinsAsSaved = reloadPage } = {}) {
+  document.querySelectorAll('[data-reorder-list]').forEach(list => new PinReorder(list, showPinsAsSaved).attach())
 }
 
 export { dropIndex, initPinReorder, movedMessage, moveTarget }
