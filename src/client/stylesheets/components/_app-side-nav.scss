@@ -158,24 +158,6 @@ $app-side-nav-muted: #505a5f;
   }
 }
 
-.app-side-nav__rail-dot {
-  position: absolute;
-  top: 1px;
-  right: 1px;
-  min-width: 18px;
-  height: 18px;
-  box-sizing: border-box;
-  padding: 0 4px;
-  border: 1px solid $app-side-nav-muted;
-  border-radius: 9px;
-  background-color: $govuk-white;
-  color: $govuk-black;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 16px;
-  text-align: center;
-}
-
 // A list's count on the folded navigation, as a dot on its icon.
 .app-side-nav__rail-dot {
   position: absolute;
