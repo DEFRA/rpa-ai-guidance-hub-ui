@@ -59,7 +59,7 @@ async function completeGuideDetails (server, cookie) {
   const post = await server.inject({
     method: 'POST',
     url: '/create-guidance/upload-guide/metadata',
-    payload: { guideTitle: 'A valid title', schemes: ['sustainable-farming-incentive-sfi'] },
+    payload: { guideTitle: 'A valid title', versionNumber: '1.0', schemes: ['sustainable-farming-incentive-sfi'] },
     headers: { cookie }
   })
 

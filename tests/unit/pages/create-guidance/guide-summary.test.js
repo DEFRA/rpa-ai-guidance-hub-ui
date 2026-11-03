@@ -5,6 +5,7 @@ describe('buildGuideSummaryCards', () => {
     const { guideDetailsCard, ownerPurposeCard } = buildGuideSummaryCards({
       metadata: {
         guideTitle: 'A title',
+        versionNumber: '2.0',
         schemes: ['Sustainable Farming Incentive (SFI)', 'Not scheme-specific'],
         owner: 'owner@example.com',
         goal: 'A purpose',
@@ -35,7 +36,7 @@ describe('buildGuideSummaryCards', () => {
       },
       rows: [
         { key: { text: 'Guidance title' }, value: { text: 'A title' } },
-        { key: { text: 'Version number' }, value: { text: '1.2' } },
+        { key: { text: 'Version number' }, value: { text: '2.0' } },
         { key: { text: 'Last modified date' }, value: { text: '29 June 2026' } },
         { key: { text: 'Scheme year' }, value: { text: '2026' } },
         {

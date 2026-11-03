@@ -68,21 +68,28 @@ const ALLOWED_ASSET_CONTENT_TYPES = new Set([
  * should match on, and the name is a copy so a listing can say who made a
  * version without asking a directory.
  *
+ * The version number is one of the journey's answers, but the API keeps it
+ * on the version beside the guide's details rather than among them, since
+ * the hub reads it.
+ *
  * @param {Object} guide
  * @param {string} guide.uploadId
  * @param {string} guide.fileId
- * @param {Object} guide.metadata - The journey's answers
+ * @param {Object} guide.metadata - The journey's answers, the version number
+ *   among them
  * @param {{id: string, displayName: string}} guide.user - The signed-in
  *   user's profile
  * @returns {Promise<{code: string}>} One of `RESULTS`
  */
 async function createGuide ({ uploadId, fileId, metadata, user }) {
-  const kept = metadata.schemes ? { ...metadata, schemes: schemesAsKept(metadata.schemes) } : metadata
+  const { versionNumber, ...details } = metadata
+  const kept = details.schemes ? { ...details, schemes: schemesAsKept(details.schemes) } : details
 
   const res = await guidesApi.createGuide({
     source: { uploadId, fileId },
     // The scheme year is fixed, so the form does not send it.
     metadata: { ...kept, schemeYear: SCHEME_YEAR },
+    versionNumber,
     createdBy: { id: user.id, displayName: user.displayName }
   })
 

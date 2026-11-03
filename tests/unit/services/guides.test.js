@@ -11,7 +11,7 @@ vi.mock('../../../src/services/staged-documents.js')
 const guide = {
   uploadId: 'upload-1',
   fileId: 'file-1',
-  metadata: { guideTitle: 'A title' },
+  metadata: { guideTitle: 'A title', versionNumber: '1.0' },
   user: {
     id: 'user-1',
     displayName: 'A User',
@@ -32,7 +32,7 @@ describe('guides service', () => {
     vi.resetAllMocks()
   })
 
-  test('sends the upload, its answers and who made it to the API', async () => {
+  test('sends the upload, its answers, its version number beside them, and who made it to the API', async () => {
     const createGuideSpy = mockApiResponse(statusCodes.HTTP_STATUS_CREATED)
 
     await guideService.createGuide(guide)
@@ -40,6 +40,7 @@ describe('guides service', () => {
     expect(createGuideSpy).toHaveBeenCalledWith({
       source: { uploadId: 'upload-1', fileId: 'file-1' },
       metadata: { guideTitle: 'A title', schemeYear: 2026 },
+      versionNumber: '1.0',
       createdBy: { id: 'user-1', displayName: 'A User' }
     })
   })

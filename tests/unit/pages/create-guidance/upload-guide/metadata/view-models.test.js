@@ -16,7 +16,7 @@ describe('#GuideDetailsViewModel', () => {
 
     expect(viewModel.values.guideTitle).toBe('Saved Title')
     expect(viewModel.values.schemes).toEqual(['sustainable-farming-incentive'])
-    expect(viewModel.versionNumber).toBe('1.2')
+    expect(viewModel.values.versionNumber).toBe('1.2')
     expect(viewModel.lastModifiedDate).toBe('10 May 2026')
     expect(viewModel.schemeOptions).toEqual([
       { value: 'sustainable-farming-incentive', text: 'Sustainable Farming Incentive' },
@@ -27,7 +27,7 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.notification).toBeNull()
   })
 
-  test('fromSession() defaults version and date to "Not available" when missing', () => {
+  test('fromSession() leaves the version number empty and the date "Not available" when missing', () => {
     const viewModel = GuideDetailsViewModel.fromSession({
       values: {},
       schemeOptions: []
@@ -35,7 +35,7 @@ describe('#GuideDetailsViewModel', () => {
 
     expect(viewModel.values.guideTitle).toBe('')
     expect(viewModel.values.schemes).toBe('')
-    expect(viewModel.versionNumber).toBe('Not available')
+    expect(viewModel.values.versionNumber).toBe('')
     expect(viewModel.lastModifiedDate).toBe('Not available')
   })
 
@@ -49,7 +49,7 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.notification).toBe('You have already uploaded a document for this guide')
   })
 
-  test('fromSession() populates title, version and formatted last modified date from a staged document', () => {
+  test('fromSession() populates title and formatted last modified date from a staged document, but not the version number', () => {
     const viewModel = GuideDetailsViewModel.fromSession({
       values: {},
       stagedDocument: {
@@ -61,7 +61,7 @@ describe('#GuideDetailsViewModel', () => {
     })
 
     expect(viewModel.values.guideTitle).toBe('Parsed Document Title')
-    expect(viewModel.versionNumber).toBe('3.1')
+    expect(viewModel.values.versionNumber).toBe('')
     expect(viewModel.lastModifiedDate).toBe('10 May 2026')
   })
 
@@ -101,16 +101,16 @@ describe('#GuideDetailsViewModel', () => {
     })
 
     expect(viewModel.values.guideTitle).toBe('')
-    expect(viewModel.versionNumber).toBe('Not available')
     expect(viewModel.lastModifiedDate).toBe('Not available')
   })
 
   test('fromValidationError() maps Joi error details to field errors and errorList with correct hrefs', () => {
-    const payload = { guideTitle: '', schemes: '', otherField: '' }
+    const payload = { guideTitle: '', versionNumber: '', schemes: '', otherField: '' }
     const err = {
       details: [
         { path: ['guideTitle'], message: 'Enter the guidance title' },
         { path: ['guideTitle'], message: 'Duplicate error for title' },
+        { path: ['versionNumber'], message: 'Enter the version number' },
         { path: ['schemes'], message: 'Select at least one scheme this guidance relates to' },
         { path: ['otherField'], message: 'Other error' }
       ]
@@ -121,19 +121,20 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.values).toEqual(payload)
     expect(viewModel.errors).toEqual({
       guideTitle: 'Enter the guidance title',
+      versionNumber: 'Enter the version number',
       schemes: 'Select at least one scheme this guidance relates to',
       otherField: 'Other error'
     })
     expect(viewModel.errorList).toEqual([
       { text: 'Enter the guidance title', href: '#guide-title' },
+      { text: 'Enter the version number', href: '#version-number' },
       { text: 'Select at least one scheme this guidance relates to', href: '#schemes' },
       { text: 'Other error', href: '#otherField' }
     ])
-    expect(viewModel.versionNumber).toBe('Not available')
     expect(viewModel.lastModifiedDate).toBe('Not available')
   })
 
-  test('fromValidationError() preserves the staged document version and formatted last modified date', () => {
+  test('fromValidationError() preserves the staged document\'s formatted last modified date', () => {
     const payload = { guideTitle: '' }
     const err = {
       details: [{ path: ['guideTitle'], message: 'Enter the guidance title' }]
@@ -147,7 +148,6 @@ describe('#GuideDetailsViewModel', () => {
       }
     })
 
-    expect(viewModel.versionNumber).toBe('3.1')
     expect(viewModel.lastModifiedDate).toBe('10 May 2026')
   })
 
@@ -157,7 +157,6 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.values).toEqual({})
     expect(viewModel.errors).toEqual({})
     expect(viewModel.errorList).toEqual([])
-    expect(viewModel.versionNumber).toBe('Not available')
     expect(viewModel.lastModifiedDate).toBe('Not available')
     expect(viewModel.schemeOptions).toEqual([])
     expect(viewModel.backUrl).toBe('/create-guidance/upload-guide')

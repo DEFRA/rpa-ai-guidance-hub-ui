@@ -94,6 +94,7 @@ async function saveMetadata (request, h) {
 
   setGuideUploadMetadata(request, {
     guideTitle: request.payload.guideTitle,
+    versionNumber: request.payload.versionNumber,
     schemes: normalizeSchemes(request.payload.schemes)
   })
 

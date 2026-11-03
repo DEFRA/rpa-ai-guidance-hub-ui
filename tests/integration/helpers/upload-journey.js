@@ -103,7 +103,7 @@ async function completeAllMetadata (server, cookie) {
   const guideDetailsResponse = await server.inject({
     method: 'POST',
     url: '/create-guidance/upload-guide/metadata',
-    payload: { guideTitle: 'Complete Guide Title', schemes: ['sustainable-farming-incentive-sfi'] },
+    payload: { guideTitle: 'Complete Guide Title', versionNumber: '1.0', schemes: ['sustainable-farming-incentive-sfi'] },
     headers: { cookie: sessionCookie }
   })
 

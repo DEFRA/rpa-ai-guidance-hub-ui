@@ -133,8 +133,10 @@ describe('start-over', () => {
 
       expect(res.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(res.payload).toContain('Are you sure you want to start over?')
-      expect(res.payload).toContain('Version number')
-      expect(res.payload).toContain('1.4')
+      // The version number is the user's to enter, and none was yet: not the
+      // document's own.
+      expect(res.payload).toMatch(/Version number\s*<\/dt>\s*<dd class="govuk-summary-list__value">\s*Not provided\s*</)
+      expect(res.payload).not.toContain('1.4')
       expect(nock.pendingMocks()).toEqual([])
 
       // Confirming this GET did not itself clear anything - the upload is
