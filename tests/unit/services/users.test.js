@@ -94,14 +94,23 @@ describe('users service', () => {
       usersApi.getPins.mockResolvedValue({
         ok: true,
         status: 200,
-        data: { items: [guidanceApiFixtures.guideSummaryResponse({ id: 'guide-2', position: 1 })], counts }
+        data: {
+          items: [
+            guidanceApiFixtures.guideSummaryResponse({ id: 'guide-2', position: 0 }),
+            guidanceApiFixtures.guideSummaryResponse({ id: 'guide-1', position: 2 })
+          ],
+          counts
+        }
       })
       const filters = { audience: [], system: ['CRM'], scheme: [], noScheme: true }
 
       const listed = await usersService.listPinned(signedInRequest(), filters)
 
       expect(usersApi.getPins).toHaveBeenCalledWith(HUB_ID, filters)
-      expect(listed.guides).toEqual([expect.objectContaining({ id: 'guide-2', title: 'Claiming the SFI payment', position: 1 })])
+      expect(listed.guides).toEqual([
+        expect.objectContaining({ id: 'guide-2', title: 'Claiming the SFI payment', position: 0 }),
+        expect.objectContaining({ id: 'guide-1', title: 'Claiming the SFI payment', position: 2 })
+      ])
       expect(listed.counts).toEqual(counts)
     })
 
