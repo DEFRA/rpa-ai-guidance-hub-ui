@@ -160,5 +160,28 @@ describe('users service', () => {
 
       await expect(usersService.recordOpened(signedInRequest(), 'guide-1')).resolves.toBeUndefined()
     })
+
+    test('list them newest first, as the API answers them, narrowed by the filters, with each filter\'s counts', async () => {
+      const counts = { scheme: [], system: [], audience: [] }
+      usersApi.getRecentlyOpened.mockResolvedValue({
+        ok: true,
+        status: 200,
+        data: {
+          items: [
+            { ...guidanceApiFixtures.guideSummaryResponse({ id: 'guide-2' }), openedAt: '2026-11-03T17:00:00' },
+            { ...guidanceApiFixtures.guideSummaryResponse({ id: 'guide-1' }), openedAt: '2026-11-03T16:00:00' }
+          ],
+          counts
+        }
+      })
+      const filters = { audience: [], system: ['CRM'], scheme: [], noScheme: true }
+
+      const listed = await usersService.listRecentlyOpened(signedInRequest(), filters)
+
+      expect(usersApi.getRecentlyOpened).toHaveBeenCalledWith(HUB_ID, filters)
+      expect(listed.guides.map(guide => guide.id)).toEqual(['guide-2', 'guide-1'])
+      expect(listed.guides[0]).toEqual(expect.objectContaining({ title: 'Claiming the SFI payment' }))
+      expect(listed.counts).toEqual(counts)
+    })
   })
 })
