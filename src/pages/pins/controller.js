@@ -3,6 +3,9 @@ import { relativeHref } from '../common/relative-href.js'
 
 const FALLBACK_RETURN_URL = '/hub'
 
+// Where the side navigation lists the pinned guides.
+const PINNED_SECTION = 'side-nav-pinned'
+
 /**
  * @private
  * @param {string} returnTo - The page to go back to, from the form
@@ -32,6 +35,23 @@ async function postPinToggle (request, h) {
   return h.redirect(_backTo(returnTo, anchor))
 }
 
+/**
+ * Move a pinned guide from where the page showed it, then go back to the
+ * page's pinned guides.
+ *
+ * @param {import('@hapi/hapi').Request} request
+ * @param {import('@hapi/hapi').ResponseToolkit} h
+ * @returns {Promise<import('@hapi/hapi').ResponseObject>}
+ */
+async function postPinOrder (request, h) {
+  const { guideId, from, to, returnTo } = request.payload
+
+  await usersService.movePin(request, guideId, from, to)
+
+  return h.redirect(_backTo(returnTo, PINNED_SECTION))
+}
+
 export {
+  postPinOrder,
   postPinToggle
 }

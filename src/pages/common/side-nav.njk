@@ -118,13 +118,67 @@
     </ul>
   {% endif %}
 
+  {#
+    The user's pinned guides, in their order (pinnedGuides, from
+    server/side-nav-lists.js). Each has a "…" menu of forms, so they open,
+    unpin and move without JavaScript; each form sends where the page showed
+    the guide, so a page whose pins have changed since changes nothing.
+  #}
+  {% set pins = pinnedGuides or [] %}
   <details class="app-side-nav__section" id="side-nav-pinned" open>
     <summary class="app-side-nav__section-summary">
       <span class="app-side-nav__label">Pinned guidance</span>
-      <span class="app-side-nav__section-count">0<span class="govuk-visually-hidden"> pinned</span></span>
+      <span class="app-side-nav__section-count">{{ pins.length }}<span class="govuk-visually-hidden"> pinned</span></span>
       {{ icon("chevron-down", "app-side-nav__chevron") }}
     </summary>
-    <p class="app-side-nav__empty">You haven't pinned any guidance yet.</p>
+    {% if pins.length %}
+      <ul class="app-side-nav__list">
+        {% for pin in pins %}
+          <li class="app-side-nav__row">
+            <a class="app-side-nav__link" href="{{ pin.href }}">
+              {{ icon("star-filled", "app-side-nav__star") }}
+              <span class="app-side-nav__text">{{ pin.title }}</span>
+            </a>
+            <details class="app-side-nav__more">
+              <summary class="app-side-nav__icon-button app-side-nav__more-button">
+                {{ icon("more") }}
+                <span class="govuk-visually-hidden">More actions for {{ pin.title }}</span>
+              </summary>
+              <div class="app-side-nav__popover">
+                <a class="app-side-nav__menu-item" href="{{ pin.href }}">Open</a>
+                <form method="post" action="/pin-toggle">
+                  <input type="hidden" name="guideId" value="{{ pin.id }}">
+                  <input type="hidden" name="pin" value="false">
+                  <input type="hidden" name="position" value="{{ pin.position }}">
+                  <input type="hidden" name="returnTo" value="{{ currentUrl }}">
+                  <button type="submit" class="app-side-nav__menu-item">Unpin<span class="govuk-visually-hidden"> {{ pin.title }}</span></button>
+                </form>
+                {% if not pin.isFirst %}
+                  <form method="post" action="/pin-order">
+                    <input type="hidden" name="guideId" value="{{ pin.id }}">
+                    <input type="hidden" name="from" value="{{ pin.position }}">
+                    <input type="hidden" name="to" value="{{ pin.position - 1 }}">
+                    <input type="hidden" name="returnTo" value="{{ currentUrl }}">
+                    <button type="submit" class="app-side-nav__menu-item">Move up<span class="govuk-visually-hidden"> {{ pin.title }}</span></button>
+                  </form>
+                {% endif %}
+                {% if not pin.isLast %}
+                  <form method="post" action="/pin-order">
+                    <input type="hidden" name="guideId" value="{{ pin.id }}">
+                    <input type="hidden" name="from" value="{{ pin.position }}">
+                    <input type="hidden" name="to" value="{{ pin.position + 1 }}">
+                    <input type="hidden" name="returnTo" value="{{ currentUrl }}">
+                    <button type="submit" class="app-side-nav__menu-item">Move down<span class="govuk-visually-hidden"> {{ pin.title }}</span></button>
+                  </form>
+                {% endif %}
+              </div>
+            </details>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="app-side-nav__empty">You haven't pinned any guidance yet.</p>
+    {% endif %}
   </details>
 
   <details class="app-side-nav__section" id="side-nav-bookmarks" open>

@@ -62,6 +62,67 @@ describe('Side navigation', () => {
     expect(payload).toMatch(/<nav class="app-side-nav"[^]*class="app-side-nav__logo"[^]*class="app-side-nav__service-link"/)
   })
 
+  describe('the user\'s pinned guides', () => {
+    const USER_ID = '01a18d45-0000-7000-8000-000000000001'
+    const FIRST = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
+    const SECOND = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
+
+    async function pinnedSection (pinned) {
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, { id: USER_ID, pinned })
+      const cookie = await loginAsDevUser(server)
+      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+      const start = payload.indexOf('id="side-nav-pinned"')
+
+      return payload.slice(start, payload.indexOf('</details>\n\n', start))
+    }
+
+    test('are listed in the user\'s order, each linking to its guide, with their number', async () => {
+      const section = await pinnedSection([{ id: FIRST, title: 'Claiming a payment' }, { id: SECOND, title: 'Closing a case' }])
+
+      expect(section).toMatch(/app-side-nav__section-count">2</)
+      expect(section.indexOf(`href="/guides/${FIRST}"`)).toBeGreaterThan(-1)
+      expect(section.indexOf(`href="/guides/${SECOND}"`)).toBeGreaterThan(section.indexOf(`/guides/${FIRST}"`))
+    })
+
+    test('each have a menu to open, unpin and move it, moving only where it can go', async () => {
+      const section = await pinnedSection([{ id: FIRST, title: 'Claiming a payment' }, { id: SECOND, title: 'Closing a case' }])
+      const [first, second] = section.split('<li class="app-side-nav__row"').slice(1)
+
+      expect(first).toContain('More actions for Claiming a payment')
+      expect(first).toMatch(/>Open<\/a>/)
+      expect(first).toMatch(/action="\/pin-toggle"[\s\S]*name="pin" value="false"[\s\S]*name="position" value="0"[\s\S]*>Unpin<span class="govuk-visually-hidden"> Claiming a payment</)
+      expect(first).toMatch(/action="\/pin-order"[\s\S]*name="from" value="0"[\s\S]*name="to" value="1"[\s\S]*>Move down</)
+      expect(first).not.toContain('>Move up<')
+      expect(second).toMatch(/name="from" value="1"[\s\S]*name="to" value="0"[\s\S]*>Move up</)
+      expect(second).not.toContain('>Move down<')
+    })
+
+    test('say when nothing is pinned yet', async () => {
+      const section = await pinnedSection([])
+
+      expect(section).toMatch(/app-side-nav__section-count">0</)
+      expect(section).toContain("You haven't pinned any guidance yet.")
+    })
+
+    test('move from where the page showed them, then go back to the page\'s pinned guides', async () => {
+      nock(GUIDANCE_API_BASE_URL).post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })
+      const moving = nock(GUIDANCE_API_BASE_URL)
+        .patch(`/users/${USER_ID}/pins`, [{ op: 'test', path: '/0', value: FIRST }, { op: 'move', from: '/0', path: '/1' }])
+        .reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode, headers } = await server.inject({
+        method: 'POST', url: '/pin-order', headers: { cookie }, payload: { guideId: FIRST, from: '0', to: '1', returnTo: '/hub' }
+      })
+
+      expect(moving.isDone()).toBe(true)
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(headers.location).toBe('/hub#side-nav-pinned')
+    })
+  })
+
   test('lets the user sign out from its footer', async () => {
     const cookie = await loginAsDevUser(server)
 

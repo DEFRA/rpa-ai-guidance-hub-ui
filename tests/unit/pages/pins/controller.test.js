@@ -11,6 +11,7 @@ describe('pins controller', () => {
     h = { redirect: vi.fn(() => 'redirected') }
     vi.spyOn(usersService, 'pin').mockResolvedValue(true)
     vi.spyOn(usersService, 'unpin').mockResolvedValue(true)
+    vi.spyOn(usersService, 'movePin').mockResolvedValue(true)
   })
 
   describe('postPinToggle', () => {
@@ -36,6 +37,17 @@ describe('pins controller', () => {
       await controller.postPinToggle({ payload: { guideId: GUIDE, pin: true, returnTo: 'https://evil.example' } }, h)
 
       expect(h.redirect).toHaveBeenCalledWith('/hub')
+    })
+  })
+
+  describe('postPinOrder', () => {
+    test('moves the guide from where the page showed it, then goes back to the pinned guides', async () => {
+      const request = { payload: { guideId: GUIDE, from: 0, to: 1, returnTo: '/hub' } }
+
+      await controller.postPinOrder(request, h)
+
+      expect(usersService.movePin).toHaveBeenCalledWith(request, GUIDE, 0, 1)
+      expect(h.redirect).toHaveBeenCalledWith('/hub#side-nav-pinned')
     })
   })
 })

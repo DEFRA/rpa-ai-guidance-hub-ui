@@ -11,6 +11,7 @@ import HapiPino from 'hapi-pino'
 
 import { config } from '../config/config.js'
 import { catchAll } from './catch-all.js'
+import { addSideNavLists } from './side-nav-lists.js'
 import { options as loggerOptions } from '../infra/logging/options.js'
 
 import { auth } from './plugins/auth/auth.js'
@@ -105,6 +106,7 @@ async function createServer () {
 
   await server.register(plugins)
 
+  server.ext('onPreResponse', addSideNavLists)
   server.ext('onPreResponse', catchAll)
 
   return server

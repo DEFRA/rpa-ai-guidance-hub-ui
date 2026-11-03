@@ -128,6 +128,23 @@ async function unpin (request, guideId, position) {
 }
 
 /**
+ * Move a pinned guide from where the page showed it to another position. If
+ * the pins have changed since, nothing changes.
+ *
+ * @param {import('@hapi/hapi').Request} request - Signed in
+ * @param {string} guideId
+ * @param {number} from - Where the page showed it, from 0
+ * @param {number} to - Where it goes, in the list without it (JSON Patch's move)
+ * @returns {Promise<boolean>} Whether it changed anything
+ */
+async function movePin (request, guideId, from, to) {
+  return _patchPins(request, [
+    { op: 'test', path: `/${from}`, value: guideId },
+    { op: 'move', from: `/${from}`, path: `/${to}` }
+  ])
+}
+
+/**
  * @private
  * @param {import('@hapi/hapi').Request} request
  * @param {Array<object>} operations
@@ -141,6 +158,7 @@ async function _patchPins (request, operations) {
 }
 
 export {
+  movePin,
   pin,
   pinnedOf,
   signIn,
