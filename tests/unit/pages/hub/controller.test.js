@@ -3,7 +3,6 @@ import { GuidanceApiError } from '../../../../src/infra/guidance-api/client.js'
 
 import { getHubPage } from '../../../../src/pages/hub/controller.js'
 import * as guidesService from '../../../../src/services/guides.js'
-import * as referenceDataService from '../../../../src/services/reference-data.js'
 
 const COUNTS = {
   audience: [{ label: 'Processor', shortLabel: null, count: 2 }],
@@ -16,9 +15,11 @@ const listedGuide = {
   title: 'Claiming the SFI payment',
   owner: 'owner@example.com',
   schemes: ['Sustainable Farming Incentive (SFI)', 'Retired scheme'],
-  systems: [],
-  audience: [],
-  lastUpdated: '2026-10-06T08:00:00Z'
+  systems: ['CRM'],
+  audience: ['Processor', 'Team leader'],
+  purpose: 'Explain the claim.',
+  lastUpdated: '2026-10-06T08:00:00Z',
+  createdAt: '2026-10-01T09:00:00'
 }
 
 describe('#hubController', () => {
@@ -29,9 +30,6 @@ describe('#hubController', () => {
     code = vi.fn()
     h = { view: vi.fn(() => ({ code })) }
     vi.spyOn(guidesService, 'listEveryGuide').mockResolvedValue({ guides: [], counts: COUNTS })
-    vi.spyOn(referenceDataService, 'getSchemes').mockResolvedValue([
-      { label: 'Sustainable Farming Incentive (SFI)', shortLabel: 'SFI' }
-    ])
   })
 
   describe('getHubPage', () => {
@@ -61,25 +59,29 @@ describe('#hubController', () => {
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
     })
 
-    test('Should list every guide, each linking to the guide', async () => {
-      guidesService.listEveryGuide.mockResolvedValue({ guides: [listedGuide], counts: COUNTS })
+    test('Should list every guide, in the API\'s order, each as a row of its own', async () => {
+      guidesService.listEveryGuide.mockResolvedValue({ guides: [listedGuide, { ...listedGuide, id: 'guide-2', title: 'Closing a case' }], counts: COUNTS })
 
       await getHubPage({ query: {} }, h)
 
       const [, viewModel] = h.view.mock.calls[0]
 
-      expect(viewModel.allGuides.count).toBe(1)
-      expect(viewModel.allGuides.rows).toEqual([[
-        { type: 'link', text: 'Claiming the SFI payment', href: '/guides/guide-1' },
-        { type: 'text', text: 'SFI, Retired scheme' },
-        { type: 'text', text: '6 October 2026' },
-        { type: 'text', text: 'owner@example.com' }
-      ]])
+      expect(viewModel.allGuides.count).toBe(2)
+      expect(viewModel.allGuides.guides).toEqual([
+        {
+          title: 'Claiming the SFI payment',
+          href: '/guides/guide-1',
+          purpose: 'Explain the claim.',
+          lastUpdated: '6 October 2026',
+          published: '1 October 2026'
+        },
+        expect.objectContaining({ title: 'Closing a case', href: '/guides/guide-2' })
+      ])
     })
 
-    test('Should say when a guide has no title, schemes, date or owner', async () => {
+    test('Should say when a guide has no title or dates, and show no purpose it does not have', async () => {
       guidesService.listEveryGuide.mockResolvedValue({
-        guides: [{ ...listedGuide, title: null, schemes: [], owner: null, lastUpdated: null }],
+        guides: [{ ...listedGuide, title: null, purpose: null, lastUpdated: null, createdAt: null }],
         counts: COUNTS
       })
 
@@ -87,12 +89,13 @@ describe('#hubController', () => {
 
       const [, viewModel] = h.view.mock.calls[0]
 
-      expect(viewModel.allGuides.rows[0].map(cell => cell.text)).toEqual([
-        'Untitled guide',
-        'Not recorded',
-        'Not recorded',
-        'Not recorded'
-      ])
+      expect(viewModel.allGuides.guides).toEqual([{
+        title: 'Untitled guide',
+        href: '/guides/guide-1',
+        purpose: null,
+        lastUpdated: 'Not recorded',
+        published: 'Not recorded'
+      }])
     })
 
     test('Should list the guides the filters let through, sorted as asked, beside the filters', async () => {
@@ -124,19 +127,6 @@ describe('#hubController', () => {
       guidesService.listEveryGuide.mockRejectedValue(failure)
 
       await expect(getHubPage({ query: {} }, h)).rejects.toBe(failure)
-    })
-
-    test('Should show stored scheme labels when the schemes are unavailable', async () => {
-      guidesService.listEveryGuide.mockResolvedValue({ guides: [listedGuide], counts: COUNTS })
-      referenceDataService.getSchemes.mockRejectedValue(new Error('metadata unavailable'))
-
-      await getHubPage({ query: {} }, h)
-
-      const [, viewModel] = h.view.mock.calls[0]
-      expect(viewModel.allGuides.rows[0][1].text).toBe(
-        'Sustainable Farming Incentive (SFI), Retired scheme'
-      )
-      expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
     })
   })
 })

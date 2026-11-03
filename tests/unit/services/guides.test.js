@@ -198,11 +198,27 @@ describe('guides service: reading', () => {
           schemes: ['Sustainable Farming Incentive (SFI)'],
           systems: ['CRM'],
           audience: ['Processor'],
-          lastUpdated: '2026-10-06T08:00:00Z'
+          purpose: null,
+          lastUpdated: '2026-10-06T08:00:00Z',
+          createdAt: '2026-10-01T09:00:00'
         }],
         nextCursor: 'next-1',
         counts: {}
       })
+    })
+
+    test('gives each guide its purpose', async () => {
+      guidesApi.listGuides.mockResolvedValue({
+        ok: true,
+        status: 200,
+        data: guidanceApiFixtures.guidePageResponse({
+          items: [guidanceApiFixtures.guideSummaryResponse({ metadata: { goal: 'Explain the claim.' } })]
+        })
+      })
+
+      const { guides } = await guideService.listGuides()
+
+      expect(guides[0].purpose).toBe('Explain the claim.')
     })
 
     test('falls back to the authored title and empty lists for a guide with no version or answers', async () => {
@@ -225,6 +241,7 @@ describe('guides service: reading', () => {
         schemes: [],
         systems: [],
         audience: [],
+        purpose: null,
         lastUpdated: null
       })
     })

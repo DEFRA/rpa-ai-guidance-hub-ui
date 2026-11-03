@@ -15,7 +15,6 @@ const CELL_TYPES = Object.freeze({
   TEXT: 'text',
   VERSION: 'version',
   TITLE: 'title',
-  LINK: 'link',
   REMOVE_ACTION: 'removeAction'
 })
 
@@ -24,13 +23,6 @@ const DOCUMENT_TABLE_HEAD = [
   { text: 'Last modified' },
   { text: 'Version' },
   { text: 'Action' }
-]
-
-const ALL_GUIDES_TABLE_HEAD = [
-  { text: 'Title', classes: tableHeadClasses.HALF_WIDTH },
-  { text: 'Scheme' },
-  { text: 'Last updated' },
-  { text: 'Owner' }
 ]
 
 function _textCell (text) {
@@ -60,10 +52,6 @@ function _titleCell (item, statusText, statusColour) {
   }
 }
 
-function _linkCell (item) {
-  return { type: CELL_TYPES.LINK, text: item.title, href: relativeHref(item.href) }
-}
-
 function _removeActionCell (item) {
   return { type: CELL_TYPES.REMOVE_ACTION, text: item.title, href: relativeHref(item.removeHref) }
 }
@@ -77,13 +65,35 @@ function _buildDocumentRows (items) {
   ])
 }
 
-function _buildAllGuidesRows (items) {
-  return items.map((item) => [
-    _linkCell(item),
-    _textCell(item.schemes),
-    _textCell(item.lastModified),
-    _textCell(item.owner)
-  ])
+/**
+ * One guide as the hub's rows show it, its link made safe.
+ *
+ * @private
+ * @param {{title: string, href: string, purpose: string|null, lastUpdated: string, published: string}} item
+ * @returns {{title: string, href: string, purpose: string|null, lastUpdated: string, published: string}}
+ */
+function _guideRow (item) {
+  return { ...item, href: relativeHref(item.href) }
+}
+
+/**
+ * A list of guides shown as rows (`guide-list.njk`), not a table.
+ *
+ * @private
+ * @param {Object} list
+ * @param {Array<object>} list.items
+ * @param {string} list.heading
+ * @param {string} list.emptyMessage
+ */
+function _buildGuideList ({ items, heading, emptyMessage }) {
+  return {
+    heading,
+    emptyMessage,
+    isGuideList: true,
+    isEmpty: items.length === 0,
+    count: items.length,
+    guides: items.map(_guideRow)
+  }
 }
 
 /**
@@ -123,7 +133,7 @@ class HubViewModel {
    * @param {Array<object>} [data.pinned=[]]
    * @param {Array<object>} [data.bookmarkedGuides=[]]
    * @param {Array<object>} [data.allGuides=[]] - Items are
-   *   `{title, href, schemes, lastModified, owner}`
+   *   `{title, href, purpose, lastUpdated, published}`
    * @param {string} [data.shown='allGuides'] - The table that the page
    *   shows
    * @param {Object|null} [data.filters=null] - The filter panel beside the
@@ -166,13 +176,10 @@ class HubViewModel {
       rows: _buildDocumentRows(bookmarkedGuides)
     })
 
-    this.allGuides = _buildTable({
+    this.allGuides = _buildGuideList({
       items: allGuides,
       heading: 'All guides',
-      emptyMessage: 'There are no guides yet.',
-      hintMessage: null,
-      head: ALL_GUIDES_TABLE_HEAD,
-      rows: _buildAllGuidesRows(allGuides)
+      emptyMessage: 'There are no guides yet.'
     })
 
     this.shown = this[shown]

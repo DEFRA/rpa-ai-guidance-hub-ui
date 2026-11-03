@@ -2,7 +2,7 @@ import { constants as statusCodes } from 'node:http2'
 
 import nock from 'nock'
 
-import { guidePageResponse, schemesResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse } from '../../../fixtures/guidance-api.js'
 import { generateEntraJwt, getJwks } from '../../../utils/oidc.js'
 
 const ENTRA_HOST = 'https://login.microsoftonline.com'
@@ -90,9 +90,6 @@ describe('#loginController under the entra provider', () => {
       expect(callback.headers.location).toBe('/hub')
 
       nock(config.get('guidanceApi.baseUrl'))
-        .get('/reference/schemes')
-        .reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
-      nock(config.get('guidanceApi.baseUrl'))
         .get('/guides')
         .query(true)
         .reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
@@ -169,10 +166,6 @@ describe('#loginController under the entra provider', () => {
 
       expect(callback.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(callback.headers.location).toBe('/hub')
-
-      nock(config.get('guidanceApi.baseUrl'))
-        .get('/reference/schemes')
-        .reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
 
       nock(config.get('guidanceApi.baseUrl'))
         .get('/guides')

@@ -2,54 +2,28 @@ import Boom from '@hapi/boom'
 
 import { statusCodes } from '../../constants/status-codes.js'
 import * as guidesService from '../../services/guides.js'
-import * as referenceDataService from '../../services/reference-data.js'
-import { createLogger } from '../../infra/logging/logger.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { filterPanel, filtersFrom, sortFrom } from './filters.js'
 import { HubViewModel } from './view-models.js'
 
-const logger = createLogger()
-
 const NOT_RECORDED = 'Not recorded'
 
 /**
- * Each scheme's short label by its label. Short labels only decorate the
- * guide list, so when the schemes are unavailable the page still shows,
- * with every scheme as stored.
- *
- * @private
- * @returns {Promise<Map<string, string>>}
- */
-async function _getSchemeShortLabels () {
-  try {
-    const schemes = await referenceDataService.getSchemes()
-
-    return new Map(schemes.map(({ label, shortLabel }) => [label, shortLabel]))
-  } catch (error) {
-    logger.warn(error, 'Reference schemes unavailable; showing scheme labels as stored')
-    return new Map()
-  }
-}
-
-/**
- * A listed guide as the "All guides" table shows it.
- *
- * Guides store scheme labels; the table shows each scheme's short label, so
- * a stored label with no match (e.g. one since retired from the reference
- * data) is shown as stored.
+ * A listed guide as the "All guides" list shows it, as the prototype's hub
+ * rows do. Its published date is when it was recorded: every upload goes
+ * live.
  *
  * @private
  * @param {import('../../services/guides.js').GuideSummary} guide
- * @param {Map<string, string>} shortLabels - Scheme label to short label
- * @returns {{title: string, href: string, schemes: string, lastModified: string, owner: string}}
+ * @returns {{title: string, href: string, purpose: string|null, lastUpdated: string, published: string}}
  */
-function _toAllGuidesItem (guide, shortLabels) {
+function _toGuideItem (guide) {
   return {
     title: guide.title ?? 'Untitled guide',
     href: `/guides/${encodeURIComponent(guide.id)}`,
-    schemes: guide.schemes.map((label) => shortLabels.get(label) ?? label).join(', ') || NOT_RECORDED,
-    lastModified: formatIsoDate(guide.lastUpdated) ?? NOT_RECORDED,
-    owner: guide.owner ?? NOT_RECORDED
+    purpose: guide.purpose,
+    lastUpdated: formatIsoDate(guide.lastUpdated) ?? NOT_RECORDED,
+    published: formatIsoDate(guide.createdAt) ?? NOT_RECORDED
   }
 }
 
@@ -89,13 +63,10 @@ async function _refusingUnknownFilters (listing) {
 async function getHubPage (request, h) {
   const filters = filtersFrom(request.query)
   const sort = sortFrom(request.query)
-  const [{ guides, counts }, shortLabels] = await Promise.all([
-    _refusingUnknownFilters(guidesService.listEveryGuide({ filters, sort })),
-    _getSchemeShortLabels()
-  ])
+  const { guides, counts } = await _refusingUnknownFilters(guidesService.listEveryGuide({ filters, sort }))
 
   const viewModel = new HubViewModel({
-    allGuides: guides.map((guide) => _toAllGuidesItem(guide, shortLabels)),
+    allGuides: guides.map(_toGuideItem),
     filters: filterPanel({ path: '/hub', filters, counts, sort, total: guides.length, withSort: true })
   })
 

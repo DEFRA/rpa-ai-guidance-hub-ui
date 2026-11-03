@@ -4,6 +4,7 @@
 {% from "govuk/components/input/macro.njk" import govukInput %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "common/guidance-table.njk" import guidanceTablePanel %}
+{% from "common/guide-list.njk" import guideList %}
 
 {% set pageTitle = 'RPA Guidance Hub' %}
 {% set page = 'hub' %}
@@ -61,7 +62,7 @@
             {% include "hub/partials/filters.njk" %}
 
             <div class="app-hub-results" id="guide-results">
-              {% call guidanceTablePanel(shown) %}
+              {% call guideList(shown) %}
                 {% if filters.sort %}{% include "hub/partials/sort.njk" %}{% endif %}
               {% endcall %}
             </div>

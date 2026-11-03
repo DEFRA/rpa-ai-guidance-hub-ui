@@ -1,0 +1,41 @@
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{#
+  A list of guides as the prototype's hub shows them (its
+  playground/hub/page.njk result rows): each guide's Live tag, its title as a
+  link, its purpose, and when it was last updated and published. Without the
+  prototype's version tag, which needs version numbers, and its pin star and
+  "Pinned" tag, which come with pins.
+
+  Reads a HubViewModel list: {heading, emptyMessage, isEmpty, guides}. Called
+  with a block, it puts what the block gives under the heading (the sort).
+#}
+{% macro guideList(list) %}
+  <h2 class="govuk-heading-m">{{ list.heading }}</h2>
+  {% if caller %}{{ caller() }}{% endif %}
+  {% if list.isEmpty %}
+    <p class="govuk-body">{{ list.emptyMessage }}</p>
+  {% else %}
+    <ul class="app-search-results">
+      {% for guide in list.guides %}
+        <li class="app-search-results__item">
+          <div class="app-search-results__top app-hub-results__top">
+            <div class="govuk-!-margin-bottom-2">
+              {{ govukTag({ text: "Live", classes: "govuk-tag--turquoise" }) }}
+            </div>
+          </div>
+
+          <h3 class="govuk-heading-s app-search-results__name">
+            <a class="govuk-link" href="{{ guide.href }}">{{ guide.title }}</a>
+          </h3>
+
+          {% if guide.purpose %}
+            <p class="govuk-body-s app-hub-results__facets">{{ guide.purpose }}</p>
+          {% endif %}
+
+          <p class="govuk-body-s app-search-results__dates">Last updated: {{ guide.lastUpdated }} &middot; Published: {{ guide.published }}</p>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endmacro %}

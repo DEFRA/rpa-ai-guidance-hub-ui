@@ -5,7 +5,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
-import { guidePageResponse, guideSummaryResponse, schemesResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse, guideSummaryResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -26,7 +26,6 @@ describe('#hubController', () => {
   })
 
   beforeEach(() => {
-    nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').optionally().reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
     nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
   })
 
@@ -160,27 +159,44 @@ describe('#hubController', () => {
   })
 
   describe('the All guides list', () => {
-    test('Should list each guide, linking to it', async () => {
+    /** The hub's main area, listing `items` as the API's one page. */
+    async function hubListing (items) {
       nock.cleanAll()
-      nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
-      nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({
-        items: [guideSummaryResponse({ id: '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90' })]
-      }))
+      nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items }))
       const cookie = await loginAsDevUser(server)
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
-      expect(payload).toContain('href="/guides/0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90"')
-      expect(payload).toContain('Claiming the SFI payment')
-      expect(payload).toContain('6 October 2026')
-      expect(payload).toContain('owner@example.com')
+      return payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+    }
+
+    test('lists each guide as a row: its Live tag, its title linking to it, its purpose, and when it was last updated and published', async () => {
+      const id = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
+
+      const main = await hubListing([guideSummaryResponse({ id, metadata: { goal: 'Explain the claim.' } })])
+      const row = main.slice(main.indexOf('<li class="app-search-results__item"'), main.indexOf('</li>'))
+
+      expect(row).toMatch(/govuk-tag--turquoise">\s*Live\s*</)
+      expect(row).toContain(`<a class="govuk-link" href="/guides/${id}">Claiming the SFI payment</a>`)
+      expect(row).toContain('Explain the claim.')
+      expect(row).toContain('Last updated: 6 October 2026 &middot; Published: 1 October 2026')
+      expect(main).not.toContain('govuk-table')
+    })
+
+    test('escapes a guide\'s title and purpose', async () => {
+      const metadata = { goal: '<img src=x onerror=alert(1)>' }
+
+      const main = await hubListing([guideSummaryResponse({ metadata, latestVersion: versionResponse({ title: '<script>alert("xss")</script>' }) })])
+
+      expect(main).not.toContain('<script>alert')
+      expect(main).not.toContain('<img src=x')
+      expect(main).toContain('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;')
     })
 
     test('lists every guide, following the API\'s pages to the last, in its order', async () => {
       const FIRST = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
       const SECOND = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
       nock.cleanAll()
-      nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').optionally().reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
       const guides = nock(GUIDANCE_API_BASE_URL)
         .get('/guides').query({ limit: '100', sort: 'updated-newest' })
         .reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items: [guideSummaryResponse({ id: SECOND })], nextCursor: SECOND }))
@@ -197,7 +213,6 @@ describe('#hubController', () => {
 
     test('Should say there are no guides when there are none', async () => {
       nock.cleanAll()
-      nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
       nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items: [] }))
       const cookie = await loginAsDevUser(server)
 
@@ -217,7 +232,6 @@ describe('#hubController', () => {
     /** The hub with `params` in its address, and the API asked for its list with them. */
     async function hubWith (params, reply = guidePageResponse({ counts: COUNTS })) {
       nock.cleanAll()
-      nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').optionally().reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
       const query = { limit: '100', sort: 'updated-newest', ...params }
       const listing = nock(GUIDANCE_API_BASE_URL).get('/guides').query(query).reply(statusCodes.HTTP_STATUS_OK, reply)
       const cookie = await loginAsDevUser(server)
@@ -274,7 +288,6 @@ describe('#hubController', () => {
 
     test('answer a value the hub does not have as a bad request', async () => {
       nock.cleanAll()
-      nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').optionally().reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
       nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(422, { detail: 'Unknown audience Martians' })
       const cookie = await loginAsDevUser(server)
 

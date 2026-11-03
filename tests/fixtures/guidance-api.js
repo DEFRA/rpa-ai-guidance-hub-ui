@@ -128,10 +128,11 @@ function versionResponse (overrides = {}) {
  * first.
  *
  * Verified against OpenAPI schema on 2026-10-12: returns id, metadata,
- * source, and versions array ordered newest first.
+ * source, and versions array ordered newest first. The API adds createdAt,
+ * when the guide was recorded.
  *
  * @param {Object} [overrides]
- * @returns {{id: string, metadata: Object, source: Object, versions: Array<Object>}}
+ * @returns {{id: string, metadata: Object, source: Object, createdAt: string, versions: Array<Object>}}
  */
 function guideResponse (overrides = {}) {
   return {
@@ -144,6 +145,7 @@ function guideResponse (overrides = {}) {
       owner: 'owner@example.com'
     },
     source: { uploadId: 'u-1', fileId: 'file-1', filename: 'guide.docx' },
+    createdAt: '2026-10-01T09:00:00',
     versions: [versionResponse()],
     ...overrides
   }

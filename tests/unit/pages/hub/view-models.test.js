@@ -15,8 +15,7 @@ describe('#HubViewModel', () => {
     test.each([
       ['recentlyOpened', 'Recently opened'],
       ['pinned', 'Pinned'],
-      ['bookmarkedGuides', 'Bookmarked guides'],
-      ['allGuides', 'All guides']
+      ['bookmarkedGuides', 'Bookmarked guides']
     ])('Should return an empty %s table', (key, heading) => {
       expect(viewModel[key]).toEqual(expect.objectContaining({
         heading,
@@ -26,8 +25,15 @@ describe('#HubViewModel', () => {
       }))
     })
 
-    test('Should not hint on tables with no hint copy', () => {
-      expect(viewModel.allGuides.hintMessage).toBeNull()
+    test('Should return an empty list of all guides', () => {
+      expect(viewModel.allGuides).toEqual(expect.objectContaining({
+        heading: 'All guides',
+        emptyMessage: 'There are no guides yet.',
+        isGuideList: true,
+        isEmpty: true,
+        count: 0,
+        guides: []
+      }))
     })
 
     test('has no list awaiting review', () => {
@@ -114,22 +120,17 @@ describe('#HubViewModel', () => {
     const guide = {
       title: 'Claiming the SFI payment',
       href: '/guides/guide-1',
-      schemes: 'SFI, Countryside Stewardship',
-      lastModified: '20 July 2026',
-      owner: 'owner@example.com'
+      purpose: 'Explain the claim.',
+      lastUpdated: '20 July 2026',
+      published: '1 July 2026'
     }
 
-    test('Should build a link/schemes/lastModified/owner row', () => {
+    test('Should give each guide a row: its title and link, purpose, and when it was last updated and published', () => {
       const { allGuides } = new HubViewModel({ allGuides: [guide] })
 
       expect(allGuides.count).toBe(1)
       expect(allGuides.isEmpty).toBe(false)
-      expect(allGuides.rows).toEqual([[
-        { type: 'link', text: guide.title, href: '/guides/guide-1' },
-        { type: 'text', text: 'SFI, Countryside Stewardship' },
-        { type: 'text', text: '20 July 2026' },
-        { type: 'text', text: 'owner@example.com' }
-      ]])
+      expect(allGuides.guides).toEqual([guide])
     })
 
     test('Should not link to an untrusted href', () => {
@@ -137,7 +138,7 @@ describe('#HubViewModel', () => {
         allGuides: [{ ...guide, href: 'javascript:alert(1)' }]
       })
 
-      expect(allGuides.rows[0][0].href).toBe('#')
+      expect(allGuides.guides[0].href).toBe('#')
     })
   })
 })
