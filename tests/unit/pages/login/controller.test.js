@@ -23,7 +23,7 @@ const ENTRA_HOST = 'https://login.microsoftonline.com'
 const TENANT_PATH = '/fake-tenant-id'
 
 const USER_OID = '00000000-0000-0000-0000-000000000123'
-const USER_TID = '6f504113-6b64-43f2-ade9-242e05780007'
+const USER_TID = '00000000-0000-0000-0000-000000000456'
 const HUB_USER_ID = '01a18d45-0000-7000-8000-000000000001'
 const GUIDANCE_API = 'http://localhost:3001'
 
