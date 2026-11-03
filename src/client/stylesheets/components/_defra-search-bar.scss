@@ -1,0 +1,64 @@
+@use 'govuk-frontend' as *;
+@use '../variables/colours' as *;
+
+// The hub's search bar, as the prototype's home header has it
+// (_defra-header-search.scss there): a white input and a square icon button,
+// joined with no gap, modelled on the GOV.UK homepage search.
+
+// On the green hero a green button would disappear, so it takes a light green
+// tint with a green icon, like GOV.UK's light blue on blue.
+$defra-search-button-tint: #cce7d6;
+
+.defra-search-bar {
+  display: flex;
+  max-width: 40em;
+}
+
+.defra-search-bar__input.govuk-input {
+  flex: 1 1 auto;
+  height: 50px;
+  margin: 0;
+  font-size: 19px;
+}
+
+.defra-search-bar__button {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+
+  &:focus {
+    outline: 3px solid transparent;
+    color: $govuk-black;
+    background-color: $govuk-yellow;
+    box-shadow: inset 0 -4px 0 0 $govuk-black;
+  }
+}
+
+.defra-search-bar__button--on-green {
+  color: $defra-green;
+  background-color: $defra-search-button-tint;
+
+  &:hover {
+    color: $defra-green-hover;
+    background-color: $govuk-white;
+  }
+}
+
+// In the hub's green hero: the input's border white on the green, black once
+// focused.
+.defra-hero__search {
+  .govuk-input {
+    border-color: $govuk-white;
+  }
+
+  .govuk-input:focus {
+    border-color: $govuk-black;
+  }
+}

@@ -55,7 +55,8 @@ describe('#hubController', () => {
           count: 0
         }),
         shown: expect.objectContaining({ heading: '0 guides' }),
-        filters: expect.objectContaining({ action: '/hub' })
+        filters: expect.objectContaining({ action: '/hub' }),
+        words: ''
       })
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
     })
@@ -114,6 +115,18 @@ describe('#hubController', () => {
       expect(viewModel.filters.action).toBe('/hub')
       expect(viewModel.filters.selected).toEqual([{ text: 'Processor', href: '/hub?sort=updated-oldest' }])
       expect(viewModel.filters.sort.options.find(option => option.selected).value).toBe('updated-oldest')
+    })
+
+    test('Should keep the search words, in the search box and the filters, while listing every guide', async () => {
+      await getHubPage({ query: { q: 'claim rules', audience: 'Processor' } }, h)
+
+      const [, viewModel] = h.view.mock.calls[0]
+      expect(guidesService.listEveryGuide).toHaveBeenCalledWith({
+        filters: { audience: ['Processor'], system: [], scheme: [], noScheme: false },
+        sort: 'updated-newest'
+      })
+      expect(viewModel.words).toBe('claim rules')
+      expect(viewModel.filters.words).toBe('claim rules')
     })
 
     test('Should answer a filter value the hub does not have as a bad request', async () => {

@@ -1,4 +1,4 @@
-import { filterPanel, filtersFrom, listHref, sortFrom } from '../../../../src/pages/hub/filters.js'
+import { filterPanel, filtersFrom, listHref, sortFrom, wordsFrom } from '../../../../src/pages/hub/filters.js'
 
 const NONE = { audience: [], system: [], scheme: [], noScheme: false }
 
@@ -48,6 +48,22 @@ describe('listHref', () => {
 
   test('is the path alone with no filters and the default sort', () => {
     expect(listHref('/hub/recently-opened', NONE, 'updated-newest')).toBe('/hub/recently-opened')
+  })
+
+  test('keeps the search words first, before the filters and sort', () => {
+    expect(listHref('/hub', { ...NONE, system: ['CRM'] }, 'updated-oldest', 'claim rules'))
+      .toBe('/hub?q=claim+rules&system=CRM&sort=updated-oldest')
+  })
+})
+
+describe('wordsFrom', () => {
+  test.each([
+    [{ q: '  claim rules ' }, 'claim rules'],
+    [{ q: '' }, ''],
+    [{}, ''],
+    [{ q: ['claim', 'rules'] }, '']
+  ])('reads the search words in %j as %j', (query, words) => {
+    expect(wordsFrom(query)).toBe(words)
   })
 })
 
@@ -133,6 +149,16 @@ describe('filterPanel', () => {
 
   test('has no sort where the list keeps its own order', () => {
     expect(panel({ withSort: false }).sort).toBeNull()
+  })
+
+  test('keeps the search words in the form, and in every tag and the clearing link', () => {
+    const filters = { ...NONE, audience: ['Checker'] }
+
+    const { words, selected, clearHref } = panel({ filters, words: 'claim rules' })
+
+    expect(words).toBe('claim rules')
+    expect(selected).toEqual([{ text: 'Checker', href: '/hub?q=claim+rules' }])
+    expect(clearHref).toBe('/hub?q=claim+rules')
   })
 
   test('sends the form to the list it is on', () => {

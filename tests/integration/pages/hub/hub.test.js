@@ -236,6 +236,40 @@ describe('#hubController', () => {
     })
   })
 
+  describe('the search box', () => {
+    /** The hub's green hero, at `url`. */
+    async function hero (url) {
+      const cookie = await loginAsDevUser(server)
+      const { payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
+
+      return { payload, hero: payload.slice(payload.indexOf('<div class="defra-hero defra-hero--hub'), payload.indexOf('id="hub-filters"')) }
+    }
+
+    test('sits in the hero beside the side navigation, asking for words or a question', async () => {
+      const { hero: area, payload } = await hero('/hub')
+
+      expect(area).toMatch(/<form class="defra-hero__search" action="\/hub" method="get" role="search">/)
+      expect(area).toMatch(/<label class="govuk-visually-hidden" for="hub-search">\s*Search or ask question\s*<\/label>/)
+      expect(area).toMatch(/<input class="govuk-input defra-search-bar__input" id="hub-search" name="q" type="search"[^>]*placeholder="Search or ask a question about all guidance"/)
+      expect(area).toMatch(/<button class="defra-search-bar__button defra-search-bar__button--on-green" type="submit">\s*<span class="govuk-visually-hidden">Search<\/span>/)
+      expect(payload).not.toContain('Search guidance')
+    })
+
+    test('keeps the words searched for, in the box and in the filters', async () => {
+      const { hero: area, payload } = await hero('/hub?q=claim+rules')
+
+      expect(area).toMatch(/id="hub-search" name="q" type="search"[^>]*value="claim rules"/)
+      expect(payload).toContain('<input type="hidden" name="q" value="claim rules">')
+    })
+
+    test('escapes the words searched for', async () => {
+      const { payload } = await hero('/hub?q=%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E')
+
+      expect(payload).not.toContain('<script>alert(1)')
+      expect(payload).toContain('value="&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;"')
+    })
+  })
+
   describe('the filters and sort', () => {
     const COUNTS = {
       audience: [{ label: 'Processor', shortLabel: null, count: 3 }, { label: 'Checker', shortLabel: null, count: 1 }],

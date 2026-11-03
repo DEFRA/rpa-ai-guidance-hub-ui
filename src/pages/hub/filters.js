@@ -62,16 +62,33 @@ function sortFrom (query = {}) {
 }
 
 /**
- * The address of a list with these filters and sort: each value a repeated
- * parameter, and the sort only when it is not the default.
+ * The words searched for in the address (`q`), without the spaces around
+ * them; none for anything but one value.
+ *
+ * @param {Object} query - The request's query
+ * @returns {string}
+ */
+function wordsFrom (query = {}) {
+  return typeof query.q === 'string' ? query.q.trim() : ''
+}
+
+/**
+ * The address of a list with these filters and sort: the words searched for
+ * first, then each value a repeated parameter, and the sort only when it is
+ * not the default.
  *
  * @param {string} path
  * @param {import('../../services/guides.js').Filters} filters
  * @param {string} [sort]
+ * @param {string} [words] - Searched for, kept as the filters change
  * @returns {string}
  */
-function listHref (path, filters, sort = DEFAULT_SORT) {
+function listHref (path, filters, sort = DEFAULT_SORT, words = '') {
   const params = new URLSearchParams()
+
+  if (words) {
+    params.append('q', words)
+  }
 
   FILTER_NAMES.forEach((name) => filters[name].forEach((value) => params.append(name, value)))
 
@@ -145,9 +162,11 @@ function _group (name, counted, filters) {
  * @param {string} panel.sort - Chosen
  * @param {number} panel.total - How many guides the list shows
  * @param {boolean} panel.withSort - Whether the list can be sorted
+ * @param {string} [panel.words] - Searched for, which the form and every
+ *   address it makes keep
  * @returns {Object}
  */
-function filterPanel ({ path, filters, counts, sort, total, withSort }) {
+function filterPanel ({ path, filters, counts, sort, total, withSort, words = '' }) {
   const counted = (name) => counts[name] ?? []
   const groups = [
     _group('audience', counted('audience'), filters),
@@ -166,16 +185,17 @@ function filterPanel ({ path, filters, counts, sort, total, withSort }) {
     ...FILTER_NAMES.flatMap((name) => filters[name].map((value) => {
       const option = counted(name).find((known) => known.label === value) ?? { label: value }
 
-      return { text: displayLabel(option), href: listHref(path, _without(filters, name, value), sort) }
+      return { text: displayLabel(option), href: listHref(path, _without(filters, name, value), sort, words) }
     })),
-    ...(filters.noScheme ? [{ text: NOT_SCHEME_SPECIFIC, href: listHref(path, { ...filters, noScheme: false }, sort) }] : [])
+    ...(filters.noScheme ? [{ text: NOT_SCHEME_SPECIFIC, href: listHref(path, { ...filters, noScheme: false }, sort, words) }] : [])
   ]
 
   return {
     action: path,
+    words,
     groups,
     selected,
-    clearHref: listHref(path, filtersFrom(), sort),
+    clearHref: listHref(path, filtersFrom(), sort, words),
     sort: withSort
       ? { options: SORTS.map((option) => ({ ...option, selected: option.value === sort, disabled: Boolean(option.disabled) })) }
       : null
@@ -186,5 +206,6 @@ export {
   filterPanel,
   filtersFrom,
   listHref,
-  sortFrom
+  sortFrom,
+  wordsFrom
 }

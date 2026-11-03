@@ -3,7 +3,7 @@ import Boom from '@hapi/boom'
 import { statusCodes } from '../../constants/status-codes.js'
 import * as guidesService from '../../services/guides.js'
 import { formatIsoDate } from '../common/format-date.js'
-import { filterPanel, filtersFrom, sortFrom } from './filters.js'
+import { filterPanel, filtersFrom, sortFrom, wordsFrom } from './filters.js'
 import { HubViewModel } from './view-models.js'
 
 const NOT_RECORDED = 'Not recorded'
@@ -59,16 +59,19 @@ async function _refusingUnknownFilters (listing) {
 
 /**
  * The hub, listing every guide the filters let through, beside the filters
- * and sort.
+ * and sort. The words searched for are kept, in the search box and as the
+ * filters change, but find nothing yet: the list is every guide.
  */
 async function getHubPage (request, h) {
   const filters = filtersFrom(request.query)
   const sort = sortFrom(request.query)
+  const words = wordsFrom(request.query)
   const { guides, counts } = await _refusingUnknownFilters(guidesService.listEveryGuide({ filters, sort }))
 
   const viewModel = new HubViewModel({
     allGuides: guides.map(_toGuideItem),
-    filters: filterPanel({ path: '/hub', filters, counts, sort, total: guides.length, withSort: true })
+    filters: filterPanel({ path: '/hub', filters, counts, sort, total: guides.length, withSort: true, words }),
+    words
   })
 
   return h

@@ -144,6 +144,7 @@ class HubViewModel {
    *   shows
    * @param {Object|null} [data.filters=null] - The filter panel beside the
    *   list (`filters.js`), if it has one
+   * @param {string} [data.words=''] - Searched for, shown in the search box
    */
   constructor (data = {}) {
     const {
@@ -152,7 +153,8 @@ class HubViewModel {
       bookmarkedGuides = [],
       allGuides = [],
       shown = 'allGuides',
-      filters = null
+      filters = null,
+      words = ''
     } = data
 
     this.recentlyOpened = _buildTable({
@@ -189,6 +191,7 @@ class HubViewModel {
 
     this.shown = this[shown]
     this.filters = filters
+    this.words = words
   }
 }
 
