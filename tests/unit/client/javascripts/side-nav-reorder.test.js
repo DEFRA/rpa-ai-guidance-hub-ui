@@ -116,12 +116,30 @@ describe('dragging a pinned guide', () => {
     initPinReorder({ showPinsAsSaved })
   })
 
-  test('moves the guide to where it is let go, and saves the move', () => {
+  test('moves the guide to where it is let go, and saves the move', async () => {
     drag('a', 180)
 
     expect(order()).toEqual(['b', 'a', 'c'])
-    expect(window.fetch).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => expect(window.fetch).toHaveBeenCalledTimes(1))
     expect(sent(window.fetch.mock.calls[0])).toEqual({ url: '/pin-order', method: 'POST', guideId: 'a', from: '0', to: '1' })
+  })
+
+  test('saves one move at a time, in the order they were made, so none overtakes another', async () => {
+    let answerFirst
+    window.fetch.mockImplementationOnce(() => new Promise((resolve) => { answerFirst = resolve }))
+
+    drag('a', 180)
+    drag('c', 90)
+
+    expect(order()).toEqual(['c', 'b', 'a'])
+    await vi.waitFor(() => expect(window.fetch).toHaveBeenCalledTimes(1))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(window.fetch).toHaveBeenCalledTimes(1)
+
+    answerFirst({ ok: true, status: 204 })
+
+    await vi.waitFor(() => expect(window.fetch).toHaveBeenCalledTimes(2))
+    expect(sent(window.fetch.mock.calls[1])).toEqual(expect.objectContaining({ guideId: 'c', from: '2', to: '0' }))
   })
 
   test('tells a screen reader where the guide now is', () => {

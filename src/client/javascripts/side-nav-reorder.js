@@ -80,6 +80,8 @@ class PinReorder {
   #status
   #layout
   #showPinsAsSaved
+  // The moves being saved, one after another, so none overtakes another.
+  #saving = Promise.resolve()
   #press = null
   #drag = null
   #suppressClick = false
@@ -220,7 +222,9 @@ class PinReorder {
     }
     this.#list.insertBefore(item, others[index] ?? null)
     this.#refreshMenus()
-    this.#save(item.dataset.reorderId, startIndex, index).catch(this.#showPinsAsSaved)
+    this.#saving = this.#saving
+      .then(() => this.#save(item.dataset.reorderId, startIndex, index))
+      .catch(this.#showPinsAsSaved)
     if (this.#status) {
       this.#status.textContent = movedMessage(item.dataset.reorderLabel, index, others.length + 1)
     }
