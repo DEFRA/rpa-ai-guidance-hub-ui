@@ -343,6 +343,13 @@ describe('#hubController', () => {
       expect(main).toMatch(/value="CRM">\s*<label/)
     })
 
+    test('say that no guides match when the chosen values leave none', async () => {
+      const { main } = await hubWith({ system: 'CRM' }, guidePageResponse({ items: [], counts: COUNTS }))
+
+      expect(main).toContain('No guides match your search or filters. Try removing some filters or using different search terms.')
+      expect(main).not.toContain('There are no guides yet.')
+    })
+
     test('answer a value the hub does not have as a bad request', async () => {
       nock.cleanAll()
       nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(422, { detail: 'Unknown audience Martians' })

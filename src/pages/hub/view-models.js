@@ -184,9 +184,13 @@ class HubViewModel {
       rows: _buildDocumentRows(bookmarkedGuides)
     })
 
+    // Chosen filters that leave nothing say so, rather than that there are no
+    // guides at all.
     this.allGuides = _buildGuideList({
       items: allGuides,
-      emptyMessage: 'There are no guides yet.'
+      emptyMessage: filters?.selected?.length > 0
+        ? 'No guides match your search or filters. Try removing some filters or using different search terms.'
+        : 'There are no guides yet.'
     })
 
     this.shown = this[shown]
