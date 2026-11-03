@@ -141,4 +141,24 @@ describe('users service', () => {
       ])
     })
   })
+
+  describe('the user\'s recently opened guides', () => {
+    function signedInRequest () {
+      return { auth: { credentials: { sessionId: 's-1', profile, token: 't', userId: HUB_ID } }, app: {} }
+    }
+
+    test('record a guide as opened, for the signed-in user', async () => {
+      usersApi.recordOpened.mockResolvedValue({ ok: true, status: 204 })
+
+      await usersService.recordOpened(signedInRequest(), 'guide-1')
+
+      expect(usersApi.recordOpened).toHaveBeenCalledWith(HUB_ID, 'guide-1')
+    })
+
+    test('do not fail the page when the guide cannot be recorded as opened', async () => {
+      usersApi.recordOpened.mockRejectedValue(new Error('API unavailable'))
+
+      await expect(usersService.recordOpened(signedInRequest(), 'guide-1')).resolves.toBeUndefined()
+    })
+  })
 })

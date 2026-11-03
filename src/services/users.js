@@ -165,6 +165,22 @@ async function listPinned (request, filters) {
 }
 
 /**
+ * Record that the signed-in user has opened a guide. A failure is logged,
+ * never shown: the guide opens all the same.
+ *
+ * @param {import('@hapi/hapi').Request} request - Signed in
+ * @param {string} guideId
+ * @returns {Promise<void>}
+ */
+async function recordOpened (request, guideId) {
+  try {
+    await usersApi.recordOpened(await userIdOf(request), guideId)
+  } catch (err) {
+    logger.warn(buildErrorLog(err, { type: 'record_opened_failed' }), `Could not record guide ${guideId} as opened: ${err.message}`)
+  }
+}
+
+/**
  * @private
  * @param {import('@hapi/hapi').Request} request
  * @param {Array<object>} operations
@@ -182,6 +198,7 @@ export {
   movePin,
   pin,
   pinnedOf,
+  recordOpened,
   signIn,
   unpin,
   userIdOf

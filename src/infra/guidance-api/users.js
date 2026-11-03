@@ -75,6 +75,22 @@ async function getPins (userId, filters = {}) {
 }
 
 /**
+ * Record that the user has opened a guide.
+ *
+ * @param {string} userId
+ * @param {string} guideId
+ * @returns {Promise<{ok: boolean, status: number, data: any}>} - 204
+ * @throws {GuidanceApiError} - When response is not ok
+ */
+async function recordOpened (userId, guideId) {
+  return guidanceApiClient.request(`${_userPath(userId)}/recently-opened`, {
+    method: 'POST',
+    body: { guideId },
+    responseType: 'text'
+  })
+}
+
+/**
  * @private
  * @param {string} userId
  * @returns {string}
@@ -87,5 +103,6 @@ export {
   getPins,
   getUser,
   patchPins,
+  recordOpened,
   signIn
 }

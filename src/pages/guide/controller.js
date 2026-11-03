@@ -86,6 +86,11 @@ async function getGuidePage (request, h) {
     throw Boom.notFound()
   }
 
+  // Opening a guide names no page; moving between its parts does.
+  if (request.query.page === undefined) {
+    await usersService.recordOpened(request, guide.id)
+  }
+
   const sections = resolveImages(
     resolveAnchors(split, page => GuideViewModel.pageHref(guideId, page)),
     href => guideAssetHref(href, guideId)
