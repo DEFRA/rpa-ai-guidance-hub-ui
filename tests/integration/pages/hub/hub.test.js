@@ -426,9 +426,11 @@ describe('#hubController', () => {
 
     test('list on their own page in the user\'s order, beside the filters, without a sort', async () => {
       nock.cleanAll()
-      const cookie = await signedIn({ pinned: [{ id: OTHER, title: 'Closing a case' }, { id: PINNED, title: 'Claiming the SFI payment' }] })
+      // The list says where each guide is among all the pins; the user's record,
+      // read for the side navigation, may say otherwise if they changed between.
+      const cookie = await signedIn({ pinned: [{ id: PINNED, title: 'Claiming the SFI payment' }] })
       nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/pins`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, {
-        items: [guideSummaryResponse({ id: PINNED })],
+        items: [guideSummaryResponse({ id: PINNED, position: 1 })],
         counts: { audience: [], system: [{ label: 'CRM', shortLabel: null, count: 1, retired: false }], scheme: [] }
       })
 

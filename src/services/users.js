@@ -148,16 +148,20 @@ async function movePin (request, order, from, to) {
 
 /**
  * The guides the signed-in user has pinned, in their order, that the filters
- * let through, and each filter's counts among them.
+ * let through, each with its position among all their pins, which unpinning it
+ * sends; and each filter's counts among them.
  *
  * @param {import('@hapi/hapi').Request} request - Signed in
  * @param {import('./guides.js').Filters} [filters]
- * @returns {Promise<{guides: import('./guides.js').GuideSummary[], counts: import('./guides.js').FilterCounts}>}
+ * @returns {Promise<{guides: Array<import('./guides.js').GuideSummary & {position: number}>, counts: import('./guides.js').FilterCounts}>}
  */
 async function listPinned (request, filters) {
   const res = await usersApi.getPins(await userIdOf(request), filters)
 
-  return { guides: res.data.items.map(item => toGuideSummary(item)), counts: res.data.counts ?? {} }
+  return {
+    guides: res.data.items.map(item => ({ ...toGuideSummary(item), position: item.position })),
+    counts: res.data.counts ?? {}
+  }
 }
 
 /**

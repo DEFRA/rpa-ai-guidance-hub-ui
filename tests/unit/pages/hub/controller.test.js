@@ -179,8 +179,7 @@ describe('#hubController', () => {
 
   describe('getHubListPage', () => {
     test('Should show the guides the user pinned, in their order, beside the filters, without a sort', async () => {
-      vi.spyOn(usersService, 'listPinned').mockResolvedValue({ guides: [{ ...listedGuide, id: 'g-2' }], counts: COUNTS })
-      usersService.pinnedOf.mockResolvedValue([{ id: 'g-1', title: 'Filtered out' }, { id: 'g-2', title: 'Two' }])
+      vi.spyOn(usersService, 'listPinned').mockResolvedValue({ guides: [{ ...listedGuide, id: 'g-2', position: 1 }], counts: COUNTS })
       const request = { params: { list: 'pinned' }, query: { system: 'CRM' } }
 
       await getHubListPage(request, h)
@@ -189,6 +188,7 @@ describe('#hubController', () => {
       expect(usersService.listPinned).toHaveBeenCalledWith(request, { audience: [], system: ['CRM'], scheme: [], noScheme: false })
       expect(viewModel.shown.heading).toBe('1 pinned guide')
       expect(viewModel.pinned.guides.map(row => [row.id, row.pin])).toEqual([['g-2', { pinned: true, position: 1 }]])
+      expect(usersService.pinnedOf).not.toHaveBeenCalled()
       expect(viewModel.filters.action).toBe('/hub/pinned')
       expect(viewModel.filters.sort).toBeNull()
     })
