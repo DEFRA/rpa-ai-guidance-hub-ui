@@ -152,7 +152,7 @@ function _group (name, counted, filters) {
 
 /**
  * The filter panel for a list: each filter with the values the guides have
- * and their counts (scheme only when there is more than one), the fixed scheme
+ * and their counts (scheme only when there is more than one, or one is chosen), the fixed scheme
  * year, the chosen values as tags that each take one away, and the sort where
  * the list can be sorted.
  *
@@ -179,7 +179,11 @@ function filterPanel ({ path, filters, counts, sort, total, withSort, words = ''
       // filtering nothing.
       options: [{ value: String(SCHEME_YEAR), text: String(SCHEME_YEAR), count: total, checked: true, disabled: true }]
     },
-    ...(counted('scheme').length > 1 ? [_group('scheme', counted('scheme'), filters)] : [])
+    // Only when there is a choice to make, or one made: a hidden choice would be
+    // dropped the next time the form is sent.
+    ...(counted('scheme').length > 1 || filters.scheme.length > 0 || filters.noScheme
+      ? [_group('scheme', counted('scheme'), filters)]
+      : [])
   ]
 
   const selected = [

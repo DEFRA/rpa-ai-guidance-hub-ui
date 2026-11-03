@@ -133,6 +133,16 @@ describe('filterPanel', () => {
     ])
   })
 
+  test.each([
+    ['a scheme', { scheme: ['Countryside Stewardship'] }, COUNTS.scheme],
+    ['the guides specific to no scheme', { noScheme: true }, [{ label: null, shortLabel: null, count: 2 }]]
+  ])('keeps offering the scheme while %s is chosen, though the guides have only one, so applying the filters keeps it', (_name, chosen, scheme) => {
+    const { groups } = panel({ counts: { ...COUNTS, scheme }, filters: { ...NONE, ...chosen } })
+
+    expect(groups.at(-1)).toMatchObject({ name: 'scheme', legend: 'Scheme' })
+    expect(groups.at(-1).options).toEqual([expect.objectContaining({ count: scheme[0].count, checked: true })])
+  })
+
   test('checks the chosen values, and shows each as a tag that takes it away', () => {
     const filters = { audience: ['Checker'], system: ['CRM'], scheme: [] }
 
