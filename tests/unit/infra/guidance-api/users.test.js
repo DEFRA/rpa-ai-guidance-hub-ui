@@ -42,9 +42,10 @@ describe('users infra', () => {
         .query({ scheme: 'Countryside Stewardship' })
         .reply(200, { items: [], counts: COUNTS })
 
-      await usersApi.getPins(HUB_ID, { audience: [], system: [], scheme: ['Countryside Stewardship'], noScheme: false })
+      const res = await usersApi.getPins(HUB_ID, { audience: [], system: [], scheme: ['Countryside Stewardship'], noScheme: false })
 
       expect(listing.isDone()).toBe(true)
+      expect(res.data).toEqual({ items: [], counts: COUNTS })
     })
   })
 })
