@@ -69,6 +69,18 @@ describe('#loginController', () => {
       expect(payload).toContain('Dev User')
     })
 
+    test('signs the mock user in to the hub as a user of its own, apart from anyone signing in with Entra', async () => {
+      const users = nock(config.get('guidanceApi.baseUrl'))
+        .post('/users', { tenantId: 'local-development', objectId: 'dev-user-123', displayName: 'Dev User' })
+        .reply(statusCodes.HTTP_STATUS_CREATED, { id: '01a18d45-0000-7000-8000-000000000001' })
+
+      const { statusCode, headers } = await server.inject({ method: 'GET', url: '/login' })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(headers.location).toBe('/hub')
+      expect(users.isDone()).toBe(true)
+    })
+
     test('Should not expose the Entra callback under the local provider', async () => {
       const { statusCode } = await server.inject({
         method: 'POST',

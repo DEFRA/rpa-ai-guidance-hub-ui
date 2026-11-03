@@ -239,11 +239,11 @@ describe('#entraOidc', () => {
   })
 
   describe('#profileFromClaims', () => {
-    test('maps oid, name and preferred_username to the session profile', async () => {
+    test('maps oid, tid, name and preferred_username to the session profile', async () => {
       const { profileFromClaims } = await getOidc()
 
-      expect(profileFromClaims({ oid: 'oid-1', name: 'Test User', preferred_username: 'test@example.com' }))
-        .toEqual({ id: 'oid-1', displayName: 'Test User', email: 'test@example.com', roles: [] })
+      expect(profileFromClaims({ oid: 'oid-1', tid: 'tenant-1', name: 'Test User', preferred_username: 'test@example.com' }))
+        .toEqual({ id: 'oid-1', tenantId: 'tenant-1', displayName: 'Test User', email: 'test@example.com', roles: [] })
     })
 
     test('falls back to the email claim', async () => {
