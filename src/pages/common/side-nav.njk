@@ -17,17 +17,24 @@
 {% set listItems = [
   { text: "Hub", href: "/hub" + listQuery, icon: "home", current: currentPath == "/hub" },
   { text: "Recently opened", href: "/hub/recently-opened" + listQuery, icon: "clock", current: currentPath == "/hub/recently-opened" },
-  { text: "Pinned", href: "/hub/pinned" + listQuery, icon: "star", current: currentPath == "/hub/pinned" },
+  { text: "Pinned", href: "/hub/pinned" + listQuery, icon: "star", current: currentPath == "/hub/pinned", badge: pinnedCount },
   { text: "Bookmarked guides", href: "/hub/bookmarked-guides" + listQuery, icon: "bookmark", current: currentPath == "/hub/bookmarked-guides" }
 ] %}
 {% set editorItems = [
   { text: "Upload guidance", href: "/create-guidance/upload-guide", icon: "upload", current: onUpload }
 ] %}
 
-{% macro railItem(text, iconName, href, current) %}
+{# A list's count, as on the open navigation, is a dot on its icon, and part
+   of its name for a screen reader, as the prototype's rail has it. #}
+{% macro railItem(text, iconName, href, current, badge) %}
   <a class="app-side-nav__rail-item{% if current %} app-side-nav__rail-item--current{% endif %}" href="{{ href }}"{% if current %} aria-current="page"{% endif %} data-side-nav-tooltip>
     {{ icon(iconName) }}
-    <span class="app-side-nav__rail-label">{{ text }}</span>
+    {% if badge is number %}
+      <span class="app-side-nav__rail-label">{{ text }} ({{ badge }}<span class="govuk-visually-hidden"> guides</span>)</span>
+      <span class="app-side-nav__rail-dot" aria-hidden="true">{{ badge }}</span>
+    {% else %}
+      <span class="app-side-nav__rail-label">{{ text }}</span>
+    {% endif %}
     <span class="app-side-nav__tooltip" aria-hidden="true">{{ text }}</span>
   </a>
 {% endmacro %}
@@ -48,7 +55,7 @@
 
   <ul class="app-side-nav__rail-list">
     {% for item in listItems %}
-      <li>{{ railItem(item.text, item.icon, item.href, item.current) }}</li>
+      <li>{{ railItem(item.text, item.icon, item.href, item.current, item.badge) }}</li>
     {% endfor %}
   </ul>
 
@@ -99,6 +106,10 @@
         <a class="app-side-nav__link{% if item.current %} app-side-nav__link--current{% endif %}" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>
           {{ icon(item.icon) }}
           <span class="app-side-nav__text">{{ item.text }}</span>
+          {# A count the hub has for the list, as the prototype shows one. #}
+          {% if item.badge is number %}
+            <span class="app-side-nav__badge">{{ item.badge }}<span class="govuk-visually-hidden"> guides</span></span>
+          {% endif %}
         </a>
       </li>
     {% endfor %}

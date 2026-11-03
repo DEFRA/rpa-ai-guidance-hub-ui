@@ -23,8 +23,8 @@ function _pinnedGuides (pinned) {
 
 /**
  * Gives a signed-in page what its side navigation shows of the user's own
- * lists - the guides they pinned - from one call to the hub for the user.
- * Without them, the side navigation lists no pins.
+ * lists - the guides they pinned, and how many - from one call to the hub for
+ * the user. Without them, the side navigation lists no pins and counts none.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -41,7 +41,8 @@ async function addSideNavLists (request, h) {
 
   response.source.context = {
     ...response.source.context,
-    pinnedGuides: _pinnedGuides(pinned ?? [])
+    pinnedGuides: _pinnedGuides(pinned ?? []),
+    pinnedCount: pinned?.length
   }
 
   return h.continue

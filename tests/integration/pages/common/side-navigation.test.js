@@ -69,6 +69,43 @@ describe('Side navigation', () => {
     const FIRST = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
     const SECOND = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
 
+    function signedInWith (pinned) {
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, { id: USER_ID, pinned })
+
+      return loginAsDevUser(server)
+    }
+
+    test('are counted beside "Pinned"', async () => {
+      const cookie = await signedInWith([{ id: FIRST, title: 'Claiming a payment' }, { id: SECOND, title: 'Closing a case' }])
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+
+      expect(payload).toMatch(/Pinned<\/span>\s*<span class="app-side-nav__badge">2<span class="govuk-visually-hidden"> guides<\/span><\/span>/)
+    })
+
+    test('are counted on the folded navigation\'s icon, and in its name', async () => {
+      const signedIn = await signedInWith([{ id: FIRST, title: 'Claiming a payment' }])
+      const folded = await server.inject({ method: 'POST', url: '/side-nav/toggle', headers: { cookie: signedIn }, payload: { collapsed: true, returnTo: '/hub' } })
+      const cookie = mergeCookies(signedIn, folded.headers['set-cookie'])
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+
+      expect(payload).toContain('<span class="app-side-nav__rail-label">Pinned (1<span class="govuk-visually-hidden"> guides</span>)</span>')
+      expect(payload).toMatch(/Pinned \(1[^]*?<span class="app-side-nav__rail-dot" aria-hidden="true">1<\/span>/)
+      expect(payload).toContain('<span class="app-side-nav__rail-label">Recently opened</span>')
+    })
+
+    test('are not counted when they cannot be had, the page showing all the same', async () => {
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode, payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(payload).not.toContain('app-side-nav__badge')
+    })
+
     async function pinnedSection (pinned) {
       nock(GUIDANCE_API_BASE_URL)
         .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })

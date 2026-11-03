@@ -176,6 +176,25 @@ $app-side-nav-muted: #505a5f;
   text-align: center;
 }
 
+// A list's count on the folded navigation, as a dot on its icon.
+.app-side-nav__rail-dot {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border: 1px solid $app-side-nav-muted;
+  border-radius: 9px;
+  background-color: $govuk-white;
+  color: $govuk-black;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
 // The label is the item's real accessible name — hidden in the desktop
 // rail, shown when the rail opens as the mobile drawer.
 @include govuk-media-query($from: desktop) {
@@ -554,6 +573,23 @@ details:not([open]) > summary .app-side-nav__chevron {
       color: $govuk-black;
     }
   }
+}
+
+// A list's count, at the end of its link, as the prototype has it.
+.app-side-nav__badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 7px;
+  border: 1px solid $app-side-nav-muted;
+  border-radius: 11px;
+  background-color: $govuk-white;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .app-side-nav__section-count {
