@@ -8,6 +8,7 @@ const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
 
 const FIELD_HREF_MAP = {
   guideTitle: `${METADATA_URL}?from=check`,
+  versionNumber: `${METADATA_URL}?from=check`,
   schemes: `${METADATA_URL}?from=check`,
   owner: `${PURPOSE_URL}?from=check`,
   goal: `${PURPOSE_URL}?from=check`,

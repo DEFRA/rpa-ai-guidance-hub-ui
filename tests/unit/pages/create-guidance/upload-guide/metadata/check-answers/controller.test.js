@@ -131,6 +131,19 @@ describe('upload-guide metadata check-answers controller', () => {
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
     })
 
+    test('links a missing version number back to the guide details, as an upload begun before it was asked for has none', async () => {
+      mockUpload(validMetadata({ versionNumber: undefined }))
+      mockReferenceData()
+      stagedDocumentsService.getStagedDocumentById.mockResolvedValue(null)
+
+      await convertDocument(request, h)
+
+      expect(h.view).toHaveBeenCalledWith(CHECK_ANSWERS_VIEW, expect.objectContaining({
+        errorList: [{ text: 'Enter the version number', href: '/create-guidance/upload-guide/metadata?from=check' }]
+      }))
+      expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
+    })
+
     test('re-renders check answers with an error summary when the purpose answers are missing', async () => {
       mockUpload({ guideTitle: 'A title', versionNumber: '1.0', schemes: ['Sustainable Farming Incentive'] })
       mockReferenceData()

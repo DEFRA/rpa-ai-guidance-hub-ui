@@ -158,6 +158,14 @@ describe('#HubViewModel', () => {
       expect(allGuides.showing).toBe(showing)
     })
 
+    test('Should say that nothing matches when chosen filters leave no guides, and that there are none yet otherwise', () => {
+      const filtered = new HubViewModel({ allGuides: [], filters: { selected: [{ text: 'CRM', href: '/hub' }] } })
+      const unfiltered = new HubViewModel({ allGuides: [], filters: { selected: [] } })
+
+      expect(filtered.allGuides.emptyMessage).toBe('No guides match your search or filters. Try removing some filters or using different search terms.')
+      expect(unfiltered.allGuides.emptyMessage).toBe('There are no guides yet.')
+    })
+
     test('Should not link to an untrusted href', () => {
       const { allGuides } = new HubViewModel({
         allGuides: [{ ...guide, href: 'javascript:alert(1)' }]
