@@ -1,14 +1,16 @@
+import { statusCodes } from '../../../../src/constants/status-codes.js'
 import * as controller from '../../../../src/pages/pins/controller.js'
 import * as usersService from '../../../../src/services/users.js'
 
 const GUIDE = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
 
 describe('pins controller', () => {
-  let h
+  let h, code
 
   beforeEach(() => {
     vi.restoreAllMocks()
-    h = { redirect: vi.fn(() => 'redirected') }
+    code = vi.fn(() => 'answered')
+    h = { redirect: vi.fn(() => 'redirected'), response: vi.fn(() => ({ code })) }
     vi.spyOn(usersService, 'pin').mockResolvedValue(true)
     vi.spyOn(usersService, 'unpin').mockResolvedValue(true)
     vi.spyOn(usersService, 'movePin').mockResolvedValue(true)
@@ -48,6 +50,18 @@ describe('pins controller', () => {
 
       expect(usersService.movePin).toHaveBeenCalledWith(request, GUIDE, 0, 1)
       expect(h.redirect).toHaveBeenCalledWith('/hub#side-nav-pinned')
+    })
+
+    test.each([
+      ['nothing to show once it is moved', true, statusCodes.HTTP_STATUS_NO_CONTENT],
+      ['a conflict when the pins changed since the page showed them', false, statusCodes.HTTP_STATUS_CONFLICT]
+    ])('answers a script, which sends no page to go back to, with %s', async (_answer, moved, status) => {
+      usersService.movePin.mockResolvedValue(moved)
+
+      const response = await controller.postPinOrder({ payload: { guideId: GUIDE, from: 1, to: 0, returnTo: '' } }, h)
+
+      expect(code).toHaveBeenCalledWith(status)
+      expect(response).toBe('answered')
     })
   })
 })

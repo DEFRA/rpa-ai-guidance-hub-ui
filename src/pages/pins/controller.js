@@ -1,3 +1,4 @@
+import { statusCodes } from '../../constants/status-codes.js'
 import * as usersService from '../../services/users.js'
 import { relativeHref } from '../common/relative-href.js'
 
@@ -37,7 +38,9 @@ async function postPinToggle (request, h) {
 
 /**
  * Move a pinned guide from where the page showed it, then go back to the
- * page's pinned guides.
+ * page's pinned guides. A script that moved it in the page already is answered
+ * with nothing to show, or with a conflict when the pins have changed since
+ * the page showed them, so it can show them as they now are.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -46,7 +49,11 @@ async function postPinToggle (request, h) {
 async function postPinOrder (request, h) {
   const { guideId, from, to, returnTo } = request.payload
 
-  await usersService.movePin(request, guideId, from, to)
+  const moved = await usersService.movePin(request, guideId, from, to)
+
+  if (!returnTo) {
+    return h.response().code(moved ? statusCodes.HTTP_STATUS_NO_CONTENT : statusCodes.HTTP_STATUS_CONFLICT)
+  }
 
   return h.redirect(_backTo(returnTo, PINNED_SECTION))
 }

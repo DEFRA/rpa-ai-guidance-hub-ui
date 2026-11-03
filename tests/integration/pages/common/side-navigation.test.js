@@ -84,19 +84,24 @@ describe('Side navigation', () => {
       expect(section).toMatch(/app-side-nav__section-count">2</)
       expect(section.indexOf(`href="/guides/${FIRST}"`)).toBeGreaterThan(-1)
       expect(section.indexOf(`href="/guides/${SECOND}"`)).toBeGreaterThan(section.indexOf(`/guides/${FIRST}"`))
+      expect(section).toContain('data-reorder-list="/pin-order"')
+      expect(section).toContain('role="status" data-reorder-status')
     })
 
     test('each have a menu to open, unpin and move it, moving only where it can go', async () => {
       const section = await pinnedSection([{ id: FIRST, title: 'Claiming a payment' }, { id: SECOND, title: 'Closing a case' }])
       const [first, second] = section.split('<li class="app-side-nav__row"').slice(1)
+      const moveForms = (row) => row.split('<form').filter((form) => form.includes('action="/pin-order"'))
+      const [firstUp, firstDown] = moveForms(first)
+      const [secondUp, secondDown] = moveForms(second)
 
       expect(first).toContain('More actions for Claiming a payment')
       expect(first).toMatch(/>Open<\/a>/)
       expect(first).toMatch(/action="\/pin-toggle"[\s\S]*name="pin" value="false"[\s\S]*name="position" value="0"[\s\S]*>Unpin<span class="govuk-visually-hidden"> Claiming a payment</)
-      expect(first).toMatch(/action="\/pin-order"[\s\S]*name="from" value="0"[\s\S]*name="to" value="1"[\s\S]*>Move down</)
-      expect(first).not.toContain('>Move up<')
-      expect(second).toMatch(/name="from" value="1"[\s\S]*name="to" value="0"[\s\S]*>Move up</)
-      expect(second).not.toContain('>Move down<')
+      expect(firstDown).toMatch(/data-reorder-move="1">[\s\S]*name="from" value="0"[\s\S]*name="to" value="1"[\s\S]*>Move down</)
+      expect(secondUp).toMatch(/data-reorder-move="-1">[\s\S]*name="from" value="1"[\s\S]*name="to" value="0"[\s\S]*>Move up</)
+      expect(firstUp).toMatch(/data-reorder-move="-1" hidden>[\s\S]*>Move up</)
+      expect(secondDown).toMatch(/data-reorder-move="1" hidden>[\s\S]*>Move down</)
     })
 
     test('say when nothing is pinned yet', async () => {
@@ -120,6 +125,23 @@ describe('Side navigation', () => {
       expect(moving.isDone()).toBe(true)
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(headers.location).toBe('/hub#side-nav-pinned')
+    })
+
+    test.each([
+      ['nothing to show once it is moved', statusCodes.HTTP_STATUS_NO_CONTENT, statusCodes.HTTP_STATUS_NO_CONTENT],
+      ['a conflict when they changed since the page showed them', statusCodes.HTTP_STATUS_CONFLICT, statusCodes.HTTP_STATUS_CONFLICT],
+      ['a conflict when the move no longer fits them', statusCodes.HTTP_STATUS_UNPROCESSABLE_ENTITY, statusCodes.HTTP_STATUS_CONFLICT]
+    ])('answer a script that dragged one with %s', async (_answer, answered, expected) => {
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })
+        .patch(`/users/${USER_ID}/pins`).reply(answered)
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode } = await server.inject({
+        method: 'POST', url: '/pin-order', headers: { cookie }, payload: { guideId: FIRST, from: '0', to: '1' }
+      })
+
+      expect(statusCode).toBe(expected)
     })
   })
 

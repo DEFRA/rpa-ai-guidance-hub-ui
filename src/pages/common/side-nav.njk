@@ -122,7 +122,9 @@
     The user's pinned guides, in their order (pinnedGuides, from
     server/side-nav-lists.js). Each has a "…" menu of forms, so they open,
     unpin and move without JavaScript; each form sends where the page showed
-    the guide, so a page whose pins have changed since changes nothing.
+    the guide, so a page whose pins have changed since changes nothing. With
+    JavaScript they can be dragged into a new order (side-nav-reorder.js),
+    which keeps these positions up to date.
   #}
   {% set pins = pinnedGuides or [] %}
   <details class="app-side-nav__section" id="side-nav-pinned" open>
@@ -132,10 +134,10 @@
       {{ icon("chevron-down", "app-side-nav__chevron") }}
     </summary>
     {% if pins.length %}
-      <ul class="app-side-nav__list">
+      <ul class="app-side-nav__list" data-reorder-list="/pin-order">
         {% for pin in pins %}
-          <li class="app-side-nav__row">
-            <a class="app-side-nav__link" href="{{ pin.href }}">
+          <li class="app-side-nav__row" data-reorder-id="{{ pin.id }}" data-reorder-label="{{ pin.title }}">
+            <a class="app-side-nav__link" href="{{ pin.href }}" draggable="false" data-reorder-handle>
               {{ icon("star-filled", "app-side-nav__star") }}
               <span class="app-side-nav__text">{{ pin.title }}</span>
             </a>
@@ -153,29 +155,26 @@
                   <input type="hidden" name="returnTo" value="{{ currentUrl }}">
                   <button type="submit" class="app-side-nav__menu-item">Unpin<span class="govuk-visually-hidden"> {{ pin.title }}</span></button>
                 </form>
-                {% if not pin.isFirst %}
-                  <form method="post" action="/pin-order">
+                {#
+                  Move up and Move down are the way to reorder without
+                  dragging, or without JavaScript. Both are always there,
+                  hidden with no neighbour, so a drag can bring them up to date.
+                #}
+                {% for move in [{ text: "Move up", step: -1, hidden: pin.isFirst }, { text: "Move down", step: 1, hidden: pin.isLast }] %}
+                  <form method="post" action="/pin-order" data-reorder-move="{{ move.step }}"{% if move.hidden %} hidden{% endif %}>
                     <input type="hidden" name="guideId" value="{{ pin.id }}">
                     <input type="hidden" name="from" value="{{ pin.position }}">
-                    <input type="hidden" name="to" value="{{ pin.position - 1 }}">
+                    <input type="hidden" name="to" value="{{ pin.position + move.step }}">
                     <input type="hidden" name="returnTo" value="{{ currentUrl }}">
-                    <button type="submit" class="app-side-nav__menu-item">Move up<span class="govuk-visually-hidden"> {{ pin.title }}</span></button>
+                    <button type="submit" class="app-side-nav__menu-item">{{ move.text }}<span class="govuk-visually-hidden"> {{ pin.title }}</span></button>
                   </form>
-                {% endif %}
-                {% if not pin.isLast %}
-                  <form method="post" action="/pin-order">
-                    <input type="hidden" name="guideId" value="{{ pin.id }}">
-                    <input type="hidden" name="from" value="{{ pin.position }}">
-                    <input type="hidden" name="to" value="{{ pin.position + 1 }}">
-                    <input type="hidden" name="returnTo" value="{{ currentUrl }}">
-                    <button type="submit" class="app-side-nav__menu-item">Move down<span class="govuk-visually-hidden"> {{ pin.title }}</span></button>
-                  </form>
-                {% endif %}
+                {% endfor %}
               </div>
             </details>
           </li>
         {% endfor %}
       </ul>
+      <p class="govuk-visually-hidden" role="status" data-reorder-status></p>
     {% else %}
       <p class="app-side-nav__empty">You haven't pinned any guidance yet.</p>
     {% endif %}

@@ -623,6 +623,45 @@ details:not([open]) > summary .app-side-nav__chevron {
   gap: 2px;
 }
 
+// Dragging a pinned guide into a new order (side-nav-reorder.js): the dragged
+// item fades, and a bar shows where it will land.
+[data-reorder-list] > li {
+  position: relative;
+}
+
+.app-side-nav__reorder--dragging {
+  opacity: 0.5;
+}
+
+.app-side-nav__reorder--drop-before::before,
+.app-side-nav__reorder--drop-after::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  left: 0;
+  height: 4px;
+  border-radius: 2px;
+  background-color: $defra-green-hover;
+  pointer-events: none;
+}
+
+.app-side-nav__reorder--drop-before::before {
+  top: -3px;
+}
+
+.app-side-nav__reorder--drop-after::after {
+  bottom: -3px;
+}
+
+.app-layout--reordering,
+.app-layout--reordering * {
+  // Over every link and button the pointer crosses while dragging.
+  // stylelint-disable-next-line declaration-no-important
+  cursor: grabbing !important;
+  user-select: none;
+}
+
 .app-side-nav__more {
   position: relative;
   flex: none;
