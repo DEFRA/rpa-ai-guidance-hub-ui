@@ -654,11 +654,11 @@ details:not([open]) > summary .app-side-nav__chevron {
   bottom: -3px;
 }
 
-.app-layout--reordering,
-.app-layout--reordering * {
-  // Over every link and button the pointer crosses while dragging.
-  // stylelint-disable-next-line declaration-no-important
-  cursor: grabbing !important;
+// Over every link and button the pointer crosses while dragging: two classes,
+// to outweigh the pointer that the side navigation's own rules give them.
+.app-layout.app-layout--reordering,
+.app-layout.app-layout--reordering * {
+  cursor: grabbing;
   user-select: none;
 }
 
