@@ -45,8 +45,9 @@ describe('the user\'s pinned guides, as the guidance API lists them', () => {
       .query({ scheme: 'Countryside Stewardship' })
       .reply(200, { items: [], counts: COUNTS })
 
-    await usersService.listPinned(signedInRequest(), { audience: [], system: [], scheme: ['Countryside Stewardship'], noScheme: false })
+    const listed = await usersService.listPinned(signedInRequest(), { audience: [], system: [], scheme: ['Countryside Stewardship'], noScheme: false })
 
     expect(listing.isDone()).toBe(true)
+    expect(listed).toEqual({ guides: [], counts: COUNTS })
   })
 })
