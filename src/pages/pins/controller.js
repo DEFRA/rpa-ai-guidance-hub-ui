@@ -47,9 +47,9 @@ async function postPinToggle (request, h) {
  * @returns {Promise<import('@hapi/hapi').ResponseObject>}
  */
 async function postPinOrder (request, h) {
-  const { guideId, from, to, returnTo } = request.payload
+  const { order, from, to, returnTo } = request.payload
 
-  const moved = await usersService.movePin(request, guideId, from, to)
+  const moved = await usersService.movePin(request, order, from, to)
 
   if (!returnTo) {
     return h.response().code(moved ? statusCodes.HTTP_STATUS_NO_CONTENT : statusCodes.HTTP_STATUS_CONFLICT)

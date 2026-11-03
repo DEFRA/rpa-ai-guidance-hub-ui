@@ -122,7 +122,8 @@
     The user's pinned guides, in their order (pinnedGuides, from
     server/side-nav-lists.js). Each has a "…" menu of forms, so they open,
     unpin and move without JavaScript; each form sends where the page showed
-    the guide, so a page whose pins have changed since changes nothing. With
+    the guide, and a move every pin in the order shown, so a page whose pins
+    have changed since changes nothing. With
     JavaScript they can be dragged into a new order (side-nav-reorder.js),
     which keeps these positions up to date.
   #}
@@ -162,7 +163,7 @@
                 #}
                 {% for move in [{ text: "Move up", step: -1, hidden: pin.isFirst }, { text: "Move down", step: 1, hidden: pin.isLast }] %}
                   <form method="post" action="/pin-order" data-reorder-move="{{ move.step }}"{% if move.hidden %} hidden{% endif %}>
-                    <input type="hidden" name="guideId" value="{{ pin.id }}">
+                    {% for shown in pins %}<input type="hidden" name="order" value="{{ shown.id }}">{% endfor %}
                     <input type="hidden" name="from" value="{{ pin.position }}">
                     <input type="hidden" name="to" value="{{ pin.position + move.step }}">
                     <input type="hidden" name="returnTo" value="{{ currentUrl }}">

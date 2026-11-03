@@ -96,13 +96,15 @@ describe('users service', () => {
       expect(usersApi.patchPins).toHaveBeenCalledWith(HUB_ID, [{ op: 'add', path: '/0', value: 'guide-3' }])
     })
 
-    test('a guide is moved from where the page showed it, if it is still there', async () => {
+    test('a guide is moved only if the pins are still in the order the page showed', async () => {
       usersApi.patchPins.mockResolvedValue({ ok: true, status: 204 })
 
-      await usersService.movePin(signedInRequest(), 'guide-2', 0, 1)
+      await usersService.movePin(signedInRequest(), ['guide-2', 'guide-1', 'guide-3'], 0, 1)
 
       expect(usersApi.patchPins).toHaveBeenCalledWith(HUB_ID, [
         { op: 'test', path: '/0', value: 'guide-2' },
+        { op: 'test', path: '/1', value: 'guide-1' },
+        { op: 'test', path: '/2', value: 'guide-3' },
         { op: 'move', from: '/0', path: '/1' }
       ])
     })

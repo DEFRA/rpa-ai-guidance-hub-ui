@@ -12,6 +12,8 @@ import { loginAsDevUser } from '../../helpers/login.js'
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
 const SIDE_NAVIGATION = '<nav class="app-side-nav" aria-label="Guidance hub">'
+// How a browser sends a form, repeating a field for each of its values.
+const FORM = { 'content-type': 'application/x-www-form-urlencoded' }
 
 describe('Side navigation', () => {
   let server
@@ -99,6 +101,8 @@ describe('Side navigation', () => {
       expect(first).toMatch(/>Open<\/a>/)
       expect(first).toMatch(/action="\/pin-toggle"[\s\S]*name="pin" value="false"[\s\S]*name="position" value="0"[\s\S]*>Unpin<span class="govuk-visually-hidden"> Claiming a payment</)
       expect(firstDown).toMatch(/data-reorder-move="1">[\s\S]*name="from" value="0"[\s\S]*name="to" value="1"[\s\S]*>Move down</)
+      expect(firstDown.match(/name="order" value="([^"]+)"/g)).toEqual([`name="order" value="${FIRST}"`, `name="order" value="${SECOND}"`])
+      expect(firstDown).not.toContain('name="guideId"')
       expect(secondUp).toMatch(/data-reorder-move="-1">[\s\S]*name="from" value="1"[\s\S]*name="to" value="0"[\s\S]*>Move up</)
       expect(firstUp).toMatch(/data-reorder-move="-1" hidden>[\s\S]*>Move up</)
       expect(secondDown).toMatch(/data-reorder-move="1" hidden>[\s\S]*>Move down</)
@@ -114,17 +118,31 @@ describe('Side navigation', () => {
     test('move from where the page showed them, then go back to the page\'s pinned guides', async () => {
       nock(GUIDANCE_API_BASE_URL).post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })
       const moving = nock(GUIDANCE_API_BASE_URL)
-        .patch(`/users/${USER_ID}/pins`, [{ op: 'test', path: '/0', value: FIRST }, { op: 'move', from: '/0', path: '/1' }])
+        .patch(`/users/${USER_ID}/pins`, [
+          { op: 'test', path: '/0', value: FIRST },
+          { op: 'test', path: '/1', value: SECOND },
+          { op: 'move', from: '/0', path: '/1' }
+        ])
         .reply(statusCodes.HTTP_STATUS_NO_CONTENT)
       const cookie = await loginAsDevUser(server)
 
       const { statusCode, headers } = await server.inject({
-        method: 'POST', url: '/pin-order', headers: { cookie }, payload: { guideId: FIRST, from: '0', to: '1', returnTo: '/hub' }
+        method: 'POST', url: '/pin-order', headers: { cookie, ...FORM }, payload: `order=${FIRST}&order=${SECOND}&from=0&to=1&returnTo=%2Fhub`
       })
 
       expect(moving.isDone()).toBe(true)
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(headers.location).toBe('/hub#side-nav-pinned')
+    })
+
+    test('refuse a move that does not send the order the page showed', async () => {
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode } = await server.inject({
+        method: 'POST', url: '/pin-order', headers: { cookie }, payload: { from: '0', to: '1', returnTo: '/hub' }
+      })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
     })
 
     test.each([
@@ -138,7 +156,7 @@ describe('Side navigation', () => {
       const cookie = await loginAsDevUser(server)
 
       const { statusCode } = await server.inject({
-        method: 'POST', url: '/pin-order', headers: { cookie }, payload: { guideId: FIRST, from: '0', to: '1' }
+        method: 'POST', url: '/pin-order', headers: { cookie, ...FORM }, payload: `order=${FIRST}&order=${SECOND}&from=0&to=1`
       })
 
       expect(statusCode).toBe(expected)

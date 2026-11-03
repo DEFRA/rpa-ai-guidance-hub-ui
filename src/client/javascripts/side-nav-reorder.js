@@ -120,6 +120,11 @@ class PinReorder {
     return Array.from(this.#list.children)
   }
 
+  // The pinned guides' ids, as the list now shows them.
+  #order () {
+    return this.#items().map(item => item.dataset.reorderId)
+  }
+
   // Only a guide's link (data-reorder-handle) starts a drag, not its "…" menu.
   #onPointerDown (event) {
     const handle = event.target.closest('[data-reorder-handle]')
@@ -230,10 +235,11 @@ class PinReorder {
     if (index === startIndex) {
       return
     }
+    const shown = this.#order()
     this.#list.insertBefore(item, others[index] ?? null)
     this.#refreshPositions()
     this.#saving = this.#saving
-      .then(() => this.#save(item.dataset.reorderId, startIndex, index))
+      .then(() => this.#save(shown, startIndex, index))
       .catch(this.#showPinsAsSaved)
     if (this.#status) {
       this.#status.textContent = movedMessage(item.dataset.reorderLabel, index, others.length + 1)
@@ -242,9 +248,11 @@ class PinReorder {
 
   // Keep every form that changes a guide's pin sending where the guide now is:
   // its "…" menu here, and wherever else the page offers to unpin it (the
-  // hub's star, a guide page's Unpin guide).
+  // hub's star, a guide page's Unpin guide); and each move sending the order
+  // the list now shows.
   #refreshPositions () {
     const items = this.#items()
+    const order = this.#order()
 
     items.forEach((item, position) => {
       unpinFormsOf(item.dataset.reorderId).forEach(form => { form.elements.position.value = String(position) })
@@ -252,14 +260,21 @@ class PinReorder {
       item.querySelectorAll('[data-reorder-move]').forEach(form => {
         const target = moveTarget(position, Number(form.dataset.reorderMove), items.length)
 
+        form.querySelectorAll('input[name="order"]').forEach((input, at) => { input.value = order[at] })
         form.hidden = target === null
         form.querySelector('input[name="to"]').value = String(target ?? position)
       })
     })
   }
 
-  async #save (guideId, from, to) {
-    const body = new URLSearchParams({ guideId, from: String(from), to: String(to) })
+  /**
+   * @param {string[]} shown - The pinned guides' ids as they were before the
+   *   move, which the hub checks they still are
+   * @param {number} from
+   * @param {number} to
+   */
+  async #save (shown, from, to) {
+    const body = new URLSearchParams([...shown.map(id => ['order', id]), ['from', String(from)], ['to', String(to)]])
     const response = await window.fetch(this.#list.dataset.reorderList, { method: 'POST', body })
 
     if (response.status !== MOVE_KEPT) {

@@ -34,7 +34,8 @@ const routes = [
     options: {
       validate: {
         payload: Joi.object({
-          guideId,
+          // The pinned guides as the page showed them: one id, or several.
+          order: Joi.array().items(Joi.string().uuid()).single().min(1).required(),
           from: position.required(),
           to: position.required(),
           returnTo

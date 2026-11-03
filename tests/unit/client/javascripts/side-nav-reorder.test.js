@@ -56,7 +56,7 @@ describe('dragging a pinned guide', () => {
         </form>
         ${[-1, 1].map((step) => `
           <form method="post" action="/pin-order" data-reorder-move="${step}"${moveTarget(position, step, PINS.length) === null ? ' hidden' : ''}>
-            <input type="hidden" name="guideId" value="${id}">
+            ${PINS.map(([shown]) => `<input type="hidden" name="order" value="${shown}">`).join('')}
             <input type="hidden" name="from" value="${position}">
             <input type="hidden" name="to" value="${position + step}">
           </form>`).join('')}
@@ -106,7 +106,7 @@ describe('dragging a pinned guide', () => {
   function sent (call) {
     const [url, { method, body }] = call
 
-    return { url, method, ...Object.fromEntries(body) }
+    return { url, method, order: body.getAll('order'), from: body.get('from'), to: body.get('to') }
   }
 
   beforeEach(() => {
@@ -121,7 +121,7 @@ describe('dragging a pinned guide', () => {
 
     expect(order()).toEqual(['b', 'a', 'c'])
     await vi.waitFor(() => expect(window.fetch).toHaveBeenCalledTimes(1))
-    expect(sent(window.fetch.mock.calls[0])).toEqual({ url: '/pin-order', method: 'POST', guideId: 'a', from: '0', to: '1' })
+    expect(sent(window.fetch.mock.calls[0])).toEqual({ url: '/pin-order', method: 'POST', order: ['a', 'b', 'c'], from: '0', to: '1' })
   })
 
   test('saves one move at a time, in the order they were made, so none overtakes another', async () => {
@@ -139,7 +139,7 @@ describe('dragging a pinned guide', () => {
     answerFirst({ ok: true, status: 204 })
 
     await vi.waitFor(() => expect(window.fetch).toHaveBeenCalledTimes(2))
-    expect(sent(window.fetch.mock.calls[1])).toEqual(expect.objectContaining({ guideId: 'c', from: '2', to: '0' }))
+    expect(sent(window.fetch.mock.calls[1])).toEqual(expect.objectContaining({ order: ['b', 'a', 'c'], from: '2', to: '0' }))
   })
 
   test('tells a screen reader where the guide now is', () => {
@@ -157,6 +157,9 @@ describe('dragging a pinned guide', () => {
     expect(alpha.querySelector('[data-reorder-move="1"]').hidden).toBe(true)
     expect(alpha.querySelector('[data-reorder-move="-1"]').hidden).toBe(false)
     expect(alpha.querySelector('[data-reorder-move="-1"] input[name="to"]').value).toBe('1')
+    const orders = Array.from(document.querySelectorAll('[data-reorder-move]'))
+      .map((form) => Array.from(form.querySelectorAll('input[name="order"]')).map((input) => input.value))
+    expect(new Set(orders.map(String))).toEqual(new Set(['b,c,a']))
     expect(row('b').querySelector('[data-reorder-move="-1"]').hidden).toBe(true)
   })
 
