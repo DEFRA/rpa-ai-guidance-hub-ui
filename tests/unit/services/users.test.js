@@ -2,7 +2,12 @@ import * as usersApi from '../../../src/infra/guidance-api/users.js'
 import * as usersService from '../../../src/services/users.js'
 import * as guidanceApiFixtures from '../../fixtures/guidance-api.js'
 
+const { mockLoggerWarn } = vi.hoisted(() => ({ mockLoggerWarn: vi.fn() }))
+
 vi.mock('../../../src/infra/guidance-api/users.js')
+vi.mock('../../../src/infra/logging/logger.js', () => ({
+  createLogger: () => ({ warn: mockLoggerWarn })
+}))
 
 const HUB_ID = '01a18d45-0000-7000-8000-000000000001'
 
@@ -159,6 +164,10 @@ describe('users service', () => {
       usersApi.recordOpened.mockRejectedValue(new Error('API unavailable'))
 
       await expect(usersService.recordOpened(signedInRequest(), 'guide-1')).resolves.toBeUndefined()
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        expect.objectContaining({ event: expect.objectContaining({ type: 'record_opened_failed' }) }),
+        'Could not record guide guide-1 as opened: API unavailable'
+      )
     })
 
     test('list them newest first, as the API answers them, narrowed by the filters, with each filter\'s counts', async () => {

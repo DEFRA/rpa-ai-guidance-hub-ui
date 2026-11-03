@@ -334,8 +334,9 @@ describe('#guideController', () => {
       mockGuide()
       const recording = mockRecording()
 
-      await get(`${GUIDE_URL}?page=2`)
+      const { statusCode } = await get(`${GUIDE_URL}?page=2`)
 
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(recording.isDone()).toBe(false)
     })
 
