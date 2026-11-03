@@ -12,6 +12,10 @@
 // How far, in pixels, the pointer moves before a press becomes a drag.
 const DRAG_THRESHOLD = 5
 
+// What a kept move is answered with: nothing to show. Anything else, even a
+// page (as signing in again is), means the move was not kept.
+const MOVE_KEPT = 204
+
 const DRAGGING = 'app-side-nav__reorder--dragging'
 const DROP_BEFORE = 'app-side-nav__reorder--drop-before'
 const DROP_AFTER = 'app-side-nav__reorder--drop-after'
@@ -241,7 +245,7 @@ class PinReorder {
     const body = new URLSearchParams({ guideId, from: String(from), to: String(to) })
     const response = await window.fetch(this.#list.dataset.reorderList, { method: 'POST', body })
 
-    if (!response.ok) {
+    if (response.status !== MOVE_KEPT) {
       this.#showPinsAsSaved()
     }
   }

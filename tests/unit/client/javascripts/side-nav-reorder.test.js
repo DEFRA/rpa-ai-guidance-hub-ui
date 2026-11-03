@@ -185,6 +185,7 @@ describe('dragging a pinned guide', () => {
 
   test.each([
     ['refuses the move', () => window.fetch.mockResolvedValue({ ok: false, status: 409 })],
+    ['sends the user to sign in again, whose page answers 200', () => window.fetch.mockResolvedValue({ ok: true, status: 200, redirected: true })],
     ['cannot be reached', () => window.fetch.mockRejectedValue(new TypeError('Failed to fetch'))]
   ])('shows the pins as saved when the hub %s', async (_name, answer) => {
     answer()
