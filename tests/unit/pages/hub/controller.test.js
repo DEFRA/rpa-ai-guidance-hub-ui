@@ -54,7 +54,7 @@ describe('#hubController', () => {
           isEmpty: true,
           count: 0
         }),
-        shown: expect.objectContaining({ heading: 'All guides' }),
+        shown: expect.objectContaining({ heading: '0 guides' }),
         filters: expect.objectContaining({ action: '/hub' })
       })
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)

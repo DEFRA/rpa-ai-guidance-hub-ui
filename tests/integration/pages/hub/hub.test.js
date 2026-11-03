@@ -50,7 +50,7 @@ describe('#hubController', () => {
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(payload).toContain('RPA Guidance hub')
-      expect(payload).toContain('<h2 class="govuk-heading-m">All guides</h2>')
+      expect(payload).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">1 guide</h2>')
       expect(payload).not.toContain('Editing')
       expect(payload).not.toContain('Saved guidance')
       expect(payload).not.toContain('defra-service-navigation')
@@ -63,7 +63,8 @@ describe('#hubController', () => {
 
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
       expect(main).not.toContain('govuk-tabs')
-      expect(listHeadings(main)).toEqual(['All guides'])
+      expect(main.match(/<h2 class="govuk-heading-l/g)).toHaveLength(1)
+      expect(listHeadings(main)).toEqual([])
     })
 
     test('leaves a designer\'s work to the side navigation', async () => {
@@ -219,14 +220,19 @@ describe('#hubController', () => {
       expect(payload.indexOf(`href="/guides/${FIRST}"`)).toBeGreaterThan(payload.indexOf(`href="/guides/${SECOND}"`))
     })
 
-    test('Should say there are no guides when there are none', async () => {
-      nock.cleanAll()
-      nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items: [] }))
-      const cookie = await loginAsDevUser(server)
+    test('heads the list with how many guides there are, and says which it is showing', async () => {
+      const main = await hubListing([guideSummaryResponse({ id: 'guide-1' }), guideSummaryResponse({ id: 'guide-2' })])
 
-      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+      expect(main).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">2 guides</h2>')
+      expect(main).toMatch(/<p class="govuk-body govuk-!-margin-bottom-1 app-hub-results__showing">\s*Showing 1 to 2\s*<\/p>/)
+    })
 
-      expect(payload).toContain('There are no guides yet.')
+    test('Should say there are no guides when there are none, showing none', async () => {
+      const main = await hubListing([])
+
+      expect(main).toContain('0 guides')
+      expect(main).toContain('There are no guides yet.')
+      expect(main).not.toContain('Showing')
     })
   })
 

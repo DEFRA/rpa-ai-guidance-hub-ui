@@ -44,3 +44,12 @@
 .app-hub-results__facets {
   margin-bottom: govuk-spacing(2);
 }
+
+// The list's count, which guides it shows, and its sort, above its rows.
+.app-hub-results__header {
+  margin-bottom: govuk-spacing(4);
+}
+
+.app-hub-results__showing {
+  color: $govuk-secondary-text-colour;
+}

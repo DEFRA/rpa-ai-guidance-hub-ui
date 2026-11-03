@@ -79,17 +79,21 @@ function _guideRow ({ versionNumber, ...item }) {
 }
 
 /**
- * A list of guides shown as rows (`guide-list.njk`), not a table.
+ * A list of guides shown as rows (`guide-list.njk`), not a table, headed by
+ * how many guides it has and saying which of them it shows: all of them, on
+ * one page.
  *
  * @private
  * @param {Object} list
  * @param {Array<object>} list.items
- * @param {string} list.heading
  * @param {string} list.emptyMessage
  */
-function _buildGuideList ({ items, heading, emptyMessage }) {
+function _buildGuideList ({ items, emptyMessage }) {
+  const count = items.length
+
   return {
-    heading,
+    heading: `${count} guide${count === 1 ? '' : 's'}`,
+    showing: count > 0 ? `Showing 1 to ${count}` : null,
     emptyMessage,
     isGuideList: true,
     isEmpty: items.length === 0,
@@ -180,7 +184,6 @@ class HubViewModel {
 
     this.allGuides = _buildGuideList({
       items: allGuides,
-      heading: 'All guides',
       emptyMessage: 'There are no guides yet.'
     })
 

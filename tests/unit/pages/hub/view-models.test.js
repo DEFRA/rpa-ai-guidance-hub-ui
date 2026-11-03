@@ -25,9 +25,10 @@ describe('#HubViewModel', () => {
       }))
     })
 
-    test('Should return an empty list of all guides', () => {
+    test('Should return an empty list of all guides, counted, with nothing showing', () => {
       expect(viewModel.allGuides).toEqual(expect.objectContaining({
-        heading: 'All guides',
+        heading: '0 guides',
+        showing: null,
         emptyMessage: 'There are no guides yet.',
         isGuideList: true,
         isEmpty: true,
@@ -145,6 +146,16 @@ describe('#HubViewModel', () => {
       const { allGuides } = new HubViewModel({ allGuides: [{ ...guide, versionNumber: null }] })
 
       expect(allGuides.guides[0].versionTag).toBeNull()
+    })
+
+    test.each([
+      [1, '1 guide', 'Showing 1 to 1'],
+      [3, '3 guides', 'Showing 1 to 3']
+    ])('Should head a list of %i with how many guides it has, and say which it is showing', (count, heading, showing) => {
+      const { allGuides } = new HubViewModel({ allGuides: new Array(count).fill(guide) })
+
+      expect(allGuides.heading).toBe(heading)
+      expect(allGuides.showing).toBe(showing)
     })
 
     test('Should not link to an untrusted href', () => {
