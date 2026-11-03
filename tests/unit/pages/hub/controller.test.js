@@ -1,7 +1,7 @@
 import { statusCodes } from '../../../../src/constants/status-codes.js'
 import { GuidanceApiError } from '../../../../src/infra/guidance-api/client.js'
 
-import { getHubPage } from '../../../../src/pages/hub/controller.js'
+import { getHubListPage, getHubPage } from '../../../../src/pages/hub/controller.js'
 import * as guidesService from '../../../../src/services/guides.js'
 import * as usersService from '../../../../src/services/users.js'
 
@@ -174,6 +174,43 @@ describe('#hubController', () => {
       guidesService.listEveryGuide.mockRejectedValue(failure)
 
       await expect(getHubPage({ query: {} }, h)).rejects.toBe(failure)
+    })
+  })
+
+  describe('getHubListPage', () => {
+    test('Should show the guides the user pinned, in their order, beside the filters, without a sort', async () => {
+      vi.spyOn(usersService, 'listPinned').mockResolvedValue({ guides: [{ ...listedGuide, id: 'g-2' }], counts: COUNTS })
+      usersService.pinnedOf.mockResolvedValue([{ id: 'g-1', title: 'Filtered out' }, { id: 'g-2', title: 'Two' }])
+      const request = { params: { list: 'pinned' }, query: { system: 'CRM' } }
+
+      await getHubListPage(request, h)
+
+      const [, viewModel] = h.view.mock.calls[0]
+      expect(usersService.listPinned).toHaveBeenCalledWith(request, { audience: [], system: ['CRM'], scheme: [], noScheme: false })
+      expect(viewModel.shown.heading).toBe('1 pinned guide')
+      expect(viewModel.pinned.guides.map(row => [row.id, row.pin])).toEqual([['g-2', { pinned: true, position: 1 }]])
+      expect(viewModel.filters.action).toBe('/hub/pinned')
+      expect(viewModel.filters.sort).toBeNull()
+    })
+
+    test('Should answer a filter value the hub does not have as a bad request', async () => {
+      vi.spyOn(usersService, 'listPinned').mockRejectedValue(new GuidanceApiError('guidance API GET /users/u/pins failed: 422', 422))
+
+      await expect(getHubListPage({ params: { list: 'pinned' }, query: { audience: 'Martians' } }, h)).rejects.toMatchObject({
+        isBoom: true,
+        output: { statusCode: statusCodes.HTTP_STATUS_BAD_REQUEST }
+      })
+    })
+
+    test('Should show another list\'s empty message, without asking for the pinned guides', async () => {
+      vi.spyOn(usersService, 'listPinned')
+
+      await getHubListPage({ params: { list: 'bookmarked-guides' }, query: {} }, h)
+
+      const [, viewModel] = h.view.mock.calls[0]
+      expect(usersService.listPinned).not.toHaveBeenCalled()
+      expect(viewModel.shown.heading).toBe('Bookmarked guides')
+      expect(viewModel.filters).toBeNull()
     })
   })
 })

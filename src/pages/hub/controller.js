@@ -112,11 +112,32 @@ async function getHubPage (request, h) {
 }
 
 /**
- * One of the side navigation's lists on its own. None of them has a source
- * of guides yet, so each shows its empty message.
+ * One of the side navigation's lists on its own. The pinned guides list in
+ * the user's order, beside the filters, which narrow them; there is no sort.
+ * The other lists have no source of guides yet, so each shows its empty
+ * message.
  */
-function getHubListPage (request, h) {
-  const viewModel = new HubViewModel({ shown: LISTS[request.params.list] })
+async function getHubListPage (request, h) {
+  const shown = LISTS[request.params.list]
+
+  if (shown !== 'pinned') {
+    return h
+      .view('hub/page.njk', new HubViewModel({ shown }))
+      .code(statusCodes.HTTP_STATUS_OK)
+  }
+
+  const filters = filtersFrom(request.query)
+  const [{ guides, counts }, pinned] = await Promise.all([
+    _refusingUnknownFilters(usersService.listPinned(request, filters)),
+    usersService.pinnedOf(request)
+  ])
+  const pinPositions = _pinPositions(pinned)
+
+  const viewModel = new HubViewModel({
+    shown,
+    pinned: guides.map((guide) => _toGuideItem(guide, pinPositions)),
+    filters: filterPanel({ path: `/hub/${request.params.list}`, filters, counts, sort: sortFrom(), total: guides.length, withSort: false })
+  })
 
   return h
     .view('hub/page.njk', viewModel)

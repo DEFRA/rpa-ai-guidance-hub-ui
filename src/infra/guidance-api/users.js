@@ -54,6 +54,27 @@ async function patchPins (userId, operations) {
 }
 
 /**
+ * The guides the user has pinned, in their order, that the filters let
+ * through.
+ *
+ * @param {string} userId
+ * @param {{audience?: string[], system?: string[], scheme?: string[], noScheme?: boolean}} [filters]
+ * @returns {Promise<{ok: boolean, status: number, data: any}>} - data is
+ *   `{items, counts}`, each item a guide as `GET /guides` lists it
+ * @throws {GuidanceApiError} - When response is not ok
+ */
+async function getPins (userId, filters = {}) {
+  return guidanceApiClient.request(`${_userPath(userId)}/pins`, {
+    query: {
+      audience: filters.audience,
+      system: filters.system,
+      scheme: filters.scheme,
+      no_scheme: filters.noScheme ? 'true' : undefined
+    }
+  })
+}
+
+/**
  * @private
  * @param {string} userId
  * @returns {string}
@@ -63,6 +84,7 @@ function _userPath (userId) {
 }
 
 export {
+  getPins,
   getUser,
   patchPins,
   signIn

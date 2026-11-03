@@ -87,13 +87,14 @@ function _guideRow ({ versionNumber, ...item }) {
  * @private
  * @param {Object} list
  * @param {Array<object>} list.items
+ * @param {string} [list.noun='guide'] - What the heading counts
  * @param {string} list.emptyMessage
  */
-function _buildGuideList ({ items, emptyMessage }) {
+function _buildGuideList ({ items, noun = 'guide', emptyMessage }) {
   const count = items.length
 
   return {
-    heading: `${count} guide${count === 1 ? '' : 's'}`,
+    heading: `${count} ${noun}${count === 1 ? '' : 's'}`,
     showing: count > 0 ? `Showing 1 to ${count}` : null,
     emptyMessage,
     isGuideList: true,
@@ -137,10 +138,10 @@ class HubViewModel {
   /**
    * @param {Object} [data={}]
    * @param {Array<object>} [data.recentlyOpened=[]]
-   * @param {Array<object>} [data.pinned=[]]
+   * @param {Array<object>} [data.pinned=[]] - Items are as for `allGuides`
    * @param {Array<object>} [data.bookmarkedGuides=[]]
    * @param {Array<object>} [data.allGuides=[]] - Items are
-   *   `{title, href, versionNumber, purpose, lastUpdated, published}`
+   *   `{id, pin, title, href, versionNumber, purpose, lastUpdated, published}`
    * @param {string} [data.shown='allGuides'] - The table that the page
    *   shows
    * @param {Object|null} [data.filters=null] - The filter panel beside the
@@ -167,13 +168,16 @@ class HubViewModel {
       rows: _buildDocumentRows(recentlyOpened)
     })
 
-    this.pinned = _buildTable({
+    // Chosen filters that leave nothing say so, rather than that there are no
+    // guides at all.
+    const nothingMatches = filters?.selected?.length > 0
+      ? 'No guides match your search or filters. Try removing some filters or using different search terms.'
+      : null
+
+    this.pinned = _buildGuideList({
       items: pinned,
-      heading: 'Pinned',
-      emptyMessage: "You haven't pinned any guidance yet. Select 'Pin guide' on a guide to add it here.",
-      hintMessage: "Guidance you've pinned for quick access.",
-      head: DOCUMENT_TABLE_HEAD,
-      rows: _buildDocumentRows(pinned)
+      noun: 'pinned guide',
+      emptyMessage: nothingMatches ?? "You haven't pinned any guidance yet. Select 'Pin guide' on a guide to add it here."
     })
 
     this.bookmarkedGuides = _buildTable({
@@ -185,13 +189,9 @@ class HubViewModel {
       rows: _buildDocumentRows(bookmarkedGuides)
     })
 
-    // Chosen filters that leave nothing say so, rather than that there are no
-    // guides at all.
     this.allGuides = _buildGuideList({
       items: allGuides,
-      emptyMessage: filters?.selected?.length > 0
-        ? 'No guides match your search or filters. Try removing some filters or using different search terms.'
-        : 'There are no guides yet.'
+      emptyMessage: nothingMatches ?? 'There are no guides yet.'
     })
 
     this.shown = this[shown]

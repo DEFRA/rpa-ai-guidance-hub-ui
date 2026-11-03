@@ -141,7 +141,7 @@ async function listGuides (filters) {
   const res = await guidesApi.listGuides(filters)
 
   return {
-    guides: res.data.items.map(item => _toSummary(item)),
+    guides: res.data.items.map(item => toGuideSummary(item)),
     nextCursor: res.data.nextCursor ?? null,
     counts: res.data.counts ?? {}
   }
@@ -268,11 +268,10 @@ async function getGuideAsset (guideId, name) {
 }
 
 /**
- * @private
  * @param {Object} item - A guide as the API lists it
  * @returns {GuideSummary}
  */
-function _toSummary (item) {
+function toGuideSummary (item) {
   const { metadata = {}, latestVersion = null } = item
 
   return {
@@ -321,5 +320,6 @@ export {
   getGuideContent,
   listEveryGuide,
   listGuides,
-  RESULTS
+  RESULTS,
+  toGuideSummary
 }

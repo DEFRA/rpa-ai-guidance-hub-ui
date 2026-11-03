@@ -1,5 +1,6 @@
 import * as usersApi from '../../../src/infra/guidance-api/users.js'
 import * as usersService from '../../../src/services/users.js'
+import * as guidanceApiFixtures from '../../fixtures/guidance-api.js'
 
 vi.mock('../../../src/infra/guidance-api/users.js')
 
@@ -86,6 +87,22 @@ describe('users service', () => {
       usersApi.getUser.mockRejectedValue(new Error('API unavailable'))
 
       expect(await usersService.pinnedOf(signedInRequest())).toBeNull()
+    })
+
+    test('list them in the user\'s order, narrowed by the filters, with each filter\'s counts', async () => {
+      const counts = { scheme: [], system: [], audience: [] }
+      usersApi.getPins.mockResolvedValue({
+        ok: true,
+        status: 200,
+        data: { items: [guidanceApiFixtures.guideSummaryResponse({ id: 'guide-2' })], counts }
+      })
+      const filters = { audience: [], system: ['CRM'], scheme: [], noScheme: true }
+
+      const listed = await usersService.listPinned(signedInRequest(), filters)
+
+      expect(usersApi.getPins).toHaveBeenCalledWith(HUB_ID, filters)
+      expect(listed.guides.map(guide => guide.id)).toEqual(['guide-2'])
+      expect(listed.counts).toEqual(counts)
     })
 
     test('a guide is pinned at the top', async () => {
