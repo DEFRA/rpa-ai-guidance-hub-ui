@@ -334,6 +334,15 @@ describe('#hubController', () => {
       expect(main).toContain('(Most relevant once you search)')
     })
 
+    test('show a value the hub no longer has as a box that cannot be ticked, as choosing it would be refused', async () => {
+      const retired = { ...COUNTS, system: [...COUNTS.system, { label: 'Old system', shortLabel: null, count: 2, retired: true }] }
+
+      const { main } = await hubWith({}, guidePageResponse({ counts: retired }))
+
+      expect(main).toMatch(/value="Old system" disabled>\s*<label[^>]*>\s*Old system <span class="app-hub-filters__count">\(2\)<\/span>/)
+      expect(main).toMatch(/value="CRM">\s*<label/)
+    })
+
     test('answer a value the hub does not have as a bad request', async () => {
       nock.cleanAll()
       nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(422, { detail: 'Unknown audience Martians' })

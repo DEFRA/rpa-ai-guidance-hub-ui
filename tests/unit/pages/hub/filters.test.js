@@ -92,6 +92,15 @@ describe('filterPanel', () => {
     ])
   })
 
+  test('shows a value the hub no longer has, with its count, but not as a choice', () => {
+    const retired = { ...COUNTS, system: [...COUNTS.system, { label: 'Old system', shortLabel: null, count: 2, retired: true }] }
+
+    expect(panel({ counts: retired }).groups[1].options).toEqual([
+      { value: 'CRM', text: 'CRM', count: 3, checked: false, disabled: false },
+      { value: 'Old system', text: 'Old system', count: 2, checked: false, disabled: true }
+    ])
+  })
+
   test('has 2026 as the only scheme year, checked and disabled, counting every guide shown', () => {
     expect(panel().groups[2].options).toEqual([
       { value: '2026', text: '2026', count: 3, checked: true, disabled: true }

@@ -151,8 +151,9 @@ async function listGuides (filters) {
  * Each filter's values, labelled as the reference data labels them, with how
  * many guides have each given the other filters chosen.
  *
- * @typedef {Object<string, Array<{label: string, shortLabel: string|null, count: number}>>} FilterCounts
- *   By the filter's name: `audience`, `system`, `scheme`
+ * @typedef {Object<string, Array<{label: string|null, shortLabel: string|null, count: number, retired: boolean}>>} FilterCounts
+ *   By the filter's name: `audience`, `system`, `scheme`. A retired value is
+ *   one the reference data no longer has: counted, but not a choice
  */
 
 /**

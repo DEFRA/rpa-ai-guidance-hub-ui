@@ -119,9 +119,10 @@ function _without (filters, name, value) {
 
 /**
  * @private
- * @param {{label: string|null, shortLabel: string|null, count: number}} option
+ * @param {{label: string|null, shortLabel: string|null, count: number, retired?: boolean}} option
  *   - Counted; no label for the guides with none of the filter's values, which
- *   only the scheme counts, as the guides specific to no scheme
+ *   only the scheme counts, as the guides specific to no scheme. A retired
+ *   value is shown but can't be chosen, as the API would refuse it
  * @param {import('../../services/guides.js').Filters} filters - Chosen
  * @param {string} name - The filter's
  * @returns {Object}
@@ -131,7 +132,7 @@ function _option (option, filters, name) {
     return { name: NO_SCHEME, value: 'true', text: NOT_SCHEME_SPECIFIC, count: option.count, checked: filters.noScheme, disabled: false }
   }
 
-  return { value: option.label, text: displayLabel(option), count: option.count, checked: filters[name].includes(option.label), disabled: false }
+  return { value: option.label, text: displayLabel(option), count: option.count, checked: filters[name].includes(option.label), disabled: Boolean(option.retired) }
 }
 
 /**
