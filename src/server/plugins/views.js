@@ -8,6 +8,7 @@ import { config } from '../../config/config.js'
 import { ROLES, roleDisplayNames } from '../../constants/roles.js'
 import { roleEnforcementEnabled } from '../access-control/hub-access.js'
 import { jsonScript, renderMarkdownFallback } from '../../pages/guide/markdown.js'
+import { filtersFrom, listHref } from '../../pages/hub/filters.js'
 import { isNavCollapsed } from '../../pages/side-nav/collapsed.js'
 
 const nunjucksEnvironment = nunjucks.configure(
@@ -128,6 +129,9 @@ const viewPlugin = {
         // Read only when signed in, when the nav shows: a page no route matches
         // has no session to read.
         sideNavCollapsed: request?.auth?.isAuthenticated ? isNavCollapsed(request) : false,
+        // The hub's filters chosen on this page, which the side navigation's
+        // links to the hub and its lists carry on: '' or '?audience=…'.
+        listQuery: listHref('', filtersFrom(request?.query)),
         // Where a form on the page sends the user back to: this page.
         currentUrl: request?.url ? `${request.url.pathname}${request.url.search}` : null,
         userDisplayName: _userDisplayName(request)

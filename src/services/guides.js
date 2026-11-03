@@ -1,6 +1,8 @@
+import { SCHEME_YEAR } from '../constants/scheme-year.js'
 import { statusCodes } from '../constants/status-codes.js'
 
 import * as guidesApi from '../infra/guidance-api/guides.js'
+import { schemesAsKept } from './reference-data.js'
 import * as stagedDocumentsService from './staged-documents.js'
 
 /**
@@ -14,7 +16,13 @@ import * as stagedDocumentsService from './staged-documents.js'
  * @property {string[]} schemes
  * @property {string[]} systems
  * @property {string[]} audience
+ * @property {string|null} purpose - What the guide is for, as its author
+ *   said (`goal`)
+ * @property {string|null} versionNumber - The latest version's, as its author
+ *   gave it
  * @property {string|null} lastUpdated - When the latest version was made
+ * @property {string|null} createdAt - When the guide was recorded, which is
+ *   when it went live, since every upload does
  */
 
 /**
@@ -23,6 +31,8 @@ import * as stagedDocumentsService from './staged-documents.js'
  * @typedef {Object} GuideVersion
  * @property {string} id
  * @property {string|null} title
+ * @property {string|null} versionNumber - As its author gave it (`1.0`);
+ *   null for a version made before versions had numbers
  * @property {{id: string, displayName: string|null}|null} createdBy
  * @property {string} createdAt
  */
@@ -46,6 +56,9 @@ const RESULTS = {
   PARSE_FAILED: 'parseFailed' // the staged file could not be parsed
 }
 
+// The most guides the API lists on one page.
+const LARGEST_PAGE = 100
+
 const ALLOWED_ASSET_CONTENT_TYPES = new Set([
   'image/png',
   'image/jpeg',
@@ -59,18 +72,28 @@ const ALLOWED_ASSET_CONTENT_TYPES = new Set([
  * should match on, and the name is a copy so a listing can say who made a
  * version without asking a directory.
  *
+ * The version number is one of the journey's answers, but the API keeps it
+ * on the version beside the guide's details rather than among them, since
+ * the hub reads it.
+ *
  * @param {Object} guide
  * @param {string} guide.uploadId
  * @param {string} guide.fileId
- * @param {Object} guide.metadata - The journey's answers
+ * @param {Object} guide.metadata - The journey's answers, the version number
+ *   among them
  * @param {{id: string, displayName: string}} guide.user - The signed-in
  *   user's profile
  * @returns {Promise<{code: string}>} One of `RESULTS`
  */
 async function createGuide ({ uploadId, fileId, metadata, user }) {
+  const { versionNumber, ...details } = metadata
+  const kept = details.schemes ? { ...details, schemes: schemesAsKept(details.schemes) } : details
+
   const res = await guidesApi.createGuide({
     source: { uploadId, fileId },
-    metadata,
+    // The scheme year is fixed, so the form does not send it.
+    metadata: { ...kept, schemeYear: SCHEME_YEAR },
+    versionNumber,
     createdBy: { id: user.id, displayName: user.displayName }
   })
 
@@ -119,8 +142,54 @@ async function listGuides (filters) {
 
   return {
     guides: res.data.items.map(item => _toSummary(item)),
-    nextCursor: res.data.nextCursor ?? null
+    nextCursor: res.data.nextCursor ?? null,
+    counts: res.data.counts ?? {}
   }
+}
+
+/**
+ * Each filter's values, labelled as the reference data labels them, with how
+ * many guides have each given the other filters chosen.
+ *
+ * @typedef {Object<string, Array<{label: string, shortLabel: string|null, count: number}>>} FilterCounts
+ *   By the filter's name: `audience`, `system`, `scheme`
+ */
+
+/**
+ * The hub's filters, by name, each with its chosen values.
+ *
+ * @typedef {{audience: string[], system: string[], scheme: string[], noScheme?: boolean}} Filters
+ *   `noScheme` chooses the guides specific to no scheme too
+ */
+
+/**
+ * Every guide there is that the filters let through, in the order the API
+ * lists them by the sort, following each page's cursor until the last. Pages
+ * are as large as the API allows, to ask as few times as it can.
+ *
+ * @param {Object} [options]
+ * @param {Filters} [options.filters]
+ * @param {string} [options.sort] - `updated-newest` or `updated-oldest`
+ * @returns {Promise<{guides: GuideSummary[], counts: FilterCounts}>} The
+ *   counts are the same on every page, so the first page's are kept
+ */
+async function listEveryGuide ({ filters, sort } = {}) {
+  const narrowing = filters
+    ? { audiences: filters.audience, systems: filters.system, schemes: filters.scheme, noScheme: filters.noScheme }
+    : {}
+  const guides = []
+  let cursor
+  let counts
+
+  do {
+    const page = await listGuides({ limit: LARGEST_PAGE, cursor, ...narrowing, ...(sort ? { sort } : {}) })
+
+    guides.push(...page.guides)
+    counts ??= page.counts
+    cursor = page.nextCursor
+  } while (cursor)
+
+  return { guides, counts }
 }
 
 /**
@@ -212,7 +281,10 @@ function _toSummary (item) {
     schemes: metadata.schemes ?? [],
     systems: metadata.systems ?? [],
     audience: metadata.audience ?? [],
-    lastUpdated: latestVersion?.createdAt ?? null
+    purpose: metadata.goal ?? null,
+    versionNumber: latestVersion?.versionNumber ?? null,
+    lastUpdated: latestVersion?.createdAt ?? null,
+    createdAt: item.createdAt ?? null
   }
 }
 
@@ -225,6 +297,7 @@ function _toVersion (version) {
   return {
     id: version.id,
     title: version.title ?? null,
+    versionNumber: version.versionNumber ?? null,
     createdBy: version.createdBy ?? null,
     createdAt: version.createdAt
   }
@@ -245,6 +318,7 @@ export {
   getGuideAsset,
   getGuideById,
   getGuideContent,
+  listEveryGuide,
   listGuides,
   RESULTS
 }

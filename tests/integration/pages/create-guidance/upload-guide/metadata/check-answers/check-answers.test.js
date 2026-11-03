@@ -102,7 +102,8 @@ describe('#checkAnswersController Integration', () => {
       expect(response.payload).toContain('Owner and purpose')
       expect(response.payload).not.toContain('Who it&#39;s for and system access')
       expect(response.payload).toContain('Complete Guide Title')
-      expect(response.payload).toContain('1.2')
+      expect(response.payload).toMatch(/Version number\s*<\/dt>\s*<dd class="govuk-summary-list__value">\s*1\.0\s*</)
+      expect(response.payload).not.toContain('1.2')
       expect(response.payload).toContain('designer@example.com')
       expect(response.payload).toContain('Clear guidance purpose')
       expect(response.payload).toContain('Required knowledge and training')
@@ -144,7 +145,7 @@ describe('#checkAnswersController Integration', () => {
       const postChangeResponse = await server.inject({
         method: 'POST',
         url: '/create-guidance/upload-guide/metadata?from=check',
-        payload: { guideTitle: 'Updated Guide Title', schemes: ['sustainable-farming-incentive-sfi'] },
+        payload: { guideTitle: 'Updated Guide Title', versionNumber: '1.0', schemes: ['sustainable-farming-incentive-sfi'] },
         headers: { cookie }
       })
 
@@ -168,8 +169,10 @@ describe('#checkAnswersController Integration', () => {
             goal: 'Clear guidance purpose',
             requirements: 'Standard training required',
             systems: ['CRM'],
-            audience: ['Processor']
+            audience: ['Processor'],
+            schemeYear: 2026
           },
+          versionNumber: '1.0',
           createdBy: { id: 'dev-user-123', displayName: 'Dev User' }
         })
         .reply(statusCodes.HTTP_STATUS_CREATED, createdGuideResponse())

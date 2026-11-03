@@ -1,3 +1,4 @@
+import { SCHEME_YEAR } from '../../constants/scheme-year.js'
 import {
   buildSummaryCard,
   displayLabel,
@@ -31,8 +32,9 @@ function _labelsOrNotProvided (labels = [], options = []) {
 }
 
 /**
- * Build the "guide's details" summary card: title, version, last modified
- * date and scheme, sourced from session metadata and the staged document.
+ * Build the "guide's details" summary card: title, version number, last
+ * modified date and scheme, sourced from session metadata (the version
+ * number is the user's) and the staged document (the date).
  *
  * Shared by the check-answers screen and the start-over confirmation screen,
  * so both agree on exactly what a guide's details consist of.
@@ -56,11 +58,12 @@ function buildGuideDetailsCard ({
     changeVisuallyHiddenText: "the guide's details",
     rows: [
       buildSummaryRow('Guidance title', _valueOrNotProvided(metadata.guideTitle)),
-      buildSummaryRow('Version number', _valueOrNotProvided(stagedDocument?.version)),
+      buildSummaryRow('Version number', _valueOrNotProvided(metadata.versionNumber)),
       buildSummaryRow(
         'Last modified date',
         _valueOrNotProvided(formatStagedDocumentDate(stagedDocument?.lastModified))
       ),
+      buildSummaryRow('Scheme year', String(SCHEME_YEAR)),
       buildSummaryRow('Scheme', _labelsOrNotProvided(metadata.schemes, referenceOptions.schemes))
     ]
   })

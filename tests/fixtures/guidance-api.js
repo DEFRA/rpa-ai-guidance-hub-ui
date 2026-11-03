@@ -107,16 +107,18 @@ function createdGuideResponse (overrides = {}) {
  * A version as `GET /guides/{id}` and `GET /guides` send it.
  *
  * Verified against OpenAPI schema on 2026-10-12: contains id, contentUrl,
- * title, createdBy, and createdAt.
+ * title, createdBy, and createdAt. The API adds versionNumber, as the author
+ * gave it, null for a version made before versions had one.
  *
  * @param {Object} [overrides]
- * @returns {{id: string, contentUrl: string, title: string|null, createdBy: Object|null, createdAt: string}}
+ * @returns {{id: string, contentUrl: string, title: string|null, versionNumber: string|null, createdBy: Object|null, createdAt: string}}
  */
 function versionResponse (overrides = {}) {
   return {
     id: 'version-1',
     contentUrl: 's3://rpa-ai-guidance-hub-docs/guide-1/version-1/content.md',
     title: 'Claiming the SFI payment',
+    versionNumber: '1.0',
     createdBy: { id: 'dev-user-123', displayName: 'Dev User' },
     createdAt: '2026-10-06T08:00:00Z',
     ...overrides
@@ -128,10 +130,11 @@ function versionResponse (overrides = {}) {
  * first.
  *
  * Verified against OpenAPI schema on 2026-10-12: returns id, metadata,
- * source, and versions array ordered newest first.
+ * source, and versions array ordered newest first. The API adds createdAt,
+ * when the guide was recorded.
  *
  * @param {Object} [overrides]
- * @returns {{id: string, metadata: Object, source: Object, versions: Array<Object>}}
+ * @returns {{id: string, metadata: Object, source: Object, createdAt: string, versions: Array<Object>}}
  */
 function guideResponse (overrides = {}) {
   return {
@@ -144,6 +147,7 @@ function guideResponse (overrides = {}) {
       owner: 'owner@example.com'
     },
     source: { uploadId: 'u-1', fileId: 'file-1', filename: 'guide.docx' },
+    createdAt: '2026-10-01T09:00:00',
     versions: [versionResponse()],
     ...overrides
   }

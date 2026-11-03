@@ -15,8 +15,7 @@ describe('#HubViewModel', () => {
     test.each([
       ['recentlyOpened', 'Recently opened'],
       ['pinned', 'Pinned'],
-      ['bookmarkedGuides', 'Bookmarked guides'],
-      ['allGuides', 'All guides']
+      ['bookmarkedGuides', 'Bookmarked guides']
     ])('Should return an empty %s table', (key, heading) => {
       expect(viewModel[key]).toEqual(expect.objectContaining({
         heading,
@@ -26,8 +25,16 @@ describe('#HubViewModel', () => {
       }))
     })
 
-    test('Should not hint on tables with no hint copy', () => {
-      expect(viewModel.allGuides.hintMessage).toBeNull()
+    test('Should return an empty list of all guides, counted, with nothing showing', () => {
+      expect(viewModel.allGuides).toEqual(expect.objectContaining({
+        heading: '0 guides',
+        showing: null,
+        emptyMessage: 'There are no guides yet.',
+        isGuideList: true,
+        isEmpty: true,
+        count: 0,
+        guides: []
+      }))
     })
 
     test('has no list awaiting review', () => {
@@ -114,22 +121,41 @@ describe('#HubViewModel', () => {
     const guide = {
       title: 'Claiming the SFI payment',
       href: '/guides/guide-1',
-      schemes: 'SFI, Countryside Stewardship',
-      lastModified: '20 July 2026',
-      owner: 'owner@example.com'
+      versionNumber: '2.1',
+      purpose: 'Explain the claim.',
+      lastUpdated: '20 July 2026',
+      published: '1 July 2026'
     }
 
-    test('Should build a link/schemes/lastModified/owner row', () => {
+    test('Should give each guide a row: its version, title and link, purpose, and when it was last updated and published', () => {
       const { allGuides } = new HubViewModel({ allGuides: [guide] })
 
       expect(allGuides.count).toBe(1)
       expect(allGuides.isEmpty).toBe(false)
-      expect(allGuides.rows).toEqual([[
-        { type: 'link', text: guide.title, href: '/guides/guide-1' },
-        { type: 'text', text: 'SFI, Countryside Stewardship' },
-        { type: 'text', text: '20 July 2026' },
-        { type: 'text', text: 'owner@example.com' }
-      ]])
+      expect(allGuides.guides).toEqual([{
+        title: 'Claiming the SFI payment',
+        href: '/guides/guide-1',
+        versionTag: { text: 'Version 2.1', colour: 'green' },
+        purpose: 'Explain the claim.',
+        lastUpdated: '20 July 2026',
+        published: '1 July 2026'
+      }])
+    })
+
+    test('Should tag no version for a guide whose version has no number', () => {
+      const { allGuides } = new HubViewModel({ allGuides: [{ ...guide, versionNumber: null }] })
+
+      expect(allGuides.guides[0].versionTag).toBeNull()
+    })
+
+    test.each([
+      [1, '1 guide', 'Showing 1 to 1'],
+      [3, '3 guides', 'Showing 1 to 3']
+    ])('Should head a list of %i with how many guides it has, and say which it is showing', (count, heading, showing) => {
+      const { allGuides } = new HubViewModel({ allGuides: new Array(count).fill(guide) })
+
+      expect(allGuides.heading).toBe(heading)
+      expect(allGuides.showing).toBe(showing)
     })
 
     test('Should not link to an untrusted href', () => {
@@ -137,7 +163,7 @@ describe('#HubViewModel', () => {
         allGuides: [{ ...guide, href: 'javascript:alert(1)' }]
       })
 
-      expect(allGuides.rows[0][0].href).toBe('#')
+      expect(allGuides.guides[0].href).toBe('#')
     })
   })
 })

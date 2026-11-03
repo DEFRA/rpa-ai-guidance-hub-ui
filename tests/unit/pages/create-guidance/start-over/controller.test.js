@@ -71,7 +71,7 @@ describe('start-over controller', () => {
           uploadId: 'u-1',
           completedStepIds: ['scanning', 'parse'],
           fileId: 'file-1',
-          metadata: { guideTitle: 'Test', schemes: ['Sustainable Farming Incentive'], owner: 'owner@example.com' }
+          metadata: { guideTitle: 'Test', versionNumber: '2.0', schemes: ['Sustainable Farming Incentive'], owner: 'owner@example.com' }
         }]
       })
 
@@ -87,7 +87,7 @@ describe('start-over controller', () => {
           guideDetailsCard: expect.objectContaining({
             rows: expect.arrayContaining([
               expect.objectContaining({ key: { text: 'Guidance title' }, value: { text: 'Test' } }),
-              expect.objectContaining({ key: { text: 'Version number' }, value: { text: '1.2' } })
+              expect.objectContaining({ key: { text: 'Version number' }, value: { text: '2.0' } })
             ])
           }),
           ownerPurposeCard: expect.objectContaining({

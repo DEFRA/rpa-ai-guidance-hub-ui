@@ -18,6 +18,7 @@ const CHECK_ANSWERS_VIEW = 'create-guidance/upload-guide/metadata/check-answers/
 function validMetadata (overrides = {}) {
   return {
     guideTitle: 'A title',
+    versionNumber: '1.0',
     schemes: ['Sustainable Farming Incentive'],
     owner: 'owner@example.com',
     goal: 'A purpose',
@@ -78,7 +79,7 @@ describe('upload-guide metadata check-answers controller', () => {
     })
 
     test('redirects to the purpose form if its answers are missing', async () => {
-      mockUpload({ guideTitle: 'A title', schemes: ['Sustainable Farming Incentive'] })
+      mockUpload({ guideTitle: 'A title', versionNumber: '1.0', schemes: ['Sustainable Farming Incentive'] })
       mockReferenceData()
 
       await getCheckAnswers(request, h)
@@ -131,7 +132,7 @@ describe('upload-guide metadata check-answers controller', () => {
     })
 
     test('re-renders check answers with an error summary when the purpose answers are missing', async () => {
-      mockUpload({ guideTitle: 'A title', schemes: ['Sustainable Farming Incentive'] })
+      mockUpload({ guideTitle: 'A title', versionNumber: '1.0', schemes: ['Sustainable Farming Incentive'] })
       mockReferenceData()
       stagedDocumentsService.getStagedDocumentById.mockResolvedValue(null)
 

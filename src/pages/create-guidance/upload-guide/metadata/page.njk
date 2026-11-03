@@ -1,5 +1,6 @@
 {% extends "common/layout.njk" %}
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
 
 {% block beforeContent %}
   <a class="govuk-back-link" href="{{ backUrl }}">Back</a>
@@ -29,7 +30,7 @@
       <h1 class="govuk-heading-l">The guide's details</h1>
 
       <p class="govuk-body">
-        We have read the title, version and date from the document. Check the title and choose the schemes this guidance relates to.
+        We have read the title and date from the document. Check the title, enter the version number and choose the schemes this guidance relates to.
       </p>
 
       <form method="post" action="{{ formAction }}" novalidate>
@@ -56,15 +57,32 @@
           >
         </div>
 
-        <dl class="govuk-summary-list">
-          <div class="govuk-summary-list__row">
-            <dt class="govuk-summary-list__key">
-              Version number
-            </dt>
-            <dd class="govuk-summary-list__value">
-              {{ versionNumber }}
-            </dd>
+        {# Typed as SharePoint shows it, never filled in from the document. #}
+        <div class="govuk-form-group{% if errors.versionNumber %} govuk-form-group--error{% endif %}">
+          <label class="govuk-label govuk-label--s" for="version-number">
+            Version number
+          </label>
+          <div id="version-number-hint" class="govuk-hint">
+            For example, 1.0
           </div>
+          {% if errors.versionNumber %}
+            <p id="version-number-error" class="govuk-error-message">
+              <span class="govuk-visually-hidden">Error:</span> {{ errors.versionNumber }}
+            </p>
+          {% endif %}
+          <input
+            class="govuk-input govuk-input--width-5{% if errors.versionNumber %} govuk-input--error{% endif %}"
+            id="version-number"
+            name="versionNumber"
+            type="text"
+            value="{{ values.versionNumber }}"
+            inputmode="decimal"
+            spellcheck="false"
+            aria-describedby="version-number-hint{% if errors.versionNumber %} version-number-error{% endif %}"
+          >
+        </div>
+
+        <dl class="govuk-summary-list">
           <div class="govuk-summary-list__row">
             <dt class="govuk-summary-list__key">
               Last modified date
@@ -74,6 +92,15 @@
             </dd>
           </div>
         </dl>
+
+        {# The only scheme year there is, for now: chosen and fixed. A disabled
+           field is not sent, so the guide is given it when it is converted. #}
+        {{ govukRadios({
+          idPrefix: "scheme-year",
+          name: "schemeYear",
+          fieldset: { legend: { text: "Scheme year", classes: "govuk-fieldset__legend--s" } },
+          items: [{ value: schemeYear, text: schemeYear, checked: true, disabled: true }]
+        }) }}
 
         <div class="govuk-form-group{% if errors.schemes %} govuk-form-group--error{% endif %}">
           <fieldset class="govuk-fieldset" aria-describedby="scheme-hint{% if errors.schemes %} scheme-error{% endif %}">

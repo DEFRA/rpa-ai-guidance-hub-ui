@@ -12,11 +12,13 @@
 {% from "common/icon.njk" import icon %}
 
 {% set onUpload = currentPath and currentPath.indexOf('/create-guidance') == 0 %}
+{# The hub and its lists keep the filters chosen (listQuery), so moving between
+   them keeps the same guides in view. #}
 {% set listItems = [
-  { text: "Hub", href: "/hub", icon: "home", current: currentPath == "/hub" },
-  { text: "Recently opened", href: "/hub/recently-opened", icon: "clock", current: currentPath == "/hub/recently-opened" },
-  { text: "Pinned", href: "/hub/pinned", icon: "star", current: currentPath == "/hub/pinned" },
-  { text: "Bookmarked guides", href: "/hub/bookmarked-guides", icon: "bookmark", current: currentPath == "/hub/bookmarked-guides" }
+  { text: "Hub", href: "/hub" + listQuery, icon: "home", current: currentPath == "/hub" },
+  { text: "Recently opened", href: "/hub/recently-opened" + listQuery, icon: "clock", current: currentPath == "/hub/recently-opened" },
+  { text: "Pinned", href: "/hub/pinned" + listQuery, icon: "star", current: currentPath == "/hub/pinned" },
+  { text: "Bookmarked guides", href: "/hub/bookmarked-guides" + listQuery, icon: "bookmark", current: currentPath == "/hub/bookmarked-guides" }
 ] %}
 {% set editorItems = [
   { text: "Upload guidance", href: "/create-guidance/upload-guide", icon: "upload", current: onUpload }

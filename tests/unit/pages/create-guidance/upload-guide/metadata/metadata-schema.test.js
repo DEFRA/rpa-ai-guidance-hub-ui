@@ -5,6 +5,7 @@ const schemeOptions = [{ label: 'Sustainable Farming Incentive' }, { label: 'Not
 function validPayload (overrides = {}) {
   return {
     guideTitle: 'Processing farmer claims using RPA processors and legacy systems',
+    versionNumber: '1.0',
     schemes: ['Sustainable Farming Incentive'],
     ...overrides
   }
@@ -45,13 +46,43 @@ describe('#buildMetadataSchema', () => {
   })
 
   test('rejects missing or invalid scheme', () => {
-    const resultMissing = metadataSchema.validate({ guideTitle: 'Test title' })
+    const resultMissing = metadataSchema.validate(validPayload({ schemes: undefined }))
     expect(resultMissing.error).toBeDefined()
     expect(resultMissing.error.details[0].message).toBe('Select at least one scheme this guidance relates to')
 
     const resultInvalid = metadataSchema.validate(validPayload({ schemes: ['invalid-scheme'] }))
     expect(resultInvalid.error).toBeDefined()
     expect(resultInvalid.error.details[0].message).toBe('Select at least one scheme this guidance relates to')
+  })
+
+  describe('the version number', () => {
+    const MALFORMED = 'Enter the version number as 2 whole numbers with a full stop between them, for example 1.0'
+
+    test.each([[''], ['   '], [undefined]])('is asked for when it is %j', (versionNumber) => {
+      const result = metadataSchema.validate(validPayload({ versionNumber }))
+
+      expect(result.error.details[0].message).toBe('Enter the version number')
+    })
+
+    test.each([
+      ['1'], ['1.'], ['.1'], ['1.0.0'], ['a.b'], ['1.x'], ['1,0'], ['-1.0'], ['+1.0'], ['1 .0'],
+      ['\u0661.\u0660'], ['\u00b2.0'], ['1.\u00bd']
+    ])('is refused as %j, not two whole numbers with a full stop between them', (versionNumber) => {
+      const result = metadataSchema.validate(validPayload({ versionNumber }))
+
+      expect(result.error.details[0].message).toBe(MALFORMED)
+    })
+
+    test.each([['1.0'], ['0.1'], ['12.3'], ['2024.10']])('is accepted as %s', (versionNumber) => {
+      const result = metadataSchema.validate(validPayload({ versionNumber }))
+
+      expect(result.error).toBeUndefined()
+      expect(result.value.versionNumber).toBe(versionNumber)
+    })
+
+    test('is kept without the spaces around it', () => {
+      expect(metadataSchema.validate(validPayload({ versionNumber: ' 1.0 ' })).value.versionNumber).toBe('1.0')
+    })
   })
 
   test('builds a schema scoped to the options it is given', () => {

@@ -131,7 +131,7 @@ describe('#metadataController Integration', () => {
       const response = await server.inject({
         method: 'POST',
         url: '/create-guidance/upload-guide/metadata',
-        payload: { guideTitle: 'A valid title', schemes: ['not-scheme-specific', 'sustainable-farming-incentive-sfi'] },
+        payload: { guideTitle: 'A valid title', versionNumber: '1.0', schemes: ['not-scheme-specific', 'sustainable-farming-incentive-sfi'] },
         headers: { cookie }
       })
 
@@ -139,7 +139,7 @@ describe('#metadataController Integration', () => {
       expect(response.headers.location).toBe('/create-guidance/upload-guide/metadata/purpose')
     })
 
-    test('GET /create-guidance/upload-guide/metadata loads the staged document title, version and last modified date once parsing has captured a fileId', async () => {
+    test('GET /create-guidance/upload-guide/metadata loads the staged document title and last modified date once parsing has captured a fileId, and asks for the version number without filling it in', async () => {
       const devCookie = await loginAsDevUser(server)
       const cookie = await completeParse(server, devCookie)
 
@@ -159,8 +159,45 @@ describe('#metadataController Integration', () => {
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(response.payload).toContain('value="Parsed Document Title"')
-      expect(response.payload).toContain('2.0')
       expect(response.payload).toContain('10 May 2026')
+      expect(response.payload).toMatch(/<label class="govuk-label govuk-label--s" for="version-number">\s*Version number\s*<\/label>/)
+      expect(response.payload).toMatch(/<input[^>]*id="version-number"[^>]*name="versionNumber"[^>]*value=""/)
+      expect(response.payload).not.toContain('2.0')
+    })
+
+    test.each([
+      ['', 'Enter the version number'],
+      ['1', 'Enter the version number as 2 whole numbers with a full stop between them, for example 1.0']
+    ])('POST /create-guidance/upload-guide/metadata re-renders 400 for the version number %j, keeping what was entered', async (versionNumber, message) => {
+      const cookie = await loginAsDevUser(server)
+
+      // one call to build the validation schema, one to re-render the form on failure
+      mockSchemes()
+      mockSchemes()
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/create-guidance/upload-guide/metadata',
+        payload: { guideTitle: 'A valid title', versionNumber, schemes: ['sustainable-farming-incentive-sfi'] },
+        headers: { cookie }
+      })
+
+      expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
+      expect(response.payload).toContain(`<li><a href="#version-number">${message}</a></li>`)
+      expect(response.payload).toContain(`<span class="govuk-visually-hidden">Error:</span> ${message}`)
+      expect(response.payload).toMatch(new RegExp(`id="version-number"[^>]*value="${versionNumber}"`))
+    })
+
+    test('GET /create-guidance/upload-guide/metadata shows the scheme year, 2026, chosen and fixed', async () => {
+      const devCookie = await loginAsDevUser(server)
+      const cookie = await completeParse(server, devCookie)
+      mockSchemes()
+      nock(GUIDANCE_API_BASE_URL).get('/guides/staging/file-1').once().reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'complete' }))
+
+      const { payload } = await server.inject({ method: 'GET', url: '/create-guidance/upload-guide/metadata', headers: { cookie } })
+
+      expect(payload).toMatch(/<legend class="govuk-fieldset__legend govuk-fieldset__legend--s">\s*Scheme year\s*<\/legend>/)
+      expect(payload).toMatch(/<input class="govuk-radios__input" id="scheme-year" name="schemeYear" type="radio" value="2026" checked disabled>/)
     })
   })
 

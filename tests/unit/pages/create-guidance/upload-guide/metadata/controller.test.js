@@ -96,7 +96,7 @@ describe('upload-guide metadata controller', () => {
       expect(h.view).not.toHaveBeenCalled()
     })
 
-    test('loads staged document title, version and formatted last modified date into the view model', async () => {
+    test('loads staged document title and formatted last modified date, but not its version, into the view model', async () => {
       const uploadMock = {
         hasUpload: vi.fn(() => true),
         activeUploadId: 'test-upload-id',
@@ -120,8 +120,7 @@ describe('upload-guide metadata controller', () => {
       expect(stagedDocumentsService.getStagedDocumentById)
         .toHaveBeenCalledWith('file-1')
       expect(h.view).toHaveBeenCalledWith(METADATA_VIEW, expect.objectContaining({
-        values: expect.objectContaining({ guideTitle: 'Parsed Title' }),
-        versionNumber: '2.0',
+        values: expect.objectContaining({ guideTitle: 'Parsed Title', versionNumber: '' }),
         lastModifiedDate: '10 May 2026'
       }))
     })
@@ -196,7 +195,6 @@ describe('upload-guide metadata controller', () => {
 
       expect(h.view).toHaveBeenCalledWith(METADATA_VIEW, expect.objectContaining({
         values: expect.objectContaining({ guideTitle: '' }),
-        versionNumber: 'Not available',
         lastModifiedDate: 'Not available'
       }))
     })
@@ -274,7 +272,7 @@ describe('upload-guide metadata controller', () => {
       }))
     })
 
-    test('preserves the staged document version and formatted last modified date when redisplaying after a validation error', async () => {
+    test('preserves the staged document\'s formatted last modified date when redisplaying after a validation error', async () => {
       const uploadMock = {
         hasUpload: vi.fn(() => true),
         activeUploadId: 'test-upload-id',
@@ -303,7 +301,6 @@ describe('upload-guide metadata controller', () => {
       expect(stagedDocumentsService.getStagedDocumentById)
         .toHaveBeenCalledWith('file-1')
       expect(h.view).toHaveBeenCalledWith(METADATA_VIEW, expect.objectContaining({
-        versionNumber: '2.0',
         lastModifiedDate: '10 May 2026'
       }))
     })
@@ -364,6 +361,7 @@ describe('upload-guide metadata controller', () => {
       request = {
         payload: {
           guideTitle: 'Updated Guide Title',
+          versionNumber: '2.1',
           schemes: ['sfi']
         },
         yar: { get: vi.fn(), set: vi.fn() }
@@ -373,6 +371,7 @@ describe('upload-guide metadata controller', () => {
 
       expect(session.setGuideUploadMetadata).toHaveBeenCalledWith(request, {
         guideTitle: 'Updated Guide Title',
+        versionNumber: '2.1',
         schemes: ['sfi']
       })
       expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/metadata/purpose')
@@ -389,6 +388,7 @@ describe('upload-guide metadata controller', () => {
       request = {
         payload: {
           guideTitle: 'Updated Guide Title',
+          versionNumber: '2.1',
           schemes: ['Not scheme-specific', 'Sustainable Farming Incentive']
         },
         yar: { get: vi.fn(), set: vi.fn() }
@@ -398,6 +398,7 @@ describe('upload-guide metadata controller', () => {
 
       expect(session.setGuideUploadMetadata).toHaveBeenCalledWith(request, {
         guideTitle: 'Updated Guide Title',
+        versionNumber: '2.1',
         schemes: ['Sustainable Farming Incentive']
       })
     })

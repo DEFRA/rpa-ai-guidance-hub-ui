@@ -32,7 +32,9 @@
 
         <div class="app-guide-reading app-guide-reading--{{ readingWidth }}">
           <div class="app-guide-byline">
-            {{ govukTag({ text: version.text, classes: "govuk-tag--" + version.colour }) }}
+            {% if version %}
+              {{ govukTag({ text: version.text, classes: "govuk-tag--" + version.colour }) }}
+            {% endif %}
             {{ govukTag({ text: "Live", classes: "govuk-tag--turquoise" }) }}
             {% if lastUpdated %}
               <span class="app-guide-byline__updated">Updated {{ lastUpdated }}</span>

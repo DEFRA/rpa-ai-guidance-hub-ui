@@ -1,0 +1,55 @@
+@use 'govuk-frontend' as *;
+@use '../variables/colours' as *;
+
+// The hub's list of guides, as the prototype's hub rows
+// (_app-organic-search.scss, _app-hub.scss and _app-side-nav.scss there).
+
+.app-search-results {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-search-results__item {
+  padding: govuk-spacing(4) 0;
+  border-bottom: 1px solid $govuk-mid-grey;
+
+  &:first-child {
+    border-top: 1px solid $govuk-mid-grey;
+  }
+}
+
+.app-search-results__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: govuk-spacing(2);
+}
+
+.app-search-results__name {
+  margin: 0 0 govuk-spacing(2);
+}
+
+.app-search-results__dates {
+  margin-bottom: govuk-spacing(3);
+  color: $govuk-secondary-text-colour;
+}
+
+// The tags sit at the start of the row, where the pin star will join them.
+.app-hub-results__top {
+  justify-content: flex-start;
+}
+
+// A guide's purpose, on its own line under its title.
+.app-hub-results__facets {
+  margin-bottom: govuk-spacing(2);
+}
+
+// The list's count, which guides it shows, and its sort, above its rows.
+.app-hub-results__header {
+  margin-bottom: govuk-spacing(4);
+}
+
+.app-hub-results__showing {
+  color: $govuk-secondary-text-colour;
+}

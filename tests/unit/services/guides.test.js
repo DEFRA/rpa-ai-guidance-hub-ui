@@ -11,7 +11,7 @@ vi.mock('../../../src/services/staged-documents.js')
 const guide = {
   uploadId: 'upload-1',
   fileId: 'file-1',
-  metadata: { guideTitle: 'A title' },
+  metadata: { guideTitle: 'A title', versionNumber: '1.0' },
   user: {
     id: 'user-1',
     displayName: 'A User',
@@ -32,16 +32,27 @@ describe('guides service', () => {
     vi.resetAllMocks()
   })
 
-  test('sends the upload, its answers and who made it to the API', async () => {
+  test('sends the upload, its answers, its version number beside them, and who made it to the API', async () => {
     const createGuideSpy = mockApiResponse(statusCodes.HTTP_STATUS_CREATED)
 
     await guideService.createGuide(guide)
 
     expect(createGuideSpy).toHaveBeenCalledWith({
       source: { uploadId: 'upload-1', fileId: 'file-1' },
-      metadata: { guideTitle: 'A title' },
+      metadata: { guideTitle: 'A title', schemeYear: 2026 },
+      versionNumber: '1.0',
       createdBy: { id: 'user-1', displayName: 'A User' }
     })
+  })
+
+  test('sends a guide not specific to any scheme with no scheme, never the words', async () => {
+    const createGuideSpy = mockApiResponse(statusCodes.HTTP_STATUS_CREATED)
+
+    await guideService.createGuide({ ...guide, metadata: { ...guide.metadata, schemes: ['Not scheme-specific'] } })
+
+    expect(createGuideSpy).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: { guideTitle: 'A title', schemes: [], schemeYear: 2026 }
+    }))
   })
 
   test.each([
@@ -110,6 +121,65 @@ describe('guides service: reading', () => {
     vi.resetAllMocks()
   })
 
+  describe('listEveryGuide', () => {
+    const COUNTS = { scheme: [{ label: 'Countryside Stewardship', shortLabel: 'CS', count: 3 }], system: [], audience: [] }
+
+    function page (ids, nextCursor) {
+      return {
+        ok: true,
+        status: 200,
+        data: guidanceApiFixtures.guidePageResponse({
+          items: ids.map(id => guidanceApiFixtures.guideSummaryResponse({ id })),
+          nextCursor,
+          counts: COUNTS
+        })
+      }
+    }
+
+    test('lists every guide, following each page\'s cursor to the last, in the API\'s order', async () => {
+      guidesApi.listGuides
+        .mockResolvedValueOnce(page(['guide-3', 'guide-2'], 'guide-2'))
+        .mockResolvedValueOnce(page(['guide-1'], null))
+
+      const { guides } = await guideService.listEveryGuide()
+
+      expect(guides.map(guide => guide.id)).toEqual(['guide-3', 'guide-2', 'guide-1'])
+      expect(guidesApi.listGuides.mock.calls).toEqual([
+        [{ limit: 100, cursor: undefined }],
+        [{ limit: 100, cursor: 'guide-2' }]
+      ])
+    })
+
+    test('passes the filters and sort on to every page, and answers each filter\'s counts', async () => {
+      guidesApi.listGuides
+        .mockResolvedValueOnce(page(['guide-2'], 'guide-2'))
+        .mockResolvedValueOnce(page(['guide-1'], null))
+
+      const { counts } = await guideService.listEveryGuide({
+        filters: { audience: ['Processor'], system: ['CRM', 'SITI Agri'], scheme: [] },
+        sort: 'updated-oldest'
+      })
+
+      expect(counts).toEqual(COUNTS)
+      expect(guidesApi.listGuides).toHaveBeenLastCalledWith({
+        limit: 100,
+        cursor: 'guide-2',
+        audiences: ['Processor'],
+        systems: ['CRM', 'SITI Agri'],
+        schemes: [],
+        sort: 'updated-oldest'
+      })
+    })
+
+    test('asks once when every guide is on the first page', async () => {
+      guidesApi.listGuides.mockResolvedValueOnce(page(['guide-1'], null))
+
+      await guideService.listEveryGuide()
+
+      expect(guidesApi.listGuides).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('listGuides', () => {
     test('shapes each guide and passes the cursor on', async () => {
       guidesApi.listGuides.mockResolvedValue({
@@ -129,10 +199,28 @@ describe('guides service: reading', () => {
           schemes: ['Sustainable Farming Incentive (SFI)'],
           systems: ['CRM'],
           audience: ['Processor'],
-          lastUpdated: '2026-10-06T08:00:00Z'
+          purpose: null,
+          versionNumber: '1.0',
+          lastUpdated: '2026-10-06T08:00:00Z',
+          createdAt: '2026-10-01T09:00:00'
         }],
-        nextCursor: 'next-1'
+        nextCursor: 'next-1',
+        counts: {}
       })
+    })
+
+    test('gives each guide its purpose', async () => {
+      guidesApi.listGuides.mockResolvedValue({
+        ok: true,
+        status: 200,
+        data: guidanceApiFixtures.guidePageResponse({
+          items: [guidanceApiFixtures.guideSummaryResponse({ metadata: { goal: 'Explain the claim.' } })]
+        })
+      })
+
+      const { guides } = await guideService.listGuides()
+
+      expect(guides[0].purpose).toBe('Explain the claim.')
     })
 
     test('falls back to the authored title and empty lists for a guide with no version or answers', async () => {
@@ -155,6 +243,8 @@ describe('guides service: reading', () => {
         schemes: [],
         systems: [],
         audience: [],
+        purpose: null,
+        versionNumber: null,
         lastUpdated: null
       })
     })
@@ -180,6 +270,20 @@ describe('guides service: reading', () => {
 
       expect(guide.versions.map(version => version.id)).toEqual(['version-1', 'version-0'])
       expect(guide.versions[0]).not.toHaveProperty('contentUrl')
+    })
+
+    test('gives each version its number, or none for one made before versions had numbers', async () => {
+      const older = guidanceApiFixtures.versionResponse({ id: 'version-0', versionNumber: null })
+      guidesApi.getGuide.mockResolvedValue({
+        ok: true,
+        status: 200,
+        data: guidanceApiFixtures.guideResponse({ versions: [guidanceApiFixtures.versionResponse({ versionNumber: '2.1' }), older] })
+      })
+
+      const guide = await guideService.getGuideById('guide-1')
+
+      expect(guide.versions.map(version => version.versionNumber)).toEqual(['2.1', null])
+      expect(guide.latestVersion.versionNumber).toBe('2.1')
     })
 
     test('has no latest version for a guide without versions', async () => {

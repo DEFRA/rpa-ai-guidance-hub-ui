@@ -1,3 +1,4 @@
+import { SCHEME_YEAR } from '../../../../constants/scheme-year.js'
 import { NOT_SCHEME_SPECIFIC } from '../../../../services/reference-data.js'
 import { mapValidationError } from '../../form-errors.js'
 import { formatStagedDocumentDate, toCheckboxOptions, toOptionValue, toOptionValues } from './view-helpers.js'
@@ -7,6 +8,7 @@ const NOT_AVAILABLE = 'Not available'
 
 const FIELD_HREF_MAP = {
   guideTitle: '#guide-title',
+  versionNumber: '#version-number',
   schemes: '#schemes'
 }
 
@@ -19,7 +21,6 @@ class GuideDetailsViewModel {
    * @param {Object} [data.values={}]
    * @param {Object} [data.errors={}]
    * @param {Array} [data.errorList=[]]
-   * @param {string} [data.versionNumber='Not available']
    * @param {string} [data.lastModifiedDate='Not available']
    * @param {Array} [data.schemeOptions=[]]
    * @param {string|null} [data.backUrl]
@@ -34,9 +35,9 @@ class GuideDetailsViewModel {
     this.values = data.values || {}
     this.errors = data.errors || {}
     this.errorList = data.errorList || []
-    this.versionNumber = data.versionNumber || NOT_AVAILABLE
     this.lastModifiedDate = data.lastModifiedDate || NOT_AVAILABLE
     this.schemeOptions = schemeOptions
+    this.schemeYear = String(SCHEME_YEAR)
     this.backUrl = data.backUrl || BACK_URL
     this.formAction = data.formAction || '/create-guidance/upload-guide/metadata'
     this.notification = data.notification || null
@@ -46,10 +47,11 @@ class GuideDetailsViewModel {
    * Create a view model from session data and reference schemes
    *
    * When a staged document's parsed items are supplied, they are used
-   * to populate the title, version and last modified date - but a title the
+   * to populate the title and last modified date - but a title the
    * user has already saved to session (`values.guideTitle`) always takes
    * precedence over the parsed title, since it reflects a deliberate
-   * user edit.
+   * user edit. The version number is the user's to enter: it is never
+   * filled in from the document.
    *
    * @param {Object} [options]
    * @param {Object} [options.values={}] - Session-saved metadata
@@ -72,9 +74,9 @@ class GuideDetailsViewModel {
     return new GuideDetailsViewModel({
       values: {
         guideTitle: values.guideTitle ?? stagedDocument?.title ?? '',
+        versionNumber: values.versionNumber ?? '',
         schemes: values.schemes ? toOptionValues(values.schemes) : ''
       },
-      versionNumber: values.versionNumber || stagedDocument?.version || NOT_AVAILABLE,
       lastModifiedDate: values.lastModifiedDate ||
         formatStagedDocumentDate(stagedDocument?.lastModified) ||
         NOT_AVAILABLE,
@@ -93,8 +95,8 @@ class GuideDetailsViewModel {
    * @param {Object} [options]
    * @param {Array} [options.schemeOptions=[]]
    * @param {Object|null} [options.stagedDocument=null] - Minimal-parse staged
-   *   document status, used to keep the version/last modified summary
-   *   populated when redisplaying the form after a validation failure
+   *   document status, used to keep the last modified date populated when
+   *   redisplaying the form after a validation failure
    */
   static fromValidationError (
     payload,
@@ -112,7 +114,6 @@ class GuideDetailsViewModel {
       values: payload,
       errors,
       errorList,
-      versionNumber: stagedDocument?.version || NOT_AVAILABLE,
       lastModifiedDate: formatStagedDocumentDate(stagedDocument?.lastModified) ||
         NOT_AVAILABLE,
       schemeOptions,

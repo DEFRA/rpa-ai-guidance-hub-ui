@@ -5,6 +5,7 @@ describe('CheckAnswersViewModel', () => {
     const viewModel = CheckAnswersViewModel.fromSession({
       metadata: {
         guideTitle: 'A title',
+        versionNumber: '2.0',
         schemes: ['Sustainable Farming Incentive (SFI)', 'Not scheme-specific'],
         owner: 'owner@example.com',
         goal: 'A purpose',
@@ -29,8 +30,9 @@ describe('CheckAnswersViewModel', () => {
       },
       rows: [
         { key: { text: 'Guidance title' }, value: { text: 'A title' } },
-        { key: { text: 'Version number' }, value: { text: '1.2' } },
+        { key: { text: 'Version number' }, value: { text: '2.0' } },
         { key: { text: 'Last modified date' }, value: { text: '29 June 2026' } },
+        { key: { text: 'Scheme year' }, value: { text: '2026' } },
         {
           key: { text: 'Scheme' },
           value: {
@@ -72,7 +74,8 @@ describe('CheckAnswersViewModel', () => {
     expect(viewModel.guideDetailsCard.rows[0].value.text).toBe('Not provided')
     expect(viewModel.guideDetailsCard.rows[1].value.text).toBe('Not provided')
     expect(viewModel.guideDetailsCard.rows[2].value.text).toBe('Not provided')
-    expect(viewModel.guideDetailsCard.rows[3].value.text).toBe('Not provided')
+    expect(viewModel.guideDetailsCard.rows[3].value.text).toBe('2026')
+    expect(viewModel.guideDetailsCard.rows[4].value.text).toBe('Not provided')
 
     expect(viewModel.ownerPurposeCard.rows[0].value.text).toBe('Not provided')
     expect(viewModel.ownerPurposeCard.rows[1].value.text).toBe('Not provided')

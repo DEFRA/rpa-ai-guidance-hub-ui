@@ -5,7 +5,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
-import { guidePageResponse, guideSummaryResponse, schemesResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse, guideSummaryResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -26,8 +26,7 @@ describe('#hubController', () => {
   })
 
   beforeEach(() => {
-    nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').optionally().reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
-    nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
+    nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
   })
 
   afterEach(() => {
@@ -51,7 +50,7 @@ describe('#hubController', () => {
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(payload).toContain('RPA Guidance hub')
-      expect(payload).toContain('<h2 class="govuk-heading-m">All guides</h2>')
+      expect(payload).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">1 guide</h2>')
       expect(payload).not.toContain('Editing')
       expect(payload).not.toContain('Saved guidance')
       expect(payload).not.toContain('defra-service-navigation')
@@ -64,7 +63,8 @@ describe('#hubController', () => {
 
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
       expect(main).not.toContain('govuk-tabs')
-      expect(listHeadings(main)).toEqual(['All guides'])
+      expect(main.match(/<h2 class="govuk-heading-l/g)).toHaveLength(1)
+      expect(listHeadings(main)).toEqual([])
     })
 
     test('leaves a designer\'s work to the side navigation', async () => {
@@ -139,7 +139,7 @@ describe('#hubController', () => {
       ['/hub/bookmarked-guides']
     ])('%s does not ask the API for the guides', async (url) => {
       nock.cleanAll()
-      const guides = nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
+      const guides = nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse())
       const cookie = await loginAsDevUser(server)
 
       await server.inject({ method: 'GET', url, headers: { cookie } })
@@ -160,31 +160,196 @@ describe('#hubController', () => {
   })
 
   describe('the All guides list', () => {
-    test('Should list each guide, linking to it', async () => {
+    /** The hub's main area, listing `items` as the API's one page. */
+    async function hubListing (items) {
       nock.cleanAll()
-      nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
-      nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({
-        items: [guideSummaryResponse({ id: '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90' })]
-      }))
+      nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items }))
       const cookie = await loginAsDevUser(server)
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
-      expect(payload).toContain('href="/guides/0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90"')
-      expect(payload).toContain('Claiming the SFI payment')
-      expect(payload).toContain('6 October 2026')
-      expect(payload).toContain('owner@example.com')
+      return payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+    }
+
+    test('lists each guide as a row: its version and Live tags, its title linking to it, its purpose, and when it was last updated and published', async () => {
+      const id = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
+
+      const main = await hubListing([guideSummaryResponse({ id, metadata: { goal: 'Explain the claim.' } })])
+      const row = main.slice(main.indexOf('<li class="app-search-results__item"'), main.indexOf('</li>'))
+
+      expect(row).toMatch(/govuk-tag--green">\s*Version 1\.0\s*</)
+      expect(row).toMatch(/govuk-tag--turquoise">\s*Live\s*</)
+      expect(row).toContain(`<a class="govuk-link" href="/guides/${id}">Claiming the SFI payment</a>`)
+      expect(row).toContain('Explain the claim.')
+      expect(row).toContain('Last updated: 6 October 2026 &middot; Published: 1 October 2026')
+      expect(main).not.toContain('govuk-table')
     })
 
-    test('Should say there are no guides when there are none', async () => {
+    test('tags no version for a guide whose version has no number', async () => {
+      const main = await hubListing([guideSummaryResponse({ latestVersion: versionResponse({ versionNumber: null }) })])
+
+      expect(main).not.toMatch(/>\s*Version /)
+      expect(main).toMatch(/govuk-tag--turquoise">\s*Live\s*</)
+    })
+
+    test('escapes a guide\'s title and purpose', async () => {
+      const metadata = { goal: '<img src=x onerror=alert(1)>' }
+
+      const main = await hubListing([guideSummaryResponse({ metadata, latestVersion: versionResponse({ title: '<script>alert("xss")</script>' }) })])
+
+      expect(main).not.toContain('<script>alert')
+      expect(main).not.toContain('<img src=x')
+      expect(main).toContain('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;')
+    })
+
+    test('lists every guide, following the API\'s pages to the last, in its order', async () => {
+      const FIRST = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
+      const SECOND = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
       nock.cleanAll()
-      nock(GUIDANCE_API_BASE_URL).get('/reference/schemes').reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
-      nock(GUIDANCE_API_BASE_URL).get('/guides').reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items: [] }))
+      const guides = nock(GUIDANCE_API_BASE_URL)
+        .get('/guides').query({ limit: '100', sort: 'updated-newest' })
+        .reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items: [guideSummaryResponse({ id: SECOND })], nextCursor: SECOND }))
+        .get('/guides').query({ limit: '100', cursor: SECOND, sort: 'updated-newest' })
+        .reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items: [guideSummaryResponse({ id: FIRST })], nextCursor: null }))
       const cookie = await loginAsDevUser(server)
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
-      expect(payload).toContain('There are no guides yet.')
+      expect(guides.isDone()).toBe(true)
+      expect(payload.indexOf(`href="/guides/${SECOND}"`)).toBeGreaterThan(-1)
+      expect(payload.indexOf(`href="/guides/${FIRST}"`)).toBeGreaterThan(payload.indexOf(`href="/guides/${SECOND}"`))
+    })
+
+    test('heads the list with how many guides there are, and says which it is showing', async () => {
+      const main = await hubListing([guideSummaryResponse({ id: 'guide-1' }), guideSummaryResponse({ id: 'guide-2' })])
+
+      expect(main).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">2 guides</h2>')
+      expect(main).toMatch(/<p class="govuk-body govuk-!-margin-bottom-1 app-hub-results__showing">\s*Showing 1 to 2\s*<\/p>/)
+    })
+
+    test('Should say there are no guides when there are none, showing none', async () => {
+      const main = await hubListing([])
+
+      expect(main).toContain('0 guides')
+      expect(main).toContain('There are no guides yet.')
+      expect(main).not.toContain('Showing')
+    })
+  })
+
+  describe('the search box', () => {
+    /** The hub's green hero, at `url`. */
+    async function hero (url) {
+      const cookie = await loginAsDevUser(server)
+      const { payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
+
+      return { payload, hero: payload.slice(payload.indexOf('<div class="defra-hero defra-hero--hub'), payload.indexOf('id="hub-filters"')) }
+    }
+
+    test('sits in the hero beside the side navigation, asking for words or a question', async () => {
+      const { hero: area, payload } = await hero('/hub')
+
+      expect(area).toMatch(/<form class="defra-hero__search" action="\/hub" method="get" role="search">/)
+      expect(area).toMatch(/<label class="govuk-visually-hidden" for="hub-search">\s*Search or ask question\s*<\/label>/)
+      expect(area).toMatch(/<input class="govuk-input defra-search-bar__input" id="hub-search" name="q" type="search"[^>]*placeholder="Search or ask a question about all guidance"/)
+      expect(area).toMatch(/<button class="defra-search-bar__button defra-search-bar__button--on-green" type="submit">\s*<span class="govuk-visually-hidden">Search<\/span>/)
+      expect(payload).not.toContain('Search guidance')
+    })
+
+    test('keeps the words searched for, in the box and in the filters', async () => {
+      const { hero: area, payload } = await hero('/hub?q=claim+rules')
+
+      expect(area).toMatch(/id="hub-search" name="q" type="search"[^>]*value="claim rules"/)
+      expect(payload).toContain('<input type="hidden" name="q" value="claim rules">')
+    })
+
+    test('escapes the words searched for', async () => {
+      const { payload } = await hero('/hub?q=%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E')
+
+      expect(payload).not.toContain('<script>alert(1)')
+      expect(payload).toContain('value="&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;"')
+    })
+  })
+
+  describe('the filters and sort', () => {
+    const COUNTS = {
+      audience: [{ label: 'Processor', shortLabel: null, count: 3 }, { label: 'Checker', shortLabel: null, count: 1 }],
+      system: [{ label: 'CRM', shortLabel: null, count: 3 }],
+      scheme: [{ label: 'Countryside Stewardship', shortLabel: 'CS', count: 3 }]
+    }
+
+    /** The hub with `params` in its address, and the API asked for its list with them. */
+    async function hubWith (params, reply = guidePageResponse({ counts: COUNTS })) {
+      nock.cleanAll()
+      const query = { limit: '100', sort: 'updated-newest', ...params }
+      const listing = nock(GUIDANCE_API_BASE_URL).get('/guides').query(query).reply(statusCodes.HTTP_STATUS_OK, reply)
+      const cookie = await loginAsDevUser(server)
+      const url = `/hub?${new URLSearchParams(params)}`
+      const { statusCode, payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
+
+      return { statusCode, payload, listing, main: payload.slice(payload.indexOf('<main'), payload.indexOf('</main>')) }
+    }
+
+    test('offer the guides specific to no scheme as a scheme of their own, chosen by no_scheme', async () => {
+      const withNone = { ...COUNTS, scheme: [...COUNTS.scheme, { label: null, shortLabel: null, count: 2 }] }
+
+      const { listing, main } = await hubWith({ no_scheme: 'true' }, guidePageResponse({ counts: withNone }))
+      const filters = main.slice(main.indexOf('<aside class="app-hub-filters"'), main.indexOf('</aside>'))
+
+      expect(listing.isDone()).toBe(true)
+      expect(filters).toMatch(/<legend[^>]*>\s*Scheme\s*<\/legend>/)
+      expect(filters).toMatch(/name="no_scheme" type="checkbox" value="true" checked>\s*<label[^>]*>\s*Not scheme-specific <span class="app-hub-filters__count">\(2\)<\/span>/)
+    })
+
+    test('offer who it\'s for, the system used and the scheme year beside the guides, each value with its count', async () => {
+      const { main } = await hubWith({})
+      const filters = main.slice(main.indexOf('<aside class="app-hub-filters"'), main.indexOf('</aside>'))
+
+      expect(filters).toContain('Filter results')
+      expect(filters).toMatch(/<legend[^>]*>\s*Who it&#39;s for\s*<\/legend>/)
+      expect(filters).toMatch(/value="Processor"[^>]*>\s*<label[^>]*>\s*Processor <span class="app-hub-filters__count">\(3\)<\/span>/)
+      expect(filters).toMatch(/<legend[^>]*>\s*System used\s*<\/legend>/)
+      expect(filters).toMatch(/name="year" type="checkbox" value="2026" checked disabled/)
+      expect(filters).not.toMatch(/<legend[^>]*>\s*Scheme\s*<\/legend>/)
+      expect(filters).toContain('action="/hub#guide-results"')
+      expect(filters).toContain('Apply filters')
+    })
+
+    test('pass the chosen values to the API, check them, and show each as a tag that takes it away', async () => {
+      const { listing, main } = await hubWith({ audience: 'Checker', system: 'CRM' })
+
+      expect(listing.isDone()).toBe(true)
+      expect(main).toMatch(/value="Checker" checked/)
+      expect(main).toContain('<a class="app-filter__tag" href="/hub?system=CRM">')
+      expect(main).toContain('<a class="app-filter__tag" href="/hub?audience=Checker">')
+      expect(main).toContain('<a class="govuk-link app-hub-filters__clear" href="/hub">Clear filters</a>')
+    })
+
+    test('sort the list as chosen, with Most relevant offered only once search exists', async () => {
+      const { listing, main } = await hubWith({ sort: 'updated-oldest' })
+
+      expect(listing.isDone()).toBe(true)
+      expect(main).toMatch(/<select class="govuk-select app-hub-results__sort-select" id="sort" name="sort" form="hub-filters" data-sort-select="true">/)
+      expect(main).toMatch(/<option value="updated-oldest" selected>Oldest updated<\/option>/)
+      expect(main).toMatch(/<option value="most-relevant" disabled>Most relevant<\/option>/)
+      expect(main).toContain('(Most relevant once you search)')
+    })
+
+    test('answer a value the hub does not have as a bad request', async () => {
+      nock.cleanAll()
+      nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(422, { detail: 'Unknown audience Martians' })
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode } = await server.inject({ method: 'GET', url: '/hub?audience=Martians', headers: { cookie } })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
+    })
+
+    test('carry on to the side navigation\'s links to the hub and its lists', async () => {
+      const { payload } = await hubWith({ system: 'CRM' })
+
+      expect(payload).toContain('href="/hub/recently-opened?system=CRM"')
+      expect(payload).toContain('href="/hub/pinned?system=CRM"')
+      expect(payload).toMatch(/class="app-side-nav__link[^"]*" href="\/hub\?system=CRM"/)
     })
   })
 
