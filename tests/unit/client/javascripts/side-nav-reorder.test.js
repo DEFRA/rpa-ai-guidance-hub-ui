@@ -160,6 +160,21 @@ describe('dragging a pinned guide', () => {
     expect(row('b').querySelector('[data-reorder-move="-1"]').hidden).toBe(true)
   })
 
+  test('brings the page\'s other ways to unpin a guide up to date with where it now is', () => {
+    const unpinForm = (classes) => `
+      <form class="${classes}" method="post" action="/pin-toggle">
+        <input type="hidden" name="guideId" value="a">
+        <input type="hidden" name="pin" value="false">
+        <input type="hidden" name="position" value="0">
+      </form>`
+    document.body.insertAdjacentHTML('beforeend', `<main>${unpinForm('app-pin-toggle')}${unpinForm('app-pin-form')}</main>`)
+
+    drag('a', 220)
+
+    const positions = Array.from(document.querySelectorAll('main input[name="position"]')).map((input) => input.value)
+    expect(positions).toEqual(['2', '2'])
+  })
+
   test('is not a drag until the pointer has moved a few pixels, so a click still opens the guide', () => {
     const handle = row('a').querySelector('[data-reorder-handle]')
 

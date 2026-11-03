@@ -66,6 +66,16 @@ function reloadPage () {
 }
 
 /**
+ * @param {string} guideId
+ * @returns {HTMLFormElement[]} The page's forms that unpin the guide from a
+ *   position
+ */
+function unpinFormsOf (guideId) {
+  return Array.from(document.querySelectorAll('form[action="/pin-toggle"]'))
+    .filter(form => form.elements.guideId?.value === guideId && form.elements.position)
+}
+
+/**
  * @param {HTMLElement} item
  * @returns {number} Its vertical middle, in pixels
  */
@@ -221,7 +231,7 @@ class PinReorder {
       return
     }
     this.#list.insertBefore(item, others[index] ?? null)
-    this.#refreshMenus()
+    this.#refreshPositions()
     this.#saving = this.#saving
       .then(() => this.#save(item.dataset.reorderId, startIndex, index))
       .catch(this.#showPinsAsSaved)
@@ -230,12 +240,15 @@ class PinReorder {
     }
   }
 
-  // Keep each guide's "…" menu sending where the guide now is.
-  #refreshMenus () {
+  // Keep every form that changes a guide's pin sending where the guide now is:
+  // its "…" menu here, and wherever else the page offers to unpin it (the
+  // hub's star, a guide page's Unpin guide).
+  #refreshPositions () {
     const items = this.#items()
 
     items.forEach((item, position) => {
-      item.querySelectorAll('input[name="position"], input[name="from"]').forEach(input => { input.value = String(position) })
+      unpinFormsOf(item.dataset.reorderId).forEach(form => { form.elements.position.value = String(position) })
+      item.querySelectorAll('input[name="from"]').forEach(input => { input.value = String(position) })
       item.querySelectorAll('[data-reorder-move]').forEach(form => {
         const target = moveTarget(position, Number(form.dataset.reorderMove), items.length)
 
