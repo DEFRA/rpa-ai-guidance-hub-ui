@@ -15,12 +15,13 @@ const NOT_RECORDED = 'Not recorded'
  *
  * @private
  * @param {import('../../services/guides.js').GuideSummary} guide
- * @returns {{title: string, href: string, purpose: string|null, lastUpdated: string, published: string}}
+ * @returns {{title: string, href: string, versionNumber: string|null, purpose: string|null, lastUpdated: string, published: string}}
  */
 function _toGuideItem (guide) {
   return {
     title: guide.title ?? 'Untitled guide',
     href: `/guides/${encodeURIComponent(guide.id)}`,
+    versionNumber: guide.versionNumber,
     purpose: guide.purpose,
     lastUpdated: formatIsoDate(guide.lastUpdated) ?? NOT_RECORDED,
     published: formatIsoDate(guide.createdAt) ?? NOT_RECORDED

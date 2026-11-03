@@ -2,10 +2,10 @@
 
 {#
   A list of guides as the prototype's hub shows them (its
-  playground/hub/page.njk result rows): each guide's Live tag, its title as a
-  link, its purpose, and when it was last updated and published. Without the
-  prototype's version tag, which needs version numbers, and its pin star and
-  "Pinned" tag, which come with pins.
+  playground/hub/page.njk result rows): each guide's version and Live tags,
+  its title as a link, its purpose, and when it was last updated and
+  published. Without the prototype's pin star and "Pinned" tag, which come
+  with pins.
 
   Reads a HubViewModel list: {heading, emptyMessage, isEmpty, guides}. Called
   with a block, it puts what the block gives under the heading (the sort).
@@ -21,6 +21,9 @@
         <li class="app-search-results__item">
           <div class="app-search-results__top app-hub-results__top">
             <div class="govuk-!-margin-bottom-2">
+              {% if guide.versionTag %}
+                {{ govukTag({ text: guide.versionTag.text, classes: "govuk-tag--" + guide.versionTag.colour }) }}
+              {% endif %}
               {{ govukTag({ text: "Live", classes: "govuk-tag--turquoise" }) }}
             </div>
           </div>

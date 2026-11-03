@@ -200,6 +200,7 @@ describe('guides service: reading', () => {
           systems: ['CRM'],
           audience: ['Processor'],
           purpose: null,
+          versionNumber: '1.0',
           lastUpdated: '2026-10-06T08:00:00Z',
           createdAt: '2026-10-01T09:00:00'
         }],
@@ -243,6 +244,7 @@ describe('guides service: reading', () => {
         systems: [],
         audience: [],
         purpose: null,
+        versionNumber: null,
         lastUpdated: null
       })
     })

@@ -18,6 +18,8 @@ import * as stagedDocumentsService from './staged-documents.js'
  * @property {string[]} audience
  * @property {string|null} purpose - What the guide is for, as its author
  *   said (`goal`)
+ * @property {string|null} versionNumber - The latest version's, as its author
+ *   gave it
  * @property {string|null} lastUpdated - When the latest version was made
  * @property {string|null} createdAt - When the guide was recorded, which is
  *   when it went live, since every upload does
@@ -280,6 +282,7 @@ function _toSummary (item) {
     systems: metadata.systems ?? [],
     audience: metadata.audience ?? [],
     purpose: metadata.goal ?? null,
+    versionNumber: latestVersion?.versionNumber ?? null,
     lastUpdated: latestVersion?.createdAt ?? null,
     createdAt: item.createdAt ?? null
   }

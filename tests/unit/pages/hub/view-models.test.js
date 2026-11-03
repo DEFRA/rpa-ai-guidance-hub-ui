@@ -120,17 +120,31 @@ describe('#HubViewModel', () => {
     const guide = {
       title: 'Claiming the SFI payment',
       href: '/guides/guide-1',
+      versionNumber: '2.1',
       purpose: 'Explain the claim.',
       lastUpdated: '20 July 2026',
       published: '1 July 2026'
     }
 
-    test('Should give each guide a row: its title and link, purpose, and when it was last updated and published', () => {
+    test('Should give each guide a row: its version, title and link, purpose, and when it was last updated and published', () => {
       const { allGuides } = new HubViewModel({ allGuides: [guide] })
 
       expect(allGuides.count).toBe(1)
       expect(allGuides.isEmpty).toBe(false)
-      expect(allGuides.guides).toEqual([guide])
+      expect(allGuides.guides).toEqual([{
+        title: 'Claiming the SFI payment',
+        href: '/guides/guide-1',
+        versionTag: { text: 'Version 2.1', colour: 'green' },
+        purpose: 'Explain the claim.',
+        lastUpdated: '20 July 2026',
+        published: '1 July 2026'
+      }])
+    })
+
+    test('Should tag no version for a guide whose version has no number', () => {
+      const { allGuides } = new HubViewModel({ allGuides: [{ ...guide, versionNumber: null }] })
+
+      expect(allGuides.guides[0].versionTag).toBeNull()
     })
 
     test('Should not link to an untrusted href', () => {

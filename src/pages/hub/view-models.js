@@ -1,4 +1,5 @@
 import { relativeHref } from '../common/relative-href.js'
+import { versionTag } from '../common/version-tag.js'
 
 const tableHeadClasses = {
   HALF_WIDTH: 'govuk-!-width-one-half',
@@ -66,14 +67,15 @@ function _buildDocumentRows (items) {
 }
 
 /**
- * One guide as the hub's rows show it, its link made safe.
+ * One guide as the hub's rows show it: its version's tag, and its link made
+ * safe.
  *
  * @private
- * @param {{title: string, href: string, purpose: string|null, lastUpdated: string, published: string}} item
- * @returns {{title: string, href: string, purpose: string|null, lastUpdated: string, published: string}}
+ * @param {{title: string, href: string, versionNumber: string|null, purpose: string|null, lastUpdated: string, published: string}} item
+ * @returns {{title: string, href: string, versionTag: {text: string, colour: string}|null, purpose: string|null, lastUpdated: string, published: string}}
  */
-function _guideRow (item) {
-  return { ...item, href: relativeHref(item.href) }
+function _guideRow ({ versionNumber, ...item }) {
+  return { ...item, href: relativeHref(item.href), versionTag: versionTag(versionNumber) }
 }
 
 /**
@@ -133,7 +135,7 @@ class HubViewModel {
    * @param {Array<object>} [data.pinned=[]]
    * @param {Array<object>} [data.bookmarkedGuides=[]]
    * @param {Array<object>} [data.allGuides=[]] - Items are
-   *   `{title, href, purpose, lastUpdated, published}`
+   *   `{title, href, versionNumber, purpose, lastUpdated, published}`
    * @param {string} [data.shown='allGuides'] - The table that the page
    *   shows
    * @param {Object|null} [data.filters=null] - The filter panel beside the

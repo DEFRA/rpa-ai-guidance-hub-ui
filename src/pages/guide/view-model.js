@@ -1,11 +1,9 @@
 import { NOT_SCHEME_SPECIFIC } from '../../services/reference-data.js'
 import { formatIsoDate } from '../common/format-date.js'
+import { versionTag } from '../common/version-tag.js'
 import { READING_WIDTHS } from './reading-width.js'
 
 const UNTITLED = 'Untitled guide'
-// The latest version is the live one, so its tag says so in one colour,
-// whatever its number. A superseded version will need a colour of its own.
-const LIVE_VERSION_COLOUR = 'green'
 
 /**
  * @typedef {Object} MetadataRow
@@ -91,23 +89,6 @@ function _ownerRow (owner) {
 }
 
 /**
- * The latest version's tag: its number as its author gave it, in the live
- * version's colour.
- *
- * @private
- * @param {string|null|undefined} versionNumber - `major.minor`
- * @returns {{text: string, colour: string}|null} Null for a version made
- *   before versions had numbers, or none
- */
-function _versionTag (versionNumber) {
-  if (!versionNumber) {
-    return null
-  }
-
-  return { text: `Version ${versionNumber}`, colour: LIVE_VERSION_COLOUR }
-}
-
-/**
  * GuideViewModel - One section of a guide, with the page furniture around
  * it: byline, contents, previous and next links, and the "About this
  * guide" rows.
@@ -134,7 +115,7 @@ class GuideViewModel {
 
     this.guideId = guide.id
     this.title = guide.title ?? UNTITLED
-    this.version = _versionTag(guide.latestVersion?.versionNumber)
+    this.version = versionTag(guide.latestVersion?.versionNumber)
     this.lastUpdated = formatIsoDate(guide.lastUpdated)
     this.sections = sections
     this.section = sections[pageNumber - 1] ?? null

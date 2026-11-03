@@ -170,17 +170,25 @@ describe('#hubController', () => {
       return payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
     }
 
-    test('lists each guide as a row: its Live tag, its title linking to it, its purpose, and when it was last updated and published', async () => {
+    test('lists each guide as a row: its version and Live tags, its title linking to it, its purpose, and when it was last updated and published', async () => {
       const id = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
 
       const main = await hubListing([guideSummaryResponse({ id, metadata: { goal: 'Explain the claim.' } })])
       const row = main.slice(main.indexOf('<li class="app-search-results__item"'), main.indexOf('</li>'))
 
+      expect(row).toMatch(/govuk-tag--green">\s*Version 1\.0\s*</)
       expect(row).toMatch(/govuk-tag--turquoise">\s*Live\s*</)
       expect(row).toContain(`<a class="govuk-link" href="/guides/${id}">Claiming the SFI payment</a>`)
       expect(row).toContain('Explain the claim.')
       expect(row).toContain('Last updated: 6 October 2026 &middot; Published: 1 October 2026')
       expect(main).not.toContain('govuk-table')
+    })
+
+    test('tags no version for a guide whose version has no number', async () => {
+      const main = await hubListing([guideSummaryResponse({ latestVersion: versionResponse({ versionNumber: null }) })])
+
+      expect(main).not.toMatch(/>\s*Version /)
+      expect(main).toMatch(/govuk-tag--turquoise">\s*Live\s*</)
     })
 
     test('escapes a guide\'s title and purpose', async () => {

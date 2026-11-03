@@ -18,6 +18,7 @@ const listedGuide = {
   systems: ['CRM'],
   audience: ['Processor', 'Team leader'],
   purpose: 'Explain the claim.',
+  versionNumber: '2.1',
   lastUpdated: '2026-10-06T08:00:00Z',
   createdAt: '2026-10-01T09:00:00'
 }
@@ -71,6 +72,7 @@ describe('#hubController', () => {
         {
           title: 'Claiming the SFI payment',
           href: '/guides/guide-1',
+          versionTag: { text: 'Version 2.1', colour: 'green' },
           purpose: 'Explain the claim.',
           lastUpdated: '6 October 2026',
           published: '1 October 2026'
@@ -79,9 +81,9 @@ describe('#hubController', () => {
       ])
     })
 
-    test('Should say when a guide has no title or dates, and show no purpose it does not have', async () => {
+    test('Should say when a guide has no title or dates, and show no version or purpose it does not have', async () => {
       guidesService.listEveryGuide.mockResolvedValue({
-        guides: [{ ...listedGuide, title: null, purpose: null, lastUpdated: null, createdAt: null }],
+        guides: [{ ...listedGuide, title: null, purpose: null, versionNumber: null, lastUpdated: null, createdAt: null }],
         counts: COUNTS
       })
 
@@ -92,6 +94,7 @@ describe('#hubController', () => {
       expect(viewModel.allGuides.guides).toEqual([{
         title: 'Untitled guide',
         href: '/guides/guide-1',
+        versionTag: null,
         purpose: null,
         lastUpdated: 'Not recorded',
         published: 'Not recorded'
