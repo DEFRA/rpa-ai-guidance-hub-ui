@@ -137,7 +137,8 @@ function _buildTable ({ items, heading, emptyMessage, hintMessage, head, rows })
 class HubViewModel {
   /**
    * @param {Object} [data={}]
-   * @param {Array<object>} [data.recentlyOpened=[]]
+   * @param {Array<object>} [data.recentlyOpened=[]] - Items are as for
+   *   `allGuides`
    * @param {Array<object>} [data.pinned=[]] - Items are as for `allGuides`
    * @param {Array<object>} [data.bookmarkedGuides=[]]
    * @param {Array<object>} [data.allGuides=[]] - Items are
@@ -162,20 +163,17 @@ class HubViewModel {
       words = ''
     } = data
 
-    this.recentlyOpened = _buildTable({
-      items: recentlyOpened,
-      heading: 'Recently opened',
-      emptyMessage: "You haven't opened any guidance yet. Any guidance you open will appear here.",
-      hintMessage: `Your ${recentlyOpened.length} recently opened guidances`,
-      head: DOCUMENT_TABLE_HEAD,
-      rows: _buildDocumentRows(recentlyOpened)
-    })
-
     // Chosen filters that leave nothing say so, rather than that there are no
     // guides at all, unless they had nothing to narrow.
     const nothingMatches = filters?.selected?.length > 0 && !nothingToFilter
       ? 'No guides match your search or filters. Try removing some filters or using different search terms.'
       : null
+
+    this.recentlyOpened = _buildGuideList({
+      items: recentlyOpened,
+      noun: 'recently opened guide',
+      emptyMessage: nothingMatches ?? "You haven't opened any guidance yet. Any guidance you open will appear here."
+    })
 
     this.pinned = _buildGuideList({
       items: pinned,

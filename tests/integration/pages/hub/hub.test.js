@@ -90,7 +90,7 @@ describe('#hubController', () => {
         }
       ]
 
-      const renderedHtml = await server.render('hub/page.njk', new HubViewModel({ recentlyOpened: items, shown: 'recentlyOpened' }))
+      const renderedHtml = await server.render('hub/page.njk', new HubViewModel({ bookmarkedGuides: items, shown: 'bookmarkedGuides' }))
 
       expect(renderedHtml).toContain('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;')
       expect(renderedHtml).not.toContain(xssTitle)
@@ -108,7 +108,7 @@ describe('#hubController', () => {
         }
       ]
 
-      const renderedHtml = await server.render('hub/page.njk', new HubViewModel({ recentlyOpened: items, shown: 'recentlyOpened' }))
+      const renderedHtml = await server.render('hub/page.njk', new HubViewModel({ bookmarkedGuides: items, shown: 'bookmarkedGuides' }))
 
       expect(renderedHtml).not.toContain('javascript:alert')
       expect(renderedHtml).not.toContain('evil.example.com')
@@ -118,7 +118,6 @@ describe('#hubController', () => {
 
   describe('a list of guides', () => {
     test.each([
-      ['/hub/recently-opened', 'Recently opened', 'You haven&#39;t opened any guidance yet.'],
       ['/hub/bookmarked-guides', 'Bookmarked guides', 'You haven&#39;t bookmarked any guidance yet.']
     ])('%s shows only the %s list', async (url, heading, emptyMessage) => {
       const cookie = await loginAsDevUser(server)
@@ -504,6 +503,57 @@ describe('#hubController', () => {
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(headers.location).toBe('/')
+    })
+  })
+
+  describe('recently opened guides', () => {
+    const USER_ID = '01a18d45-0000-7000-8000-000000000001'
+    const NEWER = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
+    const OLDER = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
+
+    async function signedIn (user) {
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, { id: USER_ID, pinned: [], ...user })
+
+      return loginAsDevUser(server)
+    }
+
+    test('list on their own page newest first, beside the filters, without a sort, each with its star', async () => {
+      nock.cleanAll()
+      const cookie = await signedIn({ pinned: [{ id: OLDER, title: 'Claiming the SFI payment' }] })
+      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/recently-opened`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, {
+        items: [
+          { ...guideSummaryResponse({ id: NEWER, latestVersion: versionResponse({ title: 'Closing a case' }) }), openedAt: '2026-11-03T17:00:00' },
+          { ...guideSummaryResponse({ id: OLDER }), openedAt: '2026-11-03T16:00:00' }
+        ],
+        counts: { audience: [], system: [{ label: 'CRM', shortLabel: null, count: 2, retired: false }], scheme: [] }
+      })
+
+      const { statusCode, payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened?system=CRM', headers: { cookie } })
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      const [newer, older] = main.split('<li class="app-search-results__item').slice(1)
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(main).toContain('2 recently opened guides<')
+      expect(newer).toContain(`/guides/${NEWER}`)
+      expect(newer).toContain('<input type="hidden" name="pin" value="true">')
+      expect(older).toContain(`/guides/${OLDER}`)
+      expect(older).toMatch(/app-search-results__pinned-tag">Pinned</)
+      expect(older).toContain('<input type="hidden" name="position" value="0">')
+      expect(main).toContain('action="/hub/recently-opened#guide-results"')
+      expect(main).not.toContain('name="sort"')
+    })
+
+    test('say on their own page when none has been opened yet', async () => {
+      nock.cleanAll()
+      const cookie = await signedIn({})
+      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_OK, { items: [], counts: { audience: [], system: [], scheme: [] } })
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened', headers: { cookie } })
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+
+      expect(main).toContain('You haven&#39;t opened any guidance yet. Any guidance you open will appear here.')
     })
   })
 })
