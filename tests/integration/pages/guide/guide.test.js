@@ -4,7 +4,7 @@ import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
-import { guideResponse } from '../../../fixtures/guidance-api.js'
+import { guideResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
@@ -79,9 +79,21 @@ describe('#guideController', () => {
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(payload.match(/<h1[ >]/g)).toHaveLength(1)
       expect(payload).toMatch(/<h1[^>]*>\s*Claiming the SFI payment\s*<\/h1>/)
-      expect(payload).toContain('Version 1')
+      expect(payload).toMatch(/govuk-tag--green">\s*Version 1\.0\s*</)
       expect(payload).toContain('Live')
       expect(payload).toContain('Updated 6 October 2026')
+    })
+
+    test('shows no version for a guide whose latest version has no number', async () => {
+      mockGuide({ guide: guideResponse({ id: GUIDE_ID, versions: [versionResponse({ versionNumber: null })] }) })
+
+      const { payload } = await get(GUIDE_URL)
+
+      const byline = payload.slice(payload.indexOf('class="app-guide-byline"'), payload.indexOf('app-guide-byline__updated'))
+
+      expect(payload).not.toMatch(/>\s*Version /)
+      expect(byline.match(/class="govuk-tag/g)).toHaveLength(1)
+      expect(byline).toContain('Live')
     })
 
     test('shows how far through each page of the guide the reader is, without an inline style', async () => {

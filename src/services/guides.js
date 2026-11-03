@@ -29,6 +29,8 @@ import * as stagedDocumentsService from './staged-documents.js'
  * @typedef {Object} GuideVersion
  * @property {string} id
  * @property {string|null} title
+ * @property {string|null} versionNumber - As its author gave it (`1.0`);
+ *   null for a version made before versions had numbers
  * @property {{id: string, displayName: string|null}|null} createdBy
  * @property {string} createdAt
  */
@@ -292,6 +294,7 @@ function _toVersion (version) {
   return {
     id: version.id,
     title: version.title ?? null,
+    versionNumber: version.versionNumber ?? null,
     createdBy: version.createdBy ?? null,
     createdAt: version.createdAt
   }

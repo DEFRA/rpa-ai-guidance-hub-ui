@@ -24,7 +24,8 @@ function guide (overrides = {}) {
     id: 'guide-1',
     title: 'Claiming the SFI payment',
     lastUpdated: '2026-10-06T08:00:00Z',
-    versions: [{ id: 'v2' }, { id: 'v1' }],
+    versions: [{ id: 'v2', versionNumber: '2.1' }, { id: 'v1', versionNumber: '1.0' }],
+    latestVersion: { id: 'v2', versionNumber: '2.1' },
     ...overrides
   }
 }
@@ -108,13 +109,17 @@ describe('GuideViewModel', () => {
     expect(build({ pageNumber: 3 }).next).toBeNull()
   })
 
-  test('tags the latest version by how many there are, and its colour cycles', () => {
-    expect(build().version).toEqual({ text: 'Version 2', colour: 'purple' })
-    expect(build({ guide: guide({ versions: [{}] }) }).version).toEqual({ text: 'Version 1', colour: 'green' })
-    expect(build({ guide: guide({ versions: new Array(7).fill({}) }) }).version).toEqual({
-      text: 'Version 7',
-      colour: 'green'
-    })
+  test.each([['2.1'], ['1.0'], ['0.3'], ['7.2']])('tags the latest version %s by its number, in the live version\'s colour whatever the number', (number) => {
+    const version = build({ guide: guide({ latestVersion: { id: 'v', versionNumber: number } }) }).version
+
+    expect(version).toEqual({ text: `Version ${number}`, colour: 'green' })
+  })
+
+  test.each([
+    ['made before versions had numbers', { id: 'v', versionNumber: null }],
+    ['without a version', null]
+  ])('tags no version for a guide %s', (_name, latestVersion) => {
+    expect(build({ guide: guide({ latestVersion }) }).version).toBeNull()
   })
 
   test('says when the guide was last updated', () => {

@@ -3,7 +3,9 @@ import { formatIsoDate } from '../common/format-date.js'
 import { READING_WIDTHS } from './reading-width.js'
 
 const UNTITLED = 'Untitled guide'
-const VERSION_COLOURS = ['green', 'purple', 'blue', 'orange', 'pink', 'turquoise']
+// The latest version is the live one, so its tag says so in one colour,
+// whatever its number. A superseded version will need a colour of its own.
+const LIVE_VERSION_COLOUR = 'green'
 
 /**
  * @typedef {Object} MetadataRow
@@ -89,15 +91,20 @@ function _ownerRow (owner) {
 }
 
 /**
+ * The latest version's tag: its number as its author gave it, in the live
+ * version's colour.
+ *
  * @private
- * @param {number} number - The version's number
- * @returns {{text: string, colour: string}}
+ * @param {string|null|undefined} versionNumber - `major.minor`
+ * @returns {{text: string, colour: string}|null} Null for a version made
+ *   before versions had numbers, or none
  */
-function _versionTag (number) {
-  return {
-    text: `Version ${number}`,
-    colour: VERSION_COLOURS[(number - 1) % VERSION_COLOURS.length]
+function _versionTag (versionNumber) {
+  if (!versionNumber) {
+    return null
   }
+
+  return { text: `Version ${versionNumber}`, colour: LIVE_VERSION_COLOUR }
 }
 
 /**
@@ -127,7 +134,7 @@ class GuideViewModel {
 
     this.guideId = guide.id
     this.title = guide.title ?? UNTITLED
-    this.version = _versionTag(guide.versions.length)
+    this.version = _versionTag(guide.latestVersion?.versionNumber)
     this.lastUpdated = formatIsoDate(guide.lastUpdated)
     this.sections = sections
     this.section = sections[pageNumber - 1] ?? null

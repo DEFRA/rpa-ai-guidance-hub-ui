@@ -270,6 +270,20 @@ describe('guides service: reading', () => {
       expect(guide.versions[0]).not.toHaveProperty('contentUrl')
     })
 
+    test('gives each version its number, or none for one made before versions had numbers', async () => {
+      const older = guidanceApiFixtures.versionResponse({ id: 'version-0', versionNumber: null })
+      guidesApi.getGuide.mockResolvedValue({
+        ok: true,
+        status: 200,
+        data: guidanceApiFixtures.guideResponse({ versions: [guidanceApiFixtures.versionResponse({ versionNumber: '2.1' }), older] })
+      })
+
+      const guide = await guideService.getGuideById('guide-1')
+
+      expect(guide.versions.map(version => version.versionNumber)).toEqual(['2.1', null])
+      expect(guide.latestVersion.versionNumber).toBe('2.1')
+    })
+
     test('has no latest version for a guide without versions', async () => {
       guidesApi.getGuide.mockResolvedValue({
         ok: true,
