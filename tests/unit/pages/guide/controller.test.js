@@ -1,6 +1,7 @@
 import { statusCodes } from '../../../../src/constants/status-codes.js'
 import * as controller from '../../../../src/pages/guide/controller.js'
 import * as guidesService from '../../../../src/services/guides.js'
+import * as usersService from '../../../../src/services/users.js'
 
 const guide = {
   id: 'guide-1',
@@ -39,6 +40,7 @@ describe('guide controller', () => {
     h = createToolkit()
     vi.spyOn(guidesService, 'getGuideById').mockResolvedValue(guide)
     vi.spyOn(guidesService, 'getGuideContent').mockResolvedValue({ markdown })
+    vi.spyOn(usersService, 'pinnedOf').mockResolvedValue([])
   })
 
   describe('getGuidePage', () => {
@@ -50,6 +52,18 @@ describe('guide controller', () => {
       expect(view).toBe('guide/page.njk')
       expect(viewModel).toMatchObject({ pageNumber: 1, totalPages: 3, readingWidth: 'standard' })
       expect(h.code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
+    })
+
+    test.each([
+      ['pinned', [{ id: 'other' }, { id: 'guide-1' }], { pinned: true, position: 1 }],
+      ['not pinned', [{ id: 'other' }], { pinned: false, position: null }],
+      ['not known to be pinned', null, null]
+    ])('knows whether the guide is %s, for its Pin guide button', async (_name, pinned, pin) => {
+      usersService.pinnedOf.mockResolvedValue(pinned)
+
+      await controller.getGuidePage(createRequest(), h)
+
+      expect(h.view.mock.calls[0][1].pin).toEqual(pin)
     })
 
     test('renders the section asked for, and the chosen width', async () => {

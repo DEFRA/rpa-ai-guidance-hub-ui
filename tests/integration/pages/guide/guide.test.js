@@ -281,6 +281,36 @@ describe('#guideController', () => {
     })
   })
 
+  describe('pinning it', () => {
+    const USER_ID = '01a18d45-0000-7000-8000-000000000001'
+
+    test.each([
+      ['Pin guide', [], 'true'],
+      ['Unpin guide', [{ id: GUIDE_ID, title: 'Claiming the SFI payment' }], 'false']
+    ])('is offered as %s, beside the guide\'s tags', async (label, pinned, pin) => {
+      mockGuide()
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, { id: USER_ID, pinned })
+
+      const { payload } = await get(GUIDE_URL)
+      const form = payload.slice(payload.indexOf('<form class="app-pin-form"'), payload.indexOf('</form>', payload.indexOf('<form class="app-pin-form"')))
+
+      expect(form).toContain('action="/pin-toggle"')
+      expect(form).toContain(`<input type="hidden" name="pin" value="${pin}">`)
+      expect(form).toContain(`<input type="hidden" name="returnTo" value="${GUIDE_URL}">`)
+      expect(form).toMatch(new RegExp(`</svg>\\s*${label}\\s*</button>`))
+    })
+
+    test('is not offered when the user\'s pins cannot be had', async () => {
+      mockGuide()
+
+      const { payload } = await get(GUIDE_URL)
+
+      expect(payload).not.toContain('app-pin-form')
+    })
+  })
+
   describe('the contents', () => {
     test('lists each section\'s subheadings beneath it', async () => {
       mockGuide()

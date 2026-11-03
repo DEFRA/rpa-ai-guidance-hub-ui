@@ -37,7 +37,7 @@ describe('users service', () => {
     function requestWith (credentials) {
       const set = vi.fn()
 
-      return { auth: { credentials }, server: { app: { cache: { set } } }, set }
+      return { auth: { credentials }, server: { app: { cache: { set } } }, app: {}, set }
     }
 
     test('answers the id the session keeps, without asking the API', async () => {
@@ -47,12 +47,64 @@ describe('users service', () => {
       expect(usersApi.signIn).not.toHaveBeenCalled()
     })
 
+    test('resolves it once for a request, however many parts of the page ask', async () => {
+      answerSignIn()
+      const request = requestWith({ sessionId: 's-1', profile, token: 't' })
+
+      await Promise.all([usersService.userIdOf(request), usersService.userIdOf(request)])
+
+      expect(usersApi.signIn).toHaveBeenCalledTimes(1)
+    })
+
     test('resolves a session from before sessions kept the id, and keeps it in the session from then on', async () => {
       answerSignIn()
       const request = requestWith({ sessionId: 's-1', profile, token: 't', refreshToken: 'r' })
 
       expect(await usersService.userIdOf(request)).toBe(HUB_ID)
       expect(request.set).toHaveBeenCalledWith('auth-session:s-1', { profile, token: 't', refreshToken: 'r', userId: HUB_ID })
+    })
+  })
+
+  describe('the user\'s pinned guides', () => {
+    const PINNED = [{ id: 'guide-2', title: 'Closing a case' }, { id: 'guide-1', title: 'Claiming' }]
+
+    function signedInRequest () {
+      return { auth: { credentials: { sessionId: 's-1', profile, token: 't', userId: HUB_ID } }, app: {} }
+    }
+
+    test('come with the user\'s record, which a page asks for once', async () => {
+      usersApi.getUser.mockResolvedValue({ ok: true, status: 200, data: { id: HUB_ID, pinned: PINNED } })
+      const request = signedInRequest()
+
+      expect(await usersService.pinnedOf(request)).toEqual(PINNED)
+      expect(await usersService.pinnedOf(request)).toEqual(PINNED)
+      expect(usersApi.getUser).toHaveBeenCalledTimes(1)
+      expect(usersApi.getUser).toHaveBeenCalledWith(HUB_ID)
+    })
+
+    test('are not known when the user cannot be had, rather than failing the page', async () => {
+      usersApi.getUser.mockRejectedValue(new Error('API unavailable'))
+
+      expect(await usersService.pinnedOf(signedInRequest())).toBeNull()
+    })
+
+    test('a guide is pinned at the top', async () => {
+      usersApi.patchPins.mockResolvedValue({ ok: true, status: 204 })
+
+      await usersService.pin(signedInRequest(), 'guide-3')
+
+      expect(usersApi.patchPins).toHaveBeenCalledWith(HUB_ID, [{ op: 'add', path: '/0', value: 'guide-3' }])
+    })
+
+    test('a guide is unpinned from where the page showed it, if it is still there', async () => {
+      usersApi.patchPins.mockResolvedValue({ ok: true, status: 204 })
+
+      await usersService.unpin(signedInRequest(), 'guide-1', 1)
+
+      expect(usersApi.patchPins).toHaveBeenCalledWith(HUB_ID, [
+        { op: 'test', path: '/1', value: 'guide-1' },
+        { op: 'remove', path: '/1' }
+      ])
     })
   })
 })

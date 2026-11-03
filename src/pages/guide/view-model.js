@@ -104,8 +104,10 @@ class GuideViewModel {
    * @param {MetadataRow[]} data.metadataRows
    * @param {boolean} [data.panelCollapsed] - Whether the "About this guide"
    *   panel is folded away to its rail
+   * @param {{pinned: boolean, position: number|null}|null} [data.pin] - The
+   *   guide among the user's pins, for its Pin guide button; null when not known
    */
-  constructor ({ guide, sections, pageNumber, readingWidth, returnTo, metadataRows, panelCollapsed = false }) {
+  constructor ({ guide, sections, pageNumber, readingWidth, returnTo, metadataRows, panelCollapsed = false, pin = null }) {
     const href = page => GuideViewModel.pageHref(guide.id, page)
     const adjacent = (page) => {
       const section = sections[page - 1]
@@ -153,6 +155,7 @@ class GuideViewModel {
     this.readingWidth = readingWidth
     this.readingWidths = READING_WIDTHS
     this.returnTo = returnTo
+    this.pin = pin
     this.panelCollapsed = panelCollapsed
   }
 

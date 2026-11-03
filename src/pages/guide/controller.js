@@ -4,6 +4,7 @@ import { statusCodes } from '../../constants/status-codes.js'
 import { relativeHref } from '../common/relative-href.js'
 import { resolveAnchors, resolveImages, splitIntoSections } from '../../services/guide-sections.js'
 import * as guidesService from '../../services/guides.js'
+import * as usersService from '../../services/users.js'
 import { guideAssetHref } from './asset-href.js'
 import { isPanelCollapsed, setPanelCollapsed } from './panel.js'
 import { getReadingWidth, setReadingWidth } from './reading-width.js'
@@ -45,6 +46,23 @@ function _currentUrl (request) {
 }
 
 /**
+ * @private
+ * @param {Array<{id: string}>|null} pinned - The user's pins, in their order
+ * @param {string} guideId
+ * @returns {{pinned: boolean, position: number|null}|null} Null when the
+ *   user's pins are not known, and the page offers no pin
+ */
+function _pinOf (pinned, guideId) {
+  if (!pinned) {
+    return null
+  }
+
+  const position = pinned.findIndex((pin) => pin.id === guideId)
+
+  return { pinned: position !== -1, position: position === -1 ? null : position }
+}
+
+/**
  * Show one section of a guide, with its contents and what the guide is
  * about.
  *
@@ -56,9 +74,10 @@ function _currentUrl (request) {
 async function getGuidePage (request, h) {
   const { guideId } = request.params
 
-  const [guide, content] = await Promise.all([
+  const [guide, content, pinned] = await Promise.all([
     guidesService.getGuideById(guideId),
-    guidesService.getGuideContent(guideId)
+    guidesService.getGuideContent(guideId),
+    usersService.pinnedOf(request)
   ])
 
   const split = content ? splitIntoSections(content.markdown) : []
@@ -79,7 +98,8 @@ async function getGuidePage (request, h) {
     readingWidth: getReadingWidth(request),
     returnTo: _currentUrl(request),
     panelCollapsed: isPanelCollapsed(request),
-    metadataRows: buildMetadataRows(guide.metadata)
+    metadataRows: buildMetadataRows(guide.metadata),
+    pin: _pinOf(pinned, guide.id)
   })
 
   return h

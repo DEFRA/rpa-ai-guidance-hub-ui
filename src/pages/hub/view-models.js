@@ -71,8 +71,9 @@ function _buildDocumentRows (items) {
  * safe.
  *
  * @private
- * @param {{title: string, href: string, versionNumber: string|null, purpose: string|null, lastUpdated: string, published: string}} item
- * @returns {{title: string, href: string, versionTag: {text: string, colour: string}|null, purpose: string|null, lastUpdated: string, published: string}}
+ * @param {{id: string, pin: {pinned: boolean, position: number|null}|null, title: string, href: string, versionNumber: string|null, purpose: string|null, lastUpdated: string, published: string}} item
+ *   - `pin` is null when the user's pins are not known, and the row offers none
+ * @returns {{id: string, pin: {pinned: boolean, position: number|null}|null, title: string, href: string, versionTag: {text: string, colour: string}|null, purpose: string|null, lastUpdated: string, published: string}}
  */
 function _guideRow ({ versionNumber, ...item }) {
   return { ...item, href: relativeHref(item.href), versionTag: versionTag(versionNumber) }
