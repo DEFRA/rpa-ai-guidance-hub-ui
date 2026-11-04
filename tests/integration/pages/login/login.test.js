@@ -4,7 +4,7 @@ import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
-import { guidePageResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse, userResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 describe('#loginController', () => {
@@ -72,7 +72,7 @@ describe('#loginController', () => {
     test('signs the mock user in to the hub as a user of its own, apart from anyone signing in with Entra', async () => {
       const users = nock(config.get('guidanceApi.baseUrl'))
         .post('/users', { tenantId: 'local-development', objectId: 'dev-user-123', displayName: 'Dev User' })
-        .reply(statusCodes.HTTP_STATUS_CREATED, { id: '01a18d45-0000-7000-8000-000000000001' })
+        .reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
 
       const { statusCode, headers } = await server.inject({ method: 'GET', url: '/login' })
 

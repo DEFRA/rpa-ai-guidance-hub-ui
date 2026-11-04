@@ -5,7 +5,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { initiateUploadResponse } from '../../../fixtures/cdp-uploader.js'
-import { guidePageResponse, schemesResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse, schemesResponse, userResponse } from '../../../fixtures/guidance-api.js'
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
@@ -65,14 +65,14 @@ describe('Side navigation', () => {
   })
 
   describe('the user\'s pinned guides', () => {
-    const USER_ID = '01a18d45-0000-7000-8000-000000000001'
+    const { id: USER_ID } = userResponse()
     const FIRST = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
     const SECOND = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
 
     function signedInWith (pinned) {
       nock(GUIDANCE_API_BASE_URL)
-        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })
-        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, { id: USER_ID, pinned })
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ pinned }))
 
       return loginAsDevUser(server)
     }
@@ -108,8 +108,8 @@ describe('Side navigation', () => {
 
     async function pinnedSection (pinned) {
       nock(GUIDANCE_API_BASE_URL)
-        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })
-        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, { id: USER_ID, pinned })
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ pinned }))
       const cookie = await loginAsDevUser(server)
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
       const start = payload.indexOf('id="side-nav-pinned"')
@@ -153,7 +153,7 @@ describe('Side navigation', () => {
     })
 
     test('move from where the page showed them, then go back to the page\'s pinned guides', async () => {
-      nock(GUIDANCE_API_BASE_URL).post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })
+      nock(GUIDANCE_API_BASE_URL).post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
       const moving = nock(GUIDANCE_API_BASE_URL)
         .patch(`/users/${USER_ID}/pins`, [
           { op: 'test', path: '/0', value: FIRST },
@@ -188,7 +188,7 @@ describe('Side navigation', () => {
       ['a conflict when the move no longer fits them', statusCodes.HTTP_STATUS_UNPROCESSABLE_ENTITY, statusCodes.HTTP_STATUS_CONFLICT]
     ])('answer a script that dragged one with %s', async (_answer, answered, expected) => {
       nock(GUIDANCE_API_BASE_URL)
-        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
         .patch(`/users/${USER_ID}/pins`).reply(answered)
       const cookie = await loginAsDevUser(server)
 

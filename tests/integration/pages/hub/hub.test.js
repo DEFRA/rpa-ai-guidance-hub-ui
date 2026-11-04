@@ -5,7 +5,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
-import { guidePageResponse, guideSummaryResponse, versionResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse, guideSummaryResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -370,14 +370,14 @@ describe('#hubController', () => {
   })
 
   describe('pins', () => {
-    const USER_ID = '01a18d45-0000-7000-8000-000000000001'
+    const { id: USER_ID } = userResponse()
     const PINNED = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
     const OTHER = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
 
     async function signedIn (user) {
       nock(GUIDANCE_API_BASE_URL)
-        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })
-        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, { id: USER_ID, pinned: [], ...user })
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse(user))
 
       return loginAsDevUser(server)
     }
