@@ -7,6 +7,7 @@ import { formatIsoDate } from '../common/format-date.js'
 import { filterPanel, filtersFrom, sortFrom, wordsFrom } from './filters.js'
 import { HubViewModel } from './view-models.js'
 
+const HUB_VIEW = 'hub/page.njk'
 const NOT_RECORDED = 'Not recorded'
 
 /**
@@ -107,7 +108,7 @@ async function getHubPage (request, h) {
   })
 
   return h
-    .view('hub/page.njk', viewModel)
+    .view(HUB_VIEW, viewModel)
     .code(statusCodes.HTTP_STATUS_OK)
 }
 
@@ -123,7 +124,7 @@ async function getHubListPage (request, h) {
 
   if (shown !== 'pinned') {
     return h
-      .view('hub/page.njk', new HubViewModel({ shown }))
+      .view(HUB_VIEW, new HubViewModel({ shown }))
       .code(statusCodes.HTTP_STATUS_OK)
   }
 
@@ -138,7 +139,7 @@ async function getHubListPage (request, h) {
   })
 
   return h
-    .view('hub/page.njk', viewModel)
+    .view(HUB_VIEW, viewModel)
     .code(statusCodes.HTTP_STATUS_OK)
 }
 
