@@ -23,6 +23,9 @@ const ENTRA_HOST = 'https://login.microsoftonline.com'
 const TENANT_PATH = '/fake-tenant-id'
 
 const USER_OID = '00000000-0000-0000-0000-000000000123'
+const USER_TID = '00000000-0000-0000-0000-000000000456'
+const HUB_USER_ID = '01a18d45-0000-7000-8000-000000000001'
+const GUIDANCE_API = 'http://localhost:3001'
 
 /**
  * Boots a Hapi server with the real auth plugin and login routes, plus a
@@ -102,6 +105,13 @@ function mockTokenEndpoint (tokens, status = 200) {
   return nock(ENTRA_HOST)
     .post(`${TENANT_PATH}/oauth2/v2.0/token`)
     .reply(status, tokens)
+}
+
+/** The guidance API finding or making the user who signed in. */
+function mockUsersEndpoint () {
+  return nock(GUIDANCE_API)
+    .post('/users', { tenantId: USER_TID, objectId: USER_OID, displayName: 'Test User' })
+    .reply(201, { id: HUB_USER_ID })
 }
 
 function mockJwks () {
@@ -201,13 +211,15 @@ describe('#loginController', () => {
         .reply(200, {
           access_token: accessToken,
           refresh_token: 'refresh-token',
-          id_token: generateEntraJwt({ nonce, oid: USER_OID })
+          id_token: generateEntraJwt({ nonce, oid: USER_OID, tid: USER_TID })
         })
       mockJwks()
+      const usersScope = mockUsersEndpoint()
 
       const callback = await sendCallback(server, { cookie, params: { code: 'auth-code', state } })
 
       expect(tokenScope.isDone()).toBe(true)
+      expect(usersScope.isDone()).toBe(true)
       expect(callback.statusCode).toBe(302)
       expect(callback.headers.location).toBe('/hub')
 
@@ -220,8 +232,10 @@ describe('#loginController', () => {
       expect(result).toMatchObject({
         token: accessToken,
         refreshToken: 'refresh-token',
+        userId: HUB_USER_ID,
         profile: {
           id: USER_OID,
+          tenantId: USER_TID,
           displayName: 'Test User',
           email: 'testuser@example.com',
           roles: []
@@ -253,6 +267,27 @@ describe('#loginController', () => {
       expect(result.roles).toEqual(['Hub.Viewer', 'Hub.Editor'])
       expect(result.scope).toEqual(['Hub.Viewer', 'Hub.Editor'])
       expect(result.profile.roles).toEqual(['Hub.Viewer', 'Hub.Editor'])
+    })
+
+    test('still starts the session when the hub cannot record the user, to find them later', async () => {
+      const { state, nonce, cookie } = await startLogin(server)
+
+      mockTokenEndpoint({
+        access_token: generateEntraJwt(),
+        id_token: generateEntraJwt({ nonce, oid: USER_OID, tid: USER_TID })
+      })
+      mockJwks()
+      nock(GUIDANCE_API).post('/users').reply(503)
+
+      const callback = await sendCallback(server, { cookie, params: { code: 'auth-code', state } })
+      const { result } = await server.inject({ method: 'GET', url: '/protected', headers: { cookie: cookieHeader(callback) } })
+
+      expect(callback.headers.location).toBe('/hub')
+      expect(result.userId).toBeUndefined()
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        expect.objectContaining({ event: expect.objectContaining({ type: 'user_sign_in_failed' }) }),
+        expect.any(String)
+      )
     })
 
     test('clears the OIDC state cookie so it cannot be replayed', async () => {

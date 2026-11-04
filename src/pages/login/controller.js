@@ -8,6 +8,7 @@ import { config } from '../../config/config.js'
 import { createLogger } from '../../infra/logging/logger.js'
 import { buildErrorLog } from '../../infra/logging/utils/build-error-log.js'
 import { OIDC_STATE_COOKIE } from '../../server/plugins/auth/auth.js'
+import * as usersService from '../../services/users.js'
 import { mockUser } from './mock-user.js'
 
 const logger = createLogger()
@@ -154,8 +155,8 @@ function _getMockUserRoles () {
 
 /**
  * @private
- * Stores the session server-side, sets the session cookie and redirects to
- * the hub.
+ * Finds or makes the user in the hub, stores the session server-side with
+ * the hub's id for them, sets the session cookie and redirects to the hub.
  *
  * @param {Hapi.Request} request
  * @param {Hapi.ResponseToolkit} h
@@ -164,12 +165,32 @@ function _getMockUserRoles () {
  */
 async function _startSession (request, h, { profile, token, refreshToken }) {
   const sessionId = uuidv4()
+  const userId = await _userIdFor(profile)
 
-  await request.server.app.cache.set(`auth-session:${sessionId}`, { profile, token, refreshToken })
+  await request.server.app.cache.set(`auth-session:${sessionId}`, { profile, token, refreshToken, userId })
 
   request.cookieAuth.set({ sessionId })
 
   return h.redirect('/hub')
+}
+
+/**
+ * @private
+ * The hub's id for the user signing in. A failure does not stop them signing
+ * in: the session goes without the id, which is found the first time it is
+ * needed (`usersService.userIdOf`).
+ *
+ * @param {object} profile
+ * @returns {Promise<string|undefined>}
+ */
+async function _userIdFor (profile) {
+  try {
+    return await usersService.signIn(profile)
+  } catch (err) {
+    logger.warn(buildErrorLog(err, { type: 'user_sign_in_failed' }), `Could not find or make the user at sign-in: ${err.message}`)
+
+    return undefined
+  }
 }
 
 /**

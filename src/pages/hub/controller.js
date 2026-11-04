@@ -2,6 +2,7 @@ import Boom from '@hapi/boom'
 
 import { statusCodes } from '../../constants/status-codes.js'
 import * as guidesService from '../../services/guides.js'
+import * as usersService from '../../services/users.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { filterPanel, filtersFrom, sortFrom, wordsFrom } from './filters.js'
 import { HubViewModel } from './view-models.js'
@@ -15,10 +16,14 @@ const NOT_RECORDED = 'Not recorded'
  *
  * @private
  * @param {import('../../services/guides.js').GuideSummary} guide
- * @returns {{title: string, href: string, versionNumber: string|null, purpose: string|null, lastUpdated: string, published: string}}
+ * @param {Map<string, number>|null} pinPositions - Where each pinned guide is
+ *   among the user's pins; null when they are not known
+ * @returns {{id: string, pin: {pinned: boolean, position: number|null}|null, title: string, href: string, versionNumber: string|null, purpose: string|null, lastUpdated: string, published: string}}
  */
-function _toGuideItem (guide) {
+function _toGuideItem (guide, pinPositions) {
   return {
+    id: guide.id,
+    pin: pinPositions && { pinned: pinPositions.has(guide.id), position: pinPositions.get(guide.id) ?? null },
     title: guide.title ?? 'Untitled guide',
     href: `/guides/${encodeURIComponent(guide.id)}`,
     versionNumber: guide.versionNumber,
@@ -42,6 +47,28 @@ const LIST_PATHS = Object.keys(LISTS)
 
 /**
  * @private
+ * @param {Array<{id: string}>|null} pinned - The user's pins, in their order
+ * @returns {Map<string, number>|null} Each pinned guide's position among them
+ */
+function _pinPositions (pinned) {
+  return pinned && new Map(pinned.map((pin, position) => [pin.id, position]))
+}
+
+/**
+ * @private
+ * The pinned guides first, in the user's order, then the rest as they came.
+ *
+ * @param {Array<object>} items - As `_toGuideItem` makes them
+ * @returns {Array<object>}
+ */
+function _pinnedFirst (items) {
+  const pinned = items.filter((item) => item.pin?.pinned).sort((a, b) => a.pin.position - b.pin.position)
+
+  return [...pinned, ...items.filter((item) => !item.pin?.pinned)]
+}
+
+/**
+ * @private
  * A filter value the API's reference data does not have is the asker's
  * mistake (an address made by hand), not the hub's.
  *
@@ -59,17 +86,22 @@ async function _refusingUnknownFilters (listing) {
 
 /**
  * The hub, listing every guide the filters let through, beside the filters
- * and sort. The words searched for are kept, in the search box and as the
- * filters change, but find nothing yet: the list is every guide.
+ * and sort, the user's pinned guides first. The words searched for are kept,
+ * in the search box and as the filters change, but find nothing yet: the list
+ * is every guide.
  */
 async function getHubPage (request, h) {
   const filters = filtersFrom(request.query)
   const sort = sortFrom(request.query)
   const words = wordsFrom(request.query)
-  const { guides, counts } = await _refusingUnknownFilters(guidesService.listEveryGuide({ filters, sort }))
+  const [{ guides, counts }, pinned] = await Promise.all([
+    _refusingUnknownFilters(guidesService.listEveryGuide({ filters, sort })),
+    usersService.pinnedOf(request)
+  ])
+  const pinPositions = _pinPositions(pinned)
 
   const viewModel = new HubViewModel({
-    allGuides: guides.map(_toGuideItem),
+    allGuides: _pinnedFirst(guides.map((guide) => _toGuideItem(guide, pinPositions))),
     filters: filterPanel({ path: '/hub', filters, counts, sort, total: guides.length, withSort: true, words }),
     words
   })

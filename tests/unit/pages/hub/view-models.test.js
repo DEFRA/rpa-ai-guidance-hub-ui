@@ -119,6 +119,8 @@ describe('#HubViewModel', () => {
 
   describe('allGuides', () => {
     const guide = {
+      id: 'guide-1',
+      pin: { pinned: true, position: 0 },
       title: 'Claiming the SFI payment',
       href: '/guides/guide-1',
       versionNumber: '2.1',
@@ -133,6 +135,8 @@ describe('#HubViewModel', () => {
       expect(allGuides.count).toBe(1)
       expect(allGuides.isEmpty).toBe(false)
       expect(allGuides.guides).toEqual([{
+        id: 'guide-1',
+        pin: { pinned: true, position: 0 },
         title: 'Claiming the SFI payment',
         href: '/guides/guide-1',
         versionTag: { text: 'Version 2.1', colour: 'green' },

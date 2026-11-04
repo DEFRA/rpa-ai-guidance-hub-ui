@@ -1,5 +1,6 @@
 @use 'govuk-frontend' as *;
 @use '../variables/colours' as *;
+@use 'app-side-nav' as *;
 
 // The hub's list of guides, as the prototype's hub rows
 // (_app-organic-search.scss, _app-hub.scss and _app-side-nav.scss there).
@@ -52,4 +53,47 @@
 
 .app-hub-results__showing {
   color: $govuk-secondary-text-colour;
+}
+
+// A pinned guide's row, marked at its edge.
+.app-search-results__item--pinned {
+  padding-left: govuk-spacing(3);
+  border-left: 4px solid $defra-green;
+}
+
+// The star that pins or unpins a guide, beside its tags.
+.app-pin-toggle {
+  flex: none;
+  margin: -6px 0 0 (-(govuk-spacing(2)));
+}
+
+.app-pin-toggle__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: $app-side-nav-muted;
+  cursor: pointer;
+
+  .app-side-nav-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  &[aria-pressed='true'] {
+    color: $defra-green-hover;
+  }
+
+  &:hover {
+    background-color: $govuk-light-grey;
+    color: $govuk-black;
+  }
+
+  &:focus {
+    @include app-side-nav-focus;
+  }
 }

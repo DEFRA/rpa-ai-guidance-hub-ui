@@ -4,7 +4,7 @@ import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
-import { guidePageResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse, userResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 describe('#loginController', () => {
@@ -67,6 +67,18 @@ describe('#loginController', () => {
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(payload).toContain('Dev User')
+    })
+
+    test('signs the mock user in to the hub as a user of its own, apart from anyone signing in with Entra', async () => {
+      const users = nock(config.get('guidanceApi.baseUrl'))
+        .post('/users', { tenantId: 'local-development', objectId: 'dev-user-123', displayName: 'Dev User' })
+        .reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+
+      const { statusCode, headers } = await server.inject({ method: 'GET', url: '/login' })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(headers.location).toBe('/hub')
+      expect(users.isDone()).toBe(true)
     })
 
     test('Should not expose the Entra callback under the local provider', async () => {

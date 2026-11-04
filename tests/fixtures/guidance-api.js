@@ -181,6 +181,29 @@ function guidePageResponse (overrides = {}) {
   return { items: [guideSummaryResponse()], nextCursor: null, ...overrides }
 }
 
+/**
+ * Body of `POST /users` (201, or 200 for a user signed in before) and of
+ * `GET /users/{id}` on 200: the hub's user, with the guides they have pinned,
+ * in their order. By default the dev user `loginAsDevUser` signs in, with
+ * nothing pinned.
+ *
+ * Verified against the guidance API's `User` schema on 2026-11-04: id,
+ * identity, displayName, createdAt, and pinned as `{id, title}` items.
+ *
+ * @param {Object} [overrides]
+ * @returns {{id: string, identity: {tenantId: string, objectId: string}, displayName: string|null, createdAt: string, pinned: Array<{id: string, title: string|null}>}}
+ */
+function userResponse (overrides = {}) {
+  return {
+    id: '01a18d45-0000-7000-8000-000000000001',
+    identity: { tenantId: 'local-development', objectId: 'dev-user-123' },
+    displayName: 'Dev User',
+    createdAt: '2026-10-06T08:00:00Z',
+    pinned: [],
+    ...overrides
+  }
+}
+
 export {
   guidePageResponse,
   guideResponse,
@@ -191,5 +214,6 @@ export {
   audiencesResponse,
   stagedDocumentResponse,
   draftResponse,
-  createdGuideResponse
+  createdGuideResponse,
+  userResponse
 }

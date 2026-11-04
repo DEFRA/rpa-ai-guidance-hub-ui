@@ -39,6 +39,20 @@
             {% if lastUpdated %}
               <span class="app-guide-byline__updated">Updated {{ lastUpdated }}</span>
             {% endif %}
+            {# Pin guide / Unpin guide: the label says the state, so no
+               aria-pressed. #}
+            {% if pin %}
+              <form class="app-pin-form" method="post" action="/pin-toggle">
+                <input type="hidden" name="guideId" value="{{ guideId }}">
+                <input type="hidden" name="pin" value="{{ 'false' if pin.pinned else 'true' }}">
+                {% if pin.pinned %}<input type="hidden" name="position" value="{{ pin.position }}">{% endif %}
+                <input type="hidden" name="returnTo" value="{{ returnTo }}">
+                <button type="submit" class="govuk-button govuk-button--secondary app-pin-button" data-module="govuk-button">
+                  {{ icon("star-filled" if pin.pinned else "star") }}
+                  {{ "Unpin guide" if pin.pinned else "Pin guide" }}
+                </button>
+              </form>
+            {% endif %}
           </div>
 
           <h1 class="app-guide-title">{{ title }}</h1>

@@ -145,6 +145,24 @@ $app-guide-panel-max-width: 480px;
   margin-left: govuk-spacing(2);
 }
 
+// Pin guide / Unpin guide, at the end of the byline.
+.app-pin-form {
+  display: inline-block;
+  margin-left: govuk-spacing(2);
+}
+
+.app-pin-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0;
+
+  .app-side-nav-icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
 // Reading hierarchy — generous line-height and vertical rhythm (the width
 // is the page's, .app-guide-reading below), a Word-style heading scale (.app-guide-heading-1/-2)
 // with a rule only where a section itself ends (.app-guide-divider) so a

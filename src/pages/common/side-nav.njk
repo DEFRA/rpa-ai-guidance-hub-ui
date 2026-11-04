@@ -17,17 +17,24 @@
 {% set listItems = [
   { text: "Hub", href: "/hub" + listQuery, icon: "home", current: currentPath == "/hub" },
   { text: "Recently opened", href: "/hub/recently-opened" + listQuery, icon: "clock", current: currentPath == "/hub/recently-opened" },
-  { text: "Pinned", href: "/hub/pinned" + listQuery, icon: "star", current: currentPath == "/hub/pinned" },
+  { text: "Pinned", href: "/hub/pinned" + listQuery, icon: "star", current: currentPath == "/hub/pinned", badge: pinnedCount },
   { text: "Bookmarked guides", href: "/hub/bookmarked-guides" + listQuery, icon: "bookmark", current: currentPath == "/hub/bookmarked-guides" }
 ] %}
 {% set editorItems = [
   { text: "Upload guidance", href: "/create-guidance/upload-guide", icon: "upload", current: onUpload }
 ] %}
 
-{% macro railItem(text, iconName, href, current) %}
+{# A list's count, as on the open navigation, is a dot on its icon, and part
+   of its name for a screen reader, as the prototype's rail has it. #}
+{% macro railItem(text, iconName, href, current, badge) %}
   <a class="app-side-nav__rail-item{% if current %} app-side-nav__rail-item--current{% endif %}" href="{{ href }}"{% if current %} aria-current="page"{% endif %} data-side-nav-tooltip>
     {{ icon(iconName) }}
-    <span class="app-side-nav__rail-label">{{ text }}</span>
+    {% if badge is number %}
+      <span class="app-side-nav__rail-label">{{ text }} ({{ badge }}<span class="govuk-visually-hidden"> guides</span>)</span>
+      <span class="app-side-nav__rail-dot" aria-hidden="true">{{ badge }}</span>
+    {% else %}
+      <span class="app-side-nav__rail-label">{{ text }}</span>
+    {% endif %}
     <span class="app-side-nav__tooltip" aria-hidden="true">{{ text }}</span>
   </a>
 {% endmacro %}
@@ -48,7 +55,7 @@
 
   <ul class="app-side-nav__rail-list">
     {% for item in listItems %}
-      <li>{{ railItem(item.text, item.icon, item.href, item.current) }}</li>
+      <li>{{ railItem(item.text, item.icon, item.href, item.current, item.badge) }}</li>
     {% endfor %}
   </ul>
 
@@ -99,6 +106,10 @@
         <a class="app-side-nav__link{% if item.current %} app-side-nav__link--current{% endif %}" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>
           {{ icon(item.icon) }}
           <span class="app-side-nav__text">{{ item.text }}</span>
+          {# A count the hub has for the list, as the prototype shows one. #}
+          {% if item.badge is number %}
+            <span class="app-side-nav__badge">{{ item.badge }}<span class="govuk-visually-hidden"> guides</span></span>
+          {% endif %}
         </a>
       </li>
     {% endfor %}
@@ -118,13 +129,67 @@
     </ul>
   {% endif %}
 
+  {#
+    The user's pinned guides, in their order (pinnedGuides, from
+    server/side-nav-lists.js). Each has a "…" menu of forms, so they open,
+    unpin and move without JavaScript; each form sends where the page showed
+    the guide, and a move every pin in the order shown, so a page whose pins
+    have changed since changes nothing. With
+    JavaScript they can be dragged into a new order (side-nav-reorder.js),
+    which keeps these positions up to date.
+  #}
+  {% set pins = pinnedGuides or [] %}
   <details class="app-side-nav__section" id="side-nav-pinned" open>
     <summary class="app-side-nav__section-summary">
       <span class="app-side-nav__label">Pinned guidance</span>
-      <span class="app-side-nav__section-count">0<span class="govuk-visually-hidden"> pinned</span></span>
+      <span class="app-side-nav__section-count">{{ pins.length }}<span class="govuk-visually-hidden"> pinned</span></span>
       {{ icon("chevron-down", "app-side-nav__chevron") }}
     </summary>
-    <p class="app-side-nav__empty">You haven't pinned any guidance yet.</p>
+    {% if pins.length %}
+      <ul class="app-side-nav__list" data-reorder-list="/pin-order">
+        {% for pin in pins %}
+          <li class="app-side-nav__row" data-reorder-id="{{ pin.id }}" data-reorder-label="{{ pin.title }}">
+            <a class="app-side-nav__link" href="{{ pin.href }}" draggable="false" data-reorder-handle>
+              {{ icon("star-filled", "app-side-nav__star") }}
+              <span class="app-side-nav__text">{{ pin.title }}</span>
+            </a>
+            <details class="app-side-nav__more">
+              <summary class="app-side-nav__icon-button app-side-nav__more-button">
+                {{ icon("more") }}
+                <span class="govuk-visually-hidden">More actions for {{ pin.title }}</span>
+              </summary>
+              <div class="app-side-nav__popover">
+                <a class="app-side-nav__menu-item" href="{{ pin.href }}">Open</a>
+                <form method="post" action="/pin-toggle">
+                  <input type="hidden" name="guideId" value="{{ pin.id }}">
+                  <input type="hidden" name="pin" value="false">
+                  <input type="hidden" name="position" value="{{ pin.position }}">
+                  <input type="hidden" name="returnTo" value="{{ currentUrl }}">
+                  <button type="submit" class="app-side-nav__menu-item">Unpin<span class="govuk-visually-hidden"> {{ pin.title }}</span></button>
+                </form>
+                {#
+                  Move up and Move down are the way to reorder without
+                  dragging, or without JavaScript. Both are always there,
+                  hidden with no neighbour, so a drag can bring them up to date.
+                #}
+                {% for move in [{ text: "Move up", step: -1, hidden: pin.isFirst }, { text: "Move down", step: 1, hidden: pin.isLast }] %}
+                  <form method="post" action="/pin-order" data-reorder-move="{{ move.step }}"{% if move.hidden %} hidden{% endif %}>
+                    {% for shown in pins %}<input type="hidden" name="order" value="{{ shown.id }}">{% endfor %}
+                    <input type="hidden" name="from" value="{{ pin.position }}">
+                    <input type="hidden" name="to" value="{{ pin.position + move.step }}">
+                    <input type="hidden" name="returnTo" value="{{ currentUrl }}">
+                    <button type="submit" class="app-side-nav__menu-item">{{ move.text }}<span class="govuk-visually-hidden"> {{ pin.title }}</span></button>
+                  </form>
+                {% endfor %}
+              </div>
+            </details>
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="govuk-visually-hidden" role="status" data-reorder-status></p>
+    {% else %}
+      <p class="app-side-nav__empty">You haven't pinned any guidance yet.</p>
+    {% endif %}
   </details>
 
   <details class="app-side-nav__section" id="side-nav-bookmarks" open>

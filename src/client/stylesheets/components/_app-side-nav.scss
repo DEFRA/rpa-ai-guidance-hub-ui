@@ -158,6 +158,7 @@ $app-side-nav-muted: #505a5f;
   }
 }
 
+// A list's count on the folded navigation, as a dot on its icon.
 .app-side-nav__rail-dot {
   position: absolute;
   top: 1px;
@@ -556,6 +557,23 @@ details:not([open]) > summary .app-side-nav__chevron {
   }
 }
 
+// A list's count, at the end of its link, as the prototype has it.
+.app-side-nav__badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 7px;
+  border: 1px solid $app-side-nav-muted;
+  border-radius: 11px;
+  background-color: $govuk-white;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .app-side-nav__section-count {
   color: $app-side-nav-muted;
   font-size: 14px;
@@ -566,4 +584,114 @@ details:not([open]) > summary .app-side-nav__chevron {
   padding: govuk-spacing(1) govuk-spacing(3) govuk-spacing(2);
   color: $app-side-nav-muted;
   font-size: 14px;
+}
+
+// The "…" menu of each pinned guide: a plain <details>, its contents floated
+// over the nav.
+.app-side-nav__popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 200px;
+  padding: govuk-spacing(1);
+  border: 1px solid $app-side-nav-divider;
+  border-radius: 6px;
+  background-color: $govuk-white;
+  box-shadow: 0 4px 12px rgba($govuk-black, 0.15);
+}
+
+.app-side-nav__menu-item {
+  @include govuk-font($size: 16);
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: govuk-spacing(2) govuk-spacing(3);
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: $govuk-black;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:link,
+  &:visited {
+    color: $govuk-black;
+  }
+
+  &:hover {
+    background-color: $govuk-light-grey;
+    text-decoration: underline;
+  }
+
+  &:focus {
+    @include app-side-nav-focus;
+  }
+}
+
+.app-side-nav__link .app-side-nav__star {
+  color: $defra-green-hover;
+}
+
+.app-side-nav__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+// Dragging a pinned guide into a new order (side-nav-reorder.js): the dragged
+// item fades, and a bar shows where it will land.
+[data-reorder-list] > li {
+  position: relative;
+}
+
+.app-side-nav__reorder--dragging {
+  opacity: 0.5;
+}
+
+.app-side-nav__reorder--drop-before::before,
+.app-side-nav__reorder--drop-after::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  left: 0;
+  height: 4px;
+  border-radius: 2px;
+  background-color: $defra-green-hover;
+  pointer-events: none;
+}
+
+.app-side-nav__reorder--drop-before::before {
+  top: -3px;
+}
+
+.app-side-nav__reorder--drop-after::after {
+  bottom: -3px;
+}
+
+// Over every link and button the pointer crosses while dragging: two classes,
+// to outweigh the pointer that the side navigation's own rules give them.
+.app-layout.app-layout--reordering,
+.app-layout.app-layout--reordering * {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.app-side-nav__more {
+  position: relative;
+  flex: none;
+  margin-top: 2px;
+
+  .app-side-nav__popover {
+    right: 0;
+    left: auto;
+  }
+}
+
+.app-side-nav__more[open] > .app-side-nav__more-button {
+  background-color: $app-side-nav-hover;
+  color: $govuk-black;
 }

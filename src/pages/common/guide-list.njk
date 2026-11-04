@@ -1,17 +1,20 @@
 {% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "common/icon.njk" import icon %}
 
 {#
   A list of guides as the prototype's hub shows them (its
   playground/hub/page.njk result rows): each guide's version and Live tags,
   its title as a link, its purpose, and when it was last updated and
-  published. Without the prototype's pin star and "Pinned" tag, which come
-  with pins.
+  published; and, where the user's pins are known, its star, which pins or
+  unpins it (a form, so it works without JavaScript), and a "Pinned" tag.
 
   Reads a HubViewModel list: {heading, showing, emptyMessage, isEmpty, guides}:
-  its heading is how many guides it has, and under it which it shows. Called
-  with a block, it puts what the block gives under those (the sort).
+  its heading is how many guides it has, and under it which it shows; and the
+  page's address, which a star sends the user back to (a macro does not see
+  the page's own). Called with a block, it puts what the block gives under
+  those (the sort).
 #}
-{% macro guideList(list) %}
+{% macro guideList(list, returnTo) %}
   <div class="app-hub-results__header">
     <h2 class="govuk-heading-l govuk-!-margin-bottom-1">{{ list.heading }}</h2>
     {% if list.showing %}
@@ -24,14 +27,28 @@
   {% else %}
     <ul class="app-search-results">
       {% for guide in list.guides %}
-        <li class="app-search-results__item">
+        <li class="app-search-results__item{% if guide.pin.pinned %} app-search-results__item--pinned{% endif %}">
           <div class="app-search-results__top app-hub-results__top">
             <div class="govuk-!-margin-bottom-2">
               {% if guide.versionTag %}
                 {{ govukTag({ text: guide.versionTag.text, classes: "govuk-tag--" + guide.versionTag.colour }) }}
               {% endif %}
               {{ govukTag({ text: "Live", classes: "govuk-tag--turquoise" }) }}
+              {% if guide.pin.pinned %}<strong class="govuk-tag govuk-tag--grey app-search-results__pinned-tag">Pinned</strong>{% endif %}
             </div>
+            {% if guide.pin %}
+              <form class="app-pin-toggle" method="post" action="/pin-toggle">
+                <input type="hidden" name="guideId" value="{{ guide.id }}">
+                <input type="hidden" name="pin" value="{{ 'false' if guide.pin.pinned else 'true' }}">
+                {% if guide.pin.pinned %}<input type="hidden" name="position" value="{{ guide.pin.position }}">{% endif %}
+                <input type="hidden" name="returnTo" value="{{ returnTo }}">
+                <input type="hidden" name="anchor" value="pin-{{ guide.id }}">
+                <button type="submit" class="app-pin-toggle__button" id="pin-{{ guide.id }}" aria-pressed="{{ 'true' if guide.pin.pinned else 'false' }}">
+                  {{ icon("star-filled" if guide.pin.pinned else "star") }}
+                  <span class="govuk-visually-hidden">Pin {{ guide.title }}</span>
+                </button>
+              </form>
+            {% endif %}
           </div>
 
           <h3 class="govuk-heading-s app-search-results__name">

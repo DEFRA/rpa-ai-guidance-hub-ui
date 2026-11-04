@@ -4,7 +4,7 @@ import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
-import { guideResponse, versionResponse } from '../../../fixtures/guidance-api.js'
+import { guideResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
@@ -278,6 +278,36 @@ describe('#guideController', () => {
       const { statusCode } = await get('/guides/not-a-guide')
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_NOT_FOUND)
+    })
+  })
+
+  describe('pinning it', () => {
+    const { id: USER_ID } = userResponse()
+
+    test.each([
+      ['Pin guide', [], 'true'],
+      ['Unpin guide', [{ id: GUIDE_ID, title: 'Claiming the SFI payment' }], 'false']
+    ])('is offered as %s, beside the guide\'s tags', async (label, pinned, pin) => {
+      mockGuide()
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ pinned }))
+
+      const { payload } = await get(GUIDE_URL)
+      const form = payload.slice(payload.indexOf('<form class="app-pin-form"'), payload.indexOf('</form>', payload.indexOf('<form class="app-pin-form"')))
+
+      expect(form).toContain('action="/pin-toggle"')
+      expect(form).toContain(`<input type="hidden" name="pin" value="${pin}">`)
+      expect(form).toContain(`<input type="hidden" name="returnTo" value="${GUIDE_URL}">`)
+      expect(form).toMatch(new RegExp(`</svg>\\s*${label}\\s*</button>`))
+    })
+
+    test('is not offered when the user\'s pins cannot be had', async () => {
+      mockGuide()
+
+      const { payload } = await get(GUIDE_URL)
+
+      expect(payload).not.toContain('app-pin-form')
     })
   })
 

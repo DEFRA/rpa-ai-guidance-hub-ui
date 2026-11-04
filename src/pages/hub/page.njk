@@ -45,7 +45,7 @@
             {% include "hub/partials/filters.njk" %}
 
             <div class="app-hub-results" id="guide-results">
-              {% call guideList(shown) %}
+              {% call guideList(shown, currentUrl) %}
                 {% if filters.sort %}{% include "hub/partials/sort.njk" %}{% endif %}
               {% endcall %}
             </div>

@@ -157,6 +157,7 @@ function profileFromClaims (claims) {
 
   return {
     id: claims.oid,
+    tenantId: claims.tid,
     displayName: claims.name,
     email: claims.preferred_username ?? claims.email,
     roles

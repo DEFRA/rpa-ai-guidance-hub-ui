@@ -5,7 +5,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
-import { guidePageResponse, guideSummaryResponse, versionResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse, guideSummaryResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -366,6 +366,73 @@ describe('#hubController', () => {
       expect(payload).toContain('href="/hub/recently-opened?system=CRM"')
       expect(payload).toContain('href="/hub/pinned?system=CRM"')
       expect(payload).toMatch(/class="app-side-nav__link[^"]*" href="\/hub\?system=CRM"/)
+    })
+  })
+
+  describe('pins', () => {
+    const { id: USER_ID } = userResponse()
+    const PINNED = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
+    const OTHER = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
+
+    async function signedIn (user) {
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse(user))
+
+      return loginAsDevUser(server)
+    }
+
+    test('come first in the hub\'s list, tagged Pinned, each row with a star that pins or unpins it', async () => {
+      nock.cleanAll()
+      nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({
+        items: [guideSummaryResponse({ id: OTHER }), guideSummaryResponse({ id: PINNED })]
+      }))
+      const cookie = await signedIn({ pinned: [{ id: PINNED, title: 'Claiming the SFI payment' }] })
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub?system=CRM', headers: { cookie } })
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      const [first, second] = main.split('<li class="app-search-results__item').slice(1)
+
+      expect(first).toContain(`/guides/${PINNED}`)
+      expect(first).toMatch(/app-search-results__pinned-tag">Pinned</)
+      expect(first).toContain('<input type="hidden" name="pin" value="false">')
+      expect(first).toContain('<input type="hidden" name="position" value="0">')
+      expect(first).toMatch(/aria-pressed="true"/)
+      expect(second).toContain(`/guides/${OTHER}`)
+      expect(second).not.toContain('Pinned<')
+      expect(second).toContain('<input type="hidden" name="pin" value="true">')
+      expect(second).toContain('<input type="hidden" name="returnTo" value="/hub?system=CRM">')
+      expect(second).toContain(`id="pin-${OTHER}"`)
+    })
+
+    test.each([
+      ['pins at the top', { pin: 'true' }, [{ op: 'add', path: '/0', value: OTHER }]],
+      ['unpins from where the page showed it', { pin: 'false', position: '2' }, [{ op: 'test', path: '/2', value: OTHER }, { op: 'remove', path: '/2' }]]
+    ])('a star %s, through the hub, then goes back to it', async (_name, form, patch) => {
+      nock.cleanAll()
+      const cookie = await signedIn({})
+      const patching = nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/pins`, patch).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+
+      const { statusCode, headers } = await server.inject({
+        method: 'POST',
+        url: '/pin-toggle',
+        headers: { cookie },
+        payload: { guideId: OTHER, returnTo: '/hub?system=CRM', anchor: `pin-${OTHER}`, ...form }
+      })
+
+      expect(patching.isDone()).toBe(true)
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(headers.location).toBe(`/hub?system=CRM#pin-${OTHER}`)
+    })
+
+    test('an unpin without the position the page showed is refused', async () => {
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode } = await server.inject({
+        method: 'POST', url: '/pin-toggle', headers: { cookie }, payload: { guideId: OTHER, pin: 'false', returnTo: '/hub' }
+      })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
     })
   })
 

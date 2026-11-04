@@ -3,6 +3,7 @@ import { GuidanceApiError } from '../../../../src/infra/guidance-api/client.js'
 
 import { getHubPage } from '../../../../src/pages/hub/controller.js'
 import * as guidesService from '../../../../src/services/guides.js'
+import * as usersService from '../../../../src/services/users.js'
 
 const COUNTS = {
   audience: [{ label: 'Processor', shortLabel: null, count: 2 }],
@@ -31,6 +32,7 @@ describe('#hubController', () => {
     code = vi.fn()
     h = { view: vi.fn(() => ({ code })) }
     vi.spyOn(guidesService, 'listEveryGuide').mockResolvedValue({ guides: [], counts: COUNTS })
+    vi.spyOn(usersService, 'pinnedOf').mockResolvedValue([])
   })
 
   describe('getHubPage', () => {
@@ -71,12 +73,14 @@ describe('#hubController', () => {
       expect(viewModel.allGuides.count).toBe(2)
       expect(viewModel.allGuides.guides).toEqual([
         {
+          id: 'guide-1',
           title: 'Claiming the SFI payment',
           href: '/guides/guide-1',
           versionTag: { text: 'Version 2.1', colour: 'green' },
           purpose: 'Explain the claim.',
           lastUpdated: '6 October 2026',
-          published: '1 October 2026'
+          published: '1 October 2026',
+          pin: { pinned: false, position: null }
         },
         expect.objectContaining({ title: 'Closing a case', href: '/guides/guide-2' })
       ])
@@ -93,12 +97,14 @@ describe('#hubController', () => {
       const [, viewModel] = h.view.mock.calls[0]
 
       expect(viewModel.allGuides.guides).toEqual([{
+        id: 'guide-1',
         title: 'Untitled guide',
         href: '/guides/guide-1',
         versionTag: null,
         purpose: null,
         lastUpdated: 'Not recorded',
-        published: 'Not recorded'
+        published: 'Not recorded',
+        pin: { pinned: false, position: null }
       }])
     })
 
@@ -127,6 +133,31 @@ describe('#hubController', () => {
       })
       expect(viewModel.words).toBe('claim rules')
       expect(viewModel.filters.words).toBe('claim rules')
+    })
+
+    test('Should put the pinned guides first, in the user\'s order, then the rest as sorted', async () => {
+      const guide = id => ({ ...listedGuide, id })
+      guidesService.listEveryGuide.mockResolvedValue({ guides: [guide('g-1'), guide('g-2'), guide('g-3')], counts: COUNTS })
+      usersService.pinnedOf.mockResolvedValue([{ id: 'g-3', title: 'Three' }, { id: 'g-9', title: 'Hidden by a filter' }, { id: 'g-1', title: 'One' }])
+
+      await getHubPage({ query: {} }, h)
+
+      const [, viewModel] = h.view.mock.calls[0]
+      expect(viewModel.allGuides.guides.map(row => [row.id, row.pin])).toEqual([
+        ['g-3', { pinned: true, position: 0 }],
+        ['g-1', { pinned: true, position: 2 }],
+        ['g-2', { pinned: false, position: null }]
+      ])
+    })
+
+    test('Should offer no pins when the user\'s pins are not known', async () => {
+      guidesService.listEveryGuide.mockResolvedValue({ guides: [listedGuide], counts: COUNTS })
+      usersService.pinnedOf.mockResolvedValue(null)
+
+      await getHubPage({ query: {} }, h)
+
+      const [, viewModel] = h.view.mock.calls[0]
+      expect(viewModel.allGuides.guides[0].pin).toBeNull()
     })
 
     test('Should answer a filter value the hub does not have as a bad request', async () => {
