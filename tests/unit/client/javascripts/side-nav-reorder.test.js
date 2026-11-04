@@ -112,8 +112,12 @@ describe('dragging a pinned guide', () => {
   beforeEach(() => {
     render()
     showPinsAsSaved = vi.fn()
-    window.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 204 }))
     initPinReorder({ showPinsAsSaved })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   test('moves the guide to where it is let go, and saves the move', async () => {
