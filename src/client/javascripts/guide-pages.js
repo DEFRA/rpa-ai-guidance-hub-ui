@@ -26,7 +26,8 @@ function initGuidePages () {
     url.searchParams.set('page', number)
     window.history.replaceState(window.history.state, '', url)
 
-    document.querySelectorAll('.app-shell input[name="returnTo"]')
+    // Every form on the page comes back to it, the side navigation's too
+    document.querySelectorAll('input[name="returnTo"]')
       .forEach((input) => {
         input.value = `${url.pathname}${url.search}`
       })
