@@ -131,7 +131,7 @@ class PinReorder {
     const item = handle?.closest('[data-reorder-id]')
 
     if (event.button === 0 && item?.parentElement === this.#list) {
-      this.#press = { item, x: event.clientX, y: event.clientY }
+      this.#press = { item, x: event.clientX, y: event.clientY, cancelled: false }
       document.addEventListener('pointermove', this.#onPointerMove)
       document.addEventListener('pointerup', this.#onPointerUp)
       document.addEventListener('pointercancel', this.#onPointerCancel)
@@ -139,6 +139,9 @@ class PinReorder {
   }
 
   #onPointerMove = (event) => {
+    if (this.#press.cancelled) {
+      return
+    }
     if (!this.#drag) {
       if (Math.hypot(event.clientX - this.#press.x, event.clientY - this.#press.y) < DRAG_THRESHOLD) {
         return
@@ -149,10 +152,15 @@ class PinReorder {
   }
 
   #onPointerUp = () => {
+    const dragged = this.#drag !== null || this.#press.cancelled
+
     this.#stopListening()
     if (this.#drag) {
       this.#drop()
-      // The click that may follow a drag mustn't open the guide.
+    }
+    if (dragged) {
+      // The click that may follow a drag, even a cancelled one, mustn't open
+      // the guide.
       this.#suppressClick = true
       window.setTimeout(() => { this.#suppressClick = false }, 0)
     }
@@ -175,7 +183,8 @@ class PinReorder {
   #onKey (event) {
     if (event.key === 'Escape' && this.#drag) {
       event.stopPropagation()
-      this.#stopListening()
+      // The press goes on until the pointer is let go (#onPointerUp).
+      this.#press.cancelled = true
       this.#endDrag()
     }
   }

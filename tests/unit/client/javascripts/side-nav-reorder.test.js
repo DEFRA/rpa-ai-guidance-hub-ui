@@ -212,6 +212,22 @@ describe('dragging a pinned guide', () => {
     expect(window.fetch).not.toHaveBeenCalled()
   })
 
+  test('stops the click that ends a drag cancelled by Esc from opening the guide', () => {
+    const handle = row('a').querySelector('[data-reorder-handle]')
+
+    pointer(handle, 'pointerdown', 120)
+    pointer(document, 'pointermove', 180)
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    pointer(document, 'pointermove', 200)
+    pointer(document, 'pointerup', 200)
+    const click = new window.MouseEvent('click', { bubbles: true, cancelable: true })
+    handle.dispatchEvent(click)
+
+    expect(click.defaultPrevented).toBe(true)
+    expect(row('a').classList).not.toContain('app-side-nav__reorder--dragging')
+    expect(window.fetch).not.toHaveBeenCalled()
+  })
+
   test('saves nothing when the guide is let go where it was', () => {
     drag('b', 165)
 
