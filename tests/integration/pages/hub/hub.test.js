@@ -5,7 +5,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
-import { guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -351,7 +351,7 @@ describe('#hubController', () => {
 
     test('answer a value the hub does not have as a bad request', async () => {
       nock.cleanAll()
-      nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(422, { detail: 'Unknown audience Martians' })
+      nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(422, refusalResponse({ detail: 'Unknown audience Martians' }))
       const cookie = await loginAsDevUser(server)
 
       const { statusCode } = await server.inject({ method: 'GET', url: '/hub?audience=Martians', headers: { cookie } })

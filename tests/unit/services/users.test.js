@@ -9,7 +9,7 @@ const HUB_ID = '01a18d45-0000-7000-8000-000000000001'
 const profile = { id: 'oid-1', tenantId: 'tenant-1', displayName: 'Test User', email: 'test@example.com' }
 
 function answerSignIn () {
-  usersApi.signIn.mockResolvedValue({ ok: true, status: 201, data: { id: HUB_ID } })
+  usersApi.signIn.mockResolvedValue({ ok: true, status: 201, data: guidanceApiFixtures.userResponse({ id: HUB_ID }) })
 }
 
 describe('users service', () => {
@@ -74,7 +74,7 @@ describe('users service', () => {
     }
 
     test('come with the user\'s record, which a page asks for once', async () => {
-      usersApi.getUser.mockResolvedValue({ ok: true, status: 200, data: { id: HUB_ID, pinned: PINNED } })
+      usersApi.getUser.mockResolvedValue({ ok: true, status: 200, data: guidanceApiFixtures.userResponse({ id: HUB_ID, pinned: PINNED }) })
       const request = signedInRequest()
 
       expect(await usersService.pinnedOf(request)).toEqual(PINNED)
