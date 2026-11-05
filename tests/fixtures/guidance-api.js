@@ -204,10 +204,31 @@ function userResponse (overrides = {}) {
   }
 }
 
+/**
+ * Body of `GET /users/{id}/pins` on 200: the guides the user has pinned, in
+ * their order, each as `GET /guides` lists it with its position among all
+ * their pins, and each filter's counts among them. By default one pinned
+ * guide, and no counts.
+ *
+ * Verified against the guidance API's `Pinned` schema on 2026-11-05: items as
+ * `PinnedSummary`, and counts of `OptionCount` by filter.
+ *
+ * @param {Object} [overrides]
+ * @returns {{items: Array<Object>, counts: Object<string, Array<Object>>}}
+ */
+function pinnedGuidesResponse (overrides = {}) {
+  return {
+    items: [guideSummaryResponse({ position: 0 })],
+    counts: { audience: [], system: [], scheme: [] },
+    ...overrides
+  }
+}
+
 export {
   guidePageResponse,
   guideResponse,
   guideSummaryResponse,
+  pinnedGuidesResponse,
   versionResponse,
   schemesResponse,
   systemsResponse,

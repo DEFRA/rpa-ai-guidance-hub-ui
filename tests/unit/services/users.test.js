@@ -90,18 +90,13 @@ describe('users service', () => {
     })
 
     test('list them in the user\'s order, narrowed by the filters, with each filter\'s counts', async () => {
-      const counts = { scheme: [], system: [], audience: [] }
-      usersApi.getPins.mockResolvedValue({
-        ok: true,
-        status: 200,
-        data: {
-          items: [
-            guidanceApiFixtures.guideSummaryResponse({ id: 'guide-2', position: 0 }),
-            guidanceApiFixtures.guideSummaryResponse({ id: 'guide-1', position: 2 })
-          ],
-          counts
-        }
+      const page = guidanceApiFixtures.pinnedGuidesResponse({
+        items: [
+          guidanceApiFixtures.guideSummaryResponse({ id: 'guide-2', position: 0 }),
+          guidanceApiFixtures.guideSummaryResponse({ id: 'guide-1', position: 2 })
+        ]
       })
+      usersApi.getPins.mockResolvedValue({ ok: true, status: 200, data: page })
       const filters = { audience: [], system: ['CRM'], scheme: [], noScheme: true }
 
       const listed = await usersService.listPinned(signedInRequest(), filters)
@@ -111,7 +106,7 @@ describe('users service', () => {
         expect.objectContaining({ id: 'guide-2', title: 'Claiming the SFI payment', position: 0 }),
         expect.objectContaining({ id: 'guide-1', title: 'Claiming the SFI payment', position: 2 })
       ])
-      expect(listed.counts).toEqual(counts)
+      expect(listed.counts).toEqual(page.counts)
     })
 
     test('a guide is pinned at the top', async () => {

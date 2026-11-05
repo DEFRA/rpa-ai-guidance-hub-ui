@@ -5,7 +5,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
-import { guidePageResponse, guideSummaryResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -429,10 +429,9 @@ describe('#hubController', () => {
       // The list says where each guide is among all the pins; the user's record,
       // read for the side navigation, may say otherwise if they changed between.
       const cookie = await signedIn({ pinned: [{ id: PINNED, title: 'Claiming the SFI payment' }] })
-      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/pins`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, {
-        items: [guideSummaryResponse({ id: PINNED, position: 1 })],
-        counts: { audience: [], system: [{ label: 'CRM', shortLabel: null, count: 1, retired: false }], scheme: [] }
-      })
+      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/pins`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, pinnedGuidesResponse({
+        items: [guideSummaryResponse({ id: PINNED, position: 1 })]
+      }))
 
       const { statusCode, payload } = await server.inject({ method: 'GET', url: '/hub/pinned?system=CRM', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
@@ -449,7 +448,7 @@ describe('#hubController', () => {
     test('say on their own page when nothing is pinned yet', async () => {
       nock.cleanAll()
       const cookie = await signedIn({})
-      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/pins`).reply(statusCodes.HTTP_STATUS_OK, { items: [], counts: { audience: [], system: [], scheme: [] } })
+      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/pins`).reply(statusCodes.HTTP_STATUS_OK, pinnedGuidesResponse({ items: [] }))
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
