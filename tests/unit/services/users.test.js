@@ -1,5 +1,6 @@
 import * as usersApi from '../../../src/infra/guidance-api/users.js'
 import * as usersService from '../../../src/services/users.js'
+import * as guidanceApiFixtures from '../../fixtures/guidance-api.js'
 
 vi.mock('../../../src/infra/guidance-api/users.js')
 
@@ -8,7 +9,7 @@ const HUB_ID = '01a18d45-0000-7000-8000-000000000001'
 const profile = { id: 'oid-1', tenantId: 'tenant-1', displayName: 'Test User', email: 'test@example.com' }
 
 function answerSignIn () {
-  usersApi.signIn.mockResolvedValue({ ok: true, status: 201, data: { id: HUB_ID } })
+  usersApi.signIn.mockResolvedValue({ ok: true, status: 201, data: guidanceApiFixtures.userResponse({ id: HUB_ID }) })
 }
 
 describe('users service', () => {
@@ -73,7 +74,7 @@ describe('users service', () => {
     }
 
     test('come with the user\'s record, which a page asks for once', async () => {
-      usersApi.getUser.mockResolvedValue({ ok: true, status: 200, data: { id: HUB_ID, pinned: PINNED } })
+      usersApi.getUser.mockResolvedValue({ ok: true, status: 200, data: guidanceApiFixtures.userResponse({ id: HUB_ID, pinned: PINNED }) })
       const request = signedInRequest()
 
       expect(await usersService.pinnedOf(request)).toEqual(PINNED)
@@ -86,6 +87,26 @@ describe('users service', () => {
       usersApi.getUser.mockRejectedValue(new Error('API unavailable'))
 
       expect(await usersService.pinnedOf(signedInRequest())).toBeNull()
+    })
+
+    test('list them in the user\'s order, narrowed by the filters, with each filter\'s counts', async () => {
+      const page = guidanceApiFixtures.pinnedGuidesResponse({
+        items: [
+          guidanceApiFixtures.guideSummaryResponse({ id: 'guide-2', position: 0 }),
+          guidanceApiFixtures.guideSummaryResponse({ id: 'guide-1', position: 2 })
+        ]
+      })
+      usersApi.getPins.mockResolvedValue({ ok: true, status: 200, data: page })
+      const filters = { audience: [], system: ['CRM'], scheme: [], noScheme: true }
+
+      const listed = await usersService.listPinned(signedInRequest(), filters)
+
+      expect(usersApi.getPins).toHaveBeenCalledWith(HUB_ID, filters)
+      expect(listed.guides).toEqual([
+        expect.objectContaining({ id: 'guide-2', title: 'Claiming the SFI payment', position: 0 }),
+        expect.objectContaining({ id: 'guide-1', title: 'Claiming the SFI payment', position: 2 })
+      ])
+      expect(listed.counts).toEqual(page.counts)
     })
 
     test('a guide is pinned at the top', async () => {

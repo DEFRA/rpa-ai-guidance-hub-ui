@@ -9,6 +9,7 @@ import { config } from '../config/config.js'
 import { createLogger } from '../infra/logging/logger.js'
 import { buildErrorLog } from '../infra/logging/utils/build-error-log.js'
 import * as usersApi from '../infra/guidance-api/users.js'
+import { toGuideSummary } from './guides.js'
 
 const logger = createLogger()
 
@@ -146,6 +147,24 @@ async function movePin (request, order, from, to) {
 }
 
 /**
+ * The guides the signed-in user has pinned, in their order, that the filters
+ * let through, each with its position among all their pins, which unpinning it
+ * sends; and each filter's counts among them.
+ *
+ * @param {import('@hapi/hapi').Request} request - Signed in
+ * @param {import('./guides.js').Filters} [filters]
+ * @returns {Promise<{guides: Array<import('./guides.js').GuideSummary & {position: number}>, counts: import('./guides.js').FilterCounts}>}
+ */
+async function listPinned (request, filters) {
+  const res = await usersApi.getPins(await userIdOf(request), filters)
+
+  return {
+    guides: res.data.items.map(item => ({ ...toGuideSummary(item), position: item.position })),
+    counts: res.data.counts ?? {}
+  }
+}
+
+/**
  * @private
  * @param {import('@hapi/hapi').Request} request
  * @param {Array<object>} operations
@@ -159,6 +178,7 @@ async function _patchPins (request, operations) {
 }
 
 export {
+  listPinned,
   movePin,
   pin,
   pinnedOf,

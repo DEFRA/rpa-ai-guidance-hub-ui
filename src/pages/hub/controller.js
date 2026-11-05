@@ -7,6 +7,7 @@ import { formatIsoDate } from '../common/format-date.js'
 import { filterPanel, filtersFrom, sortFrom, wordsFrom } from './filters.js'
 import { HubViewModel } from './view-models.js'
 
+const HUB_VIEW = 'hub/page.njk'
 const NOT_RECORDED = 'Not recorded'
 
 /**
@@ -107,19 +108,61 @@ async function getHubPage (request, h) {
   })
 
   return h
-    .view('hub/page.njk', viewModel)
+    .view(HUB_VIEW, viewModel)
     .code(statusCodes.HTTP_STATUS_OK)
 }
 
 /**
- * One of the side navigation's lists on its own. None of them has a source
- * of guides yet, so each shows its empty message.
+ * @private
+ * Whether chosen filters had nothing to narrow: the user has no pinned guides,
+ * so the filters are not why the list is empty. It takes asking again without
+ * them, which only an empty list with filters chosen needs.
+ *
+ * @param {import('@hapi/hapi').Request} request
+ * @param {Array<object>} guides - The pinned guides the filters let through
+ * @param {{selected: Array<object>}} panel - The list's filter panel
+ * @returns {Promise<boolean>}
  */
-function getHubListPage (request, h) {
-  const viewModel = new HubViewModel({ shown: LISTS[request.params.list] })
+async function _nothingToFilter (request, guides, panel) {
+  if (guides.length > 0 || panel.selected.length === 0) {
+    return false
+  }
+
+  const { guides: everyPinned } = await usersService.listPinned(request, filtersFrom())
+
+  return everyPinned.length === 0
+}
+
+/**
+ * One of the side navigation's lists on its own. The pinned guides list in
+ * the user's order, beside the filters, which narrow them; there is no sort.
+ * Each guide's position comes with the list, so its star and the list agree.
+ * The other lists have no source of guides yet, so each shows its empty
+ * message.
+ */
+async function getHubListPage (request, h) {
+  const shown = LISTS[request.params.list]
+
+  if (shown !== 'pinned') {
+    return h
+      .view(HUB_VIEW, new HubViewModel({ shown }))
+      .code(statusCodes.HTTP_STATUS_OK)
+  }
+
+  const filters = filtersFrom(request.query)
+  const { guides, counts } = await _refusingUnknownFilters(usersService.listPinned(request, filters))
+  const pinPositions = new Map(guides.map((guide) => [guide.id, guide.position]))
+  const panel = filterPanel({ path: `/hub/${request.params.list}`, filters, counts, sort: sortFrom(), total: guides.length, withSort: false })
+
+  const viewModel = new HubViewModel({
+    shown,
+    pinned: guides.map((guide) => _toGuideItem(guide, pinPositions)),
+    filters: panel,
+    nothingToFilter: await _nothingToFilter(request, guides, panel)
+  })
 
   return h
-    .view('hub/page.njk', viewModel)
+    .view(HUB_VIEW, viewModel)
     .code(statusCodes.HTTP_STATUS_OK)
 }
 

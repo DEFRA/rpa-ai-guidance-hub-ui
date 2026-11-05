@@ -14,7 +14,6 @@ describe('#HubViewModel', () => {
 
     test.each([
       ['recentlyOpened', 'Recently opened'],
-      ['pinned', 'Pinned'],
       ['bookmarkedGuides', 'Bookmarked guides']
     ])('Should return an empty %s table', (key, heading) => {
       expect(viewModel[key]).toEqual(expect.objectContaining({
@@ -37,6 +36,17 @@ describe('#HubViewModel', () => {
       }))
     })
 
+    test('Should return an empty list of pinned guides, saying how to pin one', () => {
+      expect(viewModel.pinned).toEqual(expect.objectContaining({
+        heading: '0 pinned guides',
+        showing: null,
+        emptyMessage: "You haven't pinned any guidance yet. Select 'Pin guide' on a guide to add it here.",
+        isGuideList: true,
+        isEmpty: true,
+        guides: []
+      }))
+    })
+
     test('has no list awaiting review', () => {
       expect(viewModel.awaitingMyReview).toBeUndefined()
     })
@@ -46,7 +56,7 @@ describe('#HubViewModel', () => {
     })
   })
 
-  describe('recentlyOpened, pinned and bookmarkedGuides', () => {
+  describe('recentlyOpened and bookmarkedGuides', () => {
     test('Should build a title/lastModified/version/action row, defaulting status to Published', () => {
       const viewModel = new HubViewModel({ recentlyOpened: [item] })
 
@@ -59,17 +69,17 @@ describe('#HubViewModel', () => {
     })
 
     test('Should use a provided status over the Published default', () => {
-      const viewModel = new HubViewModel({ pinned: [{ ...item, status: 'Archived' }] })
+      const viewModel = new HubViewModel({ bookmarkedGuides: [{ ...item, status: 'Archived' }] })
 
-      expect(viewModel.pinned.rows[0][0]).toEqual(
+      expect(viewModel.bookmarkedGuides.rows[0][0]).toEqual(
         expect.objectContaining({ statusText: 'Archived', statusColour: 'green' })
       )
     })
 
-    test('Should build bookmarked guides rows as it does pinned ones', () => {
-      const viewModel = new HubViewModel({ pinned: [item], bookmarkedGuides: [item] })
+    test('Should build bookmarked guides rows as it does recently opened ones', () => {
+      const viewModel = new HubViewModel({ recentlyOpened: [item], bookmarkedGuides: [item] })
 
-      expect(viewModel.bookmarkedGuides.rows).toEqual(viewModel.pinned.rows)
+      expect(viewModel.bookmarkedGuides.rows).toEqual(viewModel.recentlyOpened.rows)
     })
 
     test('Should count the recently opened items into the hint message', () => {
@@ -176,6 +186,47 @@ describe('#HubViewModel', () => {
       })
 
       expect(allGuides.guides[0].href).toBe('#')
+    })
+  })
+
+  describe('pinned', () => {
+    const guide = {
+      id: 'guide-1',
+      pin: { pinned: true, position: 0 },
+      title: 'Claiming the SFI payment',
+      href: '/guides/guide-1',
+      versionNumber: '2.1',
+      purpose: 'Explain the claim.',
+      lastUpdated: '20 July 2026',
+      published: '1 July 2026'
+    }
+
+    test('Should list the pinned guides as the hub lists guides, counting them in its heading', () => {
+      const { pinned } = new HubViewModel({ pinned: [guide, { ...guide, id: 'guide-2' }] })
+
+      expect(pinned.heading).toBe('2 pinned guides')
+      expect(pinned.showing).toBe('Showing 1 to 2')
+      expect(pinned.guides[0]).toEqual(expect.objectContaining({ id: 'guide-1', pin: { pinned: true, position: 0 }, versionTag: { text: 'Version 2.1', colour: 'green' } }))
+    })
+
+    test('Should say one pinned guide in the singular', () => {
+      expect(new HubViewModel({ pinned: [guide] }).pinned.heading).toBe('1 pinned guide')
+    })
+
+    test('Should say when chosen filters leave none of the pinned guides', () => {
+      const { pinned } = new HubViewModel({ shown: 'pinned', filters: { selected: [{ text: 'CRM', href: '/hub/pinned' }] } })
+
+      expect(pinned.emptyMessage).toBe('No guides match your search or filters. Try removing some filters or using different search terms.')
+    })
+
+    test('Should say nothing is pinned when chosen filters had nothing to narrow', () => {
+      const { pinned } = new HubViewModel({
+        shown: 'pinned',
+        filters: { selected: [{ text: 'CRM', href: '/hub/pinned' }] },
+        nothingToFilter: true
+      })
+
+      expect(pinned.emptyMessage).toBe("You haven't pinned any guidance yet. Select 'Pin guide' on a guide to add it here.")
     })
   })
 })

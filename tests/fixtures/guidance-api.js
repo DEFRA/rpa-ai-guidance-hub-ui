@@ -3,7 +3,9 @@
  *
  * Single owner of every response shape the guidance API sends, so that no
  * two tests can disagree about what upstream actually returns. Each factory
- * returns a fresh array - nothing here is shared mutable state.
+ * returns a fresh array - nothing here is shared mutable state. A test stubs a
+ * response with a factory from here, adding one for a new response, including
+ * a test brought from another branch: lint refuses a body of its own.
  *
  * Verified against `src/infra/guidance-api/client.js#request`: it returns
  * `{ok, status, data}` where `data` is the parsed response body untouched -
@@ -204,10 +206,45 @@ function userResponse (overrides = {}) {
   }
 }
 
+/**
+ * Body of `GET /users/{id}/pins` on 200: the guides the user has pinned, in
+ * their order, each as `GET /guides` lists it with its position among all
+ * their pins, and each filter's counts among them. By default one pinned
+ * guide, and no counts.
+ *
+ * Verified against the guidance API's `Pinned` schema on 2026-11-05: items as
+ * `PinnedSummary`, and counts of `OptionCount` by filter.
+ *
+ * @param {Object} [overrides]
+ * @returns {{items: Array<Object>, counts: Object<string, Array<Object>>}}
+ */
+function pinnedGuidesResponse (overrides = {}) {
+  return {
+    items: [guideSummaryResponse({ position: 0 })],
+    counts: { audience: [], system: [], scheme: [] },
+    ...overrides
+  }
+}
+
+/**
+ * Body of a request the guidance API refuses itself: why, in words.
+ *
+ * Verified against the running API on 2026-11-05: `detail` as a string, unlike
+ * FastAPI's own validation, which answers `detail` as a list.
+ *
+ * @param {Object} [overrides]
+ * @returns {{detail: string}}
+ */
+function refusalResponse (overrides = {}) {
+  return { detail: 'Refused', ...overrides }
+}
+
 export {
   guidePageResponse,
   guideResponse,
   guideSummaryResponse,
+  pinnedGuidesResponse,
+  refusalResponse,
   versionResponse,
   schemesResponse,
   systemsResponse,
