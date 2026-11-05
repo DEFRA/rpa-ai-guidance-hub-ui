@@ -64,14 +64,53 @@ async function patchPins (userId, operations) {
  * @throws {GuidanceApiError} - When response is not ok
  */
 async function getPins (userId, filters = {}) {
-  return guidanceApiClient.request(`${_userPath(userId)}/pins`, {
-    query: {
-      audience: filters.audience,
-      system: filters.system,
-      scheme: filters.scheme,
-      no_scheme: filters.noScheme ? 'true' : undefined
-    }
+  return guidanceApiClient.request(`${_userPath(userId)}/pins`, { query: _filterQuery(filters) })
+}
+
+/**
+ * Record that the user has opened a guide.
+ *
+ * @param {string} userId
+ * @param {string} guideId
+ * @returns {Promise<{ok: boolean, status: number, data: any}>} - 204
+ * @throws {GuidanceApiError} - When response is not ok
+ */
+async function recordOpened (userId, guideId) {
+  return guidanceApiClient.request(`${_userPath(userId)}/recently-opened`, {
+    method: 'POST',
+    body: { guideId },
+    responseType: 'text'
   })
+}
+
+/**
+ * The guides the user opened most recently, newest first, that the filters
+ * let through.
+ *
+ * @param {string} userId
+ * @param {{audience?: string[], system?: string[], scheme?: string[], noScheme?: boolean}} [filters]
+ * @returns {Promise<{ok: boolean, status: number, data: any}>} - data is
+ *   `{items, counts}`, each item a guide as `GET /guides` lists it, with
+ *   `openedAt`
+ * @throws {GuidanceApiError} - When response is not ok
+ */
+async function getRecentlyOpened (userId, filters = {}) {
+  return guidanceApiClient.request(`${_userPath(userId)}/recently-opened`, { query: _filterQuery(filters) })
+}
+
+/**
+ * @private
+ * @param {{audience?: string[], system?: string[], scheme?: string[], noScheme?: boolean}} filters
+ * @returns {Object} The hub's filters as the API's lists of a user's guides
+ *   take them
+ */
+function _filterQuery (filters) {
+  return {
+    audience: filters.audience,
+    system: filters.system,
+    scheme: filters.scheme,
+    no_scheme: filters.noScheme ? 'true' : undefined
+  }
 }
 
 /**
@@ -85,7 +124,9 @@ function _userPath (userId) {
 
 export {
   getPins,
+  getRecentlyOpened,
   getUser,
   patchPins,
+  recordOpened,
   signIn
 }

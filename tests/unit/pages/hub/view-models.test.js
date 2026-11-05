@@ -12,15 +12,22 @@ describe('#HubViewModel', () => {
   describe('when no guidance is provided', () => {
     const viewModel = new HubViewModel()
 
-    test.each([
-      ['recentlyOpened', 'Recently opened'],
-      ['bookmarkedGuides', 'Bookmarked guides']
-    ])('Should return an empty %s table', (key, heading) => {
-      expect(viewModel[key]).toEqual(expect.objectContaining({
-        heading,
+    test('Should return an empty bookmarkedGuides table', () => {
+      expect(viewModel.bookmarkedGuides).toEqual(expect.objectContaining({
+        heading: 'Bookmarked guides',
         isEmpty: true,
         count: 0,
         rows: []
+      }))
+    })
+
+    test('Should return an empty list of recently opened guides, saying that any guide opened appears there', () => {
+      expect(viewModel.recentlyOpened).toEqual(expect.objectContaining({
+        heading: '0 recently opened guides',
+        isGuideList: true,
+        emptyMessage: "You haven't opened any guidance yet. Any guidance you open will appear here.",
+        isEmpty: true,
+        guides: []
       }))
     })
 
@@ -56,11 +63,11 @@ describe('#HubViewModel', () => {
     })
   })
 
-  describe('recentlyOpened and bookmarkedGuides', () => {
+  describe('bookmarkedGuides', () => {
     test('Should build a title/lastModified/version/action row, defaulting status to Published', () => {
-      const viewModel = new HubViewModel({ recentlyOpened: [item] })
+      const viewModel = new HubViewModel({ bookmarkedGuides: [item] })
 
-      expect(viewModel.recentlyOpened.rows).toEqual([[
+      expect(viewModel.bookmarkedGuides.rows).toEqual([[
         { type: 'title', text: item.title, href: item.href, statusText: 'Published', statusColour: 'green' },
         { type: 'text', text: item.lastModified },
         { type: 'version', version: item.version, colour: 'green' },
@@ -76,27 +83,15 @@ describe('#HubViewModel', () => {
       )
     })
 
-    test('Should build bookmarked guides rows as it does recently opened ones', () => {
-      const viewModel = new HubViewModel({ recentlyOpened: [item], bookmarkedGuides: [item] })
-
-      expect(viewModel.bookmarkedGuides.rows).toEqual(viewModel.recentlyOpened.rows)
-    })
-
-    test('Should count the recently opened items into the hint message', () => {
-      const viewModel = new HubViewModel({ recentlyOpened: [item, item] })
-
-      expect(viewModel.recentlyOpened.hintMessage).toBe('Your 2 recently opened guidances')
-    })
-
     test.each([
       ['1', 'green'],
       ['0.5', 'green'],
       ['1.1', 'purple'],
       ['2', 'purple']
     ])('Should tag version %s as %s', (version, colour) => {
-      const viewModel = new HubViewModel({ recentlyOpened: [{ ...item, version }] })
+      const viewModel = new HubViewModel({ bookmarkedGuides: [{ ...item, version }] })
 
-      expect(viewModel.recentlyOpened.rows[0][2]).toEqual({ type: 'version', version, colour })
+      expect(viewModel.bookmarkedGuides.rows[0][2]).toEqual({ type: 'version', version, colour })
     })
   })
 
@@ -113,17 +108,17 @@ describe('#HubViewModel', () => {
       ['absolute URL', 'https://evil.example.com'],
       ['missing href', undefined]
     ])('Should replace a %s href with "#"', (_, href) => {
-      const viewModel = new HubViewModel({ recentlyOpened: [{ ...item, href, removeHref: href }] })
+      const viewModel = new HubViewModel({ bookmarkedGuides: [{ ...item, href, removeHref: href }] })
 
-      expect(viewModel.recentlyOpened.rows[0][0].href).toBe('#')
-      expect(viewModel.recentlyOpened.rows[0][3].href).toBe('#')
+      expect(viewModel.bookmarkedGuides.rows[0][0].href).toBe('#')
+      expect(viewModel.bookmarkedGuides.rows[0][3].href).toBe('#')
     })
 
     test('Should keep a same-origin relative href', () => {
-      const viewModel = new HubViewModel({ recentlyOpened: [item] })
+      const viewModel = new HubViewModel({ bookmarkedGuides: [item] })
 
-      expect(viewModel.recentlyOpened.rows[0][0].href).toBe(item.href)
-      expect(viewModel.recentlyOpened.rows[0][3].href).toBe(item.removeHref)
+      expect(viewModel.bookmarkedGuides.rows[0][0].href).toBe(item.href)
+      expect(viewModel.bookmarkedGuides.rows[0][3].href).toBe(item.removeHref)
     })
   })
 
@@ -227,6 +222,47 @@ describe('#HubViewModel', () => {
       })
 
       expect(pinned.emptyMessage).toBe("You haven't pinned any guidance yet. Select 'Pin guide' on a guide to add it here.")
+    })
+  })
+
+  describe('recentlyOpened', () => {
+    const guide = {
+      id: 'guide-1',
+      pin: { pinned: false, position: null },
+      title: 'Claiming the SFI payment',
+      href: '/guides/guide-1',
+      versionNumber: '2.1',
+      purpose: 'Explain the claim.',
+      lastUpdated: '20 July 2026',
+      published: '1 July 2026'
+    }
+
+    test('Should list the recently opened guides as the hub lists guides, counting them in its heading', () => {
+      const { recentlyOpened } = new HubViewModel({ recentlyOpened: [guide, { ...guide, id: 'guide-2' }] })
+
+      expect(recentlyOpened.heading).toBe('2 recently opened guides')
+      expect(recentlyOpened.showing).toBe('Showing 1 to 2')
+      expect(recentlyOpened.guides.map(row => row.id)).toEqual(['guide-1', 'guide-2'])
+    })
+
+    test('Should say one recently opened guide in the singular', () => {
+      expect(new HubViewModel({ recentlyOpened: [guide] }).recentlyOpened.heading).toBe('1 recently opened guide')
+    })
+
+    test('Should say when chosen filters leave none of the recently opened guides', () => {
+      const { recentlyOpened } = new HubViewModel({ shown: 'recentlyOpened', filters: { selected: [{ text: 'CRM', href: '/hub/recently-opened' }] } })
+
+      expect(recentlyOpened.emptyMessage).toBe('No guides match your search or filters. Try removing some filters or using different search terms.')
+    })
+
+    test('Should say none has been opened when chosen filters had nothing to narrow', () => {
+      const { recentlyOpened } = new HubViewModel({
+        shown: 'recentlyOpened',
+        filters: { selected: [{ text: 'CRM', href: '/hub/recently-opened' }] },
+        nothingToFilter: true
+      })
+
+      expect(recentlyOpened.emptyMessage).toBe("You haven't opened any guidance yet. Any guidance you open will appear here.")
     })
   })
 })

@@ -113,52 +113,77 @@ async function getHubPage (request, h) {
 }
 
 /**
- * @private
- * Whether chosen filters had nothing to narrow: the user has no pinned guides,
- * so the filters are not why the list is empty. It takes asking again without
- * them, which only an empty list with filters chosen needs.
+ * The side navigation's lists that have a source of guides, by the
+ * HubViewModel list each shows: each answers the guides the filters let
+ * through, each filter's counts among them, and where each guide is among the
+ * user's pins, so its star and the list agree.
  *
+ * @type {Record<string, (request: import('@hapi/hapi').Request, filters: import('../../services/guides.js').Filters) => Promise<{guides: Array<object>, counts: object, pinPositions: Map<string, number>|null}>>}
+ */
+const LIST_SOURCES = {
+  async pinned (request, filters) {
+    const { guides, counts } = await usersService.listPinned(request, filters)
+
+    return { guides, counts, pinPositions: new Map(guides.map((guide) => [guide.id, guide.position])) }
+  },
+
+  async recentlyOpened (request, filters) {
+    const [{ guides, counts }, pinned] = await Promise.all([
+      usersService.listRecentlyOpened(request, filters),
+      usersService.pinnedOf(request)
+    ])
+
+    return { guides, counts, pinPositions: _pinPositions(pinned) }
+  }
+}
+
+/**
+ * @private
+ * Whether chosen filters had nothing to narrow: the list has no guides at all,
+ * so the filters are not why it is empty. It takes asking again without them,
+ * which only an empty list with filters chosen needs.
+ *
+ * @param {(request: import('@hapi/hapi').Request, filters: import('../../services/guides.js').Filters) => Promise<{guides: Array<object>}>} source - The list's, from `LIST_SOURCES`
  * @param {import('@hapi/hapi').Request} request
- * @param {Array<object>} guides - The pinned guides the filters let through
+ * @param {Array<object>} guides - The guides the filters let through
  * @param {{selected: Array<object>}} panel - The list's filter panel
  * @returns {Promise<boolean>}
  */
-async function _nothingToFilter (request, guides, panel) {
+async function _nothingToFilter (source, request, guides, panel) {
   if (guides.length > 0 || panel.selected.length === 0) {
     return false
   }
 
-  const { guides: everyPinned } = await usersService.listPinned(request, filtersFrom())
+  const { guides: everyGuide } = await source(request, filtersFrom())
 
-  return everyPinned.length === 0
+  return everyGuide.length === 0
 }
 
 /**
- * One of the side navigation's lists on its own. The pinned guides list in
- * the user's order, beside the filters, which narrow them; there is no sort.
- * Each guide's position comes with the list, so its star and the list agree.
- * The other lists have no source of guides yet, so each shows its empty
- * message.
+ * One of the side navigation's lists on its own, in its own order (the
+ * user's, for the pinned guides; newest first, for the recently opened
+ * ones), beside the filters, which narrow it; there is no sort. A list with
+ * no source of guides yet shows its empty message.
  */
 async function getHubListPage (request, h) {
   const shown = LISTS[request.params.list]
+  const source = LIST_SOURCES[shown]
 
-  if (shown !== 'pinned') {
+  if (!source) {
     return h
       .view(HUB_VIEW, new HubViewModel({ shown }))
       .code(statusCodes.HTTP_STATUS_OK)
   }
 
   const filters = filtersFrom(request.query)
-  const { guides, counts } = await _refusingUnknownFilters(usersService.listPinned(request, filters))
-  const pinPositions = new Map(guides.map((guide) => [guide.id, guide.position]))
+  const { guides, counts, pinPositions } = await _refusingUnknownFilters(source(request, filters))
   const panel = filterPanel({ path: `/hub/${request.params.list}`, filters, counts, sort: sortFrom(), total: guides.length, withSort: false })
 
   const viewModel = new HubViewModel({
     shown,
-    pinned: guides.map((guide) => _toGuideItem(guide, pinPositions)),
+    [shown]: guides.map((guide) => _toGuideItem(guide, pinPositions)),
     filters: panel,
-    nothingToFilter: await _nothingToFilter(request, guides, panel)
+    nothingToFilter: await _nothingToFilter(source, request, guides, panel)
   })
 
   return h

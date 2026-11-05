@@ -165,6 +165,39 @@ async function listPinned (request, filters) {
 }
 
 /**
+ * The guides the signed-in user opened most recently, newest first, that the
+ * filters let through; and each filter's counts among them.
+ *
+ * @param {import('@hapi/hapi').Request} request - Signed in
+ * @param {import('./guides.js').Filters} [filters]
+ * @returns {Promise<{guides: import('./guides.js').GuideSummary[], counts: import('./guides.js').FilterCounts}>}
+ */
+async function listRecentlyOpened (request, filters) {
+  const res = await usersApi.getRecentlyOpened(await userIdOf(request), filters)
+
+  return {
+    guides: res.data.items.map(item => toGuideSummary(item)),
+    counts: res.data.counts ?? {}
+  }
+}
+
+/**
+ * Record that the signed-in user has opened a guide. A failure is logged,
+ * never shown: the guide opens all the same.
+ *
+ * @param {import('@hapi/hapi').Request} request - Signed in
+ * @param {string} guideId
+ * @returns {Promise<void>}
+ */
+async function recordOpened (request, guideId) {
+  try {
+    await usersApi.recordOpened(await userIdOf(request), guideId)
+  } catch (err) {
+    logger.warn(buildErrorLog(err, { type: 'record_opened_failed' }), `Could not record guide ${guideId} as opened: ${err.message}`)
+  }
+}
+
+/**
  * @private
  * @param {import('@hapi/hapi').Request} request
  * @param {Array<object>} operations
@@ -179,9 +212,11 @@ async function _patchPins (request, operations) {
 
 export {
   listPinned,
+  listRecentlyOpened,
   movePin,
   pin,
   pinnedOf,
+  recordOpened,
   signIn,
   unpin,
   userIdOf

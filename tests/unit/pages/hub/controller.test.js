@@ -193,22 +193,48 @@ describe('#hubController', () => {
       expect(viewModel.filters.sort).toBeNull()
     })
 
-    test('Should answer a filter value the hub does not have as a bad request', async () => {
-      vi.spyOn(usersService, 'listPinned').mockRejectedValue(new GuidanceApiError('guidance API GET /users/u/pins failed: 422', 422))
+    test('Should show the guides the user opened most recently, newest first, beside the filters, without a sort', async () => {
+      vi.spyOn(usersService, 'listRecentlyOpened').mockResolvedValue({
+        guides: [{ ...listedGuide, id: 'g-2' }, listedGuide],
+        counts: COUNTS
+      })
+      usersService.pinnedOf.mockResolvedValue([{ id: 'other' }, { id: 'guide-1' }])
+      const request = { params: { list: 'recently-opened' }, query: { system: 'CRM' } }
 
-      await expect(getHubListPage({ params: { list: 'pinned' }, query: { audience: 'Martians' } }, h)).rejects.toMatchObject({
+      await getHubListPage(request, h)
+
+      const [, viewModel] = h.view.mock.calls[0]
+      expect(usersService.listRecentlyOpened).toHaveBeenCalledWith(request, { audience: [], system: ['CRM'], scheme: [], noScheme: false })
+      expect(viewModel.shown.heading).toBe('2 recently opened guides')
+      expect(viewModel.recentlyOpened.guides.map(row => [row.id, row.pin])).toEqual([
+        ['g-2', { pinned: false, position: null }],
+        ['guide-1', { pinned: true, position: 1 }]
+      ])
+      expect(viewModel.filters.action).toBe('/hub/recently-opened')
+      expect(viewModel.filters.sort).toBeNull()
+    })
+
+    test.each([
+      ['pinned', 'listPinned'],
+      ['recently-opened', 'listRecentlyOpened']
+    ])('Should answer a filter value the hub does not have as a bad request, on /hub/%s', async (list, listing) => {
+      vi.spyOn(usersService, listing).mockRejectedValue(new GuidanceApiError(`guidance API GET /users/u/${list} failed: 422`, 422))
+
+      await expect(getHubListPage({ params: { list }, query: { audience: 'Martians' } }, h)).rejects.toMatchObject({
         isBoom: true,
         output: { statusCode: statusCodes.HTTP_STATUS_BAD_REQUEST }
       })
     })
 
-    test('Should show another list\'s empty message, without asking for the pinned guides', async () => {
+    test('Should show another list\'s empty message, without asking for the user\'s guides', async () => {
       vi.spyOn(usersService, 'listPinned')
+      vi.spyOn(usersService, 'listRecentlyOpened')
 
       await getHubListPage({ params: { list: 'bookmarked-guides' }, query: {} }, h)
 
       const [, viewModel] = h.view.mock.calls[0]
       expect(usersService.listPinned).not.toHaveBeenCalled()
+      expect(usersService.listRecentlyOpened).not.toHaveBeenCalled()
       expect(viewModel.shown.heading).toBe('Bookmarked guides')
       expect(viewModel.filters).toBeNull()
     })

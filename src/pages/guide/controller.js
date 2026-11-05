@@ -86,6 +86,10 @@ async function getGuidePage (request, h) {
     throw Boom.notFound()
   }
 
+  // Every view counts as opening the guide: a direct link can name a page, so
+  // its address doesn't tell an opening from moving between its parts.
+  await usersService.recordOpened(request, guide.id)
+
   const sections = resolveImages(
     resolveAnchors(split, page => GuideViewModel.pageHref(guideId, page)),
     href => guideAssetHref(href, guideId)

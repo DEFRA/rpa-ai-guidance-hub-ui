@@ -2,7 +2,12 @@ import * as usersApi from '../../../src/infra/guidance-api/users.js'
 import * as usersService from '../../../src/services/users.js'
 import * as guidanceApiFixtures from '../../fixtures/guidance-api.js'
 
+const { mockLoggerWarn } = vi.hoisted(() => ({ mockLoggerWarn: vi.fn() }))
+
 vi.mock('../../../src/infra/guidance-api/users.js')
+vi.mock('../../../src/infra/logging/logger.js', () => ({
+  createLogger: () => ({ warn: mockLoggerWarn })
+}))
 
 const HUB_ID = '01a18d45-0000-7000-8000-000000000001'
 
@@ -139,6 +144,53 @@ describe('users service', () => {
         { op: 'test', path: '/1', value: 'guide-1' },
         { op: 'remove', path: '/1' }
       ])
+    })
+  })
+
+  describe('the user\'s recently opened guides', () => {
+    function signedInRequest () {
+      return { auth: { credentials: { sessionId: 's-1', profile, token: 't', userId: HUB_ID } }, app: {} }
+    }
+
+    test('record a guide as opened, for the signed-in user', async () => {
+      usersApi.recordOpened.mockResolvedValue({ ok: true, status: 204 })
+
+      await usersService.recordOpened(signedInRequest(), 'guide-1')
+
+      expect(usersApi.recordOpened).toHaveBeenCalledWith(HUB_ID, 'guide-1')
+    })
+
+    test('do not fail the page when the guide cannot be recorded as opened', async () => {
+      usersApi.recordOpened.mockRejectedValue(new Error('API unavailable'))
+
+      await expect(usersService.recordOpened(signedInRequest(), 'guide-1')).resolves.toBeUndefined()
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        expect.objectContaining({ event: expect.objectContaining({ type: 'record_opened_failed' }) }),
+        'Could not record guide guide-1 as opened: API unavailable'
+      )
+    })
+
+    test('list them newest first, as the API answers them, narrowed by the filters, with each filter\'s counts', async () => {
+      const counts = { scheme: [], system: [], audience: [] }
+      usersApi.getRecentlyOpened.mockResolvedValue({
+        ok: true,
+        status: 200,
+        data: guidanceApiFixtures.recentlyOpenedResponse({
+          items: [
+            guidanceApiFixtures.guideSummaryResponse({ id: 'guide-2', openedAt: '2026-11-03T17:00:00' }),
+            guidanceApiFixtures.guideSummaryResponse({ id: 'guide-1', openedAt: '2026-11-03T16:00:00' })
+          ],
+          counts
+        })
+      })
+      const filters = { audience: [], system: ['CRM'], scheme: [], noScheme: true }
+
+      const listed = await usersService.listRecentlyOpened(signedInRequest(), filters)
+
+      expect(usersApi.getRecentlyOpened).toHaveBeenCalledWith(HUB_ID, filters)
+      expect(listed.guides.map(guide => guide.id)).toEqual(['guide-2', 'guide-1'])
+      expect(listed.guides[0]).toEqual(expect.objectContaining({ title: 'Claiming the SFI payment' }))
+      expect(listed.counts).toEqual(counts)
     })
   })
 })

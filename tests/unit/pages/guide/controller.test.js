@@ -41,6 +41,7 @@ describe('guide controller', () => {
     vi.spyOn(guidesService, 'getGuideById').mockResolvedValue(guide)
     vi.spyOn(guidesService, 'getGuideContent').mockResolvedValue({ markdown })
     vi.spyOn(usersService, 'pinnedOf').mockResolvedValue([])
+    vi.spyOn(usersService, 'recordOpened').mockResolvedValue()
   })
 
   describe('getGuidePage', () => {
@@ -64,6 +65,29 @@ describe('guide controller', () => {
       await controller.getGuidePage(createRequest(), h)
 
       expect(h.view.mock.calls[0][1].pin).toEqual(pin)
+    })
+
+    test('records the guide as opened by the user when it is opened, without a page', async () => {
+      const request = createRequest()
+
+      await controller.getGuidePage(request, h)
+
+      expect(usersService.recordOpened).toHaveBeenCalledWith(request, 'guide-1')
+    })
+
+    test('records the guide as opened when a direct link names a page', async () => {
+      const request = createRequest({ query: { page: '2' } })
+
+      await controller.getGuidePage(request, h)
+
+      expect(usersService.recordOpened).toHaveBeenCalledWith(request, 'guide-1')
+    })
+
+    test('does not record a guide there is not', async () => {
+      guidesService.getGuideById.mockResolvedValue(null)
+
+      await expect(controller.getGuidePage(createRequest(), h)).rejects.toMatchObject({ isBoom: true })
+      expect(usersService.recordOpened).not.toHaveBeenCalled()
     })
 
     test('renders the section asked for, and the chosen width', async () => {

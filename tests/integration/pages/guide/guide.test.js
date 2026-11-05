@@ -311,6 +311,48 @@ describe('#guideController', () => {
     })
   })
 
+  describe('as one the user opened recently', () => {
+    const { id: USER_ID } = userResponse()
+
+    function mockRecording () {
+      return nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .post(`/users/${USER_ID}/recently-opened`, { guideId: GUIDE_ID }).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+    }
+
+    test('is recorded when it is opened', async () => {
+      mockGuide()
+      const recording = mockRecording()
+
+      const { statusCode } = await get(GUIDE_URL)
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(recording.isDone()).toBe(true)
+    })
+
+    test.each(['1', '2'])('is recorded when a direct link opens it at part %s', async (page) => {
+      mockGuide()
+      const recording = mockRecording()
+
+      const { statusCode } = await get(`${GUIDE_URL}?page=${page}`)
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(recording.isDone()).toBe(true)
+    })
+
+    test('still opens when the hub cannot record it', async () => {
+      mockGuide()
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .post(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_SERVICE_UNAVAILABLE)
+
+      const { statusCode, payload } = await get(GUIDE_URL)
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(payload).toContain('Claiming the SFI payment')
+    })
+  })
+
   describe('the contents', () => {
     test('lists each section\'s subheadings beneath it', async () => {
       mockGuide()
