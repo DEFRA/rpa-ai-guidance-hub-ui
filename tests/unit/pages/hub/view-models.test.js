@@ -218,5 +218,15 @@ describe('#HubViewModel', () => {
 
       expect(pinned.emptyMessage).toBe('No guides match your search or filters. Try removing some filters or using different search terms.')
     })
+
+    test('Should say nothing is pinned when chosen filters had nothing to narrow', () => {
+      const { pinned } = new HubViewModel({
+        shown: 'pinned',
+        filters: { selected: [{ text: 'CRM', href: '/hub/pinned' }] },
+        nothingToFilter: true
+      })
+
+      expect(pinned.emptyMessage).toBe("You haven't pinned any guidance yet. Select 'Pin guide' on a guide to add it here.")
+    })
   })
 })

@@ -456,6 +456,34 @@ describe('#hubController', () => {
       expect(main).toContain('You haven&#39;t pinned any guidance yet. Select &#39;Pin guide&#39; on a guide to add it here.')
     })
 
+    test('say on their own page when nothing is pinned yet, even with filters chosen', async () => {
+      nock.cleanAll()
+      const cookie = await signedIn({})
+      nock(GUIDANCE_API_BASE_URL)
+        .get(`/users/${USER_ID}/pins`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, pinnedGuidesResponse({ items: [] }))
+        .get(`/users/${USER_ID}/pins`).reply(statusCodes.HTTP_STATUS_OK, pinnedGuidesResponse({ items: [] }))
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned?system=CRM', headers: { cookie } })
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+
+      expect(main).toContain('You haven&#39;t pinned any guidance yet. Select &#39;Pin guide&#39; on a guide to add it here.')
+      expect(main).not.toContain('No guides match')
+    })
+
+    test('say when the chosen filters leave none of them', async () => {
+      nock.cleanAll()
+      const cookie = await signedIn({})
+      nock(GUIDANCE_API_BASE_URL)
+        .get(`/users/${USER_ID}/pins`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, pinnedGuidesResponse({ items: [] }))
+        .get(`/users/${USER_ID}/pins`).reply(statusCodes.HTTP_STATUS_OK, pinnedGuidesResponse())
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned?system=CRM', headers: { cookie } })
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+
+      expect(main).toContain('No guides match your search or filters.')
+      expect(main).not.toContain('You haven&#39;t pinned')
+    })
+
     test('an unpin without the position the page showed is refused', async () => {
       const cookie = await loginAsDevUser(server)
 

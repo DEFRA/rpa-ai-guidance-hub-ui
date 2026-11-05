@@ -146,6 +146,8 @@ class HubViewModel {
    *   shows
    * @param {Object|null} [data.filters=null] - The filter panel beside the
    *   list (`filters.js`), if it has one
+   * @param {boolean} [data.nothingToFilter=false] - The list has no guides for
+   *   the chosen filters to narrow, so they don't explain why it is empty
    * @param {string} [data.words=''] - Searched for, shown in the search box
    */
   constructor (data = {}) {
@@ -156,6 +158,7 @@ class HubViewModel {
       allGuides = [],
       shown = 'allGuides',
       filters = null,
+      nothingToFilter = false,
       words = ''
     } = data
 
@@ -169,8 +172,8 @@ class HubViewModel {
     })
 
     // Chosen filters that leave nothing say so, rather than that there are no
-    // guides at all.
-    const nothingMatches = filters?.selected?.length > 0
+    // guides at all, unless they had nothing to narrow.
+    const nothingMatches = filters?.selected?.length > 0 && !nothingToFilter
       ? 'No guides match your search or filters. Try removing some filters or using different search terms.'
       : null
 
