@@ -75,10 +75,12 @@ describe('guide controller', () => {
       expect(usersService.recordOpened).toHaveBeenCalledWith(request, 'guide-1')
     })
 
-    test('does not record moving between the parts of a guide, which names a page', async () => {
-      await controller.getGuidePage(createRequest({ query: { page: '2' } }), h)
+    test('records the guide as opened when a direct link names a page', async () => {
+      const request = createRequest({ query: { page: '2' } })
 
-      expect(usersService.recordOpened).not.toHaveBeenCalled()
+      await controller.getGuidePage(request, h)
+
+      expect(usersService.recordOpened).toHaveBeenCalledWith(request, 'guide-1')
     })
 
     test('does not record a guide there is not', async () => {

@@ -330,14 +330,14 @@ describe('#guideController', () => {
       expect(recording.isDone()).toBe(true)
     })
 
-    test('is not recorded again on moving between its parts', async () => {
+    test.each(['1', '2'])('is recorded when a direct link opens it at part %s', async (page) => {
       mockGuide()
       const recording = mockRecording()
 
-      const { statusCode } = await get(`${GUIDE_URL}?page=2`)
+      const { statusCode } = await get(`${GUIDE_URL}?page=${page}`)
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(recording.isDone()).toBe(false)
+      expect(recording.isDone()).toBe(true)
     })
 
     test('still opens when the hub cannot record it', async () => {
