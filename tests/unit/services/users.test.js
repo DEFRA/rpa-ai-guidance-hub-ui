@@ -175,13 +175,13 @@ describe('users service', () => {
       usersApi.getRecentlyOpened.mockResolvedValue({
         ok: true,
         status: 200,
-        data: {
+        data: guidanceApiFixtures.recentlyOpenedResponse({
           items: [
-            { ...guidanceApiFixtures.guideSummaryResponse({ id: 'guide-2' }), openedAt: '2026-11-03T17:00:00' },
-            { ...guidanceApiFixtures.guideSummaryResponse({ id: 'guide-1' }), openedAt: '2026-11-03T16:00:00' }
+            guidanceApiFixtures.guideSummaryResponse({ id: 'guide-2', openedAt: '2026-11-03T17:00:00' }),
+            guidanceApiFixtures.guideSummaryResponse({ id: 'guide-1', openedAt: '2026-11-03T16:00:00' })
           ],
           counts
-        }
+        })
       })
       const filters = { audience: [], system: ['CRM'], scheme: [], noScheme: true }
 

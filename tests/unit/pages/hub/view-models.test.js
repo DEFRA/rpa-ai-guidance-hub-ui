@@ -254,5 +254,15 @@ describe('#HubViewModel', () => {
 
       expect(recentlyOpened.emptyMessage).toBe('No guides match your search or filters. Try removing some filters or using different search terms.')
     })
+
+    test('Should say none has been opened when chosen filters had nothing to narrow', () => {
+      const { recentlyOpened } = new HubViewModel({
+        shown: 'recentlyOpened',
+        filters: { selected: [{ text: 'CRM', href: '/hub/recently-opened' }] },
+        nothingToFilter: true
+      })
+
+      expect(recentlyOpened.emptyMessage).toBe("You haven't opened any guidance yet. Any guidance you open will appear here.")
+    })
   })
 })

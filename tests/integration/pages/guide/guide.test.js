@@ -312,11 +312,11 @@ describe('#guideController', () => {
   })
 
   describe('as one the user opened recently', () => {
-    const USER_ID = '01a18d45-0000-7000-8000-000000000001'
+    const { id: USER_ID } = userResponse()
 
     function mockRecording () {
       return nock(GUIDANCE_API_BASE_URL)
-        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
         .post(`/users/${USER_ID}/recently-opened`, { guideId: GUIDE_ID }).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
     }
 
@@ -343,7 +343,7 @@ describe('#guideController', () => {
     test('still opens when the hub cannot record it', async () => {
       mockGuide()
       nock(GUIDANCE_API_BASE_URL)
-        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
         .post(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_SERVICE_UNAVAILABLE)
 
       const { statusCode, payload } = await get(GUIDE_URL)

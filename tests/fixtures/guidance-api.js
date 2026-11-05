@@ -5,7 +5,8 @@
  * two tests can disagree about what upstream actually returns. Each factory
  * returns a fresh array - nothing here is shared mutable state. A test stubs a
  * response with a factory from here, adding one for a new response, including
- * a test brought from another branch: lint refuses a body of its own.
+ * a test brought from another branch: lint refuses a body of its own. Guide and
+ * version ids here are readable stand-ins: the API's are UUIDs.
  *
  * Verified against `src/infra/guidance-api/client.js#request`: it returns
  * `{ok, status, data}` where `data` is the parsed response body untouched -
@@ -227,6 +228,27 @@ function pinnedGuidesResponse (overrides = {}) {
 }
 
 /**
+ * Body of `GET /users/{id}/recently-opened` on 200: the guides the user opened
+ * most recently, newest first, each as `GET /guides` lists it with when they
+ * last opened it, and each filter's counts among them. By default one guide,
+ * and no counts.
+ *
+ * Verified on 2026-11-05 by validating this body, with UUIDs for its ids,
+ * against the guidance API's `RecentlyOpened` schema: items as
+ * `RecentlyOpenedSummary`, and counts of `OptionCount` by filter.
+ *
+ * @param {Object} [overrides]
+ * @returns {{items: Array<Object>, counts: Object<string, Array<Object>>}}
+ */
+function recentlyOpenedResponse (overrides = {}) {
+  return {
+    items: [guideSummaryResponse({ openedAt: '2026-11-03T17:00:00' })],
+    counts: { audience: [], system: [], scheme: [] },
+    ...overrides
+  }
+}
+
+/**
  * Body of a request the guidance API refuses itself: why, in words.
  *
  * Verified against the running API on 2026-11-05: `detail` as a string, unlike
@@ -244,6 +266,7 @@ export {
   guideResponse,
   guideSummaryResponse,
   pinnedGuidesResponse,
+  recentlyOpenedResponse,
   refusalResponse,
   versionResponse,
   schemesResponse,

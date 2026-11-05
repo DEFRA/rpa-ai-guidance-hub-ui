@@ -5,7 +5,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
-import { guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -507,14 +507,14 @@ describe('#hubController', () => {
   })
 
   describe('recently opened guides', () => {
-    const USER_ID = '01a18d45-0000-7000-8000-000000000001'
+    const { id: USER_ID } = userResponse()
     const NEWER = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
     const OLDER = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
 
     async function signedIn (user) {
       nock(GUIDANCE_API_BASE_URL)
-        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, { id: USER_ID })
-        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, { id: USER_ID, pinned: [], ...user })
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse(user))
 
       return loginAsDevUser(server)
     }
@@ -522,13 +522,13 @@ describe('#hubController', () => {
     test('list on their own page newest first, beside the filters, without a sort, each with its star', async () => {
       nock.cleanAll()
       const cookie = await signedIn({ pinned: [{ id: OLDER, title: 'Claiming the SFI payment' }] })
-      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/recently-opened`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, {
+      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/recently-opened`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, recentlyOpenedResponse({
         items: [
-          { ...guideSummaryResponse({ id: NEWER, latestVersion: versionResponse({ title: 'Closing a case' }) }), openedAt: '2026-11-03T17:00:00' },
-          { ...guideSummaryResponse({ id: OLDER }), openedAt: '2026-11-03T16:00:00' }
+          guideSummaryResponse({ id: NEWER, latestVersion: versionResponse({ title: 'Closing a case' }), openedAt: '2026-11-03T17:00:00' }),
+          guideSummaryResponse({ id: OLDER, openedAt: '2026-11-03T16:00:00' })
         ],
         counts: { audience: [], system: [{ label: 'CRM', shortLabel: null, count: 2, retired: false }], scheme: [] }
-      })
+      }))
 
       const { statusCode, payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened?system=CRM', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
@@ -548,12 +548,40 @@ describe('#hubController', () => {
     test('say on their own page when none has been opened yet', async () => {
       nock.cleanAll()
       const cookie = await signedIn({})
-      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_OK, { items: [], counts: { audience: [], system: [], scheme: [] } })
+      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_OK, recentlyOpenedResponse({ items: [] }))
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
       expect(main).toContain('You haven&#39;t opened any guidance yet. Any guidance you open will appear here.')
+    })
+
+    test('say on their own page when none has been opened yet, even with filters chosen', async () => {
+      nock.cleanAll()
+      const cookie = await signedIn({})
+      nock(GUIDANCE_API_BASE_URL)
+        .get(`/users/${USER_ID}/recently-opened`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, recentlyOpenedResponse({ items: [] }))
+        .get(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_OK, recentlyOpenedResponse({ items: [] }))
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened?system=CRM', headers: { cookie } })
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+
+      expect(main).toContain('You haven&#39;t opened any guidance yet. Any guidance you open will appear here.')
+      expect(main).not.toContain('No guides match')
+    })
+
+    test('say when the chosen filters leave none of them', async () => {
+      nock.cleanAll()
+      const cookie = await signedIn({})
+      nock(GUIDANCE_API_BASE_URL)
+        .get(`/users/${USER_ID}/recently-opened`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, recentlyOpenedResponse({ items: [] }))
+        .get(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_OK, recentlyOpenedResponse())
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened?system=CRM', headers: { cookie } })
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+
+      expect(main).toContain('No guides match your search or filters.')
+      expect(main).not.toContain('You haven&#39;t opened')
     })
   })
 })
