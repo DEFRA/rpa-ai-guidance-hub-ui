@@ -1,6 +1,19 @@
 import { statusCodes } from '../constants/status-codes.js'
 import * as stagedDocumentsApi from '../infra/guidance-api/staged-documents.js'
 
+const OPTIONAL_FIELDS = [
+  'parsingError',
+  'title',
+  'version',
+  'lastModified',
+  'documentId',
+  'promotedAt',
+  'savingStatus',
+  'saveStepsCompleted',
+  'saveStepsTotal',
+  'saveError'
+]
+
 /**
  * Projected staged document status model exposed to application code.
  *
@@ -16,6 +29,12 @@ import * as stagedDocumentsApi from '../infra/guidance-api/staged-documents.js'
  *   into, once its ids are reserved
  * @property {string|null} [promotedAt] - When that conversion was committed;
  *   null until it has finished
+ * @property {string|null} [savingStatus] - 'in_progress' | 'complete' |
+ *   'failed'; null until a save of the document has started
+ * @property {number|null} [saveStepsCompleted] - Parts of the document saved
+ * @property {number|null} [saveStepsTotal] - Parts to save: one per picture,
+ *   and one for the content; null until the API knows
+ * @property {string|null} [saveError] - Why the save failed
  */
 
 /**
@@ -34,18 +53,11 @@ async function getStagedDocumentById (fileId) {
     return null
   }
 
-  const stagedDocument = {
+  return {
     fileId: res.data.fileId,
     parsingStatus: res.data.parsingStatus,
-    parsingError: res.data.parsingError ?? null,
-    title: res.data.title ?? null,
-    version: res.data.version ?? null,
-    lastModified: res.data.lastModified ?? null,
-    documentId: res.data.documentId ?? null,
-    promotedAt: res.data.promotedAt ?? null
+    ...Object.fromEntries(OPTIONAL_FIELDS.map((field) => [field, res.data[field] ?? null]))
   }
-
-  return stagedDocument
 }
 
 export {
