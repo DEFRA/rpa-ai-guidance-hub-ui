@@ -10,6 +10,7 @@ import {
   startMigration
 } from '../../../../../helpers/upload-journey.js'
 import { config } from '../../../../../../../src/config/config.js'
+import { guidanceApiClient } from '../../../../../../../src/infra/guidance-api/client.js'
 import {
   audiencesResponse,
   createdGuideResponse,
@@ -340,6 +341,35 @@ describe('#checkAnswersController Integration', () => {
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
       expect(response.payload).toContain(message)
+    })
+
+    test('POST waits for a conversion slower than the API client\'s timeout, then starts a new guide', async () => {
+      const devCookie = await loginAsDevUser(server)
+      const cookie = await completeAllMetadata(server, devCookie)
+      const timeout = guidanceApiClient.timeout
+      guidanceApiClient.timeout = 100
+
+      try {
+        mockReferenceData()
+        nock(GUIDANCE_API_BASE_URL)
+          .post('/guides')
+          .delay(300)
+          .reply(statusCodes.HTTP_STATUS_CREATED, createdGuideResponse())
+
+        const response = await server.inject({
+          method: 'POST',
+          url: CHECK_ANSWERS_URL,
+          payload: {},
+          headers: { cookie }
+        })
+
+        expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+        expect(response.headers.location).toBe(CONVERTED_URL)
+
+        await expectFreshUploadForm(server, mergeCookies(cookie, response.headers['set-cookie']))
+      } finally {
+        guidanceApiClient.timeout = timeout
+      }
     })
 
     test('POST redisplays check answers with an error summary when a saved answer is no longer a valid reference option', async () => {

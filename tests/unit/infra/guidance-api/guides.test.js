@@ -27,7 +27,7 @@ describe('guides infra', () => {
     vi.resetAllMocks()
   })
 
-  test('calls POST /guides with the new guide as its body, expecting 404 and 409, within the client\'s usual timeout', async () => {
+  test('calls POST /guides with the new guide as its body, expecting 404 and 409, waiting without limit', async () => {
     guidanceApiClient.request.mockResolvedValue({ ok: true, status: 201, data: {} })
 
     await guideApi.createGuide(newGuide)
@@ -38,7 +38,8 @@ describe('guides infra', () => {
       expected: [
         statusCodes.HTTP_STATUS_NOT_FOUND,
         statusCodes.HTTP_STATUS_CONFLICT
-      ]
+      ],
+      timeout: null
     })
   })
 
