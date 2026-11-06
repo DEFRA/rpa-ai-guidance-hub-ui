@@ -1,6 +1,19 @@
 import { statusCodes } from '../constants/status-codes.js'
 import * as stagedDocumentsApi from '../infra/guidance-api/staged-documents.js'
 
+const OPTIONAL_FIELDS = [
+  'parsingError',
+  'title',
+  'version',
+  'lastModified',
+  'documentId',
+  'promotedAt',
+  'savingStatus',
+  'saveStepsCompleted',
+  'saveStepsTotal',
+  'saveError'
+]
+
 /**
  * Projected staged document status model exposed to application code.
  *
@@ -40,22 +53,11 @@ async function getStagedDocumentById (fileId) {
     return null
   }
 
-  const stagedDocument = {
+  return {
     fileId: res.data.fileId,
     parsingStatus: res.data.parsingStatus,
-    parsingError: res.data.parsingError ?? null,
-    title: res.data.title ?? null,
-    version: res.data.version ?? null,
-    lastModified: res.data.lastModified ?? null,
-    documentId: res.data.documentId ?? null,
-    promotedAt: res.data.promotedAt ?? null,
-    savingStatus: res.data.savingStatus ?? null,
-    saveStepsCompleted: res.data.saveStepsCompleted ?? null,
-    saveStepsTotal: res.data.saveStepsTotal ?? null,
-    saveError: res.data.saveError ?? null
+    ...Object.fromEntries(OPTIONAL_FIELDS.map((field) => [field, res.data[field] ?? null]))
   }
-
-  return stagedDocument
 }
 
 export {
