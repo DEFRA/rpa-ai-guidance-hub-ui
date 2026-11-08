@@ -119,47 +119,74 @@ async function casesOf (request) {
   }
 }
 
+// Between a pinned section's guide id and its own, in its key.
+const KEY_SEPARATOR = '/'
+
 /**
- * Pin a guide at the top of the signed-in user's pins.
+ * What a page names a pin by, among the user's pins: a whole guide by its id,
+ * a section by its guide's id and its own.
  *
- * @param {import('@hapi/hapi').Request} request - Signed in
- * @param {string} guideId
- * @returns {Promise<boolean>} Whether it changed anything (not if pinned already)
+ * @param {{id: string, sectionId: string|null}} pin - As the user's record has it
+ * @returns {string}
  */
-async function pin (request, guideId) {
-  return _patchPins(request, [{ op: 'add', path: '/0', value: { guideId } }])
+function pinKey ({ id, sectionId }) {
+  return sectionId ? `${id}${KEY_SEPARATOR}${sectionId}` : id
 }
 
 /**
- * Unpin a guide from where the page showed it. If the pins have changed since,
- * nothing changes.
+ * @param {string} key - A pin's, as `pinKey` makes it
+ * @returns {string[]} The ids in it: its guide's, then its section's for a
+ *   section
+ */
+function idsOfPinKey (key) {
+  return key.split(KEY_SEPARATOR)
+}
+
+/**
+ * Pin a guide, or a section of it, at the top of the signed-in user's pins.
+ *
+ * @param {import('@hapi/hapi').Request} request - Signed in
+ * @param {string} guideId
+ * @param {{section: string, heading: string}|null} [place] - The section, by
+ *   its anchor, with its heading as the guide has it now; none for the whole
+ *   guide
+ * @returns {Promise<boolean>} Whether it changed anything (not if pinned already)
+ */
+async function pin (request, guideId, place = null) {
+  return _patchPins(request, [{ op: 'add', path: '/0', value: { guideId, ...place } }])
+}
+
+/**
+ * Unpin a guide, or a section of it, from where the page showed it. If the
+ * pins have changed since, nothing changes.
  *
  * @param {import('@hapi/hapi').Request} request - Signed in
  * @param {string} guideId
  * @param {number} position - Where the page showed it, from 0
+ * @param {string|null} [sectionId] - The section's; none for the whole guide
  * @returns {Promise<boolean>} Whether it changed anything
  */
-async function unpin (request, guideId, position) {
+async function unpin (request, guideId, position, sectionId = null) {
   return _patchPins(request, [
-    ..._wholeGuideAt(position, guideId),
+    ..._pinnedAt(position, guideId, sectionId),
     { op: 'remove', path: `/${position}` }
   ])
 }
 
 /**
- * Move a pinned guide from one position to another, if the pins are still in
- * the order the page showed: every position is checked, so a page whose pins
- * have changed since, anywhere, changes nothing.
+ * Move a pin from one position to another, if the pins are still in the order
+ * the page showed: every position is checked, so a page whose pins have
+ * changed since, anywhere, changes nothing.
  *
  * @param {import('@hapi/hapi').Request} request - Signed in
- * @param {string[]} order - The pinned guides' ids, as the page showed them
- * @param {number} from - Where the guide to move is, from 0
+ * @param {string[]} order - The pins' keys (`pinKey`), as the page showed them
+ * @param {number} from - Where the pin to move is, from 0
  * @param {number} to - Where it goes, in the list without it (JSON Patch's move)
  * @returns {Promise<boolean>} Whether it changed anything
  */
 async function movePin (request, order, from, to) {
   return _patchPins(request, [
-    ...order.flatMap((guideId, position) => _wholeGuideAt(position, guideId)),
+    ...order.flatMap((key, position) => _pinnedAt(position, ...idsOfPinKey(key))),
     { op: 'move', from: `/${from}`, path: `/${to}` }
   ])
 }
@@ -168,13 +195,14 @@ async function movePin (request, order, from, to) {
  * @private
  * @param {number} position - Among the user's pins, from 0
  * @param {string} guideId
- * @returns {Array<object>} The tests that the whole guide, not a section of
- *   it, is pinned there
+ * @param {string|null} [sectionId] - None for the whole guide
+ * @returns {Array<object>} The tests that the guide, or that section of it,
+ *   is pinned there
  */
-function _wholeGuideAt (position, guideId) {
+function _pinnedAt (position, guideId, sectionId = null) {
   return [
     { op: 'test', path: `/${position}/guideId`, value: guideId },
-    { op: 'test', path: `/${position}/sectionId`, value: null }
+    { op: 'test', path: `/${position}/sectionId`, value: sectionId }
   ]
 }
 
@@ -243,10 +271,12 @@ async function _patchPins (request, operations) {
 }
 
 export {
+  idsOfPinKey,
   listPinned,
   listRecentlyOpened,
   movePin,
   pin,
+  pinKey,
   casesOf,
   pinnedOf,
   recordOpened,

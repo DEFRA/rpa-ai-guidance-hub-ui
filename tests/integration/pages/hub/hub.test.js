@@ -403,6 +403,26 @@ describe('#hubController', () => {
       expect(second).toContain(`id="pin-${OTHER}"`)
     })
 
+    test('count a guide as pinned only when it is pinned whole, at its own place among the pins', async () => {
+      nock.cleanAll()
+      nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({
+        items: [guideSummaryResponse({ id: OTHER }), guideSummaryResponse({ id: PINNED })]
+      }))
+      const section = { sectionId: '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d99', section: '1-pay', heading: '1 Pay' }
+      const cookie = await signedIn({ pinned: [pinResponse({ id: OTHER, ...section }), pinResponse({ id: PINNED }), pinResponse({ id: PINNED, ...section })] })
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      const [first, second] = main.split('<li class="app-search-results__item').slice(1)
+
+      expect(first).toContain(`/guides/${PINNED}`)
+      expect(first).toContain('<input type="hidden" name="position" value="1">')
+      expect(first).toContain(`data-reorder-follows="${PINNED}"`)
+      expect(second).toContain(`/guides/${OTHER}`)
+      expect(second).toContain('<input type="hidden" name="pin" value="true">')
+      expect(second).not.toContain('data-reorder-follows')
+    })
+
     test.each([
       ['pins at the top', { pin: 'true' }, [{ op: 'add', path: '/0', value: { guideId: OTHER } }]],
       ['unpins from where the page showed it', { pin: 'false', position: '2' }, [

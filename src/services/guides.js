@@ -2,6 +2,7 @@ import { SCHEME_YEAR } from '../constants/scheme-year.js'
 import { statusCodes } from '../constants/status-codes.js'
 
 import * as guidesApi from '../infra/guidance-api/guides.js'
+import { findHeading, splitIntoSections } from './guide-sections.js'
 import { schemesAsKept } from './reference-data.js'
 import * as stagedDocumentsService from './staged-documents.js'
 
@@ -247,6 +248,22 @@ async function getGuideContent (guideId) {
 }
 
 /**
+ * The heading at an anchor in a guide's latest version, with the page it is
+ * on.
+ *
+ * @param {string} guideId
+ * @param {string} anchor
+ * @returns {Promise<{anchor: string, title: string, page: number}|null>} Null
+ *   when there is no such guide, or it has no heading there
+ * @throws {GuidanceApiError} - If the infra layer reports a non-404 failure
+ */
+async function headingOf (guideId, anchor) {
+  const content = await getGuideContent(guideId)
+
+  return content ? findHeading(splitIntoSections(content.markdown), anchor) : null
+}
+
+/**
  * Get an image from a guide's content.
  *
  * @param {string} guideId
@@ -323,6 +340,7 @@ export {
   getGuideAsset,
   getGuideById,
   getGuideContent,
+  headingOf,
   listEveryGuide,
   listGuides,
   RESULTS,

@@ -48,11 +48,13 @@ const LIST_PATHS = Object.keys(LISTS)
 
 /**
  * @private
- * @param {Array<{id: string}>|null} pinned - The user's pins, in their order
- * @returns {Map<string, number>|null} Each pinned guide's position among them
+ * @param {Array<{id: string, sectionId: string|null}>|null} pinned - The
+ *   user's pins, guides and sections of guides, in their order
+ * @returns {Map<string, number>|null} Each guide pinned whole, by its
+ *   position among them all
  */
 function _pinPositions (pinned) {
-  return pinned && new Map(pinned.map((pin, position) => [pin.id, position]))
+  return pinned && new Map(pinned.flatMap((pin, position) => pin.sectionId ? [] : [[pin.id, position]]))
 }
 
 /**

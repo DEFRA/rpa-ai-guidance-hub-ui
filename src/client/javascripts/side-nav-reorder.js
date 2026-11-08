@@ -1,6 +1,7 @@
 /**
- * Dragging the side navigation's lists into a new order - the pinned guides,
- * the cases, and the guides within a case - as the prototype does
+ * Dragging the side navigation's lists into a new order - the pins (guides
+ * and sections of guides), the cases, and the guides within a case - as the
+ * prototype does
  * (rpa-ai-guidance-hub-prototype: app/assets/javascripts/side-nav.js). A
  * pointer drag on an item's handle (past a few pixels, so a click still opens
  * it) moves the item; a bar shows where it will land, and Esc cancels. The
@@ -12,7 +13,8 @@
  * A list inside an item drags its own items: each list moves only its own,
  * and keeps only their own menus up to date. A list whose items' positions are
  * also sent by forms elsewhere on the page names those forms' action in
- * `data-reorder-elsewhere`, as the pinned guides do for unpinning.
+ * `data-reorder-elsewhere`, as the pins do for unpinning; each such form names
+ * the item it follows in `data-reorder-follows`.
  */
 
 // How far, in pixels, the pointer moves before a press becomes a drag.
@@ -28,9 +30,9 @@ const DROP_AFTER = 'app-side-nav__reorder--drop-after'
 const REORDERING = 'app-layout--reordering'
 
 /**
- * @param {number[]} middles - The vertical middle of each of the other guides,
+ * @param {number[]} middles - The vertical middle of each of the other items,
  *   top to bottom, in pixels
- * @param {number} clientY - Where the dragged guide is, in pixels
+ * @param {number} clientY - Where the dragged item is, in pixels
  * @returns {number} Where it lands among the others: before the first whose
  *   middle is below it, or after them all
  */
@@ -41,9 +43,9 @@ function dropIndex (middles, clientY) {
 }
 
 /**
- * @param {number} position - The guide's, counting from 0
+ * @param {number} position - The item's, counting from 0
  * @param {number} step - -1 to move it up, 1 to move it down
- * @param {number} count - How many guides there are
+ * @param {number} count - How many items there are
  * @returns {number|null} Where the step takes it, or null when it has no
  *   neighbour that way
  */
@@ -54,9 +56,9 @@ function moveTarget (position, step, count) {
 }
 
 /**
- * @param {string} label - The guide's title
+ * @param {string} label - The item's name, as its list shows it
  * @param {number} position - Where it now is, counting from 0
- * @param {number} count - How many guides there are
+ * @param {number} count - How many items there are
  * @returns {string} What a screen reader is told once it is dragged
  */
 function movedMessage (label, position, count) {
@@ -73,17 +75,17 @@ function reloadPage () {
 
 /**
  * @param {string|undefined} action - The forms', as the list names it
- * @param {string} guideId
- * @returns {HTMLFormElement[]} The page's forms with that action that send the
- *   guide's position; none without an action
+ * @param {string} id - An item's
+ * @returns {HTMLFormElement[]} The page's forms with that action that follow
+ *   the item, sending its position; none without an action
  */
-function formsElsewhere (action, guideId) {
+function formsElsewhere (action, id) {
   if (!action) {
     return []
   }
 
   return Array.from(document.querySelectorAll(`form[action="${action}"]`))
-    .filter(form => form.elements.guideId?.value === guideId && form.elements.position)
+    .filter(form => form.dataset.reorderFollows === id)
 }
 
 /**
@@ -269,8 +271,9 @@ class Reorder {
 
   // Keep every form that acts on an item sending where the item now is: its own
   // "…" menu, not the menus of a list inside it, and the forms elsewhere that
-  // the list names (for a pinned guide, the hub's star and a guide page's
-  // Unpin guide); and each move sending the order the list now shows.
+  // the list names that follow it (for a pin, the hub's star, a guide page's
+  // Unpin guide and a heading's star); and each move sending the order the
+  // list now shows.
   #refreshPositions () {
     const items = this.#items()
     const order = this.#order()

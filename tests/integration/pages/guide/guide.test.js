@@ -339,6 +339,121 @@ describe('#guideController', () => {
     })
   })
 
+  describe('pinning a section', () => {
+    const { id: USER_ID } = userResponse()
+    const OTHER_GUIDE = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
+    const SECTION_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d99'
+    const FORM = { 'content-type': 'application/x-www-form-urlencoded' }
+
+    function signedInWith (pinned) {
+      return nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ pinned }))
+    }
+
+    // The star of the heading at `anchor`, as the page the server draws has it.
+    function starOf (payload, anchor) {
+      const at = payload.indexOf(`<input type="hidden" name="section" value="${anchor}">`)
+
+      return at === -1 ? '' : payload.slice(payload.lastIndexOf('<form class="app-guide-section-pin"', at), payload.indexOf('</form>', at))
+    }
+
+    function post (payload) {
+      return server.inject({ method: 'POST', url: '/pin-toggle', headers: { cookie, ...FORM }, payload })
+    }
+
+    test('is offered by a star before the bookmark of each heading, the section\'s own and those inside it', async () => {
+      mockGuide()
+      signedInWith([])
+
+      const { payload } = await get(GUIDE_URL)
+      const star = starOf(payload, 'introduction')
+
+      expect(star).toContain(`<input type="hidden" name="guideId" value="${GUIDE_ID}">`)
+      expect(star).toContain('<input type="hidden" name="pin" value="true">')
+      expect(star).toContain(`<input type="hidden" name="returnTo" value="${GUIDE_URL}">`)
+      expect(star).toContain('Pin section: Introduction')
+      expect(starOf(payload, 'before-you-begin')).toContain('Pin section: Before you begin')
+      expect(payload.indexOf('Bookmark to a case: Introduction')).toBeGreaterThan(payload.indexOf('Pin section: Introduction'))
+    })
+
+    test('shows a pinned section by a filled star, which unpins it from where the user\'s pins have it', async () => {
+      mockGuide()
+      signedInWith([pinResponse({ id: OTHER_GUIDE }), pinResponse({ id: GUIDE_ID, sectionId: SECTION_ID, section: 'before-you-begin', heading: 'Before you begin' })])
+
+      const { payload } = await get(GUIDE_URL)
+      const star = starOf(payload, 'before-you-begin')
+
+      expect(star).toContain(`data-reorder-follows="${GUIDE_ID}/${SECTION_ID}"`)
+      expect(star).toContain('<input type="hidden" name="pin" value="false">')
+      expect(star).toContain('<input type="hidden" name="position" value="1">')
+      expect(star).toContain(`<input type="hidden" name="sectionId" value="${SECTION_ID}">`)
+      expect(star).toContain('Unpin section: Before you begin')
+      expect(starOf(payload, 'introduction')).toContain('Pin section: Introduction')
+    })
+
+    test('does not pin the whole guide', async () => {
+      mockGuide()
+      signedInWith([pinResponse({ id: GUIDE_ID, sectionId: SECTION_ID, section: 'before-you-begin', heading: 'Before you begin' })])
+
+      const { payload } = await get(GUIDE_URL)
+      const form = payload.slice(payload.indexOf('<form class="app-pin-form"'), payload.indexOf('</form>', payload.indexOf('<form class="app-pin-form"')))
+
+      expect(form).toContain('<input type="hidden" name="pin" value="true">')
+      expect(form).not.toContain('data-reorder-follows')
+    })
+
+    test('is not offered when the user\'s pins cannot be had, though bookmarking is', async () => {
+      mockGuide()
+
+      const { payload } = await get(GUIDE_URL)
+
+      expect(payload).not.toContain('app-guide-section-pin')
+      expect(payload).toContain('Bookmark to a case: Introduction')
+    })
+
+    test('pins it by its anchor, with its heading as the guide has it, then goes back to the heading', async () => {
+      nock(GUIDANCE_API_BASE_URL)
+        .get(`/guides/${GUIDE_ID}/content`).reply(statusCodes.HTTP_STATUS_OK, MARKDOWN, { 'Content-Type': 'text/plain' })
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+      const pinning = nock(GUIDANCE_API_BASE_URL)
+        .patch(`/users/${USER_ID}/pins`, [{ op: 'add', path: '/0', value: { guideId: GUIDE_ID, section: 'before-you-begin', heading: 'Before you begin' } }])
+        .reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+
+      const { statusCode, headers } = await post(`guideId=${GUIDE_ID}&pin=true&section=before-you-begin&returnTo=${encodeURIComponent(GUIDE_URL)}`)
+
+      expect(pinning.isDone()).toBe(true)
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(headers.location).toBe(`${GUIDE_URL}#before-you-begin`)
+    })
+
+    test('is refused for a section the guide does not have', async () => {
+      nock(GUIDANCE_API_BASE_URL)
+        .get(`/guides/${GUIDE_ID}/content`).reply(statusCodes.HTTP_STATUS_OK, MARKDOWN, { 'Content-Type': 'text/plain' })
+
+      const { statusCode } = await post(`guideId=${GUIDE_ID}&pin=true&section=not-a-heading&returnTo=${encodeURIComponent(GUIDE_URL)}`)
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_NOT_FOUND)
+    })
+
+    test('unpins it from where the page showed it, if it is still there, then goes back to the heading', async () => {
+      nock(GUIDANCE_API_BASE_URL).post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+      const unpinning = nock(GUIDANCE_API_BASE_URL)
+        .patch(`/users/${USER_ID}/pins`, [
+          { op: 'test', path: '/1/guideId', value: GUIDE_ID },
+          { op: 'test', path: '/1/sectionId', value: SECTION_ID },
+          { op: 'remove', path: '/1' }
+        ])
+        .reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+
+      const { statusCode, headers } = await post(`guideId=${GUIDE_ID}&pin=false&position=1&sectionId=${SECTION_ID}&section=before-you-begin&returnTo=${encodeURIComponent(GUIDE_URL)}`)
+
+      expect(unpinning.isDone()).toBe(true)
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(headers.location).toBe(`${GUIDE_URL}#before-you-begin`)
+    })
+  })
+
   describe('as one the user opened recently', () => {
     const { id: USER_ID } = userResponse()
 

@@ -68,6 +68,7 @@ describe('Side navigation', () => {
     const { id: USER_ID } = userResponse()
     const FIRST = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
     const SECOND = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
+    const SECTION = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d99'
 
     function signedInWith (pinned) {
       nock(GUIDANCE_API_BASE_URL)
@@ -77,12 +78,12 @@ describe('Side navigation', () => {
       return loginAsDevUser(server)
     }
 
-    test('are counted beside "Pinned"', async () => {
-      const cookie = await signedInWith([pinResponse({ id: FIRST, title: 'Claiming a payment' }), pinResponse({ id: SECOND, title: 'Closing a case' })])
+    test('are counted beside "Pinned", one for each pin, guide or section', async () => {
+      const cookie = await signedInWith([pinResponse({ id: FIRST, title: 'Claiming a payment' }), pinResponse({ id: SECOND, title: 'Closing a case', sectionId: SECTION, section: '2-close-it', heading: '2 Close it' })])
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
-      expect(payload).toMatch(/Pinned<\/span>\s*<span class="app-side-nav__badge">2<span class="govuk-visually-hidden"> guides<\/span><\/span>/)
+      expect(payload).toMatch(/Pinned<\/span>\s*<span class="app-side-nav__badge">2<span class="govuk-visually-hidden"> pins<\/span><\/span>/)
     })
 
     test('are counted on the folded navigation\'s icon, and in its name', async () => {
@@ -92,7 +93,7 @@ describe('Side navigation', () => {
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
-      expect(payload).toContain('<span class="app-side-nav__rail-label">Pinned (1<span class="govuk-visually-hidden"> guides</span>)</span>')
+      expect(payload).toContain('<span class="app-side-nav__rail-label">Pinned (1<span class="govuk-visually-hidden"> pins</span>)</span>')
       expect(payload).toMatch(/Pinned \(1[^]*?<span class="app-side-nav__rail-dot" aria-hidden="true">1<\/span>/)
       expect(payload).toContain('<span class="app-side-nav__rail-label">Recently opened</span>')
     })
@@ -143,6 +144,55 @@ describe('Side navigation', () => {
       expect(secondUp).toMatch(/data-reorder-move="-1">[\s\S]*name="from" value="1"[\s\S]*name="to" value="0"[\s\S]*>Move up</)
       expect(firstUp).toMatch(/data-reorder-move="-1" hidden>[\s\S]*>Move up</)
       expect(secondDown).toMatch(/data-reorder-move="1" hidden>[\s\S]*>Move down</)
+    })
+
+    test('list a pinned section by its heading, with its guide\'s title, linking to the section', async () => {
+      const section = await pinnedSection([pinResponse({ id: FIRST, title: 'Claiming a payment' }), pinResponse({ id: SECOND, title: 'Closing a case', sectionId: SECTION, section: '2-close-it', heading: '2 Close it' })])
+      const [first, second] = section.split('<li class="app-side-nav__row"').slice(1)
+      const moveDown = first.split('<form').find((form) => form.includes('data-reorder-move="1"'))
+
+      expect(second).toContain(`data-reorder-id="${SECOND}/${SECTION}" data-reorder-label="2 Close it"`)
+      expect(second).toContain(`href="/guides/${SECOND}?section=2-close-it"`)
+      expect(second).toMatch(/app-side-nav__text">2 Close it<\/span>\s*<span class="app-side-nav__meta">Closing a case<\/span>/)
+      expect(second).toMatch(new RegExp(`action="/pin-toggle" data-reorder-follows="${SECOND}/${SECTION}">[\\s\\S]*name="position" value="1"[\\s\\S]*name="sectionId" value="${SECTION}"`))
+      expect(first).toContain(`action="/pin-toggle" data-reorder-follows="${FIRST}">`)
+      expect(first).not.toContain('name="sectionId"')
+      expect(moveDown.match(/name="order" value="([^"]+)"/g)).toEqual([`name="order" value="${FIRST}"`, `name="order" value="${SECOND}/${SECTION}"`])
+    })
+
+    test('move a pinned section by its key, testing its guide and its section', async () => {
+      nock(GUIDANCE_API_BASE_URL).post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+      const moving = nock(GUIDANCE_API_BASE_URL)
+        .patch(`/users/${USER_ID}/pins`, [
+          { op: 'test', path: '/0/guideId', value: FIRST },
+          { op: 'test', path: '/0/sectionId', value: null },
+          { op: 'test', path: '/1/guideId', value: SECOND },
+          { op: 'test', path: '/1/sectionId', value: SECTION },
+          { op: 'move', from: '/1', path: '/0' }
+        ])
+        .reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode } = await server.inject({
+        method: 'POST', url: '/pin-order', headers: { cookie, ...FORM }, payload: `order=${FIRST}&order=${SECOND}%2F${SECTION}&from=1&to=0&returnTo=%2Fhub`
+      })
+
+      expect(moving.isDone()).toBe(true)
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+    })
+
+    test.each([
+      ['an id that is not one', 'not-an-id'],
+      ['a section with no guide', `/${SECTION}`],
+      ['more than a guide and a section', `${FIRST}/${SECTION}/${SECTION}`]
+    ])('refuse an order that names a pin by %s', async (_name, key) => {
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode } = await server.inject({
+        method: 'POST', url: '/pin-order', headers: { cookie, ...FORM }, payload: `order=${encodeURIComponent(key)}&from=0&to=0&returnTo=%2Fhub`
+      })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
     })
 
     test('say when nothing is pinned yet', async () => {

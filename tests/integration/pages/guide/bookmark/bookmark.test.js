@@ -335,10 +335,10 @@ describe('a guide\'s headings', () => {
     return (await server.inject({ method: 'GET', url: GUIDE_PAGE, headers: { cookie } })).payload
   }
 
-  test('each have a control after them to bookmark their section to a case', async () => {
+  test('each have a control after them, after the star, to bookmark their section to a case', async () => {
     const payload = await guidePage([])
 
-    expect(payload).toMatch(/<h2[^>]*id="1-introduction"[^>]*>.*?<\/h2>\s*<a class="app-guide-section-bookmark" href="\/guides\/[^"]*\/bookmark\?section=1-introduction"/)
+    expect(payload).toMatch(/<h2[^>]*id="1-introduction"[^>]*>.*?<\/h2>\s*<form class="app-guide-section-pin"[^]*?<\/form><a class="app-guide-section-bookmark" href="\/guides\/[^"]*\/bookmark\?section=1-introduction"/)
     expect(payload).toContain(`href="${BOOKMARK_PAGE}?section=11-before-you-begin"`)
     expect(payload).toContain('<span class="govuk-visually-hidden">Bookmark to a case: 1.1 Before you begin</span>')
     expect(payload).toContain('data-heading-bookmarks="[{&quot;href&quot;:&quot;')
@@ -414,8 +414,8 @@ describe('a guide that repeats a heading', () => {
 
     const { payload } = await get(GUIDE_PAGE)
 
-    expect(payload).toMatch(/<h2[^>]*id="help-1"[^>]*>.*?<\/h2>\s*<a class="app-guide-section-bookmark" href="[^"]*\/bookmark\?section=help"/)
-    expect(payload).toMatch(/<h2[^>]*id="help-3"[^>]*>.*?<\/h2>\s*<a class="app-guide-section-bookmark app-guide-section-bookmark--active" href="[^"]*\/bookmark\?section=help-1"/)
+    expect(payload).toMatch(/<h2[^>]*id="help-1"[^>]*>.*?<\/h2>\s*<form class="app-guide-section-pin"[^]*?<\/form><a class="app-guide-section-bookmark" href="[^"]*\/bookmark\?section=help"/)
+    expect(payload).toMatch(/<h2[^>]*id="help-3"[^>]*>.*?<\/h2>\s*<form class="app-guide-section-pin"[^]*?<\/form><a class="app-guide-section-bookmark app-guide-section-bookmark--active" href="[^"]*\/bookmark\?section=help-1"/)
     expect(payload).toContain('id="help-2"')
   })
 

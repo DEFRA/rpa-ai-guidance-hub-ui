@@ -597,16 +597,53 @@ $app-guide-toc-width: 340px;
   }
 }
 
+// A heading's star, before its bookmark: a form, so it pins without
+// JavaScript, its button drawn as the bookmark icon is.
+.app-guide-section-pin {
+  display: inline-flex;
+  flex: none;
+  margin: 0;
+}
+
+.app-guide-section-pin__button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: $govuk-link-colour;
+  cursor: pointer;
+
+  &:hover {
+    background-color: $govuk-light-grey;
+    color: $govuk-link-hover-colour;
+  }
+
+  &:focus {
+    @include govuk-focused-text;
+  }
+}
+
 // Reuses the side nav's tooltip (_app-side-nav.scss), shown on hover and
 // keyboard focus and dismissed with Esc by side-nav.js.
 @include govuk-media-query($from: desktop) {
   .app-guide-section-bookmark:hover .app-guide-section-bookmark__tooltip,
   .app-guide-section-bookmark:focus-visible
+    .app-guide-section-bookmark__tooltip,
+  .app-guide-section-pin__button:hover .app-guide-section-bookmark__tooltip,
+  .app-guide-section-pin__button:focus-visible
     .app-guide-section-bookmark__tooltip {
     display: block;
   }
 
   .app-guide-section-bookmark.app-side-nav__rail-item--tooltip-dismissed
+    .app-guide-section-bookmark__tooltip,
+  .app-guide-section-pin__button.app-side-nav__rail-item--tooltip-dismissed
     .app-guide-section-bookmark__tooltip {
     display: none;
   }

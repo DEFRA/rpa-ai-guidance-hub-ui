@@ -108,12 +108,15 @@ class GuideViewModel {
    *   panel is folded away to its rail
    * @param {{pinned: boolean, position: number|null}|null} [data.pin] - The
    *   guide among the user's pins, for its Pin guide button; null when not known
+   * @param {Map<string, {position: number, sectionId: string, key: string}>|null} [data.pinnedSections]
+   *   - The guide's sections among the user's pins, by anchor, for each
+   *   heading's star; null when not known
    * @param {Array<object>|null} [data.cases] - The user's, each with the
    *   sections bookmarked to it; null when not known
    * @param {{guideId: string, type: string, ref: string, heading: string}} [data.bookmarked]
    *   - A section just bookmarked, to say so once
    */
-  constructor ({ guide, sections, pageNumber, readingWidth, returnTo, metadataRows, panelCollapsed = false, pin = null, cases = null, bookmarked }) {
+  constructor ({ guide, sections, pageNumber, readingWidth, returnTo, metadataRows, panelCollapsed = false, pin = null, pinnedSections = null, cases = null, bookmarked }) {
     const href = page => GuideViewModel.pageHref(guide.id, page)
     const adjacent = (page) => {
       const section = sections[page - 1]
@@ -151,13 +154,15 @@ class GuideViewModel {
     const bookmarkOf = anchor => anchor
       ? {
           href: `/guides/${encodeURIComponent(guide.id)}/bookmark?section=${encodeURIComponent(anchor)}`,
-          bookmarkedTo: bookmarkedTo.get(anchor) ?? null
+          bookmarkedTo: bookmarkedTo.get(anchor) ?? null,
+          pin: pinnedSections && { guideId: guide.id, section: anchor, returnTo, pinned: pinnedSections.get(anchor) ?? null }
         }
       : null
 
     // Every section is on the page, the others hidden until the browser's
     // find-in-page reaches into one. Each heading the hub gives a section ID
-    // has its bookmark control; one in a quote or a list has none.
+    // has its star, which pins its section, and its bookmark control; one in a
+    // quote or a list has neither.
     this.pages = sections.map((section, index) => ({
       pageNumber: index + 1,
       section,

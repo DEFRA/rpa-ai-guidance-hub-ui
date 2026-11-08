@@ -69,3 +69,24 @@ describe('extensionsWithBookmarks', () => {
     expect(extensionsWithBookmarks(EXTENSIONS, [])).toBe(EXTENSIONS)
   })
 })
+
+describe('a heading the viewer draws', () => {
+  test('has its star, then its bookmark, after it, and the cases it is bookmarked to under it', () => {
+    const element = document.createElement('div')
+    const pin = { guideId: 'g', section: 'one', returnTo: '/guides/g?page=1', pinned: null }
+    const editor = new Editor({
+      element,
+      extensions: extensionsWithBookmarks(EXTENSIONS, [{ href: '/guides/g/bookmark?section=one', bookmarkedTo: 'Case W1234567', pin }]),
+      content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: 'One' }] }] },
+      editable: false
+    })
+    const controls = Array.from(element.querySelectorAll('.app-guide-heading-row > :not(h3)'))
+
+    expect(controls.map(control => control.className)).toEqual(['app-guide-section-pin', 'app-guide-section-bookmark app-guide-section-bookmark--active'])
+    expect(controls[0].querySelector('input[name="section"]').value).toBe('one')
+    expect(controls[0].textContent).toContain('Pin section: One')
+    expect(element.querySelector('.app-guide-section-bookmarked').textContent).toBe('Bookmarked to Case W1234567')
+
+    editor.destroy()
+  })
+})

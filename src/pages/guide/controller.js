@@ -62,19 +62,40 @@ function _currentUrl (request) {
 
 /**
  * @private
- * @param {Array<{id: string}>|null} pinned - The user's pins, in their order
+ * @param {Array<{id: string, sectionId: string|null}>|null} pinned - The
+ *   user's pins, guides and sections of guides, in their order
  * @param {string} guideId
- * @returns {{pinned: boolean, position: number|null}|null} Null when the
- *   user's pins are not known, and the page offers no pin
+ * @returns {{pinned: boolean, position: number|null}|null} Whether the whole
+ *   guide is pinned, and where among the pins; null when the user's pins are
+ *   not known, and the page offers no pin
  */
 function _pinOf (pinned, guideId) {
   if (!pinned) {
     return null
   }
 
-  const position = pinned.findIndex((pin) => pin.id === guideId)
+  const position = pinned.findIndex((pin) => pin.id === guideId && !pin.sectionId)
 
   return { pinned: position !== -1, position: position === -1 ? null : position }
+}
+
+/**
+ * @private
+ * @param {Array<{id: string, sectionId: string|null, section: string|null}>|null} pinned
+ *   - The user's pins, guides and sections of guides, in their order
+ * @param {string} guideId
+ * @returns {Map<string, {position: number, sectionId: string, key: string}>|null}
+ *   The guide's pinned sections by anchor, each with where it is among the
+ *   pins; null when the user's pins are not known, and the page offers no pin
+ */
+function _pinnedSectionsOf (pinned, guideId) {
+  if (!pinned) {
+    return null
+  }
+
+  return new Map(pinned.flatMap((pin, position) => pin.id === guideId && pin.sectionId && pin.section
+    ? [[pin.section, { position, sectionId: pin.sectionId, key: usersService.pinKey(pin) }]]
+    : []))
 }
 
 /**
@@ -128,6 +149,7 @@ async function getGuidePage (request, h) {
     panelCollapsed: isPanelCollapsed(request),
     metadataRows: buildMetadataRows(guide.metadata),
     pin: _pinOf(pinned, guide.id),
+    pinnedSections: _pinnedSectionsOf(pinned, guide.id),
     cases,
     bookmarked: request.yar.flash(BOOKMARKED)[0]
   })

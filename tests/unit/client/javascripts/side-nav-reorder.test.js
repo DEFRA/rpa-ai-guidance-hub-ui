@@ -49,7 +49,7 @@ describe('dragging a pinned guide', () => {
     const rows = PINS.map(([id, title], position) => `
       <li class="app-side-nav__row" data-reorder-id="${id}" data-reorder-label="${title}">
         <a class="app-side-nav__link" href="/guides/${id}" draggable="false" data-reorder-handle>${title}</a>
-        <form method="post" action="/pin-toggle">
+        <form method="post" action="/pin-toggle" data-reorder-follows="${id}">
           <input type="hidden" name="guideId" value="${id}">
           <input type="hidden" name="pin" value="false">
           <input type="hidden" name="position" value="${position}">
@@ -167,19 +167,19 @@ describe('dragging a pinned guide', () => {
     expect(row('b').querySelector('[data-reorder-move="-1"]').hidden).toBe(true)
   })
 
-  test('brings the page\'s other ways to unpin a guide up to date with where it now is', () => {
-    const unpinForm = (classes) => `
-      <form class="${classes}" method="post" action="/pin-toggle">
+  test('brings the page\'s other ways to unpin a pin up to date with where it now is, and no other pin\'s', () => {
+    const unpinForm = (classes, follows) => `
+      <form class="${classes}" method="post" action="/pin-toggle" data-reorder-follows="${follows}">
         <input type="hidden" name="guideId" value="a">
         <input type="hidden" name="pin" value="false">
         <input type="hidden" name="position" value="0">
       </form>`
-    document.body.insertAdjacentHTML('beforeend', `<main>${unpinForm('app-pin-toggle')}${unpinForm('app-pin-form')}</main>`)
+    document.body.insertAdjacentHTML('beforeend', `<main>${unpinForm('app-pin-toggle', 'a')}${unpinForm('app-pin-form', 'a')}${unpinForm('app-guide-section-pin', 'a/s1')}</main>`)
 
     drag('a', 220)
 
     const positions = Array.from(document.querySelectorAll('main input[name="position"]')).map((input) => input.value)
-    expect(positions).toEqual(['2', '2'])
+    expect(positions).toEqual(['2', '2', '0'])
   })
 
   test('is not a drag until the pointer has moved a few pixels, so a click still opens the guide', () => {
@@ -288,7 +288,7 @@ describe('dragging a case, or a guide within a case', () => {
           <p class="govuk-visually-hidden" role="status" data-reorder-status></p>
         </details>
         <main>
-          <form method="post" action="/pin-toggle">
+          <form method="post" action="/pin-toggle" data-reorder-follows="g1">
             <input type="hidden" name="guideId" value="g1">
             <input type="hidden" name="position" value="0">
           </form>

@@ -1,5 +1,6 @@
 import { statusCodes } from '../../../../src/constants/status-codes.js'
 import * as controller from '../../../../src/pages/pins/controller.js'
+import * as guidesService from '../../../../src/services/guides.js'
 import * as usersService from '../../../../src/services/users.js'
 
 const GUIDE = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
@@ -23,7 +24,7 @@ describe('pins controller', () => {
 
       await controller.postPinToggle(request, h)
 
-      expect(usersService.pin).toHaveBeenCalledWith(request, GUIDE)
+      expect(usersService.pin).toHaveBeenCalledWith(request, GUIDE, null)
       expect(h.redirect).toHaveBeenCalledWith(`/hub?system=CRM#pin-${GUIDE}`)
     })
 
@@ -32,8 +33,37 @@ describe('pins controller', () => {
 
       await controller.postPinToggle(request, h)
 
-      expect(usersService.unpin).toHaveBeenCalledWith(request, GUIDE, 2)
+      expect(usersService.unpin).toHaveBeenCalledWith(request, GUIDE, 2, null)
       expect(h.redirect).toHaveBeenCalledWith('/hub')
+    })
+
+    test('pins a section by its anchor, with its heading as the guide has it now, then goes back to the heading', async () => {
+      vi.spyOn(guidesService, 'headingOf').mockResolvedValue({ anchor: 'før-you-begin', title: 'Før you begin', page: 1 })
+      const request = { payload: { guideId: GUIDE, pin: true, section: 'før-you-begin', returnTo: `/guides/${GUIDE}?page=1` } }
+
+      await controller.postPinToggle(request, h)
+
+      expect(guidesService.headingOf).toHaveBeenCalledWith(GUIDE, 'før-you-begin')
+      expect(usersService.pin).toHaveBeenCalledWith(request, GUIDE, { section: 'før-you-begin', heading: 'Før you begin' })
+      expect(h.redirect).toHaveBeenCalledWith(`/guides/${GUIDE}?page=1#f%C3%B8r-you-begin`)
+    })
+
+    test('refuses to pin a section the guide does not have', async () => {
+      vi.spyOn(guidesService, 'headingOf').mockResolvedValue(null)
+      const request = { payload: { guideId: GUIDE, pin: true, section: 'gone', returnTo: '/hub' } }
+
+      await expect(controller.postPinToggle(request, h)).rejects.toMatchObject({ output: { statusCode: statusCodes.HTTP_STATUS_NOT_FOUND } })
+
+      expect(usersService.pin).not.toHaveBeenCalled()
+    })
+
+    test('unpins a section from where the page showed it, then goes back to its heading', async () => {
+      const request = { payload: { guideId: GUIDE, pin: false, position: 1, sectionId: OTHER, section: 'assign-case', returnTo: `/guides/${GUIDE}?page=2` } }
+
+      await controller.postPinToggle(request, h)
+
+      expect(usersService.unpin).toHaveBeenCalledWith(request, GUIDE, 1, OTHER)
+      expect(h.redirect).toHaveBeenCalledWith(`/guides/${GUIDE}?page=2#assign-case`)
     })
 
     test('does not go to another site', async () => {

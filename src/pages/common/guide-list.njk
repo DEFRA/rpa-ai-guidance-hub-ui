@@ -37,7 +37,7 @@
               {% if guide.pin.pinned %}<strong class="govuk-tag govuk-tag--grey app-search-results__pinned-tag">Pinned</strong>{% endif %}
             </div>
             {% if guide.pin %}
-              <form class="app-pin-toggle" method="post" action="/pin-toggle">
+              <form class="app-pin-toggle" method="post" action="/pin-toggle"{% if guide.pin.pinned %} data-reorder-follows="{{ guide.id }}"{% endif %}>
                 <input type="hidden" name="guideId" value="{{ guide.id }}">
                 <input type="hidden" name="pin" value="{{ 'false' if guide.pin.pinned else 'true' }}">
                 {% if guide.pin.pinned %}<input type="hidden" name="position" value="{{ guide.pin.position }}">{% endif %}
