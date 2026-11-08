@@ -177,7 +177,7 @@ class HubViewModel {
 
     this.pinned = _buildGuideList({
       items: pinned,
-      noun: 'pinned guide',
+      noun: 'pin',
       emptyMessage: nothingMatches ?? "You haven't pinned any guidance yet. Select 'Pin guide' on a guide to add it here."
     })
 

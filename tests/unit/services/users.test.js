@@ -110,8 +110,8 @@ describe('users service', () => {
     test('list them in the user\'s order, narrowed by the filters, with each filter\'s counts', async () => {
       const page = guidanceApiFixtures.pinnedGuidesResponse({
         items: [
-          guidanceApiFixtures.guideSummaryResponse({ id: 'guide-2', position: 0 }),
-          guidanceApiFixtures.guideSummaryResponse({ id: 'guide-1', position: 2 })
+          guidanceApiFixtures.pinnedSummaryResponse({ id: 'guide-2', position: 0 }),
+          guidanceApiFixtures.pinnedSummaryResponse({ id: 'guide-1', position: 2, sectionId: 'section-1', section: '1-pay', heading: '1 Pay' })
         ]
       })
       usersApi.getPins.mockResolvedValue({ ok: true, status: 200, data: page })
@@ -121,8 +121,8 @@ describe('users service', () => {
 
       expect(usersApi.getPins).toHaveBeenCalledWith(HUB_ID, filters)
       expect(listed.guides).toEqual([
-        expect.objectContaining({ id: 'guide-2', title: 'Claiming the SFI payment', position: 0 }),
-        expect.objectContaining({ id: 'guide-1', title: 'Claiming the SFI payment', position: 2 })
+        expect.objectContaining({ id: 'guide-2', title: 'Claiming the SFI payment', position: 0, sectionId: null, section: null, heading: null }),
+        expect.objectContaining({ id: 'guide-1', title: 'Claiming the SFI payment', position: 2, sectionId: 'section-1', section: '1-pay', heading: '1 Pay' })
       ])
       expect(listed.counts).toEqual(page.counts)
     })

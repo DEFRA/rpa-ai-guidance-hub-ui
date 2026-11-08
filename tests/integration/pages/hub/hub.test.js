@@ -5,7 +5,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
-import { guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -453,19 +453,48 @@ describe('#hubController', () => {
       // read for the side navigation, may say otherwise if they changed between.
       const cookie = await signedIn({ pinned: [pinResponse({ id: PINNED, title: 'Claiming the SFI payment' })] })
       nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/pins`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, pinnedGuidesResponse({
-        items: [guideSummaryResponse({ id: PINNED, position: 1 })]
+        items: [pinnedSummaryResponse({ id: PINNED, position: 1 })]
       }))
 
       const { statusCode, payload } = await server.inject({ method: 'GET', url: '/hub/pinned?system=CRM', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(main).toContain('1 pinned guide<')
+      expect(main).toContain('1 pin<')
       expect(main).toContain(`/guides/${PINNED}`)
       expect(main).toMatch(/app-search-results__pinned-tag">Pinned</)
       expect(main).toContain('<input type="hidden" name="position" value="1">')
       expect(main).toContain('action="/hub/pinned#guide-results"')
       expect(main).not.toContain('name="sort"')
+    })
+
+    test('list a pinned section on their own page as a row of its own, by its heading, linking to the section, with its guide\'s title', async () => {
+      nock.cleanAll()
+      const SECTION = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d99'
+      const cookie = await signedIn({})
+      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/pins`).reply(statusCodes.HTTP_STATUS_OK, pinnedGuidesResponse({
+        items: [
+          pinnedSummaryResponse({ id: PINNED, sectionId: SECTION, section: '1-pay', heading: '1 Pay' }),
+          pinnedSummaryResponse({ id: PINNED, position: 1 })
+        ]
+      }))
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned', headers: { cookie } })
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      const [section, guide] = main.split('<li class="app-search-results__item').slice(1)
+
+      expect(main).toContain('2 pins<')
+      expect(section).toContain(`<a class="govuk-link" href="/guides/${PINNED}?section=1-pay">1 Pay</a>`)
+      expect(section).toContain('In Claiming the SFI payment')
+      expect(section).toContain(`data-reorder-follows="${PINNED}/${SECTION}"`)
+      expect(section).toContain('<input type="hidden" name="position" value="0">')
+      expect(section).toContain(`<input type="hidden" name="sectionId" value="${SECTION}">`)
+      expect(section).toContain(`<input type="hidden" name="anchor" value="pin-${SECTION}">`)
+      expect(section).toContain(`id="pin-${SECTION}"`)
+      expect(guide).toContain(`<a class="govuk-link" href="/guides/${PINNED}">Claiming the SFI payment</a>`)
+      expect(guide).toContain('<input type="hidden" name="position" value="1">')
+      expect(guide).not.toContain('name="sectionId"')
+      expect(guide).toContain(`id="pin-${PINNED}"`)
     })
 
     test('say on their own page when nothing is pinned yet', async () => {

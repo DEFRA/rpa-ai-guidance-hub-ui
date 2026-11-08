@@ -80,7 +80,7 @@ describe('#hubController', () => {
           purpose: 'Explain the claim.',
           lastUpdated: '6 October 2026',
           published: '1 October 2026',
-          pin: { pinned: false, position: null }
+          pin: { pinned: false, position: null, key: 'guide-1' }
         },
         expect.objectContaining({ title: 'Closing a case', href: '/guides/guide-2' })
       ])
@@ -104,7 +104,7 @@ describe('#hubController', () => {
         purpose: null,
         lastUpdated: 'Not recorded',
         published: 'Not recorded',
-        pin: { pinned: false, position: null }
+        pin: { pinned: false, position: null, key: 'guide-1' }
       }])
     })
 
@@ -144,9 +144,9 @@ describe('#hubController', () => {
 
       const [, viewModel] = h.view.mock.calls[0]
       expect(viewModel.allGuides.guides.map(row => [row.id, row.pin])).toEqual([
-        ['g-3', { pinned: true, position: 0 }],
-        ['g-1', { pinned: true, position: 2 }],
-        ['g-2', { pinned: false, position: null }]
+        ['g-3', { pinned: true, position: 0, key: 'g-3' }],
+        ['g-1', { pinned: true, position: 2, key: 'g-1' }],
+        ['g-2', { pinned: false, position: null, key: 'g-2' }]
       ])
     })
 
@@ -186,8 +186,8 @@ describe('#hubController', () => {
 
       const [, viewModel] = h.view.mock.calls[0]
       expect(usersService.listPinned).toHaveBeenCalledWith(request, { audience: [], system: ['CRM'], scheme: [], noScheme: false })
-      expect(viewModel.shown.heading).toBe('1 pinned guide')
-      expect(viewModel.pinned.guides.map(row => [row.id, row.pin])).toEqual([['g-2', { pinned: true, position: 1 }]])
+      expect(viewModel.shown.heading).toBe('1 pin')
+      expect(viewModel.pinned.guides.map(row => [row.id, row.pin])).toEqual([['g-2', { pinned: true, position: 1, key: 'g-2' }]])
       expect(usersService.pinnedOf).not.toHaveBeenCalled()
       expect(viewModel.filters.action).toBe('/hub/pinned')
       expect(viewModel.filters.sort).toBeNull()
@@ -207,8 +207,8 @@ describe('#hubController', () => {
       expect(usersService.listRecentlyOpened).toHaveBeenCalledWith(request, { audience: [], system: ['CRM'], scheme: [], noScheme: false })
       expect(viewModel.shown.heading).toBe('2 recently opened guides')
       expect(viewModel.recentlyOpened.guides.map(row => [row.id, row.pin])).toEqual([
-        ['g-2', { pinned: false, position: null }],
-        ['guide-1', { pinned: true, position: 1 }]
+        ['g-2', { pinned: false, position: null, key: 'g-2' }],
+        ['guide-1', { pinned: true, position: 1, key: 'guide-1' }]
       ])
       expect(viewModel.filters.action).toBe('/hub/recently-opened')
       expect(viewModel.filters.sort).toBeNull()

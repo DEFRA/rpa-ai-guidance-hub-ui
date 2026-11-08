@@ -1,4 +1,5 @@
 import { CASE_TYPES } from '../constants/case-types.js'
+import { guideSectionHref } from '../pages/common/guide-section-href.js'
 import * as usersService from '../services/users.js'
 
 const UNTITLED = 'Untitled guide'
@@ -12,17 +13,6 @@ const UNTITLED = 'Untitled guide'
  */
 function _placed (position, count) {
   return { position, isFirst: position === 0, isLast: position === count - 1 }
-}
-
-/**
- * @private
- * @param {string} guideHref
- * @param {string} anchor - A section's, as the hub knows it
- * @returns {string} The guide at the section, which the guide sends on to the
- *   page and heading that have it
- */
-function _sectionHref (guideHref, anchor) {
-  return `${guideHref}?section=${encodeURIComponent(anchor)}`
 }
 
 /**
@@ -46,7 +36,7 @@ function _pins (pinned) {
       sectionId: pin.sectionId,
       label: pin.sectionId ? pin.heading ?? pin.section ?? title : title,
       guideTitle: pin.sectionId ? title : null,
-      href: pin.section ? _sectionHref(href, pin.section) : href,
+      href: pin.section ? guideSectionHref(pin.id, pin.section) : href,
       ..._placed(position, pinned.length)
     }
   })
@@ -84,7 +74,7 @@ function _caseBookmarks (cases) {
           sections: guide.bookmarks.map(({ sectionId, section, heading }) => ({
             sectionId,
             label: heading ?? section,
-            href: _sectionHref(href, section)
+            href: guideSectionHref(guide.id, section)
           }))
         }
       })

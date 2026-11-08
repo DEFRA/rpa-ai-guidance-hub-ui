@@ -45,7 +45,7 @@ describe('#HubViewModel', () => {
 
     test('Should return an empty list of pinned guides, saying how to pin one', () => {
       expect(viewModel.pinned).toEqual(expect.objectContaining({
-        heading: '0 pinned guides',
+        heading: '0 pins',
         showing: null,
         emptyMessage: "You haven't pinned any guidance yet. Select 'Pin guide' on a guide to add it here.",
         isGuideList: true,
@@ -196,16 +196,16 @@ describe('#HubViewModel', () => {
       published: '1 July 2026'
     }
 
-    test('Should list the pinned guides as the hub lists guides, counting them in its heading', () => {
+    test('Should list the pins as the hub lists guides, counting them in its heading', () => {
       const { pinned } = new HubViewModel({ pinned: [guide, { ...guide, id: 'guide-2' }] })
 
-      expect(pinned.heading).toBe('2 pinned guides')
+      expect(pinned.heading).toBe('2 pins')
       expect(pinned.showing).toBe('Showing 1 to 2')
       expect(pinned.guides[0]).toEqual(expect.objectContaining({ id: 'guide-1', pin: { pinned: true, position: 0 }, versionTag: { text: 'Version 2.1', colour: 'green' } }))
     })
 
-    test('Should say one pinned guide in the singular', () => {
-      expect(new HubViewModel({ pinned: [guide] }).pinned.heading).toBe('1 pinned guide')
+    test('Should say one pin in the singular', () => {
+      expect(new HubViewModel({ pinned: [guide] }).pinned.heading).toBe('1 pin')
     })
 
     test('Should say when chosen filters leave none of the pinned guides', () => {

@@ -37,13 +37,17 @@
               {% if guide.pin.pinned %}<strong class="govuk-tag govuk-tag--grey app-search-results__pinned-tag">Pinned</strong>{% endif %}
             </div>
             {% if guide.pin %}
-              <form class="app-pin-toggle" method="post" action="/pin-toggle"{% if guide.pin.pinned %} data-reorder-follows="{{ guide.id }}"{% endif %}>
+              {# A pinned section's star is named for the section, so it is not
+                 taken for its guide's, on the page or after unpinning. #}
+              {% set pinId = "pin-" + (guide.pin.sectionId or guide.id) %}
+              <form class="app-pin-toggle" method="post" action="/pin-toggle"{% if guide.pin.pinned %} data-reorder-follows="{{ guide.pin.key }}"{% endif %}>
                 <input type="hidden" name="guideId" value="{{ guide.id }}">
                 <input type="hidden" name="pin" value="{{ 'false' if guide.pin.pinned else 'true' }}">
                 {% if guide.pin.pinned %}<input type="hidden" name="position" value="{{ guide.pin.position }}">{% endif %}
+                {% if guide.pin.sectionId %}<input type="hidden" name="sectionId" value="{{ guide.pin.sectionId }}">{% endif %}
                 <input type="hidden" name="returnTo" value="{{ returnTo }}">
-                <input type="hidden" name="anchor" value="pin-{{ guide.id }}">
-                <button type="submit" class="app-pin-toggle__button" id="pin-{{ guide.id }}" aria-pressed="{{ 'true' if guide.pin.pinned else 'false' }}">
+                <input type="hidden" name="anchor" value="{{ pinId }}">
+                <button type="submit" class="app-pin-toggle__button" id="{{ pinId }}" aria-pressed="{{ 'true' if guide.pin.pinned else 'false' }}">
                   {{ icon("star-filled" if guide.pin.pinned else "star") }}
                   <span class="govuk-visually-hidden">Pin {{ guide.title }}</span>
                 </button>
@@ -54,6 +58,10 @@
           <h3 class="govuk-heading-s app-search-results__name">
             <a class="govuk-link" href="{{ guide.href }}">{{ guide.title }}</a>
           </h3>
+
+          {% if guide.guideTitle %}
+            <p class="govuk-body-s app-hub-results__facets">In {{ guide.guideTitle }}</p>
+          {% endif %}
 
           {% if guide.purpose %}
             <p class="govuk-body-s app-hub-results__facets">{{ guide.purpose }}</p>

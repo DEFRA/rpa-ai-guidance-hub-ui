@@ -207,19 +207,26 @@ function _pinnedAt (position, guideId, sectionId = null) {
 }
 
 /**
- * The guides the signed-in user has pinned, in their order, that the filters
- * let through, each with its position among all their pins, which unpinning it
- * sends; and each filter's counts among them.
+ * The signed-in user's pins, guides and sections of guides, in their order,
+ * whose guides the filters let through: each its guide, with its position
+ * among all their pins, which unpinning it sends, and for a section its id,
+ * anchor and heading; and each filter's counts among their guides.
  *
  * @param {import('@hapi/hapi').Request} request - Signed in
  * @param {import('./guides.js').Filters} [filters]
- * @returns {Promise<{guides: Array<import('./guides.js').GuideSummary & {position: number}>, counts: import('./guides.js').FilterCounts}>}
+ * @returns {Promise<{guides: Array<import('./guides.js').GuideSummary & {position: number, sectionId: string|null, section: string|null, heading: string|null}>, counts: import('./guides.js').FilterCounts}>}
  */
 async function listPinned (request, filters) {
   const res = await usersApi.getPins(await userIdOf(request), filters)
 
   return {
-    guides: res.data.items.map(item => ({ ...toGuideSummary(item), position: item.position })),
+    guides: res.data.items.map(item => ({
+      ...toGuideSummary(item),
+      position: item.position,
+      sectionId: item.sectionId,
+      section: item.section,
+      heading: item.heading
+    })),
     counts: res.data.counts ?? {}
   }
 }

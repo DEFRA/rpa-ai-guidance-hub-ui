@@ -257,10 +257,25 @@ function caseResponse (overrides = {}) {
 }
 
 /**
- * Body of `GET /users/{id}/pins` on 200: the guides the user has pinned, in
- * their order, each as `GET /guides` lists it with its position among all
- * their pins, and each filter's counts among them. By default one pinned
- * guide, and no counts.
+ * One item of `GET /users/{id}/pins`: a pin, with its guide as `GET /guides`
+ * lists it, its position among all the user's pins and, for a section, the
+ * section's id, anchor and heading. By default a whole guide, first.
+ *
+ * Verified on 2026-11-08 by validating this item, with UUIDs for its ids,
+ * against the guidance API's `PinnedSummary` schema, as a whole guide and as
+ * a section.
+ *
+ * @param {Object} [overrides]
+ * @returns {Object}
+ */
+function pinnedSummaryResponse (overrides = {}) {
+  return guideSummaryResponse({ position: 0, sectionId: null, section: null, heading: null, ...overrides })
+}
+
+/**
+ * Body of `GET /users/{id}/pins` on 200: the user's pins, guides and sections
+ * of guides, in their order (`pinnedSummaryResponse`), and each filter's
+ * counts among their guides. By default one pinned guide, and no counts.
  *
  * Verified against the guidance API's `Pinned` schema on 2026-11-05: items as
  * `PinnedSummary`, and counts of `OptionCount` by filter.
@@ -270,7 +285,7 @@ function caseResponse (overrides = {}) {
  */
 function pinnedGuidesResponse (overrides = {}) {
   return {
-    items: [guideSummaryResponse({ position: 0 })],
+    items: [pinnedSummaryResponse()],
     counts: { audience: [], system: [], scheme: [] },
     ...overrides
   }
@@ -316,6 +331,7 @@ export {
   guideResponse,
   guideSummaryResponse,
   pinnedGuidesResponse,
+  pinnedSummaryResponse,
   pinResponse,
   recentlyOpenedResponse,
   refusalResponse,

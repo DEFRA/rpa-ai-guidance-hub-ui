@@ -4,6 +4,7 @@ import { statusCodes } from '../../constants/status-codes.js'
 import * as guidesService from '../../services/guides.js'
 import * as usersService from '../../services/users.js'
 import { formatIsoDate } from '../common/format-date.js'
+import { guideSectionHref } from '../common/guide-section-href.js'
 import { filterPanel, filtersFrom, sortFrom, wordsFrom } from './filters.js'
 import { HubViewModel } from './view-models.js'
 
@@ -19,18 +20,46 @@ const NOT_RECORDED = 'Not recorded'
  * @param {import('../../services/guides.js').GuideSummary} guide
  * @param {Map<string, number>|null} pinPositions - Where each pinned guide is
  *   among the user's pins; null when they are not known
- * @returns {{id: string, pin: {pinned: boolean, position: number|null}|null, title: string, href: string, versionNumber: string|null, purpose: string|null, lastUpdated: string, published: string}}
+ * @returns {{id: string, pin: {pinned: boolean, position: number|null, key: string}|null, title: string, href: string, versionNumber: string|null, purpose: string|null, lastUpdated: string, published: string}}
  */
 function _toGuideItem (guide, pinPositions) {
   return {
     id: guide.id,
-    pin: pinPositions && { pinned: pinPositions.has(guide.id), position: pinPositions.get(guide.id) ?? null },
+    pin: pinPositions && { pinned: pinPositions.has(guide.id), position: pinPositions.get(guide.id) ?? null, key: guide.id },
     title: guide.title ?? 'Untitled guide',
     href: `/guides/${encodeURIComponent(guide.id)}`,
     versionNumber: guide.versionNumber,
     purpose: guide.purpose,
     lastUpdated: formatIsoDate(guide.lastUpdated) ?? NOT_RECORDED,
     published: formatIsoDate(guide.createdAt) ?? NOT_RECORDED
+  }
+}
+
+/**
+ * A pin as the Pinned page lists it: a guide as the hub lists it; a section
+ * by its heading, linking to it, with its guide's title. Each says where it
+ * is among the user's pins, which its star sends to unpin it.
+ *
+ * @private
+ * @param {import('../../services/guides.js').GuideSummary & {position: number, sectionId: string|null, section: string|null, heading: string|null}} pinned
+ * @returns {object} As `_toGuideItem` makes it, with the guide's title as
+ *   `guideTitle` for a section
+ */
+function _toPinItem (pinned) {
+  const item = _toGuideItem(pinned, null)
+  const pin = { pinned: true, position: pinned.position, sectionId: pinned.sectionId, key: usersService.pinKey(pinned) }
+
+  if (!pinned.sectionId) {
+    return { ...item, pin }
+  }
+
+  return {
+    ...item,
+    pin,
+    title: pinned.heading ?? pinned.section ?? item.title,
+    guideTitle: item.title,
+    href: pinned.section ? guideSectionHref(pinned.id, pinned.section) : item.href,
+    purpose: null
   }
 }
 
@@ -117,16 +146,16 @@ async function getHubPage (request, h) {
 /**
  * The side navigation's lists that have a source of guides, by the
  * HubViewModel list each shows: each answers the guides the filters let
- * through, each filter's counts among them, and where each guide is among the
- * user's pins, so its star and the list agree.
+ * through, each filter's counts among them, and how it shows each as a row,
+ * with where it is among the user's pins, so its star and the list agree.
  *
- * @type {Record<string, (request: import('@hapi/hapi').Request, filters: import('../../services/guides.js').Filters) => Promise<{guides: Array<object>, counts: object, pinPositions: Map<string, number>|null}>>}
+ * @type {Record<string, (request: import('@hapi/hapi').Request, filters: import('../../services/guides.js').Filters) => Promise<{guides: Array<object>, counts: object, rowOf: (guide: object) => object}>>}
  */
 const LIST_SOURCES = {
   async pinned (request, filters) {
     const { guides, counts } = await usersService.listPinned(request, filters)
 
-    return { guides, counts, pinPositions: new Map(guides.map((guide) => [guide.id, guide.position])) }
+    return { guides, counts, rowOf: _toPinItem }
   },
 
   async recentlyOpened (request, filters) {
@@ -134,8 +163,9 @@ const LIST_SOURCES = {
       usersService.listRecentlyOpened(request, filters),
       usersService.pinnedOf(request)
     ])
+    const pinPositions = _pinPositions(pinned)
 
-    return { guides, counts, pinPositions: _pinPositions(pinned) }
+    return { guides, counts, rowOf: (guide) => _toGuideItem(guide, pinPositions) }
   }
 }
 
@@ -178,12 +208,12 @@ async function getHubListPage (request, h) {
   }
 
   const filters = filtersFrom(request.query)
-  const { guides, counts, pinPositions } = await _refusingUnknownFilters(source(request, filters))
+  const { guides, counts, rowOf } = await _refusingUnknownFilters(source(request, filters))
   const panel = filterPanel({ path: `/hub/${request.params.list}`, filters, counts, sort: sortFrom(), total: guides.length, withSort: false })
 
   const viewModel = new HubViewModel({
     shown,
-    [shown]: guides.map((guide) => _toGuideItem(guide, pinPositions)),
+    [shown]: guides.map(rowOf),
     filters: panel,
     nothingToFilter: await _nothingToFilter(source, request, guides, panel)
   })
