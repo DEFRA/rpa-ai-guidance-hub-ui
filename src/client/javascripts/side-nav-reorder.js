@@ -1,12 +1,18 @@
 /**
- * Dragging the user's pinned guides into a new order in the side navigation,
- * as the prototype does (rpa-ai-guidance-hub-prototype:
- * app/assets/javascripts/side-nav.js). A pointer drag on a guide's link (past
- * a few pixels, so a click still opens it) moves the guide; a bar shows where
- * it will land, and Esc cancels. The move is sent to the list's
- * `data-reorder-list` address, and a screen reader is told where the guide now
- * is. Move up and Move down in each guide's "…" menu do the same without
- * dragging.
+ * Dragging the side navigation's lists into a new order - the pinned guides,
+ * the cases, and the guides within a case - as the prototype does
+ * (rpa-ai-guidance-hub-prototype: app/assets/javascripts/side-nav.js). A
+ * pointer drag on an item's handle (past a few pixels, so a click still opens
+ * it) moves the item; a bar shows where it will land, and Esc cancels. The
+ * move is sent to the list's `data-reorder-list` address with the order the
+ * list showed, where the item moved `from` and `to`, and the list's own
+ * `data-reorder-fields`; a screen reader is told where the item now is. Move
+ * up and Move down in each item's "…" menu do the same without dragging.
+ *
+ * A list inside an item drags its own items: each list moves only its own,
+ * and keeps only their own menus up to date. A list whose items' positions are
+ * also sent by forms elsewhere on the page names those forms' action in
+ * `data-reorder-elsewhere`, as the pinned guides do for unpinning.
  */
 
 // How far, in pixels, the pointer moves before a press becomes a drag.
@@ -58,20 +64,25 @@ function movedMessage (label, position, count) {
 }
 
 /**
- * The move was not kept - the pins changed since the page showed them, or the
- * hub could not be reached - so show them as they now are.
+ * The move was not kept - the list changed since the page showed it, or the
+ * hub could not be reached - so show it as it now is.
  */
 function reloadPage () {
   window.location.reload()
 }
 
 /**
+ * @param {string|undefined} action - The forms', as the list names it
  * @param {string} guideId
- * @returns {HTMLFormElement[]} The page's forms that unpin the guide from a
- *   position
+ * @returns {HTMLFormElement[]} The page's forms with that action that send the
+ *   guide's position; none without an action
  */
-function unpinFormsOf (guideId) {
-  return Array.from(document.querySelectorAll('form[action="/pin-toggle"]'))
+function formsElsewhere (action, guideId) {
+  if (!action) {
+    return []
+  }
+
+  return Array.from(document.querySelectorAll(`form[action="${action}"]`))
     .filter(form => form.elements.guideId?.value === guideId && form.elements.position)
 }
 
@@ -85,11 +96,11 @@ function middleOf (item) {
   return box.top + box.height / 2
 }
 
-class PinReorder {
+class Reorder {
   #list
   #status
   #layout
-  #showPinsAsSaved
+  #showAsSaved
   // The moves being saved, one after another, so none overtakes another.
   #saving = Promise.resolve()
   #press = null
@@ -98,18 +109,18 @@ class PinReorder {
 
   /**
    * @param {HTMLElement} list - Carries `data-reorder-list`
-   * @param {() => void} showPinsAsSaved - For a move that was not kept
+   * @param {() => void} showAsSaved - For a move that was not kept
    */
-  constructor (list, showPinsAsSaved) {
+  constructor (list, showAsSaved) {
     this.#list = list
-    this.#showPinsAsSaved = showPinsAsSaved
-    this.#status = list.parentElement.querySelector('[data-reorder-status]')
+    this.#showAsSaved = showAsSaved
+    this.#status = list.parentElement.querySelector(':scope > [data-reorder-status]')
     this.#layout = list.closest('.app-layout') ?? document.body
   }
 
   attach () {
     this.#list.addEventListener('pointerdown', event => this.#onPointerDown(event))
-    // No native link dragging in the list, so only the guide itself moves.
+    // No native link dragging in the list, so only the item itself moves.
     this.#list.addEventListener('dragstart', event => event.preventDefault())
     this.#list.addEventListener('click', event => this.#onClick(event), true)
     // Capture, so the Esc that cancels a drag does nothing else.
@@ -120,12 +131,13 @@ class PinReorder {
     return Array.from(this.#list.children)
   }
 
-  // The pinned guides' ids, as the list now shows them.
+  // The items' ids, as the list now shows them.
   #order () {
     return this.#items().map(item => item.dataset.reorderId)
   }
 
-  // Only a guide's link (data-reorder-handle) starts a drag, not its "…" menu.
+  // Only an item's handle starts a drag, not its "…" menu; and only this
+  // list's own items move here, not those of a list inside one.
   #onPointerDown (event) {
     const handle = event.target.closest('[data-reorder-handle]')
     const item = handle?.closest('[data-reorder-id]')
@@ -160,7 +172,7 @@ class PinReorder {
     }
     if (dragged) {
       // The click that may follow a drag, even a cancelled one, mustn't open
-      // the guide.
+      // the item.
       this.#suppressClick = true
       window.setTimeout(() => { this.#suppressClick = false }, 0)
     }
@@ -249,24 +261,28 @@ class PinReorder {
     this.#refreshPositions()
     this.#saving = this.#saving
       .then(() => this.#save(shown, startIndex, index))
-      .catch(this.#showPinsAsSaved)
+      .catch(this.#showAsSaved)
     if (this.#status) {
       this.#status.textContent = movedMessage(item.dataset.reorderLabel, index, others.length + 1)
     }
   }
 
-  // Keep every form that changes a guide's pin sending where the guide now is:
-  // its "…" menu here, and wherever else the page offers to unpin it (the
-  // hub's star, a guide page's Unpin guide); and each move sending the order
-  // the list now shows.
+  // Keep every form that acts on an item sending where the item now is: its own
+  // "…" menu, not the menus of a list inside it, and the forms elsewhere that
+  // the list names (for a pinned guide, the hub's star and a guide page's
+  // Unpin guide); and each move sending the order the list now shows.
   #refreshPositions () {
     const items = this.#items()
     const order = this.#order()
 
     items.forEach((item, position) => {
-      unpinFormsOf(item.dataset.reorderId).forEach(form => { form.elements.position.value = String(position) })
-      item.querySelectorAll('input[name="from"]').forEach(input => { input.value = String(position) })
-      item.querySelectorAll('[data-reorder-move]').forEach(form => {
+      const own = selector => Array.from(item.querySelectorAll(selector))
+        .filter(element => element.closest('[data-reorder-id]') === item)
+
+      formsElsewhere(this.#list.dataset.reorderElsewhere, item.dataset.reorderId)
+        .forEach(form => { form.elements.position.value = String(position) })
+      own('input[name="from"]').forEach(input => { input.value = String(position) })
+      own('[data-reorder-move]').forEach(form => {
         const target = moveTarget(position, Number(form.dataset.reorderMove), items.length)
 
         form.querySelectorAll('input[name="order"]').forEach((input, at) => { input.value = order[at] })
@@ -277,32 +293,33 @@ class PinReorder {
   }
 
   /**
-   * @param {string[]} shown - The pinned guides' ids as they were before the
-   *   move, which the hub checks they still are
+   * @param {string[]} shown - The items' ids as they were before the move,
+   *   which the hub checks they still are
    * @param {number} from
    * @param {number} to
    */
   async #save (shown, from, to) {
-    const body = new URLSearchParams([...shown.map(id => ['order', id]), ['from', String(from)], ['to', String(to)]])
+    const fields = Object.entries(JSON.parse(this.#list.dataset.reorderFields ?? '{}'))
+    const body = new URLSearchParams([...fields, ...shown.map(id => ['order', id]), ['from', String(from)], ['to', String(to)]])
     const response = await window.fetch(this.#list.dataset.reorderList, { method: 'POST', body })
 
     if (response.status !== MOVE_KEPT) {
-      this.#showPinsAsSaved()
+      this.#showAsSaved()
     }
   }
 }
 
 /**
- * Lets the user drag their pinned guides into a new order, if the page lists
- * any.
+ * Lets the user drag the side navigation's lists into a new order, if the
+ * page has any.
  *
  * @param {Object} [options]
- * @param {() => void} [options.showPinsAsSaved] - For a move that was not
- *   kept; reloads the page unless given
+ * @param {() => void} [options.showAsSaved] - For a move that was not kept;
+ *   reloads the page unless given
  * @returns {void}
  */
-function initPinReorder ({ showPinsAsSaved = reloadPage } = {}) {
-  document.querySelectorAll('[data-reorder-list]').forEach(list => new PinReorder(list, showPinsAsSaved).attach())
+function initReorder ({ showAsSaved = reloadPage } = {}) {
+  document.querySelectorAll('[data-reorder-list]').forEach(list => new Reorder(list, showAsSaved).attach())
 }
 
-export { dropIndex, initPinReorder, movedMessage, moveTarget }
+export { dropIndex, initReorder, movedMessage, moveTarget }

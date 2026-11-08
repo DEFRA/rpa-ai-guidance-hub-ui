@@ -24,32 +24,53 @@ function _pinnedGuides (pinned) {
 
 /**
  * @private
+ * @param {number} position
+ * @param {number} count
+ * @returns {{position: number, isFirst: boolean, isLast: boolean}} Where an
+ *   item is in its list, which its menu's moves send
+ */
+function _placed (position, count) {
+  return { position, isFirst: position === 0, isLast: position === count - 1 }
+}
+
+/**
+ * @private
  * The user's cases as the side navigation lists them: each named by its type
- * and reference, with its guides, each linking to the guide, and each guide's
- * bookmarked sections, each linking to its place in the guide.
+ * and reference, and kept by its key, with its guides, each linking to the
+ * guide, and each guide's bookmarked sections, each linking to its place in
+ * the guide. Each list carries the ids it shows, which its moves send back.
  *
- * @param {Array<{type: string, ref: string, guides: Array<{id: string, title: string|null, bookmarks: Array<{section: string, heading: string|null}>}>}>} cases
+ * @param {Array<{key: string, type: string, ref: string, guides: Array<{id: string, title: string|null, bookmarks: Array<{sectionId: string, section: string, heading: string|null}>}>}>} cases
  *   - In the user's order
- * @returns {Array<object>}
+ * @returns {{cases: Array<object>, order: string[]}}
  */
 function _caseBookmarks (cases) {
-  return cases.map(({ type, ref, guides }) => ({
-    typeLabel: CASE_TYPES[type].short,
-    ref,
-    name: `${CASE_TYPES[type].short} ${ref}`,
-    guides: guides.map(guide => {
-      const href = `/guides/${encodeURIComponent(guide.id)}`
+  return {
+    order: cases.map(({ key }) => key),
+    cases: cases.map(({ key, type, ref, guides }, position) => ({
+      key,
+      typeLabel: CASE_TYPES[type].short,
+      ref,
+      name: `${CASE_TYPES[type].short} ${ref}`,
+      ..._placed(position, cases.length),
+      guideOrder: guides.map(({ id }) => id),
+      guides: guides.map((guide, at) => {
+        const href = `/guides/${encodeURIComponent(guide.id)}`
 
-      return {
-        title: guide.title ?? UNTITLED,
-        href,
-        sections: guide.bookmarks.map(({ section, heading }) => ({
-          label: heading ?? section,
-          href: `${href}?section=${encodeURIComponent(section)}#${encodeURIComponent(section)}`
-        }))
-      }
-    })
-  }))
+        return {
+          id: guide.id,
+          title: guide.title ?? UNTITLED,
+          href,
+          ..._placed(at, guides.length),
+          sections: guide.bookmarks.map(({ sectionId, section, heading }) => ({
+            sectionId,
+            label: heading ?? section,
+            href: `${href}?section=${encodeURIComponent(section)}#${encodeURIComponent(section)}`
+          }))
+        }
+      })
+    }))
+  }
 }
 
 /**

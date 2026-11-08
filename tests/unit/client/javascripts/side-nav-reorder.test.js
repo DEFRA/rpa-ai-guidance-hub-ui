@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { dropIndex, initPinReorder, movedMessage, moveTarget } from '../../../../src/client/javascripts/side-nav-reorder.js'
+import { dropIndex, initReorder, movedMessage, moveTarget } from '../../../../src/client/javascripts/side-nav-reorder.js'
 
 describe('dropIndex', () => {
   const MIDDLES = [110, 150, 190]
@@ -64,7 +64,7 @@ describe('dragging a pinned guide', () => {
 
     document.body.innerHTML = `
       <div class="app-layout">
-        <ul class="app-side-nav__list" data-reorder-list="/pin-order">${rows}</ul>
+        <ul class="app-side-nav__list" data-reorder-list="/pin-order" data-reorder-elsewhere="/pin-toggle">${rows}</ul>
         <p class="govuk-visually-hidden" role="status" data-reorder-status></p>
       </div>`
     _placeRows()
@@ -113,7 +113,7 @@ describe('dragging a pinned guide', () => {
     render()
     showPinsAsSaved = vi.fn()
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 204 }))
-    initPinReorder({ showPinsAsSaved })
+    initReorder({ showAsSaved: showPinsAsSaved })
   })
 
   afterEach(() => {
@@ -249,5 +249,136 @@ describe('dragging a pinned guide', () => {
     drag('a', 180)
 
     await vi.waitFor(() => expect(showPinsAsSaved).toHaveBeenCalledTimes(1))
+  })
+})
+
+describe('dragging a case, or a guide within a case', () => {
+  // Each row is 40 pixels high, each list's first at the top of 100, as the
+  // pinned guides' are: one list's rows never meet another's.
+  const ROW_HEIGHT = 40
+  const FIRST_TOP = 100
+  const CASES = [['k1', 'Case W1234567', ['g1', 'g2', 'g3']], ['k2', 'Case W7654321', ['g4']]]
+
+  /** The side navigation's case bookmarks, as `side-nav.njk` makes them. */
+  function render () {
+    const moves = (action, position, count, fields) => [-1, 1].map((step) => `
+      <form method="post" action="${action}" data-reorder-move="${step}"${moveTarget(position, step, count) === null ? ' hidden' : ''}>
+        ${fields}
+        <input type="hidden" name="from" value="${position}">
+        <input type="hidden" name="to" value="${position + step}">
+      </form>`).join('')
+    const cases = CASES.map(([key, name, guides], position) => `
+      <li class="app-side-nav__case" data-reorder-id="${key}" data-reorder-label="${name}">
+        <div class="app-side-nav__case-name" data-reorder-handle>${name}</div>
+        ${moves('/case-bookmarks/order', position, CASES.length, CASES.map(([shown]) => `<input type="hidden" name="order" value="${shown}">`).join(''))}
+        <ul class="app-side-nav__sublist" data-reorder-list="/case-bookmarks/guide-order" data-reorder-fields='{"key":"${key}"}'>
+          ${guides.map((guide, at) => `
+            <li data-reorder-id="${guide}" data-reorder-label="Guide ${guide}">
+              <a class="app-side-nav__sublink" href="/guides/${guide}" draggable="false" data-reorder-handle>Guide ${guide}</a>
+              ${moves('/case-bookmarks/guide-order', at, guides.length, `<input type="hidden" name="key" value="${key}">${guides.map(shown => `<input type="hidden" name="order" value="${shown}">`).join('')}`)}
+            </li>`).join('')}
+        </ul>
+        <p class="govuk-visually-hidden" role="status" data-reorder-status></p>
+      </li>`).join('')
+
+    document.body.innerHTML = `
+      <div class="app-layout">
+        <details id="side-nav-bookmarks">
+          <ul class="app-side-nav__list" data-reorder-list="/case-bookmarks/order">${cases}</ul>
+          <p class="govuk-visually-hidden" role="status" data-reorder-status></p>
+        </details>
+        <main>
+          <form method="post" action="/pin-toggle">
+            <input type="hidden" name="guideId" value="g1">
+            <input type="hidden" name="position" value="0">
+          </form>
+        </main>
+      </div>`
+    document.querySelectorAll('[data-reorder-id]').forEach((row) => {
+      row.getBoundingClientRect = () => {
+        const index = Array.from(row.parentElement.children).indexOf(row)
+
+        return { top: FIRST_TOP + index * ROW_HEIGHT, height: ROW_HEIGHT }
+      }
+    })
+  }
+
+  function row (id) {
+    return document.querySelector(`[data-reorder-id="${id}"]`)
+  }
+
+  function idsIn (list) {
+    return Array.from(list.children).map((item) => item.dataset.reorderId)
+  }
+
+  function drag (id, clientY) {
+    const handle = row(id).querySelector('[data-reorder-handle]')
+    const startY = row(id).getBoundingClientRect().top + ROW_HEIGHT / 2
+
+    handle.dispatchEvent(new window.PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 10, clientY: startY }))
+    document.dispatchEvent(new window.PointerEvent('pointermove', { bubbles: true, button: 0, clientX: 10, clientY }))
+    document.dispatchEvent(new window.PointerEvent('pointerup', { bubbles: true, button: 0, clientX: 10, clientY }))
+  }
+
+  function sent (call) {
+    const [url, { body }] = call
+
+    return { url, fields: Object.fromEntries([...body.keys()].map(name => [name, name === 'order' ? body.getAll(name) : body.get(name)])) }
+  }
+
+  beforeEach(() => {
+    render()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 204 }))
+    initReorder({ showAsSaved: vi.fn() })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  test('moves a guide within its case, saving it with the case\'s key and the guides shown', async () => {
+    drag('g1', 180)
+
+    expect(idsIn(row('k1').querySelector('ul'))).toEqual(['g2', 'g1', 'g3'])
+    expect(idsIn(document.querySelector('[data-reorder-list="/case-bookmarks/order"]'))).toEqual(['k1', 'k2'])
+    await vi.waitFor(() => expect(window.fetch).toHaveBeenCalledTimes(1))
+    expect(sent(window.fetch.mock.calls[0])).toEqual({
+      url: '/case-bookmarks/guide-order',
+      fields: { key: 'k1', order: ['g1', 'g2', 'g3'], from: '0', to: '1' }
+    })
+  })
+
+  test('moves a case with its guides, saving it with the cases shown', async () => {
+    drag('k1', 180)
+
+    expect(idsIn(document.querySelector('[data-reorder-list="/case-bookmarks/order"]'))).toEqual(['k2', 'k1'])
+    expect(idsIn(row('k1').querySelector('ul'))).toEqual(['g1', 'g2', 'g3'])
+    await vi.waitFor(() => expect(window.fetch).toHaveBeenCalledTimes(1))
+    expect(sent(window.fetch.mock.calls[0])).toEqual({
+      url: '/case-bookmarks/order',
+      fields: { order: ['k1', 'k2'], from: '0', to: '1' }
+    })
+  })
+
+  test('brings a moved case\'s own menu up to date, and not its guides\' menus', () => {
+    drag('k1', 180)
+
+    const own = Array.from(row('k1').querySelectorAll(':scope > form input[name="from"]')).map((input) => input.value)
+    const guides = Array.from(row('k1').querySelectorAll(':scope ul input[name="from"]')).map((input) => input.value)
+    expect(own).toEqual(['1', '1'])
+    expect(guides).toEqual(['0', '0', '1', '1', '2', '2'])
+  })
+
+  test('leaves the page\'s ways to unpin a guide as they were when the guide moves within a case', () => {
+    drag('g1', 220)
+
+    expect(document.querySelector('main input[name="position"]').value).toBe('0')
+  })
+
+  test('tells a screen reader where a guide now is, in its own case\'s words', () => {
+    drag('g1', 180)
+
+    expect(row('k1').querySelector(':scope > [data-reorder-status]').textContent).toContain('Guide g1')
+    expect(document.querySelector('#side-nav-bookmarks > [data-reorder-status]').textContent).toBe('')
   })
 })

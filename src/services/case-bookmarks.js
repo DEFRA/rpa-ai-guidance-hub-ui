@@ -102,9 +102,213 @@ async function bookmark (request, { type, ref, guideId, section, heading }) {
         { op: 'test', path: `/${position}/key`, value: cases[position].key },
         { op: 'add', path: `/${position}/bookmarks/-`, value: entry }
       ]
+  return _patchCases(request, operations)
+}
+
+/**
+ * @private
+ * @param {import('@hapi/hapi').Request} request
+ * @param {Array<object>} operations
+ * @returns {Promise<boolean>} Whether the patch was made: not when a `test`
+ *   failed, the cases having changed since they were read
+ */
+async function _patchCases (request, operations) {
   const res = await usersApi.patchCases(await userIdOf(request), operations)
 
   return res.ok
+}
+
+/**
+ * @private
+ * @param {number} position - The case's, among the user's
+ * @param {string} key - The case's
+ * @returns {{op: string, path: string, value: string}} The test that the case
+ *   is still there
+ */
+function _caseStill (position, key) {
+  return { op: 'test', path: `/${position}/key`, value: key }
+}
+
+/**
+ * @private
+ * One of the signed-in user's cases as it is now, with where it is among them.
+ *
+ * @param {import('@hapi/hapi').Request} request
+ * @param {string} key
+ * @returns {Promise<{position: number, found: Object}|null>} Null for a case
+ *   the user has not got
+ */
+async function _caseNow (request, key) {
+  const cases = await casesOf(request) ?? []
+  const position = cases.findIndex(each => each.key === key)
+
+  return position === -1 ? null : { position, found: cases[position] }
+}
+
+/**
+ * @private
+ * @param {import('@hapi/hapi').Request} request
+ * @param {{position: number, found: {key: string}}} now
+ * @returns {Promise<boolean>}
+ */
+function _removeCaseAt (request, { position, found }) {
+  return _patchCases(request, [_caseStill(position, found.key), { op: 'remove', path: `/${position}` }])
+}
+
+/**
+ * Remove one of the signed-in user's cases, with every section of a guide
+ * bookmarked to it.
+ *
+ * @param {import('@hapi/hapi').Request} request - Signed in
+ * @param {string} key - The case's
+ * @returns {Promise<boolean>} Whether it changed anything: not when the case
+ *   has gone, or changed, since
+ */
+async function removeCase (request, key) {
+  const now = await _caseNow(request, key)
+
+  return now !== null && _removeCaseAt(request, now)
+}
+
+/**
+ * Take a guide, with every section of it bookmarked, out of one of the
+ * signed-in user's cases. The case goes too when it was the case's only
+ * guide, as a case with nothing in it is not kept.
+ *
+ * @param {import('@hapi/hapi').Request} request - Signed in
+ * @param {{key: string, guideId: string}} place
+ * @returns {Promise<boolean>} Whether it changed anything: not when the case,
+ *   or the guide in it, has gone since
+ */
+async function removeGuide (request, { key, guideId }) {
+  const now = await _caseNow(request, key)
+  const guide = now?.found.guides.find(each => each.id === guideId)
+
+  if (!guide) {
+    return false
+  }
+
+  if (now.found.guides.length === 1) {
+    return _removeCaseAt(request, now)
+  }
+
+  const positions = guide.bookmarks.map(each => each.position).sort((a, b) => b - a)
+
+  return _patchCases(request, [
+    _caseStill(now.position, key),
+    ...positions.map(at => ({ op: 'test', path: `/${now.position}/bookmarks/${at}/guideId`, value: guideId })),
+    ...positions.map(at => ({ op: 'remove', path: `/${now.position}/bookmarks/${at}` }))
+  ])
+}
+
+/**
+ * Take one bookmarked section of a guide out of one of the signed-in user's
+ * cases. The case goes too when it was the case's last bookmark.
+ *
+ * @param {import('@hapi/hapi').Request} request - Signed in
+ * @param {{key: string, guideId: string, sectionId: string}} place
+ * @returns {Promise<boolean>} Whether it changed anything
+ */
+async function removeSection (request, { key, guideId, sectionId }) {
+  const now = await _caseNow(request, key)
+  const guide = now?.found.guides.find(each => each.id === guideId)
+  const placed = guide?.bookmarks.find(each => each.sectionId === sectionId)
+
+  if (!placed) {
+    return false
+  }
+
+  if (now.found.guides.flatMap(each => each.bookmarks).length === 1) {
+    return _removeCaseAt(request, now)
+  }
+
+  const path = `/${now.position}/bookmarks/${placed.position}`
+
+  return _patchCases(request, [
+    _caseStill(now.position, key),
+    { op: 'test', path: `${path}/sectionId`, value: sectionId },
+    { op: 'remove', path }
+  ])
+}
+
+/**
+ * Move one of the signed-in user's cases, if they are still the cases the
+ * page showed, in that order.
+ *
+ * @param {import('@hapi/hapi').Request} request - Signed in
+ * @param {{order: string[], from: number, to: number}} move - `order` the
+ *   cases' keys as shown; `to` in the list without it, as JSON Patch moves
+ * @returns {Promise<boolean>} Whether it changed anything
+ */
+async function moveCase (request, { order, from, to }) {
+  return _patchCases(request, [
+    ...order.map((key, position) => _caseStill(position, key)),
+    { op: 'move', from: `/${from}`, path: `/${to}` }
+  ])
+}
+
+/**
+ * The moves that put a case's bookmarks in the order of its guides, each
+ * guide's bookmarks together: each is moved to just after the last one
+ * placed, starting where the first of them is.
+ *
+ * @param {Array<{bookmarks: Array<{position: number}>}>} guides - In the new
+ *   order, each with where its bookmarks are now
+ * @returns {Array<{from: number, to: number}>} JSON Patch moves, in order
+ */
+function bookmarkMoves (guides) {
+  const bookmarks = guides.flatMap(guide => guide.bookmarks)
+  const positions = new Map(bookmarks.map(each => [each, each.position]))
+  const moves = []
+  let next = Math.min(...positions.values())
+
+  for (const each of bookmarks) {
+    const from = positions.get(each)
+
+    if (from !== next) {
+      moves.push({ from, to: next })
+      positions.forEach((at, other) => positions.set(other, at >= next && at < from ? at + 1 : at))
+      positions.set(each, next)
+    }
+
+    next += 1
+  }
+
+  return moves
+}
+
+/**
+ * Move a guide, with every section of it bookmarked, among a case's guides,
+ * if they are still the guides the page showed, in that order.
+ *
+ * @param {import('@hapi/hapi').Request} request - Signed in
+ * @param {{key: string, order: string[], from: number, to: number}} move -
+ *   `order` the case's guides' ids as shown; `from` and `to` among them, `to`
+ *   in the list without it
+ * @returns {Promise<boolean>} Whether it changed anything: not when the case's
+ *   guides are not as the page showed them
+ */
+async function moveGuide (request, { key, order, from, to }) {
+  const now = await _caseNow(request, key)
+  const guides = [...now?.found.guides ?? []]
+
+  if (guides.map(guide => guide.id).join() !== order.join() || to >= guides.length) {
+    return false
+  }
+
+  const stillThere = guides.flatMap(guide => guide.bookmarks.map(each => ({
+    op: 'test', path: `/${now.position}/bookmarks/${each.position}/guideId`, value: guide.id
+  })))
+
+  guides.splice(to, 0, ...guides.splice(from, 1))
+
+  return _patchCases(request, [
+    _caseStill(now.position, key),
+    ...stillThere,
+    ...bookmarkMoves(guides).map(({ from: at, to: into }) => ({
+      op: 'move', from: `/${now.position}/bookmarks/${at}`, path: `/${now.position}/bookmarks/${into}`
+    }))
+  ])
 }
 
 /**
@@ -132,6 +336,12 @@ function bookmarkedSections (cases, guideId) {
 
 export {
   bookmark,
+  bookmarkMoves,
   bookmarkedSections,
-  keptReference
+  keptReference,
+  moveCase,
+  moveGuide,
+  removeCase,
+  removeGuide,
+  removeSection
 }

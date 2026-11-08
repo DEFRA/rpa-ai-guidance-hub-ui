@@ -1,4 +1,4 @@
-import { bookmarkedSections, keptReference } from '../../../src/services/case-bookmarks.js'
+import { bookmarkMoves, bookmarkedSections, keptReference } from '../../../src/services/case-bookmarks.js'
 import { caseResponse } from '../../fixtures/guidance-api.js'
 
 const GUIDE = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
@@ -51,5 +51,21 @@ describe('bookmarkedSections', () => {
     const cases = [caseResponse({ guides: [{ id: OTHER_GUIDE, title: 'Other', bookmarks: [bookmarked('1-one')] }] })]
 
     expect(bookmarkedSections(cases, GUIDE).size).toBe(0)
+  })
+})
+
+describe('bookmarkMoves', () => {
+  const at = (...positions) => ({ bookmarks: positions.map(position => ({ position })) })
+
+  test('moves nothing when the guides\' bookmarks are in their order already', () => {
+    expect(bookmarkMoves([at(0, 1), at(2)])).toEqual([])
+  })
+
+  test('brings a guide\'s bookmarks up before the next guide\'s, one move each', () => {
+    expect(bookmarkMoves([at(1), at(0, 2)])).toEqual([{ from: 1, to: 0 }])
+  })
+
+  test('gathers a guide\'s bookmarks from wherever they are, keeping their order', () => {
+    expect(bookmarkMoves([at(1, 3), at(0, 2)])).toEqual([{ from: 1, to: 0 }, { from: 3, to: 1 }])
   })
 })
