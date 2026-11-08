@@ -1,33 +1,37 @@
 const TOOLTIP_DISMISSED_CLASS = 'app-side-nav__rail-item--tooltip-dismissed'
 
 /**
- * Lets Esc dismiss a collapsed panel tooltip while it is hovered or focused.
+ * Lets Esc dismiss a tooltip while its control is hovered or focused, until
+ * the pointer leaves the control or it loses focus. The page listens for every
+ * control, so one drawn later, as the guide viewer draws its headings'
+ * controls, works the same.
  * @returns {void}
  */
 function initRailTooltips () {
-  const items = document.querySelectorAll('[data-side-nav-tooltip]')
+  const reset = (event) => {
+    const item = _tooltipOf(event.target)
 
-  items.forEach((item) => {
-    const reset = () => item.classList.remove(TOOLTIP_DISMISSED_CLASS)
-
-    item.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
-        item.classList.add(TOOLTIP_DISMISSED_CLASS)
-      }
-    })
-    item.addEventListener('blur', reset)
-    item.addEventListener('mouseleave', reset)
-  })
-
-  if (items.length === 0) {
-    return
+    if (item && !item.contains(event.relatedTarget)) {
+      item.classList.remove(TOOLTIP_DISMISSED_CLASS)
+    }
   }
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
-      document.querySelector('[data-side-nav-tooltip]:hover')?.classList.add(TOOLTIP_DISMISSED_CLASS)
+      [_tooltipOf(event.target), document.querySelector('[data-side-nav-tooltip]:hover')]
+        .forEach((item) => item?.classList.add(TOOLTIP_DISMISSED_CLASS))
     }
   })
+  document.addEventListener('focusout', reset)
+  document.addEventListener('mouseout', reset)
+}
+
+/**
+ * @param {EventTarget|null} target
+ * @returns {Element|null} The control with a tooltip that `target` is in, if any
+ */
+function _tooltipOf (target) {
+  return target instanceof window.Element ? target.closest('[data-side-nav-tooltip]') : null
 }
 
 /**
