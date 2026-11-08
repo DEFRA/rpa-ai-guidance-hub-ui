@@ -1,5 +1,8 @@
-import { bookmarkMoves, bookmarkedSections, keptReference } from '../../../src/services/case-bookmarks.js'
+import * as usersApi from '../../../src/infra/guidance-api/users.js'
+import { bookmark, bookmarkMoves, bookmarkedSections, keptReference } from '../../../src/services/case-bookmarks.js'
 import { caseResponse } from '../../fixtures/guidance-api.js'
+
+vi.mock('../../../src/infra/guidance-api/users.js')
 
 const GUIDE = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
 const OTHER_GUIDE = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
@@ -67,5 +70,17 @@ describe('bookmarkMoves', () => {
 
   test('gathers a guide\'s bookmarks from wherever they are, keeping their order', () => {
     expect(bookmarkMoves([at(1, 3), at(0, 2)])).toEqual([{ from: 1, to: 0 }, { from: 3, to: 1 }])
+  })
+})
+
+describe('bookmark', () => {
+  test('saves nothing when the user\'s cases cannot be had, as it cannot check them', async () => {
+    usersApi.getUser.mockRejectedValue(new Error('API unavailable'))
+    const request = { auth: { credentials: { userId: 'user-1' } }, app: {} }
+
+    const saved = await bookmark(request, { type: 'case', ref: 'W1234567', guideId: GUIDE, section: '1-pay', heading: '1 Pay', shown: [] })
+
+    expect(saved).toBe(false)
+    expect(usersApi.patchCases).not.toHaveBeenCalled()
   })
 })

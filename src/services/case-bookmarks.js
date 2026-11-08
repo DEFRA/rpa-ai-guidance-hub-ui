@@ -98,12 +98,12 @@ function _asShown (cases, shown) {
  * @param {string[]} place.shown - The keys of the cases the page offered, in
  *   its order
  * @returns {Promise<boolean>} Whether it is bookmarked there now: not when the
- *   cases changed since the page offered them
+ *   cases changed since the page offered them, nor when they cannot be read
  */
 async function bookmark (request, { type, ref, guideId, section, heading, shown }) {
-  const cases = await casesOf(request) ?? []
+  const cases = await casesOf(request)
 
-  if (!_asShown(cases, shown)) {
+  if (!cases || !_asShown(cases, shown)) {
     return false
   }
 

@@ -63,10 +63,17 @@ async function getBookmarkPage (request, h) {
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
  * @returns {Promise<import('@hapi/hapi').ResponseObject>}
+ * @throws {Boom.Boom} 502 when the user's cases cannot be had from the API, as
+ *   nothing can be saved without checking them
  */
 async function postBookmark (request, h) {
   const { guide, heading } = await _sectionOf(request, request.payload.section)
-  const cases = await usersService.casesOf(request) ?? []
+  const cases = await usersService.casesOf(request)
+
+  if (!cases) {
+    throw Boom.badGateway('The case bookmarks cannot be read')
+  }
+
   const sbiBookmarks = config.get('featureFlags.sbiBookmarks')
   const chosen = chosenCase(request.payload, cases, sbiBookmarks)
   const askAgain = (errors, code) => h
