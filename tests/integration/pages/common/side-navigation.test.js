@@ -340,17 +340,22 @@ describe('Side navigation', () => {
       })
 
       test.each([
-        ['its last section', { guideId: GUIDE, sectionId: INTRO.sectionId }],
-        ['its only guide', { guideId: GUIDE }]
-      ])('remove the case with %s', async (_what, form) => {
+        ['its last section', { guideId: GUIDE, sectionId: INTRO.sectionId }, { op: 'test', path: '/1/bookmarks/0/sectionId', value: INTRO.sectionId }],
+        ['its only guide', { guideId: GUIDE }, { op: 'test', path: '/1/bookmarks/0/guideId', value: GUIDE }]
+      ])('remove the case with %s, only if nothing was added to it since', async (_what, form, tested) => {
         const removing = patching([
           { op: 'test', path: '/1/key', value: K2 },
+          tested,
+          { op: 'remove', path: '/1/bookmarks/0' },
+          { op: 'test', path: '/1/bookmarks', value: [] },
           { op: 'remove', path: '/1' }
         ])
 
-        await postAs('/case-bookmarks/remove', { key: K2, returnTo: '/hub', ...form })
+        const { statusCode, headers } = await postAs('/case-bookmarks/remove', { key: K2, returnTo: '/hub', ...form })
 
         expect(removing.isDone()).toBe(true)
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+        expect(headers.location).toBe('/hub#side-nav-bookmarks')
       })
 
       test('move a case, answering a script that dragged it with nothing to show', async () => {

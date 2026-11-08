@@ -4,7 +4,7 @@ import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
-import { caseResponse, guideResponse, userResponse } from '../../../fixtures/guidance-api.js'
+import { caseResponse, guideResponse, refusalResponse, userResponse } from '../../../fixtures/guidance-api.js'
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
@@ -143,6 +143,16 @@ describe('bookmarking a section of a guide to a case', () => {
       expect(payload).toContain('<option value="W1234567">W1234567</option>')
       expect(payload).toContain('<option value="123456789">123456789</option>')
     })
+
+    test('sends the cases it offered, in their order, so that saving can tell whether they changed', async () => {
+      const second = caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', ref: 'W7654321' })
+      mockGuideAndUser([caseResponse(), second])
+
+      const { payload } = await get(`${BOOKMARK_PAGE}?section=11-before-you-begin`)
+      const shown = [...payload.matchAll(/<input type="hidden" name="shown" value="([^"]+)">/g)].map(([, key]) => key)
+
+      expect(shown).toEqual([caseResponse().key, second.key])
+    })
   })
 
   describe('the answer', () => {
@@ -162,6 +172,14 @@ describe('bookmarking a section of a guide to a case', () => {
       expect(payload).toContain(message)
     })
 
+    test('asks again with the cases as they are now, which the next save checks', async () => {
+      mockGuideAndUser([caseResponse()])
+
+      const { payload } = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: '' })
+
+      expect(payload).toContain(`<input type="hidden" name="shown" value="${caseResponse().key}">`)
+    })
+
     test('takes only SBIs from 105000000 to 999999999 once they are switched on', async () => {
       config.set('featureFlags.sbiBookmarks', true)
       mockGuideAndUser()
@@ -176,28 +194,31 @@ describe('bookmarking a section of a guide to a case', () => {
       mockGuideAndUser([caseResponse()])
       const patching = nock(GUIDANCE_API_BASE_URL)
         .patch(`/users/${USER_ID}/cases`, [
+          { op: 'test', path: '/0/key', value: caseResponse().key },
           { op: 'add', path: '/0', value: { type: 'case', ref: 'W7654321', bookmarks: [{ guideId: GUIDE_ID, section: '2-assign-case', heading: '2 Assign case' }] } }
         ])
         .reply(statusCodes.HTTP_STATUS_NO_CONTENT)
 
-      const { statusCode, headers } = await post({ section: '2-assign-case', choice: 'new-case', newCase: ' w7654321 ' })
+      const { statusCode, headers } = await post({ section: '2-assign-case', choice: 'new-case', newCase: ' w7654321 ', shown: [caseResponse().key] })
 
       expect(patching.isDone()).toBe(true)
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(headers.location).toBe(`${GUIDE_PAGE}?page=2#2-assign-case`)
     })
 
-    test('bookmarks the section to an existing case, if it is still the case the page offered', async () => {
+    test('bookmarks the section to an existing case, if the cases are still those the page offered', async () => {
+      const other = caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', ref: 'W7654321' })
       const existing = caseResponse()
-      mockGuideAndUser([caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', ref: 'W7654321' }), existing])
+      mockGuideAndUser([other, existing])
       const patching = nock(GUIDANCE_API_BASE_URL)
         .patch(`/users/${USER_ID}/cases`, [
+          { op: 'test', path: '/0/key', value: other.key },
           { op: 'test', path: '/1/key', value: existing.key },
           { op: 'add', path: '/1/bookmarks/-', value: { guideId: GUIDE_ID, section: '11-before-you-begin', heading: '1.1 Before you begin' } }
         ])
         .reply(statusCodes.HTTP_STATUS_NO_CONTENT)
 
-      const { headers } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567' })
+      const { headers } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [other.key, existing.key] })
 
       expect(patching.isDone()).toBe(true)
       expect(headers.location).toBe(`${GUIDE_PAGE}?page=1#11-before-you-begin`)
@@ -206,7 +227,7 @@ describe('bookmarking a section of a guide to a case', () => {
     test('does not bookmark a section to a case twice', async () => {
       mockGuideAndUser([caseResponse({ guides: [{ id: GUIDE_ID, title: 'Claiming the SFI payment', bookmarks: [SECTION] }] })])
 
-      const { statusCode, headers } = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: 'W1234567' })
+      const { statusCode, headers } = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: 'W1234567', shown: [caseResponse().key] })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(headers.location).toBe(`${GUIDE_PAGE}?page=1#11-before-you-begin`)
@@ -216,7 +237,26 @@ describe('bookmarking a section of a guide to a case', () => {
       mockGuideAndUser([caseResponse()])
       nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`).reply(statusCodes.HTTP_STATUS_CONFLICT)
 
-      const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567' })
+      const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [caseResponse().key] })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_CONFLICT)
+      expect(payload).toContain('Your case bookmarks changed while this page was open. Choose again.')
+    })
+
+    test('asks again, saving nothing, when the cases are not those the page offered, as when one was removed and made again', async () => {
+      mockGuideAndUser([caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c' })])
+
+      const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [caseResponse().key] })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_CONFLICT)
+      expect(payload).toContain('Your case bookmarks changed while this page was open. Choose again.')
+    })
+
+    test('asks again, saving nothing, when the hub finds the section bookmarked to the case already, as by another page', async () => {
+      mockGuideAndUser([caseResponse()])
+      nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`).reply(statusCodes.HTTP_STATUS_UNPROCESSABLE_ENTITY, refusalResponse({ detail: 'A section of a guide is bookmarked to W1234567 twice' }))
+
+      const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [caseResponse().key] })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_CONFLICT)
       expect(payload).toContain('Your case bookmarks changed while this page was open. Choose again.')

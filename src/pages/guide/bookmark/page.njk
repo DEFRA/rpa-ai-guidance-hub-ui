@@ -65,6 +65,7 @@
 
       <form method="post" action="{{ formAction }}" novalidate>
         {% if section %}<input type="hidden" name="section" value="{{ section }}">{% endif %}
+        {% for key in shown %}<input type="hidden" name="shown" value="{{ key }}">{% endfor %}
 
         {{ govukRadios({
           idPrefix: "bookmark-choice",

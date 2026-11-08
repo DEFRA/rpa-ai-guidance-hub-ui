@@ -81,7 +81,8 @@ async function postBookmark (request, h) {
     ...chosen,
     guideId: guide.id,
     section: heading.anchor,
-    heading: heading.title
+    heading: heading.title,
+    shown: request.payload.shown
   })
 
   if (!saved) {

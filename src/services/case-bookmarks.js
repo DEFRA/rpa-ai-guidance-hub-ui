@@ -2,7 +2,7 @@
  * @module The cases each user bookmarks sections of guides to, by a case ID or
  * an SBI application number, in their own order. The API keeps them on the
  * user's record and changes them by JSON Patch; a bookmark here is one patch,
- * which tests that the case is still where the page found it, so a page whose
+ * which tests that the cases are still those the page offered, so a page whose
  * cases have changed since changes nothing.
  */
 
@@ -73,9 +73,20 @@ function _holds (found, guideId, section) {
 }
 
 /**
+ * @private
+ * @param {Array<{key: string}>} cases - The user's, as they are now
+ * @param {string[]} shown - The keys of the cases a page offered
+ * @returns {boolean} Whether they are the cases the page offered, in its order
+ */
+function _asShown (cases, shown) {
+  return cases.length === shown.length && cases.every((each, at) => each.key === shown[at])
+}
+
+/**
  * Bookmark a section of a guide to one of the signed-in user's cases, or to a
- * new one, which goes first. A section bookmarked to the case already is
- * left as it is.
+ * new one, which goes first, if the cases are still those the page offered:
+ * one removed and made again meanwhile is another case. A section bookmarked
+ * to the case already is left as it is.
  *
  * @param {import('@hapi/hapi').Request} request - Signed in
  * @param {Object} place
@@ -84,11 +95,18 @@ function _holds (found, guideId, section) {
  * @param {string} place.guideId
  * @param {string} place.section - The section's anchor
  * @param {string} place.heading - The section's heading, as it reads now
+ * @param {string[]} place.shown - The keys of the cases the page offered, in
+ *   its order
  * @returns {Promise<boolean>} Whether it is bookmarked there now: not when the
- *   cases changed since they were read
+ *   cases changed since the page offered them
  */
-async function bookmark (request, { type, ref, guideId, section, heading }) {
+async function bookmark (request, { type, ref, guideId, section, heading, shown }) {
   const cases = await casesOf(request) ?? []
+
+  if (!_asShown(cases, shown)) {
+    return false
+  }
+
   const position = cases.findIndex(each => each.type === type && each.ref === ref)
   const entry = { guideId, section, heading }
 
@@ -96,13 +114,11 @@ async function bookmark (request, { type, ref, guideId, section, heading }) {
     return true
   }
 
-  const operations = position === -1
-    ? [{ op: 'add', path: '/0', value: { type, ref, bookmarks: [entry] } }]
-    : [
-        { op: 'test', path: `/${position}/key`, value: cases[position].key },
-        { op: 'add', path: `/${position}/bookmarks/-`, value: entry }
-      ]
-  return _patchCases(request, operations)
+  const adding = position === -1
+    ? { op: 'add', path: '/0', value: { type, ref, bookmarks: [entry] } }
+    : { op: 'add', path: `/${position}/bookmarks/-`, value: entry }
+
+  return _patchCases(request, [...shown.map((key, at) => _caseStill(at, key)), adding])
 }
 
 /**
@@ -110,7 +126,8 @@ async function bookmark (request, { type, ref, guideId, section, heading }) {
  * @param {import('@hapi/hapi').Request} request
  * @param {Array<object>} operations
  * @returns {Promise<boolean>} Whether the patch was made: not when a `test`
- *   failed, the cases having changed since they were read
+ *   failed, the cases having changed since they were read, nor when the patch
+ *   no longer fits them
  */
 async function _patchCases (request, operations) {
   const res = await usersApi.patchCases(await userIdOf(request), operations)
@@ -171,6 +188,25 @@ async function removeCase (request, key) {
 }
 
 /**
+ * @private
+ * The operations that take bookmarks out of a case, and the case too when
+ * they were all it had: then only if nothing was added to it meanwhile, which
+ * the case being empty once they are out shows.
+ *
+ * @param {{position: number, found: {key: string}}} now - The case
+ * @param {Array<object>} removals - The tests and removals of its bookmarks
+ * @param {boolean} emptied - Whether they are all the case has
+ * @returns {Array<object>}
+ */
+function _takingOut ({ position, found }, removals, emptied) {
+  const operations = [_caseStill(position, found.key), ...removals]
+
+  return emptied
+    ? [...operations, { op: 'test', path: `/${position}/bookmarks`, value: [] }, { op: 'remove', path: `/${position}` }]
+    : operations
+}
+
+/**
  * Take a guide, with every section of it bookmarked, out of one of the
  * signed-in user's cases. The case goes too when it was the case's only
  * guide, as a case with nothing in it is not kept.
@@ -188,17 +224,12 @@ async function removeGuide (request, { key, guideId }) {
     return false
   }
 
-  if (now.found.guides.length === 1) {
-    return _removeCaseAt(request, now)
-  }
-
   const positions = guide.bookmarks.map(each => each.position).sort((a, b) => b - a)
 
-  return _patchCases(request, [
-    _caseStill(now.position, key),
+  return _patchCases(request, _takingOut(now, [
     ...positions.map(at => ({ op: 'test', path: `/${now.position}/bookmarks/${at}/guideId`, value: guideId })),
     ...positions.map(at => ({ op: 'remove', path: `/${now.position}/bookmarks/${at}` }))
-  ])
+  ], now.found.guides.length === 1))
 }
 
 /**
@@ -218,17 +249,12 @@ async function removeSection (request, { key, guideId, sectionId }) {
     return false
   }
 
-  if (now.found.guides.flatMap(each => each.bookmarks).length === 1) {
-    return _removeCaseAt(request, now)
-  }
-
   const path = `/${now.position}/bookmarks/${placed.position}`
 
-  return _patchCases(request, [
-    _caseStill(now.position, key),
+  return _patchCases(request, _takingOut(now, [
     { op: 'test', path: `${path}/sectionId`, value: sectionId },
     { op: 'remove', path }
-  ])
+  ], now.found.guides.flatMap(each => each.bookmarks).length === 1))
 }
 
 /**

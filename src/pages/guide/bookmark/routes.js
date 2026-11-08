@@ -36,7 +36,9 @@ const routes = [
           existingCase: Joi.string().allow(''),
           newCase: Joi.string().allow(''),
           existingSbi: Joi.string().allow(''),
-          newSbi: Joi.string().allow('')
+          newSbi: Joi.string().allow(''),
+          // The keys of the cases the page offered, in their order.
+          shown: Joi.array().items(Joi.string().uuid()).single().default([])
         }),
         failAction: (_request, h) => h.response().code(statusCodes.HTTP_STATUS_BAD_REQUEST).takeover()
       }

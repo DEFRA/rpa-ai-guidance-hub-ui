@@ -64,15 +64,16 @@ async function patchPins (userId, operations) {
  * @param {Array<{op: string, path: string, value?: any, from?: string}>} operations
  * @returns {Promise<{ok: boolean, status: number, data: any}>} - 204; not ok
  *   with 409 when a `test` failed (the cases changed since the page showed
- *   them)
- * @throws {GuidanceApiError} - When response is not ok, and not a 409
+ *   them), or 422 when the patch no longer fits them (another page bookmarked
+ *   the same section meanwhile)
+ * @throws {GuidanceApiError} - When response is not ok, and not a 409 or 422
  */
 async function patchCases (userId, operations) {
   return guidanceApiClient.request(`${_userPath(userId)}/cases`, {
     method: 'PATCH',
     body: operations,
     headers: { 'Content-Type': 'application/json-patch+json' },
-    expected: [statusCodes.HTTP_STATUS_CONFLICT],
+    expected: [statusCodes.HTTP_STATUS_CONFLICT, statusCodes.HTTP_STATUS_UNPROCESSABLE_ENTITY],
     responseType: 'text'
   })
 }

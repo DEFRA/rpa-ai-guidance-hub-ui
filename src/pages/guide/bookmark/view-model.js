@@ -93,7 +93,7 @@ class BookmarkViewModel {
    * @param {{id: string, title: string|null}} data.guide
    * @param {{anchor: string, title: string, page: number}} data.heading - The
    *   section being bookmarked
-   * @param {Array<{type: string, ref: string}>} data.cases - The user's
+   * @param {Array<{key: string, type: string, ref: string}>} data.cases - The user's
    * @param {boolean} data.sbiBookmarks - Whether the SBI choices are switched on
    * @param {Object<string, string>} [data.answer] - As given, to show again
    * @param {Object<string, string>} [data.errors] - By field
@@ -103,6 +103,9 @@ class BookmarkViewModel {
     this.hint = `‘${heading.title}’ in ${guide.title ?? UNTITLED} will show under that case in the side navigation.`
     this.formAction = `/guides/${encodeURIComponent(guide.id)}/bookmark`
     this.section = heading.anchor
+    // The cases the page offers, by key, which saving checks are still the
+    // user's cases, so that a change made meanwhile saves nothing.
+    this.shown = cases.map(each => each.key)
     this.button = 'Bookmark section'
     this.cancelHref = sectionHref(guide.id, heading)
     this.chosen = answer.choice ?? null
