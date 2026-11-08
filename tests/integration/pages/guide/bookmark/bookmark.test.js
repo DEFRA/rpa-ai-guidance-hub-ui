@@ -2,11 +2,11 @@ import { constants as statusCodes } from 'node:http2'
 
 import nock from 'nock'
 
-import { config } from '../../../../src/config/config.js'
-import { createServer } from '../../../../src/server/server.js'
-import { caseResponse, guideResponse, refusalResponse, userResponse } from '../../../fixtures/guidance-api.js'
-import { mergeCookies } from '../../helpers/cookies.js'
-import { loginAsDevUser } from '../../helpers/login.js'
+import { config } from '../../../../../src/config/config.js'
+import { createServer } from '../../../../../src/server/server.js'
+import { caseResponse, guideResponse, refusalResponse, userResponse } from '../../../../fixtures/guidance-api.js'
+import { mergeCookies } from '../../../helpers/cookies.js'
+import { loginAsDevUser } from '../../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const GUIDE_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
@@ -36,10 +36,10 @@ const MARKDOWN = [
 
 const SECTION = { sectionId: '019a0000-0000-7000-8000-000000000011', section: '11-before-you-begin', heading: '1.1 Before you begin', position: 0 }
 
-function mockGuideAndUser (cases = []) {
+function mockGuideAndUser (cases = [], markdown = MARKDOWN) {
   nock(GUIDANCE_API_BASE_URL)
     .get(`/guides/${GUIDE_ID}`).reply(statusCodes.HTTP_STATUS_OK, guideResponse({ id: GUIDE_ID, title: 'Claiming the SFI payment' }))
-    .get(`/guides/${GUIDE_ID}/content`).reply(statusCodes.HTTP_STATUS_OK, MARKDOWN, { 'Content-Type': 'text/plain' })
+    .get(`/guides/${GUIDE_ID}/content`).reply(statusCodes.HTTP_STATUS_OK, markdown, { 'Content-Type': 'text/plain' })
     .post('/users').optionally().reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
     .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ cases }))
 }
@@ -170,6 +170,30 @@ describe('bookmarking a section of a guide to a case', () => {
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
       expect(payload).toContain('There is a problem')
       expect(payload).toContain(message)
+    })
+
+    test.each([
+      ['"New case", as there is no existing case', [], '#bookmark-choice-2'],
+      ['"Existing case", when there is one', [caseResponse()], '#bookmark-choice']
+    ])('links the error for no choice to the first that can be made: %s', async (_name, cases, href) => {
+      mockGuideAndUser(cases)
+
+      const { payload } = await post({ section: '11-before-you-begin' })
+
+      expect(payload).toMatch(new RegExp(`<a href="${href}">Select if you are bookmarking`))
+    })
+
+    test('saves nothing, saying the service cannot do it now, when the user\'s cases cannot be read', async () => {
+      nock(GUIDANCE_API_BASE_URL)
+        .get(`/guides/${GUIDE_ID}`).reply(statusCodes.HTTP_STATUS_OK, guideResponse({ id: GUIDE_ID, title: 'Claiming the SFI payment' }))
+        .get(`/guides/${GUIDE_ID}/content`).reply(statusCodes.HTTP_STATUS_OK, MARKDOWN, { 'Content-Type': 'text/plain' })
+        .post('/users').optionally().reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_SERVICE_UNAVAILABLE)
+
+      const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: 'W7654321' })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_GATEWAY)
+      expect(payload).toContain('The case bookmarks cannot be read')
     })
 
     test('asks again with the cases as they are now, which the next save checks', async () => {
@@ -304,8 +328,8 @@ describe('a guide\'s headings', () => {
     await server?.stop({ timeout: 0 })
   })
 
-  async function guidePage (cases) {
-    mockGuideAndUser(cases)
+  async function guidePage (cases, markdown) {
+    mockGuideAndUser(cases, markdown)
     nock(GUIDANCE_API_BASE_URL).post(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
 
     return (await server.inject({ method: 'GET', url: GUIDE_PAGE, headers: { cookie } })).payload
@@ -318,6 +342,15 @@ describe('a guide\'s headings', () => {
     expect(payload).toContain(`href="${BOOKMARK_PAGE}?section=11-before-you-begin"`)
     expect(payload).toContain('<span class="govuk-visually-hidden">Bookmark to a case: 1.1 Before you begin</span>')
     expect(payload).toContain('data-heading-bookmarks="[{&quot;href&quot;:&quot;')
+  })
+
+  test('have one only where the hub keeps a section ID for them, so not inside a quote or a list', async () => {
+    const payload = await guidePage([], [MARKDOWN, '', '> ### A quoted note', '', '- ### A listed note'].join('\n'))
+
+    expect(payload).toContain(`href="${BOOKMARK_PAGE}?section=2-assign-case"`)
+    expect(payload).toContain('id="a-quoted-note"')
+    expect(payload).not.toContain('section=a-quoted-note')
+    expect(payload).not.toContain('section=a-listed-note')
   })
 
   test('say under them which cases they are bookmarked to, offering another', async () => {
