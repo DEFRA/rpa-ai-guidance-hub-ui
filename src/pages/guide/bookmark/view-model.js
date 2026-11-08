@@ -92,6 +92,9 @@ function sectionHref (guideId, heading) {
 }
 
 class BookmarkViewModel {
+  heading = 'Bookmark this section to a case'
+  button = 'Bookmark section'
+
   /**
    * @param {Object} data
    * @param {{id: string, title: string|null}} data.guide
@@ -103,14 +106,12 @@ class BookmarkViewModel {
    * @param {Object<string, string>} [data.errors] - By field
    */
   constructor ({ guide, heading, cases, sbiBookmarks, answer = {}, errors = {} }) {
-    this.heading = 'Bookmark this section to a case'
     this.hint = `‘${heading.title}’ in ${guide.title ?? UNTITLED} will show under that case in the side navigation.`
     this.formAction = `/guides/${encodeURIComponent(guide.id)}/bookmark`
     this.section = heading.anchor
     // The cases the page offers, by key, which saving checks are still the
     // user's cases, so that a change made meanwhile saves nothing.
     this.shown = cases.map(each => each.key)
-    this.button = 'Bookmark section'
     this.cancelHref = sectionHref(guide.id, heading)
     this.chosen = answer.choice ?? null
     this.errors = errors
