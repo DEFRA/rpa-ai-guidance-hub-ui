@@ -22,6 +22,10 @@ const CHOICES = Object.freeze([
 
 const NO_CHOICE = 'Select if you are bookmarking to an existing or new case ID or SBI application number'
 
+// The radios' id prefix, as the page gives it; GOV.UK Frontend gives the first
+// radio the prefix alone, and each other one its number after it.
+const CHOICE_ID = 'bookmark-choice'
+
 /**
  * @private
  * @param {Array<{type: string, ref: string}>} cases - The user's
@@ -110,8 +114,6 @@ class BookmarkViewModel {
     this.cancelHref = sectionHref(guide.id, heading)
     this.chosen = answer.choice ?? null
     this.errors = errors
-    this.errorList = Object.entries(errors).map(([field, text]) => ({ text, href: `#bookmark-${field}` }))
-    this.pageTitle = this.errorList.length ? `Error: ${this.heading}` : this.heading
     this.choices = CHOICES.map(choice => ({
       ...choice,
       name: CASE_TYPES[choice.type].name,
@@ -120,6 +122,12 @@ class BookmarkViewModel {
       given: answer[choice.field] ?? '',
       refs: _refsOf(cases, choice.type)
     }))
+    // An error about the choice goes to the first choice that can be made, as
+    // a disabled radio cannot take focus.
+    const firstOffered = this.choices.findIndex(choice => !choice.disabled)
+    const choiceId = firstOffered === 0 ? CHOICE_ID : `${CHOICE_ID}-${firstOffered + 1}`
+    this.errorList = Object.entries(errors).map(([field, text]) => ({ text, href: `#${field === 'choice' ? choiceId : `bookmark-${field}`}` }))
+    this.pageTitle = this.errorList.length ? `Error: ${this.heading}` : this.heading
   }
 }
 
