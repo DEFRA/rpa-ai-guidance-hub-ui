@@ -126,7 +126,8 @@ class BookmarkViewModel {
     // a disabled radio cannot take focus.
     const firstOffered = this.choices.findIndex(choice => !choice.disabled)
     const choiceId = firstOffered === 0 ? CHOICE_ID : `${CHOICE_ID}-${firstOffered + 1}`
-    this.errorList = Object.entries(errors).map(([field, text]) => ({ text, href: `#${field === 'choice' ? choiceId : `bookmark-${field}`}` }))
+    const idOf = field => field === 'choice' ? choiceId : `bookmark-${field}`
+    this.errorList = Object.entries(errors).map(([field, text]) => ({ text, href: `#${idOf(field)}` }))
     this.pageTitle = this.errorList.length ? `Error: ${this.heading}` : this.heading
   }
 }
