@@ -151,10 +151,8 @@
           <li class="app-side-nav__row" data-reorder-id="{{ pin.key }}" data-reorder-label="{{ pin.label }}">
             <a class="app-side-nav__link" href="{{ pin.href }}" draggable="false" data-reorder-handle>
               {{ icon("star-filled", "app-side-nav__star") }}
-              <span class="app-side-nav__text">{{ pin.label }}</span>
-              {% if pin.guideTitle %}
-                <span class="app-side-nav__meta">{{ pin.guideTitle }}</span>
-              {% endif %}
+              {# A section's guide on a line of its own, wrapping with the heading. #}
+              <span class="app-side-nav__text">{{ pin.label }}{% if pin.guideTitle %}<span class="govuk-visually-hidden">, in </span><span class="app-side-nav__in-guide">{{ pin.guideTitle }}</span>{% endif %}</span>
             </a>
             <details class="app-side-nav__more">
               <summary class="app-side-nav__icon-button app-side-nav__more-button">

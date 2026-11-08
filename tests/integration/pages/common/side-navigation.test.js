@@ -153,7 +153,8 @@ describe('Side navigation', () => {
 
       expect(second).toContain(`data-reorder-id="${SECOND}/${SECTION}" data-reorder-label="2 Close it"`)
       expect(second).toContain(`href="/guides/${SECOND}?section=2-close-it"`)
-      expect(second).toMatch(/app-side-nav__text">2 Close it<\/span>\s*<span class="app-side-nav__meta">Closing a case<\/span>/)
+      expect(second).toContain('<span class="app-side-nav__text">2 Close it<span class="govuk-visually-hidden">, in </span><span class="app-side-nav__in-guide">Closing a case</span></span>')
+      expect(first).not.toContain('app-side-nav__in-guide')
       expect(second).toMatch(new RegExp(`action="/pin-toggle" data-reorder-follows="${SECOND}/${SECTION}">[\\s\\S]*name="position" value="1"[\\s\\S]*name="sectionId" value="${SECTION}"`))
       expect(first).toContain(`action="/pin-toggle" data-reorder-follows="${FIRST}">`)
       expect(first).not.toContain('name="sectionId"')
