@@ -186,13 +186,13 @@ function guidePageResponse (overrides = {}) {
 
 /**
  * Body of `POST /users` (201, or 200 for a user signed in before) and of
- * `GET /users/{id}` on 200: the hub's user, with the guides they have pinned,
- * in their order, and their cases (`caseResponse`), in their order. By
- * default the dev user `loginAsDevUser` signs in, with nothing pinned and no
- * cases.
+ * `GET /users/{id}` on 200: the hub's user, with the guides and sections they
+ * have pinned (`pinResponse`), in their order, and their cases
+ * (`caseResponse`), in their order. By default the dev user `loginAsDevUser`
+ * signs in, with nothing pinned and no cases.
  *
  * Verified against the guidance API's `User` schema on 2026-11-08: id,
- * identity, displayName, createdAt, pinned as `{id, title}` items, and cases
+ * identity, displayName, createdAt, pinned as `PinInBrief` items, and cases
  * as `CaseInBrief` items.
  *
  * @param {Object} [overrides]
@@ -206,6 +206,28 @@ function userResponse (overrides = {}) {
     createdAt: '2026-10-06T08:00:00Z',
     pinned: [],
     cases: [],
+    ...overrides
+  }
+}
+
+/**
+ * One of `GET /users/{id}`'s pins: a guide the user has pinned, or a section of
+ * one, with the guide's title. By default the whole guide `guideResponse`
+ * makes, with no section.
+ *
+ * Verified against the guidance API's `PinInBrief` schema on 2026-11-08: id,
+ * title, and sectionId, section and heading, each null for a whole guide.
+ *
+ * @param {Object} [overrides]
+ * @returns {{id: string, title: string|null, sectionId: string|null, section: string|null, heading: string|null}}
+ */
+function pinResponse (overrides = {}) {
+  return {
+    id: 'guide-1',
+    title: 'Claiming the SFI payment',
+    sectionId: null,
+    section: null,
+    heading: null,
     ...overrides
   }
 }
@@ -294,6 +316,7 @@ export {
   guideResponse,
   guideSummaryResponse,
   pinnedGuidesResponse,
+  pinResponse,
   recentlyOpenedResponse,
   refusalResponse,
   versionResponse,

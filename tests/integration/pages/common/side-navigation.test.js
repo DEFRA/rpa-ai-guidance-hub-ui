@@ -5,7 +5,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { initiateUploadResponse } from '../../../fixtures/cdp-uploader.js'
-import { caseResponse, guidePageResponse, schemesResponse, userResponse } from '../../../fixtures/guidance-api.js'
+import { caseResponse, guidePageResponse, pinResponse, schemesResponse, userResponse } from '../../../fixtures/guidance-api.js'
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
@@ -78,7 +78,7 @@ describe('Side navigation', () => {
     }
 
     test('are counted beside "Pinned"', async () => {
-      const cookie = await signedInWith([{ id: FIRST, title: 'Claiming a payment' }, { id: SECOND, title: 'Closing a case' }])
+      const cookie = await signedInWith([pinResponse({ id: FIRST, title: 'Claiming a payment' }), pinResponse({ id: SECOND, title: 'Closing a case' })])
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
@@ -86,7 +86,7 @@ describe('Side navigation', () => {
     })
 
     test('are counted on the folded navigation\'s icon, and in its name', async () => {
-      const signedIn = await signedInWith([{ id: FIRST, title: 'Claiming a payment' }])
+      const signedIn = await signedInWith([pinResponse({ id: FIRST, title: 'Claiming a payment' })])
       const folded = await server.inject({ method: 'POST', url: '/side-nav/toggle', headers: { cookie: signedIn }, payload: { collapsed: true, returnTo: '/hub' } })
       const cookie = mergeCookies(signedIn, folded.headers['set-cookie'])
 
@@ -118,7 +118,7 @@ describe('Side navigation', () => {
     }
 
     test('are listed in the user\'s order, each linking to its guide, with their number', async () => {
-      const section = await pinnedSection([{ id: FIRST, title: 'Claiming a payment' }, { id: SECOND, title: 'Closing a case' }])
+      const section = await pinnedSection([pinResponse({ id: FIRST, title: 'Claiming a payment' }), pinResponse({ id: SECOND, title: 'Closing a case' })])
 
       expect(section).toMatch(/app-side-nav__section-count">2</)
       expect(section.indexOf(`href="/guides/${FIRST}"`)).toBeGreaterThan(-1)
@@ -128,7 +128,7 @@ describe('Side navigation', () => {
     })
 
     test('each have a menu to open, unpin and move it, moving only where it can go', async () => {
-      const section = await pinnedSection([{ id: FIRST, title: 'Claiming a payment' }, { id: SECOND, title: 'Closing a case' }])
+      const section = await pinnedSection([pinResponse({ id: FIRST, title: 'Claiming a payment' }), pinResponse({ id: SECOND, title: 'Closing a case' })])
       const [first, second] = section.split('<li class="app-side-nav__row"').slice(1)
       const moveForms = (row) => row.split('<form').filter((form) => form.includes('action="/pin-order"'))
       const [firstUp, firstDown] = moveForms(first)
@@ -156,8 +156,10 @@ describe('Side navigation', () => {
       nock(GUIDANCE_API_BASE_URL).post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
       const moving = nock(GUIDANCE_API_BASE_URL)
         .patch(`/users/${USER_ID}/pins`, [
-          { op: 'test', path: '/0', value: FIRST },
-          { op: 'test', path: '/1', value: SECOND },
+          { op: 'test', path: '/0/guideId', value: FIRST },
+          { op: 'test', path: '/0/sectionId', value: null },
+          { op: 'test', path: '/1/guideId', value: SECOND },
+          { op: 'test', path: '/1/sectionId', value: null },
           { op: 'move', from: '/0', path: '/1' }
         ])
         .reply(statusCodes.HTTP_STATUS_NO_CONTENT)

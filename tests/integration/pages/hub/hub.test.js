@@ -5,7 +5,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
-import { guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -385,7 +385,7 @@ describe('#hubController', () => {
       nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({
         items: [guideSummaryResponse({ id: OTHER }), guideSummaryResponse({ id: PINNED })]
       }))
-      const cookie = await signedIn({ pinned: [{ id: PINNED, title: 'Claiming the SFI payment' }] })
+      const cookie = await signedIn({ pinned: [pinResponse({ id: PINNED, title: 'Claiming the SFI payment' })] })
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub?system=CRM', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
@@ -404,8 +404,12 @@ describe('#hubController', () => {
     })
 
     test.each([
-      ['pins at the top', { pin: 'true' }, [{ op: 'add', path: '/0', value: OTHER }]],
-      ['unpins from where the page showed it', { pin: 'false', position: '2' }, [{ op: 'test', path: '/2', value: OTHER }, { op: 'remove', path: '/2' }]]
+      ['pins at the top', { pin: 'true' }, [{ op: 'add', path: '/0', value: { guideId: OTHER } }]],
+      ['unpins from where the page showed it', { pin: 'false', position: '2' }, [
+        { op: 'test', path: '/2/guideId', value: OTHER },
+        { op: 'test', path: '/2/sectionId', value: null },
+        { op: 'remove', path: '/2' }
+      ]]
     ])('a star %s, through the hub, then goes back to it', async (_name, form, patch) => {
       nock.cleanAll()
       const cookie = await signedIn({})
@@ -427,7 +431,7 @@ describe('#hubController', () => {
       nock.cleanAll()
       // The list says where each guide is among all the pins; the user's record,
       // read for the side navigation, may say otherwise if they changed between.
-      const cookie = await signedIn({ pinned: [{ id: PINNED, title: 'Claiming the SFI payment' }] })
+      const cookie = await signedIn({ pinned: [pinResponse({ id: PINNED, title: 'Claiming the SFI payment' })] })
       nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/pins`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, pinnedGuidesResponse({
         items: [guideSummaryResponse({ id: PINNED, position: 1 })]
       }))
@@ -521,7 +525,7 @@ describe('#hubController', () => {
 
     test('list on their own page newest first, beside the filters, without a sort, each with its star', async () => {
       nock.cleanAll()
-      const cookie = await signedIn({ pinned: [{ id: OLDER, title: 'Claiming the SFI payment' }] })
+      const cookie = await signedIn({ pinned: [pinResponse({ id: OLDER, title: 'Claiming the SFI payment' })] })
       nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/recently-opened`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, recentlyOpenedResponse({
         items: [
           guideSummaryResponse({ id: NEWER, latestVersion: versionResponse({ title: 'Closing a case' }), openedAt: '2026-11-03T17:00:00' }),

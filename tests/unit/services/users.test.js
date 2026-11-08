@@ -132,7 +132,7 @@ describe('users service', () => {
 
       await usersService.pin(signedInRequest(), 'guide-3')
 
-      expect(usersApi.patchPins).toHaveBeenCalledWith(HUB_ID, [{ op: 'add', path: '/0', value: 'guide-3' }])
+      expect(usersApi.patchPins).toHaveBeenCalledWith(HUB_ID, [{ op: 'add', path: '/0', value: { guideId: 'guide-3' } }])
     })
 
     test('a guide is moved only if the pins are still in the order the page showed', async () => {
@@ -141,9 +141,12 @@ describe('users service', () => {
       await usersService.movePin(signedInRequest(), ['guide-2', 'guide-1', 'guide-3'], 0, 1)
 
       expect(usersApi.patchPins).toHaveBeenCalledWith(HUB_ID, [
-        { op: 'test', path: '/0', value: 'guide-2' },
-        { op: 'test', path: '/1', value: 'guide-1' },
-        { op: 'test', path: '/2', value: 'guide-3' },
+        { op: 'test', path: '/0/guideId', value: 'guide-2' },
+        { op: 'test', path: '/0/sectionId', value: null },
+        { op: 'test', path: '/1/guideId', value: 'guide-1' },
+        { op: 'test', path: '/1/sectionId', value: null },
+        { op: 'test', path: '/2/guideId', value: 'guide-3' },
+        { op: 'test', path: '/2/sectionId', value: null },
         { op: 'move', from: '/0', path: '/1' }
       ])
     })
@@ -154,7 +157,8 @@ describe('users service', () => {
       await usersService.unpin(signedInRequest(), 'guide-1', 1)
 
       expect(usersApi.patchPins).toHaveBeenCalledWith(HUB_ID, [
-        { op: 'test', path: '/1', value: 'guide-1' },
+        { op: 'test', path: '/1/guideId', value: 'guide-1' },
+        { op: 'test', path: '/1/sectionId', value: null },
         { op: 'remove', path: '/1' }
       ])
     })

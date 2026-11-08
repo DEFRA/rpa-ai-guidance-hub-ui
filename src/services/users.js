@@ -84,12 +84,12 @@ function _userOf (request) {
 }
 
 /**
- * The guides the signed-in user has pinned, in their order, each with its
- * title. Not known when the user cannot be had, which is logged: a page shows
- * without them rather than failing.
+ * The guides, and sections of guides, the signed-in user has pinned, in their
+ * order, each with its guide's title. Not known when the user cannot be had,
+ * which is logged: a page shows without them rather than failing.
  *
  * @param {import('@hapi/hapi').Request} request - Signed in
- * @returns {Promise<Array<{id: string, title: string|null}>|null>}
+ * @returns {Promise<Array<{id: string, title: string|null, sectionId: string|null, section: string|null, heading: string|null}>|null>}
  */
 async function pinnedOf (request) {
   try {
@@ -127,7 +127,7 @@ async function casesOf (request) {
  * @returns {Promise<boolean>} Whether it changed anything (not if pinned already)
  */
 async function pin (request, guideId) {
-  return _patchPins(request, [{ op: 'add', path: '/0', value: guideId }])
+  return _patchPins(request, [{ op: 'add', path: '/0', value: { guideId } }])
 }
 
 /**
@@ -141,7 +141,7 @@ async function pin (request, guideId) {
  */
 async function unpin (request, guideId, position) {
   return _patchPins(request, [
-    { op: 'test', path: `/${position}`, value: guideId },
+    ..._wholeGuideAt(position, guideId),
     { op: 'remove', path: `/${position}` }
   ])
 }
@@ -159,9 +159,23 @@ async function unpin (request, guideId, position) {
  */
 async function movePin (request, order, from, to) {
   return _patchPins(request, [
-    ...order.map((guideId, position) => ({ op: 'test', path: `/${position}`, value: guideId })),
+    ...order.flatMap((guideId, position) => _wholeGuideAt(position, guideId)),
     { op: 'move', from: `/${from}`, path: `/${to}` }
   ])
+}
+
+/**
+ * @private
+ * @param {number} position - Among the user's pins, from 0
+ * @param {string} guideId
+ * @returns {Array<object>} The tests that the whole guide, not a section of
+ *   it, is pinned there
+ */
+function _wholeGuideAt (position, guideId) {
+  return [
+    { op: 'test', path: `/${position}/guideId`, value: guideId },
+    { op: 'test', path: `/${position}/sectionId`, value: null }
+  ]
 }
 
 /**

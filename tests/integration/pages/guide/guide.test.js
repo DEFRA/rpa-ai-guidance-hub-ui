@@ -4,7 +4,7 @@ import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
-import { guideResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
+import { guideResponse, pinResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
@@ -314,7 +314,7 @@ describe('#guideController', () => {
 
     test.each([
       ['Pin guide', [], 'true'],
-      ['Unpin guide', [{ id: GUIDE_ID, title: 'Claiming the SFI payment' }], 'false']
+      ['Unpin guide', [pinResponse({ id: GUIDE_ID, title: 'Claiming the SFI payment' })], 'false']
     ])('is offered as %s, beside the guide\'s tags', async (label, pinned, pin) => {
       mockGuide()
       nock(GUIDANCE_API_BASE_URL)
