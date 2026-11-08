@@ -207,6 +207,16 @@ $app-side-nav-muted: #505a5f;
   transform: translateY(-50%);
 }
 
+// A tooltip on the left of its control, for a control at the window's right,
+// where it would run past the window, and the page would scroll sideways while it
+// showed.
+.app-side-nav__tooltip--left {
+  right: 100%;
+  left: auto;
+  border-right: 10px solid transparent;
+  border-left: 0;
+}
+
 @include govuk-media-query($from: desktop) {
   .app-side-nav__rail-item:hover .app-side-nav__tooltip,
   .app-side-nav__rail-item:focus-visible .app-side-nav__tooltip {
@@ -694,4 +704,88 @@ details:not([open]) > summary .app-side-nav__chevron {
 .app-side-nav__more[open] > .app-side-nav__more-button {
   background-color: $app-side-nav-hover;
   color: $govuk-black;
+}
+
+// The case bookmarks: each case's guides under it, and each guide's
+// bookmarked sections under that.
+.app-side-nav__case-name {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 6px 10px 6px 12px;
+  line-height: 1.25;
+}
+
+.app-side-nav__meta {
+  flex: none;
+  color: $app-side-nav-muted;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+// Case ID or SBI application number, shown as text so the two kinds of
+// bookmark aren't told apart by icon alone.
+.app-side-nav__ref-type {
+  display: block;
+  color: $app-side-nav-muted;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.app-side-nav__sublist {
+  margin: 0 0 govuk-spacing(1) 21px;
+  padding: 0 0 0 govuk-spacing(2);
+  border-left: 1px solid $app-side-nav-divider;
+  list-style: none;
+}
+
+.app-side-nav__sublink {
+  display: block;
+  padding: 6px govuk-spacing(2);
+  border-radius: 4px;
+  color: $govuk-black;
+  font-size: 14px;
+  line-height: 1.3;
+  text-decoration: none;
+
+  &:link,
+  &:visited {
+    color: $govuk-black;
+  }
+
+  &:hover {
+    background-color: $app-side-nav-hover;
+    text-decoration: underline;
+  }
+
+  &:focus {
+    @include app-side-nav-focus;
+  }
+}
+
+// A guide's bookmarked sections, one more indent under the guide itself.
+.app-side-nav__section-list {
+  margin: 0 0 govuk-spacing(1) govuk-spacing(2);
+  padding: 0;
+  list-style: none;
+}
+
+// A section's link is a sublink (the page gives it both classes), smaller.
+.app-side-nav__section-link {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  font-size: 13px;
+
+  &:link,
+  &:visited {
+    color: $app-side-nav-muted;
+  }
+
+  &::before {
+    content: "› ";
+  }
 }

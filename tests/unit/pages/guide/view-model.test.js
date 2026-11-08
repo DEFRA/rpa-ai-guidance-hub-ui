@@ -4,17 +4,19 @@ import {
 } from '../../../../src/pages/guide/view-model.js'
 
 const sections = [
-  { id: 'section-1', title: 'Introduction', markdown: 'One.', subheadings: [] },
+  { id: 'section-1', title: 'Introduction', markdown: 'One.', headingIds: [], subheadings: [] },
   {
     id: 'section-2',
     title: 'Assign case',
     markdown: 'Two.',
+    headingIds: ['21-check', '22-assign'],
     subheadings: [{ title: '2.1 Check', slug: '21-check' }, { title: '2.2 Assign', slug: '22-assign' }]
   },
   {
     id: 'section-3',
     title: 'Close case',
     markdown: 'Three.',
+    headingIds: ['31-close'],
     subheadings: [{ title: '3.1 Close', slug: '31-close' }]
   }
 ]

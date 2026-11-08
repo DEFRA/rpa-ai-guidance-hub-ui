@@ -150,6 +150,18 @@ describe('#guideController', () => {
       expect(payload).toContain('data-guide-contents-page="2"')
     })
 
+    test.each([
+      ['a section', 'assign-case', 'Assign case'],
+      ['a heading inside a section', 'before-you-begin', 'Introduction'],
+      ['no heading the guide has', 'never', 'Introduction']
+    ])('opens at the page that has %s the address names', async (_case, section, current) => {
+      mockGuide()
+
+      const { payload } = await get(`${GUIDE_URL}?section=${section}`)
+
+      expect(payload).toMatch(new RegExp(`aria-current="page">${current}<`))
+    })
+
     test('names the section a Next or Previous link goes to', async () => {
       mockGuide()
 

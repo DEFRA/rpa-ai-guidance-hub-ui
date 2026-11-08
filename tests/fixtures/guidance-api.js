@@ -187,14 +187,16 @@ function guidePageResponse (overrides = {}) {
 /**
  * Body of `POST /users` (201, or 200 for a user signed in before) and of
  * `GET /users/{id}` on 200: the hub's user, with the guides they have pinned,
- * in their order. By default the dev user `loginAsDevUser` signs in, with
- * nothing pinned.
+ * in their order, and their cases (`caseResponse`), in their order. By
+ * default the dev user `loginAsDevUser` signs in, with nothing pinned and no
+ * cases.
  *
- * Verified against the guidance API's `User` schema on 2026-11-04: id,
- * identity, displayName, createdAt, and pinned as `{id, title}` items.
+ * Verified against the guidance API's `User` schema on 2026-11-08: id,
+ * identity, displayName, createdAt, pinned as `{id, title}` items, and cases
+ * as `CaseInBrief` items.
  *
  * @param {Object} [overrides]
- * @returns {{id: string, identity: {tenantId: string, objectId: string}, displayName: string|null, createdAt: string, pinned: Array<{id: string, title: string|null}>}}
+ * @returns {{id: string, identity: {tenantId: string, objectId: string}, displayName: string|null, createdAt: string, pinned: Array<{id: string, title: string|null}>, cases: Array<object>}}
  */
 function userResponse (overrides = {}) {
   return {
@@ -203,6 +205,31 @@ function userResponse (overrides = {}) {
     displayName: 'Dev User',
     createdAt: '2026-10-06T08:00:00Z',
     pinned: [],
+    cases: [],
+    ...overrides
+  }
+}
+
+/**
+ * One of `GET /users/{id}`'s cases: a case the user has bookmarked sections of
+ * guides to. Its key names it wherever its reference must not go; its guides
+ * come in the order first bookmarked, each with its bookmarked sections in the
+ * guide's order, and each section's position among the case's bookmarks. By
+ * default case W1234567, with nothing bookmarked to it.
+ *
+ * Verified against the guidance API's `CaseInBrief` schema on 2026-11-08: key,
+ * type (`case` or `sbi`), ref, and guides as `{id, title, bookmarks}` items,
+ * each bookmark `{sectionId, section, heading, position}`.
+ *
+ * @param {Object} [overrides]
+ * @returns {{key: string, type: string, ref: string, guides: Array<{id: string, title: string|null, bookmarks: Array<{sectionId: string, section: string|null, heading: string|null, position: number}>}>}}
+ */
+function caseResponse (overrides = {}) {
+  return {
+    key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b',
+    type: 'case',
+    ref: 'W1234567',
+    guides: [],
     ...overrides
   }
 }
@@ -262,6 +289,7 @@ function refusalResponse (overrides = {}) {
 }
 
 export {
+  caseResponse,
   guidePageResponse,
   guideResponse,
   guideSummaryResponse,

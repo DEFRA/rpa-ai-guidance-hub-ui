@@ -306,6 +306,14 @@ const config = convict({
       env: 'CDP_UPLOADER_REQUEST_TIMEOUT'
     }
   },
+  featureFlags: {
+    sbiBookmarks: {
+      doc: 'Whether a guide can be bookmarked to an SBI application number, as well as to a case ID. When false (the default), the SBI choices are shown, disabled.',
+      format: Boolean,
+      default: false,
+      env: 'FEATURE_SBI_BOOKMARKS'
+    }
+  },
   auth: {
     provider: {
       doc: 'Authentication provider to use',

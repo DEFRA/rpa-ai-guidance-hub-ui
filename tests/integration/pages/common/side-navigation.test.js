@@ -5,7 +5,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { initiateUploadResponse } from '../../../fixtures/cdp-uploader.js'
-import { guidePageResponse, schemesResponse, userResponse } from '../../../fixtures/guidance-api.js'
+import { caseResponse, guidePageResponse, schemesResponse, userResponse } from '../../../fixtures/guidance-api.js'
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
@@ -197,6 +197,56 @@ describe('Side navigation', () => {
       })
 
       expect(statusCode).toBe(expected)
+    })
+  })
+
+  describe('the user\'s case bookmarks', () => {
+    const { id: USER_ID } = userResponse()
+    const GUIDE = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
+    const BEFORE = { sectionId: '019a0000-0000-7000-8000-000000000011', section: '11-before-you-begin', heading: '1.1 Before you begin', position: 1 }
+    const ASSIGN = { sectionId: '019a0000-0000-7000-8000-000000000002', section: '2-assign-case', heading: '2 Assign case', position: 0 }
+
+    async function bookmarksSection (cases) {
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ cases }))
+      const cookie = await loginAsDevUser(server)
+      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+      const start = payload.indexOf('id="side-nav-bookmarks"')
+
+      return payload.slice(start, payload.indexOf('</details>', start))
+    }
+
+    test('are counted beside "Case bookmarks", one for each case', async () => {
+      const section = await bookmarksSection([caseResponse(), caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', ref: 'W7654321' })])
+
+      expect(section).toMatch(/Case bookmarks<\/span>\s*<span class="app-side-nav__section-count">2<span class="govuk-visually-hidden"> cases<\/span>/)
+    })
+
+    test('are listed in the user\'s order, each with its guides and their number, each guide with its sections in the guide\'s order', async () => {
+      const section = await bookmarksSection([
+        caseResponse({ ref: 'W7654321', guides: [{ id: GUIDE, title: 'Claiming a payment', bookmarks: [BEFORE, ASSIGN] }] }),
+        caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', type: 'sbi', ref: '123456789' })
+      ])
+
+      const shown = [...section.matchAll(/app-side-nav__ref-type">([^<]+)<[^]*?<\/span>([^<]+)<\/span>\s*<span class="app-side-nav__meta">([^<]+)</g)]
+        .map(([, type, ref, guides]) => [type, ref.trim(), guides])
+      const links = [...section.matchAll(/<a class="app-side-nav__sublink[^"]*" href="([^"]+)">([^<]+)<\/a>/g)]
+        .map(([, href, text]) => [text, href])
+
+      expect(shown).toEqual([['Case', 'W7654321', '1 guide'], ['SBI', '123456789', '0 guides']])
+      expect(links).toEqual([
+        ['Claiming a payment', `/guides/${GUIDE}`],
+        ['1.1 Before you begin', `/guides/${GUIDE}?section=11-before-you-begin#11-before-you-begin`],
+        ['2 Assign case', `/guides/${GUIDE}?section=2-assign-case#2-assign-case`]
+      ])
+    })
+
+    test('say when nothing is bookmarked to a case yet', async () => {
+      const section = await bookmarksSection([])
+
+      expect(section).toMatch(/Case bookmarks<\/span>\s*<span class="app-side-nav__section-count">0<span class="govuk-visually-hidden"> cases<\/span>/)
+      expect(section).toContain('You haven\'t bookmarked any guidance to a case yet.')
     })
   })
 

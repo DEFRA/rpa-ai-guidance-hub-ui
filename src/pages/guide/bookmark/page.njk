@@ -1,0 +1,88 @@
+{#
+  Bookmarking a section of a guide to a case: one question, a
+  choice of four, each revealing what it needs (the prototype's page,
+  flattened). Each reveal has a field of its own, since a reveal only hides
+  the others and they would still be sent.
+#}
+{% extends "common/layout.njk" %}
+
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+
+{% block beforeContent %}
+  {{ govukBackLink({ text: "Back", href: cancelHref }) }}
+{% endblock %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds app-content">
+
+      {% if errorList.length %}
+        {{ govukErrorSummary({ titleText: "There is a problem", errorList: errorList }) }}
+      {% endif %}
+
+      {% set items = [] %}
+      {% for choice in choices %}
+        {% set revealed %}
+          {% if choice.isExisting %}
+            {% set options = [{ value: "", text: "Select a " + choice.name }] %}
+            {% for ref in choice.refs %}
+              {% set options = (options.push({ value: ref, text: ref, selected: ref == choice.given }), options) %}
+            {% endfor %}
+            {{ govukSelect({
+              id: "bookmark-" + choice.field,
+              name: choice.field,
+              label: { text: choice.name },
+              items: options,
+              errorMessage: { text: errors[choice.field] } if errors[choice.field]
+            }) }}
+          {% else %}
+            {{ govukInput({
+              id: "bookmark-" + choice.field,
+              name: choice.field,
+              value: choice.given,
+              classes: "govuk-!-width-one-third",
+              spellcheck: false,
+              autocomplete: "off",
+              label: { text: choice.name },
+              hint: { text: choice.hint },
+              errorMessage: { text: errors[choice.field] } if errors[choice.field]
+            }) }}
+          {% endif %}
+        {% endset %}
+        {% set items = (items.push({
+          value: choice.value,
+          text: choice.text,
+          checked: choice.value == chosen,
+          disabled: choice.disabled,
+          conditional: { html: revealed } if not choice.disabled
+        }), items) %}
+      {% endfor %}
+
+      <form method="post" action="{{ formAction }}" novalidate>
+        {% if section %}<input type="hidden" name="section" value="{{ section }}">{% endif %}
+
+        {{ govukRadios({
+          idPrefix: "bookmark-choice",
+          name: "choice",
+          fieldset: {
+            legend: { text: heading, isPageHeading: true, classes: "govuk-fieldset__legend--l" }
+          },
+          hint: { text: hint },
+          errorMessage: { text: errors.choice } if errors.choice,
+          items: items
+        }) }}
+
+        <div class="govuk-button-group">
+          {{ govukButton({ text: button }) }}
+          <a class="govuk-link" href="{{ cancelHref }}">Cancel</a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+{% endblock %}

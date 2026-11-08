@@ -11,6 +11,8 @@ const INTRODUCTION_TITLE = 'Introduction'
  * @property {string} title - The section's heading, as plain text
  * @property {string|null} slug - The anchor the section's heading is linked
  *   by; null for an Introduction made of text before the first heading
+ * @property {string[]} headingTitles - The headings inside, as plain text, in
+ *   the order of `headingIds`
  * @property {string[]} headingIds - The anchors of the headings inside
  *   `markdown`, in order
  * @property {Array<{title: string, slug: string}>} subheadings - The
@@ -77,6 +79,7 @@ function _addToken (part, token, slugs, depth) {
 
   for (const heading of _headingsIn([token])) {
     part.headingIds.push(slugs.get(heading))
+    part.headingTitles.push(_plainText(heading))
   }
 
   if (token.type === 'heading' && token.depth === depth + 1) {
@@ -92,6 +95,27 @@ function _addToken (part, token, slugs, depth) {
  */
 function _headingsIn (tokens) {
   return tokens.flatMap(token => token.type === 'heading' ? [token] : _headingsIn(_children(token)))
+}
+
+/**
+ * The heading of any depth at `anchor`, with the page it is on: a section's
+ * own, or one inside it.
+ *
+ * @param {GuideSection[]} sections
+ * @param {string} anchor
+ * @returns {{anchor: string, title: string, page: number}|null} Null when the
+ *   guide has no heading there
+ */
+function findHeading (sections, anchor) {
+  for (const [index, section] of sections.entries()) {
+    const inside = section.headingIds.indexOf(anchor)
+
+    if (section.slug === anchor || inside !== -1) {
+      return { anchor, title: section.slug === anchor ? section.title : section.headingTitles[inside], page: index + 1 }
+    }
+  }
+
+  return null
 }
 
 /**
@@ -266,10 +290,10 @@ function _imageEdit (image, start, resolve) {
  * @param {string} title
  * @param {string|null} slug
  * @param {string[]} raw
- * @returns {{title: string, slug: string|null, raw: string[], headingIds: string[], subheadings: Array<{title: string, slug: string}>}}
+ * @returns {{title: string, slug: string|null, raw: string[], headingIds: string[], headingTitles: string[], subheadings: Array<{title: string, slug: string}>}}
  */
 function _part (title, slug, raw) {
-  return { title, slug, raw, headingIds: [], subheadings: [] }
+  return { title, slug, raw, headingIds: [], headingTitles: [], subheadings: [] }
 }
 
 /**
@@ -279,10 +303,11 @@ function _part (title, slug, raw) {
  */
 function _build (parts) {
   return parts
-    .map(({ title, slug, raw, headingIds, subheadings }) => ({
+    .map(({ title, slug, raw, headingIds, headingTitles, subheadings }) => ({
       title,
       slug,
       headingIds,
+      headingTitles,
       subheadings,
       markdown: raw.join('').trim()
     }))
@@ -370,6 +395,7 @@ function _plainText (token) {
 }
 
 export {
+  findHeading,
   resolveAnchors,
   resolveImages,
   splitIntoSections

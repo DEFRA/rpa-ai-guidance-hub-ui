@@ -21,7 +21,7 @@ function createRequest ({ query = {}, payload, stored } = {}) {
     query,
     payload,
     url: { pathname: '/guides/guide-1', search: '?page=2' },
-    yar: { get: key => session.get(key), set: (key, value) => session.set(key, value), session }
+    yar: { get: key => session.get(key), set: (key, value) => session.set(key, value), flash: () => [], session }
   }
 }
 
@@ -41,6 +41,7 @@ describe('guide controller', () => {
     vi.spyOn(guidesService, 'getGuideById').mockResolvedValue(guide)
     vi.spyOn(guidesService, 'getGuideContent').mockResolvedValue({ markdown })
     vi.spyOn(usersService, 'pinnedOf').mockResolvedValue([])
+    vi.spyOn(usersService, 'casesOf').mockResolvedValue([])
     vi.spyOn(usersService, 'recordOpened').mockResolvedValue()
   })
 

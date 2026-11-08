@@ -1,3 +1,4 @@
+import { CASE_TYPES } from '../constants/case-types.js'
 import * as usersService from '../services/users.js'
 
 const UNTITLED = 'Untitled guide'
@@ -22,9 +23,41 @@ function _pinnedGuides (pinned) {
 }
 
 /**
+ * @private
+ * The user's cases as the side navigation lists them: each named by its type
+ * and reference, with its guides, each linking to the guide, and each guide's
+ * bookmarked sections, each linking to its place in the guide.
+ *
+ * @param {Array<{type: string, ref: string, guides: Array<{id: string, title: string|null, bookmarks: Array<{section: string, heading: string|null}>}>}>} cases
+ *   - In the user's order
+ * @returns {Array<object>}
+ */
+function _caseBookmarks (cases) {
+  return cases.map(({ type, ref, guides }) => ({
+    typeLabel: CASE_TYPES[type].short,
+    ref,
+    name: `${CASE_TYPES[type].short} ${ref}`,
+    guides: guides.map(guide => {
+      const href = `/guides/${encodeURIComponent(guide.id)}`
+
+      return {
+        title: guide.title ?? UNTITLED,
+        href,
+        sections: guide.bookmarks.map(({ section, heading }) => ({
+          label: heading ?? section,
+          href: `${href}?section=${encodeURIComponent(section)}#${encodeURIComponent(section)}`
+        }))
+      }
+    })
+  }))
+}
+
+/**
  * Gives a signed-in page what its side navigation shows of the user's own
- * lists - the guides they pinned, and how many - from one call to the hub for
- * the user. Without them, the side navigation lists no pins and counts none.
+ * lists - the guides they pinned, and how many, and their cases with the
+ * sections of guides bookmarked to them - from one call to the hub for the
+ * user. Without them, the side navigation lists no pins or cases and counts
+ * none.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -37,12 +70,13 @@ async function addSideNavLists (request, h) {
     return h.continue
   }
 
-  const pinned = await usersService.pinnedOf(request)
+  const [pinned, cases] = await Promise.all([usersService.pinnedOf(request), usersService.casesOf(request)])
 
   response.source.context = {
     ...response.source.context,
     pinnedGuides: _pinnedGuides(pinned ?? []),
-    pinnedCount: pinned?.length
+    pinnedCount: pinned?.length,
+    caseBookmarks: _caseBookmarks(cases ?? [])
   }
 
   return h.continue

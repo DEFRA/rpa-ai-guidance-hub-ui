@@ -195,10 +195,43 @@
   <details class="app-side-nav__section" id="side-nav-bookmarks" open>
     <summary class="app-side-nav__section-summary">
       <span class="app-side-nav__label">Case bookmarks</span>
-      <span class="app-side-nav__section-count">0<span class="govuk-visually-hidden"> bookmarked</span></span>
+      <span class="app-side-nav__section-count">{{ caseBookmarks.length }}<span class="govuk-visually-hidden"> cases</span></span>
       {{ icon("chevron-down", "app-side-nav__chevron") }}
     </summary>
-    <p class="app-side-nav__empty">You haven't bookmarked any guidance to a case yet.</p>
+    {% if caseBookmarks.length %}
+      <ul class="app-side-nav__list">
+        {% for case in caseBookmarks %}
+          <li class="app-side-nav__case">
+            <div class="app-side-nav__row">
+              <div class="app-side-nav__case-name">
+                {{ icon("bookmark") }}
+                <span class="app-side-nav__text">
+                  <span class="app-side-nav__ref-type">{{ case.typeLabel }}</span>
+                  <span class="govuk-visually-hidden">: </span>{{ case.ref }}</span>
+                <span class="app-side-nav__meta">{{ case.guides.length }} guide{{ "s" if case.guides.length != 1 }}</span>
+              </div>
+            </div>
+            {% if case.guides.length %}
+              <ul class="app-side-nav__sublist" aria-label="Guides bookmarked to {{ case.name }}">
+                {% for guide in case.guides %}
+                  <li>
+                    <a class="app-side-nav__sublink" href="{{ guide.href }}">{{ guide.title }}</a>
+                    {# Sections come in the guide's own order. #}
+                    <ul class="app-side-nav__section-list" aria-label="Bookmarked sections of {{ guide.title }}">
+                      {% for section in guide.sections %}
+                        <li><a class="app-side-nav__sublink app-side-nav__section-link" href="{{ section.href }}">{{ section.label }}</a></li>
+                      {% endfor %}
+                    </ul>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="app-side-nav__empty">You haven't bookmarked any guidance to a case yet.</p>
+    {% endif %}
   </details>
 
   <ul class="app-side-nav__list app-side-nav__footer">

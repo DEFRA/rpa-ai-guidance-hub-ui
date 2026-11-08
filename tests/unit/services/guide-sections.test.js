@@ -1,4 +1,4 @@
-import { resolveAnchors, resolveImages, splitIntoSections } from '../../../src/services/guide-sections.js'
+import { findHeading, resolveAnchors, resolveImages, splitIntoSections } from '../../../src/services/guide-sections.js'
 
 describe('splitIntoSections', () => {
   test('splits at the shallowest heading and drops the title', () => {
@@ -25,6 +25,7 @@ describe('splitIntoSections', () => {
         title: '1 Overview',
         slug: '1-overview',
         headingIds: ['11-detail'],
+        headingTitles: ['1.1 Detail'],
         subheadings: [{ title: '1.1 Detail', slug: '11-detail' }],
         markdown: 'Overview text.\n\n### 1.1 Detail\n\n- one\n- two'
       },
@@ -33,6 +34,7 @@ describe('splitIntoSections', () => {
         title: '2 Assign case',
         slug: '2-assign-case',
         headingIds: [],
+        headingTitles: [],
         subheadings: [],
         markdown: 'Assign text.'
       }
@@ -54,14 +56,14 @@ describe('splitIntoSections', () => {
 
   test('keeps a section that has a heading but no text', () => {
     expect(splitIntoSections('## Empty\n\n## Next\n\nBody.')).toEqual([
-      { id: 'section-1', title: 'Empty', slug: 'empty', headingIds: [], subheadings: [], markdown: '' },
-      { id: 'section-2', title: 'Next', slug: 'next', headingIds: [], subheadings: [], markdown: 'Body.' }
+      { id: 'section-1', title: 'Empty', slug: 'empty', headingIds: [], headingTitles: [], subheadings: [], markdown: '' },
+      { id: 'section-2', title: 'Next', slug: 'next', headingIds: [], headingTitles: [], subheadings: [], markdown: 'Body.' }
     ])
   })
 
   test('is one Introduction section when there are no headings', () => {
     expect(splitIntoSections('Just text.')).toEqual([
-      { id: 'section-1', title: 'Introduction', slug: null, headingIds: [], subheadings: [], markdown: 'Just text.' }
+      { id: 'section-1', title: 'Introduction', slug: null, headingIds: [], headingTitles: [], subheadings: [], markdown: 'Just text.' }
     ])
   })
 
@@ -243,5 +245,30 @@ describe('resolveImages', () => {
 
   test('do not change the sections it is given', () => {
     expect(section.markdown).toContain('![A chart](../assets/chart.png)')
+  })
+})
+
+describe('findHeading', () => {
+  const sections = splitIntoSections([
+    '# Guide',
+    '',
+    '## 1 Introduction',
+    '',
+    '### 1.1 Before you *begin*',
+    '',
+    '## 2 Assign case',
+    '',
+    'Assign it.'
+  ].join('\n'))
+
+  test.each([
+    ['a section\'s own heading', '2-assign-case', { anchor: '2-assign-case', title: '2 Assign case', page: 2 }],
+    ['a heading inside a section, as plain text', '11-before-you-begin', { anchor: '11-before-you-begin', title: '1.1 Before you begin', page: 1 }]
+  ])('finds %s, with its page', (_case, anchor, found) => {
+    expect(findHeading(sections, anchor)).toEqual(found)
+  })
+
+  test('finds nothing at an anchor the guide has not', () => {
+    expect(findHeading(sections, '9-never')).toBeNull()
   })
 })

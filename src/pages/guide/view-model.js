@@ -1,3 +1,5 @@
+import { CASE_TYPES } from '../../constants/case-types.js'
+import { bookmarkedSections } from '../../services/case-bookmarks.js'
 import { NOT_SCHEME_SPECIFIC } from '../../services/reference-data.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { versionTag } from '../common/version-tag.js'
@@ -106,8 +108,12 @@ class GuideViewModel {
    *   panel is folded away to its rail
    * @param {{pinned: boolean, position: number|null}|null} [data.pin] - The
    *   guide among the user's pins, for its Pin guide button; null when not known
+   * @param {Array<object>|null} [data.cases] - The user's, each with the
+   *   sections bookmarked to it; null when not known
+   * @param {{guideId: string, type: string, ref: string, heading: string}} [data.bookmarked]
+   *   - A section just bookmarked, to say so once
    */
-  constructor ({ guide, sections, pageNumber, readingWidth, returnTo, metadataRows, panelCollapsed = false, pin = null }) {
+  constructor ({ guide, sections, pageNumber, readingWidth, returnTo, metadataRows, panelCollapsed = false, pin = null, cases = null, bookmarked }) {
     const href = page => GuideViewModel.pageHref(guide.id, page)
     const adjacent = (page) => {
       const section = sections[page - 1]
@@ -139,11 +145,19 @@ class GuideViewModel {
         }))
       }
     })
+    const bookmarkedTo = bookmarkedSections(cases ?? [], guide.id)
+    const bookmarkOf = anchor => ({
+      href: `/guides/${encodeURIComponent(guide.id)}/bookmark?section=${encodeURIComponent(anchor)}`,
+      bookmarkedTo: bookmarkedTo.get(anchor) ?? null
+    })
+
     // Every section is on the page, the others hidden until the browser's
-    // find-in-page reaches into one.
+    // find-in-page reaches into one. Each heading has its bookmark control.
     this.pages = sections.map((section, index) => ({
       pageNumber: index + 1,
       section,
+      bookmark: section.slug ? bookmarkOf(section.slug) : null,
+      headingBookmarks: section.headingIds.map(bookmarkOf),
       isCurrent: index + 1 === pageNumber,
       progressPercentage: Math.round((index + 1) / sections.length * 100),
       previous: adjacent(index),
@@ -156,6 +170,9 @@ class GuideViewModel {
     this.readingWidths = READING_WIDTHS
     this.returnTo = returnTo
     this.pin = pin
+    this.bookmarkAdded = bookmarked?.guideId === guide.id
+      ? { text: `‘${bookmarked.heading}’ bookmarked to ${CASE_TYPES[bookmarked.type].lower} ${bookmarked.ref}` }
+      : null
     this.panelCollapsed = panelCollapsed
   }
 

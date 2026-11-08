@@ -2,10 +2,11 @@ import Boom from '@hapi/boom'
 
 import { statusCodes } from '../../constants/status-codes.js'
 import { relativeHref } from '../common/relative-href.js'
-import { resolveAnchors, resolveImages, splitIntoSections } from '../../services/guide-sections.js'
+import { findHeading, resolveAnchors, resolveImages, splitIntoSections } from '../../services/guide-sections.js'
 import * as guidesService from '../../services/guides.js'
 import * as usersService from '../../services/users.js'
 import { guideAssetHref } from './asset-href.js'
+import { BOOKMARKED } from './bookmark/controller.js'
 import { isPanelCollapsed, setPanelCollapsed } from './panel.js'
 import { getReadingWidth, setReadingWidth } from './reading-width.js'
 import { buildMetadataRows, GuideViewModel } from './view-model.js'
@@ -21,11 +22,24 @@ const ALLOWED_ASSET_CONTENT_TYPES = new Set([
 
 /**
  * @private
+ * @param {{page?: unknown, section?: unknown}} query - The page's number, or
+ *   the anchor of a heading on it, as a link to a bookmarked section names it
+ * @param {import('../../services/guide-sections.js').GuideSection[]} sections
+ * @returns {number} The page as a whole number within 1..sections.length
+ */
+function _pageNumber ({ page, section }, sections) {
+  const named = page === undefined && typeof section === 'string' ? findHeading(sections, section)?.page : null
+
+  return _pageWithin(named ?? page, sections.length)
+}
+
+/**
+ * @private
  * @param {unknown} page - The `page` query parameter
  * @param {number} totalPages
  * @returns {number} `page` as a whole number within 1..totalPages
  */
-function _pageNumber (page, totalPages) {
+function _pageWithin (page, totalPages) {
   const number = Number.parseInt(page, 10)
 
   if (Number.isNaN(number)) {
@@ -74,10 +88,11 @@ function _pinOf (pinned, guideId) {
 async function getGuidePage (request, h) {
   const { guideId } = request.params
 
-  const [guide, content, pinned] = await Promise.all([
+  const [guide, content, pinned, cases] = await Promise.all([
     guidesService.getGuideById(guideId),
     guidesService.getGuideContent(guideId),
-    usersService.pinnedOf(request)
+    usersService.pinnedOf(request),
+    usersService.casesOf(request)
   ])
 
   const split = content ? splitIntoSections(content.markdown) : []
@@ -98,12 +113,14 @@ async function getGuidePage (request, h) {
   const viewModel = new GuideViewModel({
     guide,
     sections,
-    pageNumber: _pageNumber(request.query.page, sections.length),
+    pageNumber: _pageNumber(request.query, sections),
     readingWidth: getReadingWidth(request),
     returnTo: _currentUrl(request),
     panelCollapsed: isPanelCollapsed(request),
     metadataRows: buildMetadataRows(guide.metadata),
-    pin: _pinOf(pinned, guide.id)
+    pin: _pinOf(pinned, guide.id),
+    cases,
+    bookmarked: request.yar.flash(BOOKMARKED)[0]
   })
 
   return h

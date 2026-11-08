@@ -7,6 +7,7 @@ import nunjucks from 'nunjucks'
 import { config } from '../../config/config.js'
 import { ROLES, roleDisplayNames } from '../../constants/roles.js'
 import { roleEnforcementEnabled } from '../access-control/hub-access.js'
+import { bookmarkedToHtml, headingBookmarkHtml } from '../../constants/heading-bookmarks.js'
 import { jsonScript, renderMarkdownFallback } from '../../pages/guide/markdown.js'
 import { filtersFrom, listHref } from '../../pages/hub/filters.js'
 import { isNavCollapsed } from '../../pages/side-nav/collapsed.js'
@@ -27,7 +28,9 @@ const nunjucksEnvironment = nunjucks.configure(
 // Both filters return markup that is already safe, so mark it as such rather
 // than have autoescape mangle it.
 nunjucksEnvironment.addFilter('jsonScript', value => nunjucks.runtime.markSafe(jsonScript(value)))
-nunjucksEnvironment.addFilter('markdownFallback', (markdown, headingIds) => nunjucks.runtime.markSafe(renderMarkdownFallback(markdown, headingIds)))
+nunjucksEnvironment.addFilter('markdownFallback', (markdown, headingIds, headingBookmarks) => nunjucks.runtime.markSafe(renderMarkdownFallback(markdown, headingIds, headingBookmarks)))
+nunjucksEnvironment.addFilter('headingBookmark', (bookmark, heading) => nunjucks.runtime.markSafe(headingBookmarkHtml(bookmark, heading)))
+nunjucksEnvironment.addFilter('bookmarkedTo', bookmark => nunjucks.runtime.markSafe(bookmarkedToHtml(bookmark)))
 
 function loadManifest () {
   const manifestPath = path.join(
