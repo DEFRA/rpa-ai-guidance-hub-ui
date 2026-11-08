@@ -71,6 +71,19 @@ describe('users service', () => {
     })
   })
 
+  describe('the user\'s cases', () => {
+    test('are not known when the user cannot be had, rather than failing the page, which is logged', async () => {
+      usersApi.getUser.mockRejectedValue(new Error('API unavailable'))
+      const request = { auth: { credentials: { sessionId: 's-1', profile, token: 't', userId: HUB_ID } }, app: {} }
+
+      expect(await usersService.casesOf(request)).toBeNull()
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        expect.objectContaining({ event: expect.objectContaining({ type: 'cases_unavailable' }) }),
+        'Could not find the user\'s cases: API unavailable'
+      )
+    })
+  })
+
   describe('the user\'s pinned guides', () => {
     const PINNED = [{ id: 'guide-2', title: 'Closing a case' }, { id: 'guide-1', title: 'Claiming' }]
 
