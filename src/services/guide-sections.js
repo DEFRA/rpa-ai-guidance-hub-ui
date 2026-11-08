@@ -15,6 +15,9 @@ const INTRODUCTION_TITLE = 'Introduction'
  *   the order of `headingIds`
  * @property {string[]} headingIds - The anchors of the headings inside
  *   `markdown`, in order
+ * @property {string[]} markableIds - The anchors of the headings that can be
+ *   pinned and bookmarked, the section's own among them: those the hub gives
+ *   a section ID (`_hasSectionId`)
  * @property {Array<{title: string, slug: string}>} subheadings - The
  *   headings one level below the section's own
  * @property {string} markdown - Everything up to the next section, without
@@ -50,7 +53,7 @@ function splitIntoSections (markdown) {
 
   for (const token of tokens) {
     if (token.type === 'heading' && token.depth === depth) {
-      parts.push(_part(_plainText(token), slugs.get(token), []))
+      parts.push(_part(_plainText(token), slugs.get(token), [], _hasSectionId(token)))
     } else {
       if (parts.length === 0) {
         parts.push(_part(INTRODUCTION_TITLE, null, []))
@@ -80,6 +83,10 @@ function _addToken (part, token, slugs, depth) {
   for (const heading of _headingsIn([token])) {
     part.headingIds.push(slugs.get(heading))
     part.headingTitles.push(_plainText(heading))
+
+    if (heading === token && _hasSectionId(heading)) {
+      part.markableIds.push(slugs.get(heading))
+    }
   }
 
   if (token.type === 'heading' && token.depth === depth + 1) {
@@ -286,14 +293,31 @@ function _imageEdit (image, start, resolve) {
 }
 
 /**
+ * Whether the hub gives a heading a section ID, so that it can be pinned and
+ * bookmarked: as the API reads a guide (rpa-ai-guidance-hub-api,
+ * `app/guidance/documents/reader.py`), a heading is a line of its own that
+ * begins with two or more `#`, so not one in a quote or a list, nor one
+ * underlined.
+ *
+ * @private
+ * @param {import('marked').Tokens.Heading} heading - Not inside another token
+ * @returns {boolean}
+ */
+function _hasSectionId (heading) {
+  return heading.raw.startsWith('##')
+}
+
+/**
  * @private
  * @param {string} title
  * @param {string|null} slug
  * @param {string[]} raw
- * @returns {{title: string, slug: string|null, raw: string[], headingIds: string[], headingTitles: string[], subheadings: Array<{title: string, slug: string}>}}
+ * @param {boolean} [markable] - Whether its own heading can be pinned and
+ *   bookmarked
+ * @returns {{title: string, slug: string|null, raw: string[], headingIds: string[], headingTitles: string[], markableIds: string[], subheadings: Array<{title: string, slug: string}>}}
  */
-function _part (title, slug, raw) {
-  return { title, slug, raw, headingIds: [], headingTitles: [], subheadings: [] }
+function _part (title, slug, raw, markable = false) {
+  return { title, slug, raw, headingIds: [], headingTitles: [], markableIds: markable ? [slug] : [], subheadings: [] }
 }
 
 /**
@@ -303,11 +327,12 @@ function _part (title, slug, raw) {
  */
 function _build (parts) {
   return parts
-    .map(({ title, slug, raw, headingIds, headingTitles, subheadings }) => ({
+    .map(({ title, slug, raw, headingIds, headingTitles, markableIds, subheadings }) => ({
       title,
       slug,
       headingIds,
       headingTitles,
+      markableIds,
       subheadings,
       markdown: raw.join('').trim()
     }))

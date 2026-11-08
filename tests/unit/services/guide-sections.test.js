@@ -26,6 +26,7 @@ describe('splitIntoSections', () => {
         slug: '1-overview',
         headingIds: ['11-detail'],
         headingTitles: ['1.1 Detail'],
+        markableIds: ['1-overview', '11-detail'],
         subheadings: [{ title: '1.1 Detail', slug: '11-detail' }],
         markdown: 'Overview text.\n\n### 1.1 Detail\n\n- one\n- two'
       },
@@ -35,6 +36,7 @@ describe('splitIntoSections', () => {
         slug: '2-assign-case',
         headingIds: [],
         headingTitles: [],
+        markableIds: ['2-assign-case'],
         subheadings: [],
         markdown: 'Assign text.'
       }
@@ -56,14 +58,14 @@ describe('splitIntoSections', () => {
 
   test('keeps a section that has a heading but no text', () => {
     expect(splitIntoSections('## Empty\n\n## Next\n\nBody.')).toEqual([
-      { id: 'section-1', title: 'Empty', slug: 'empty', headingIds: [], headingTitles: [], subheadings: [], markdown: '' },
-      { id: 'section-2', title: 'Next', slug: 'next', headingIds: [], headingTitles: [], subheadings: [], markdown: 'Body.' }
+      { id: 'section-1', title: 'Empty', slug: 'empty', headingIds: [], headingTitles: [], markableIds: ['empty'], subheadings: [], markdown: '' },
+      { id: 'section-2', title: 'Next', slug: 'next', headingIds: [], headingTitles: [], markableIds: ['next'], subheadings: [], markdown: 'Body.' }
     ])
   })
 
   test('is one Introduction section when there are no headings', () => {
     expect(splitIntoSections('Just text.')).toEqual([
-      { id: 'section-1', title: 'Introduction', slug: null, headingIds: [], headingTitles: [], subheadings: [], markdown: 'Just text.' }
+      { id: 'section-1', title: 'Introduction', slug: null, headingIds: [], headingTitles: [], markableIds: [], subheadings: [], markdown: 'Just text.' }
     ])
   })
 
@@ -143,6 +145,18 @@ describe('splitIntoSections', () => {
       const [intro] = splitIntoSections('Preface.\n\n> ### Note')
 
       expect(intro.headingIds).toEqual(['note'])
+    })
+  })
+
+  describe('headings that can be pinned and bookmarked', () => {
+    test('are those the hub gives a section ID: on a line of their own beginning ##, not in a quote or a list, nor underlined', () => {
+      const sections = splitIntoSections([
+        '## 1 Intro', '', '### 1.1 Own', '', '> ### Quoted', '', '- ### Listed', '', 'Underlined', '----------', '', 'Text.'
+      ].join('\n'))
+
+      expect(sections.map(section => section.slug)).toEqual(['1-intro', 'underlined'])
+      expect(sections[0].headingIds).toEqual(['11-own', 'quoted', 'listed'])
+      expect(sections.map(section => section.markableIds)).toEqual([['1-intro', '11-own'], []])
     })
   })
 })

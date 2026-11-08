@@ -151,13 +151,16 @@ class GuideViewModel {
       bookmarkedTo: bookmarkedTo.get(anchor) ?? null
     })
 
+    const markableOf = section => anchor => section.markableIds.includes(anchor) ? bookmarkOf(anchor) : null
+
     // Every section is on the page, the others hidden until the browser's
-    // find-in-page reaches into one. Each heading has its bookmark control.
+    // find-in-page reaches into one. Each heading the hub gives a section ID
+    // has its bookmark control; one in a quote or a list has none.
     this.pages = sections.map((section, index) => ({
       pageNumber: index + 1,
       section,
-      bookmark: section.slug ? bookmarkOf(section.slug) : null,
-      headingBookmarks: section.headingIds.map(bookmarkOf),
+      bookmark: section.slug ? markableOf(section)(section.slug) : null,
+      headingBookmarks: section.headingIds.map(markableOf(section)),
       isCurrent: index + 1 === pageNumber,
       progressPercentage: Math.round((index + 1) / sections.length * 100),
       previous: adjacent(index),
