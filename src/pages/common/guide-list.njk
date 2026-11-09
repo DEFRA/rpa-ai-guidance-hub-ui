@@ -52,14 +52,15 @@
                 <input type="hidden" name="anchor" value="{{ backTo }}">
                 <button type="submit" class="app-pin-toggle__button" id="{{ pinId }}" aria-pressed="{{ 'true' if guide.pin.pinned else 'false' }}">
                   {{ icon("star-filled" if guide.pin.pinned else "star") }}
-                  <span class="govuk-visually-hidden">Pin {{ guide.title }}</span>
+                  <span class="govuk-visually-hidden">Pin {{ guide.title }}{% if guide.guideTitle %}, in {{ guide.guideTitle }}{% endif %}</span>
                 </button>
               </form>
             {% endif %}
           </div>
 
           <h3 class="govuk-heading-s app-search-results__name">
-            <a class="govuk-link" href="{{ guide.href }}">{{ guide.title }}</a>
+            {# A section is named with its guide, as two guides may share a heading. #}
+            <a class="govuk-link" href="{{ guide.href }}">{{ guide.title }}{% if guide.guideTitle %}<span class="govuk-visually-hidden">, in {{ guide.guideTitle }}</span>{% endif %}</a>
           </h3>
 
           {% if guide.guideTitle %}

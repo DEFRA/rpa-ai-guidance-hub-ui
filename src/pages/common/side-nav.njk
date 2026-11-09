@@ -148,7 +148,10 @@
     {% if pins.length %}
       <ul class="app-side-nav__list" data-reorder-list="/pin-order" data-reorder-elsewhere="/pin-toggle">
         {% for pin in pins %}
-          <li class="app-side-nav__row" data-reorder-id="{{ pin.key }}" data-reorder-label="{{ pin.label }}">
+          {# What a screen reader calls it: a section's heading may be another
+             guide's too, so a section is named with its guide. #}
+          {% set pinName = pin.label + (", in " + pin.guideTitle if pin.guideTitle else "") %}
+          <li class="app-side-nav__row" data-reorder-id="{{ pin.key }}" data-reorder-label="{{ pinName }}">
             <a class="app-side-nav__link" href="{{ pin.href }}" draggable="false" data-reorder-handle>
               {{ icon("star-filled", "app-side-nav__star") }}
               {# A section's guide on a line of its own, wrapping with the heading. #}
@@ -157,7 +160,7 @@
             <details class="app-side-nav__more">
               <summary class="app-side-nav__icon-button app-side-nav__more-button">
                 {{ icon("more") }}
-                <span class="govuk-visually-hidden">More actions for {{ pin.label }}</span>
+                <span class="govuk-visually-hidden">More actions for {{ pinName }}</span>
               </summary>
               <div class="app-side-nav__popover">
                 <a class="app-side-nav__menu-item" href="{{ pin.href }}">Open</a>
@@ -167,7 +170,7 @@
                   <input type="hidden" name="position" value="{{ pin.position }}">
                   {% if pin.sectionId %}<input type="hidden" name="sectionId" value="{{ pin.sectionId }}">{% endif %}
                   <input type="hidden" name="returnTo" value="{{ currentUrl }}">
-                  <button type="submit" class="app-side-nav__menu-item">Unpin<span class="govuk-visually-hidden"> {{ pin.label }}</span></button>
+                  <button type="submit" class="app-side-nav__menu-item">Unpin<span class="govuk-visually-hidden"> {{ pinName }}</span></button>
                 </form>
                 {#
                   Move up and Move down are the way to reorder without
@@ -180,7 +183,7 @@
                     <input type="hidden" name="from" value="{{ pin.position }}">
                     <input type="hidden" name="to" value="{{ pin.position + move.step }}">
                     <input type="hidden" name="returnTo" value="{{ currentUrl }}">
-                    <button type="submit" class="app-side-nav__menu-item">{{ move.text }}<span class="govuk-visually-hidden"> {{ pin.label }}</span></button>
+                    <button type="submit" class="app-side-nav__menu-item">{{ move.text }}<span class="govuk-visually-hidden"> {{ pinName }}</span></button>
                   </form>
                 {% endfor %}
               </div>
@@ -270,12 +273,14 @@
                        ever removed, never moved. #}
                     <ul class="app-side-nav__section-list" aria-label="Bookmarked sections of {{ guide.title }}">
                       {% for section in guide.sections %}
+                        {# Named with its guide, as two guides may share a heading. #}
+                        {% set sectionName = section.label + ", in " + guide.title %}
                         <li class="app-side-nav__row">
                           <a class="app-side-nav__sublink app-side-nav__section-link" href="{{ section.href }}">{{ section.label }}</a>
                           <details class="app-side-nav__more">
                             <summary class="app-side-nav__icon-button app-side-nav__more-button">
                               {{ icon("more") }}
-                              <span class="govuk-visually-hidden">More actions for {{ section.label }}</span>
+                              <span class="govuk-visually-hidden">More actions for {{ sectionName }}</span>
                             </summary>
                             <div class="app-side-nav__popover">
                               <form method="post" action="/case-bookmarks/remove">
@@ -283,7 +288,7 @@
                                 <input type="hidden" name="guideId" value="{{ guide.id }}">
                                 <input type="hidden" name="sectionId" value="{{ section.sectionId }}">
                                 <input type="hidden" name="returnTo" value="{{ currentUrl }}">
-                                <button type="submit" class="app-side-nav__menu-item">Remove<span class="govuk-visually-hidden"> {{ section.label }} from {{ case.name }}</span></button>
+                                <button type="submit" class="app-side-nav__menu-item">Remove<span class="govuk-visually-hidden"> {{ sectionName }}, from {{ case.name }}</span></button>
                               </form>
                             </div>
                           </details>
