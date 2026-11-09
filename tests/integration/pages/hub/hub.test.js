@@ -525,7 +525,7 @@ describe('#hubController', () => {
       const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
-      expect(main).toContain('You haven&#39;t pinned any guidance yet. Select &#39;Pin guide&#39; on a guide to add it here.')
+      expect(main).toContain('You have not pinned any guidance yet. Select <strong>Pin guide</strong> on a guide, or the star next to a section heading, to add it here.')
     })
 
     test('say on their own page when nothing is pinned yet, even with filters chosen', async () => {
@@ -538,7 +538,7 @@ describe('#hubController', () => {
       const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned?system=CRM', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
-      expect(main).toContain('You haven&#39;t pinned any guidance yet. Select &#39;Pin guide&#39; on a guide to add it here.')
+      expect(main).toContain('You have not pinned any guidance yet. Select <strong>Pin guide</strong> on a guide, or the star next to a section heading, to add it here.')
       expect(main).not.toContain('No guides match')
     })
 
@@ -553,7 +553,7 @@ describe('#hubController', () => {
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
       expect(main).toContain('No guides match your search or filters.')
-      expect(main).not.toContain('You haven&#39;t pinned')
+      expect(main).not.toContain('You have not pinned')
     })
 
     test('an unpin without the position the page showed is refused', async () => {
@@ -626,7 +626,7 @@ describe('#hubController', () => {
       const { payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
-      expect(main).toContain('You haven&#39;t opened any guidance yet. Any guidance you open will appear here.')
+      expect(main).toContain("You haven't opened any guidance yet. Any guidance you open will appear here.")
     })
 
     test('say on their own page when none has been opened yet, even with filters chosen', async () => {
@@ -639,7 +639,7 @@ describe('#hubController', () => {
       const { payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened?system=CRM', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
-      expect(main).toContain('You haven&#39;t opened any guidance yet. Any guidance you open will appear here.')
+      expect(main).toContain("You haven't opened any guidance yet. Any guidance you open will appear here.")
       expect(main).not.toContain('No guides match')
     })
 
@@ -654,7 +654,7 @@ describe('#hubController', () => {
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
       expect(main).toContain('No guides match your search or filters.')
-      expect(main).not.toContain('You haven&#39;t opened')
+      expect(main).not.toContain("You haven't opened")
     })
   })
 })
