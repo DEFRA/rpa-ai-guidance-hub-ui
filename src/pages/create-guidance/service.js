@@ -22,6 +22,11 @@ const RESULTS = {
   UPLOAD_FAILED: 'uploadFailed' // rejected, empty, or unknown to cdp-uploader
 }
 
+// cdp-uploader matches on MIME type only, unlike the form's `accept` attribute
+const ALLOWED_MIME_TYPES = [
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+]
+
 /**
  * Upload progress steps mapped onto ProgressTracker.
  *
@@ -213,7 +218,8 @@ async function _initiateGuideUpload () {
   const initiateRequest = {
     redirect: '/create-guidance/upload-guide/processing',
     s3Bucket: config.get('cdpUploader.sourceDocsBucket'),
-    callback: `${config.get('guidanceApi.baseUrl')}/guides/staging/callback`
+    callback: `${config.get('guidanceApi.baseUrl')}/guides/staging/callback`,
+    mimeTypes: ALLOWED_MIME_TYPES
   }
 
   const { uploadId } = await initiateUpload(initiateRequest)

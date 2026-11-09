@@ -133,11 +133,35 @@ describe('create-guidance service', () => {
 
       await startMigration({ hasUpload: () => false })
 
-      expect(initiateUpload).toHaveBeenCalledWith({
+      expect(initiateUpload).toHaveBeenCalledWith(expect.objectContaining({
         redirect: '/create-guidance/upload-guide/processing',
         s3Bucket: 'rpa-ai-guidance-hub-source-docs',
         callback: expect.stringContaining('/guides/staging/callback')
-      })
+      }))
+    })
+
+    test('restricts cdp-uploader to the .docx MIME type only', async () => {
+      initiateUpload.mockResolvedValue({ uploadId: 'u-1' })
+
+      await startMigration({ hasUpload: () => false })
+
+      expect(initiateUpload.mock.calls[0][0].mimeTypes).toEqual([
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ])
+    })
+
+    test('restricts a replacement upload to .docx files when the earlier file failed validation', async () => {
+      getUploadStatus.mockResolvedValue(complete)
+      getStagedDocumentById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'failed', parsingError: 'boom' })
+      initiateUpload.mockResolvedValue({ uploadId: 'u-2' })
+
+      await startMigration({ hasUpload: () => true, activeUploadId: 'u-1' })
+
+      expect(initiateUpload).toHaveBeenCalledWith(expect.objectContaining({
+        mimeTypes: [
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ]
+      }))
     })
   })
 
