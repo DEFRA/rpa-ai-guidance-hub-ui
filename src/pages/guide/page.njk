@@ -114,7 +114,7 @@
                 </div>
               {% else %}
                 <div class="app-guide-heading-row">
-                  <h2 class="app-guide-heading-1">{{ item.section.title }}</h2>
+                  <h2 class="app-guide-heading-1"{% if item.section.slug %} id="{{ item.section.slug }}"{% endif %}>{{ item.section.title }}</h2>
                 </div>
               {% endif %}
 

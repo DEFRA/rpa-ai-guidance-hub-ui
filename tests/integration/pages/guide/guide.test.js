@@ -218,6 +218,14 @@ describe('#guideController', () => {
       expect(payload).toContain('data-heading-ids="[&quot;before-you-begin&quot;]"')
     })
 
+    test('keeps the id of a section heading that cannot be bookmarked, so links to it still arrive', async () => {
+      mockGuide({ markdown: '# Claims\n\nOverview\n--------\n\nSee [Overview](#overview).\n\n## Assign case\n\nAssign it.' })
+
+      const { payload } = await get(GUIDE_URL)
+
+      expect(payload).toMatch(/<h2[^>]*id="overview"/)
+    })
+
     test('describes the guide, with its owner as a link', async () => {
       mockGuide()
 
