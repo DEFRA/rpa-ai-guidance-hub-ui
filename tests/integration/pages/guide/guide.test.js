@@ -150,6 +150,26 @@ describe('#guideController', () => {
       expect(payload).toContain('data-guide-contents-page="2"')
     })
 
+    test.each([
+      ['a section', 'assign-case', '?page=2#assign-case'],
+      ['a heading inside a section', 'before-you-begin', '?page=1#before-you-begin']
+    ])('sends an address that names %s to its page, at its heading', async (_case, section, at) => {
+      mockGuide()
+
+      const { statusCode, headers } = await get(`${GUIDE_URL}?section=${section}`)
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(headers.location).toBe(`${GUIDE_URL}${at}`)
+    })
+
+    test('opens at the first page when the address names a section the guide has not', async () => {
+      mockGuide()
+
+      const { payload } = await get(`${GUIDE_URL}?section=never`)
+
+      expect(payload).toMatch(/aria-current="page">Introduction</)
+    })
+
     test('names the section a Next or Previous link goes to', async () => {
       mockGuide()
 
@@ -204,6 +224,14 @@ describe('#guideController', () => {
       expect(payload).toContain('<a href="#before-you-begin">Before you begin</a>')
       expect(payload).toMatch(/<h2[^>]*id="introduction"/)
       expect(payload).toContain('data-heading-ids="[&quot;before-you-begin&quot;]"')
+    })
+
+    test('keeps the id of a section heading that cannot be bookmarked, so links to it still arrive', async () => {
+      mockGuide({ markdown: '# Claims\n\nOverview\n--------\n\nSee [Overview](#overview).\n\n## Assign case\n\nAssign it.' })
+
+      const { payload } = await get(GUIDE_URL)
+
+      expect(payload).toMatch(/<h2[^>]*id="overview"/)
     })
 
     test('describes the guide, with its owner as a link', async () => {

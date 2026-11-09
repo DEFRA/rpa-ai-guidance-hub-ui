@@ -2,6 +2,7 @@
 {% from "govuk/components/back-link/macro.njk" import govukBackLink %}
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 {% from "govuk/components/pagination/macro.njk" import govukPagination %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 {% from "common/icon.njk" import icon %}
 
 {% set pageTitle = title %}
@@ -31,6 +32,11 @@
         {{ govukBackLink({ text: "Back", href: "/hub" }) }}
 
         <div class="app-guide-reading app-guide-reading--{{ readingWidth }}">
+          {% if bookmarkAdded %}
+            {% call govukNotificationBanner({ type: "success" }) %}
+              <h3 class="govuk-notification-banner__heading">{{ bookmarkAdded.text }}</h3>
+            {% endcall %}
+          {% endif %}
           <div class="app-guide-byline">
             {% if version %}
               {{ govukTag({ text: version.text, classes: "govuk-tag--" + version.colour }) }}
@@ -98,18 +104,28 @@
                 <div class="app-progress__bar" id="guide-progress-bar-{{ item.pageNumber }}"></div>
               </div>
 
-              <div class="app-guide-heading-row">
-                <h2 class="app-guide-heading-1"{% if item.section.slug %} id="{{ item.section.slug }}"{% endif %}>{{ item.section.title }}</h2>
-              </div>
+              {% if item.bookmark %}
+                <div class="app-guide-heading">
+                  <div class="app-guide-heading-row">
+                    <h2 class="app-guide-heading-1" id="{{ item.section.slug }}">{{ item.section.title }}</h2>
+                    {{ item.bookmark | headingBookmark(item.section.title) }}
+                  </div>
+                  {{ item.bookmark | bookmarkedTo }}
+                </div>
+              {% else %}
+                <div class="app-guide-heading-row">
+                  <h2 class="app-guide-heading-1"{% if item.section.slug %} id="{{ item.section.slug }}"{% endif %}>{{ item.section.title }}</h2>
+                </div>
+              {% endif %}
 
               {% if item.isCurrent %}
-                <div class="app-guide-markdown app-guide-body-text" data-tiptap-markdown data-heading-ids="{{ item.section.headingIds | dump }}">
+                <div class="app-guide-markdown app-guide-body-text" data-tiptap-markdown data-heading-ids="{{ item.section.headingIds | dump }}" data-heading-bookmarks="{{ item.headingBookmarks | dump }}">
                   <script type="application/json">{{ item.section.markdown | jsonScript }}</script>
-                  <div class="app-guide-markdown__fallback">{{ item.section.markdown | markdownFallback(item.section.headingIds) }}</div>
+                  <div class="app-guide-markdown__fallback">{{ item.section.markdown | markdownFallback(item.section.headingIds, item.headingBookmarks) }}</div>
                 </div>
               {% else %}
                 <div class="app-guide-markdown app-guide-body-text">
-                  <div class="app-guide-markdown__fallback">{{ item.section.markdown | markdownFallback(item.section.headingIds) }}</div>
+                  <div class="app-guide-markdown__fallback">{{ item.section.markdown | markdownFallback(item.section.headingIds, item.headingBookmarks) }}</div>
                 </div>
               {% endif %}
 

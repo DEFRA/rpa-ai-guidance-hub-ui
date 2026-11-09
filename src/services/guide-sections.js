@@ -11,8 +11,16 @@ const INTRODUCTION_TITLE = 'Introduction'
  * @property {string} title - The section's heading, as plain text
  * @property {string|null} slug - The anchor the section's heading is linked
  *   by; null for an Introduction made of text before the first heading
+ * @property {string|null} sectionAnchor - The anchor the hub knows the
+ *   section's heading by, which pins and bookmarks name; null when the hub
+ *   gives it no section ID (`_hasSectionId`)
+ * @property {string[]} headingTitles - The headings inside, as plain text, in
+ *   the order of `headingIds`
  * @property {string[]} headingIds - The anchors of the headings inside
  *   `markdown`, in order
+ * @property {Array<string|null>} headingSectionAnchors - The anchors the hub
+ *   knows the headings inside by, in the order of `headingIds`; null for one
+ *   it gives no section ID
  * @property {Array<{title: string, slug: string}>} subheadings - The
  *   headings one level below the section's own
  * @property {string} markdown - Everything up to the next section, without
@@ -32,14 +40,14 @@ const INTRODUCTION_TITLE = 'Introduction'
  */
 function splitIntoSections (markdown) {
   const allTokens = new Lexer().lex(markdown ?? '')
-  const slugs = _slugsOf(allTokens)
+  const anchors = _anchorsOf(allTokens)
   const tokens = _withoutTitle(allTokens)
   const depth = _sectionDepth(tokens)
 
   if (depth === null) {
-    const introduction = _part(INTRODUCTION_TITLE, null, [])
+    const introduction = _part(INTRODUCTION_TITLE)
 
-    tokens.forEach(token => _addToken(introduction, token, slugs, depth))
+    tokens.forEach(token => _addToken(introduction, token, anchors, depth))
 
     return _build([introduction])
   }
@@ -48,13 +56,13 @@ function splitIntoSections (markdown) {
 
   for (const token of tokens) {
     if (token.type === 'heading' && token.depth === depth) {
-      parts.push(_part(_plainText(token), slugs.get(token), []))
+      parts.push(_part(_plainText(token), anchors, token))
     } else {
       if (parts.length === 0) {
-        parts.push(_part(INTRODUCTION_TITLE, null, []))
+        parts.push(_part(INTRODUCTION_TITLE))
       }
 
-      _addToken(parts.at(-1), token, slugs, depth)
+      _addToken(parts.at(-1), token, anchors, depth)
     }
   }
 
@@ -69,18 +77,20 @@ function splitIntoSections (markdown) {
  * @private
  * @param {ReturnType<typeof _part>} part
  * @param {import('marked').Token} token
- * @param {Map<import('marked').Token, string>} slugs
+ * @param {ReturnType<typeof _anchorsOf>} anchors
  * @param {number|null} depth - The section heading depth
  */
-function _addToken (part, token, slugs, depth) {
+function _addToken (part, token, anchors, depth) {
   part.raw.push(_raw(token))
 
   for (const heading of _headingsIn([token])) {
-    part.headingIds.push(slugs.get(heading))
+    part.headingIds.push(anchors.onPage.get(heading))
+    part.headingTitles.push(_plainText(heading))
+    part.headingSectionAnchors.push(anchors.ofSection.get(heading) ?? null)
   }
 
   if (token.type === 'heading' && token.depth === depth + 1) {
-    part.subheadings.push({ title: _plainText(token), slug: slugs.get(token) })
+    part.subheadings.push({ title: _plainText(token), slug: anchors.onPage.get(token) })
   }
 }
 
@@ -92,6 +102,32 @@ function _addToken (part, token, slugs, depth) {
  */
 function _headingsIn (tokens) {
   return tokens.flatMap(token => token.type === 'heading' ? [token] : _headingsIn(_children(token)))
+}
+
+/**
+ * The heading the hub knows by `anchor`, as pins and bookmarks name it, with
+ * its anchor on the page and the page it is on: a section's own, or one
+ * inside it.
+ *
+ * @param {GuideSection[]} sections
+ * @param {string} anchor - The hub's (`sectionAnchor`)
+ * @returns {{anchor: string, slug: string, title: string, page: number}|null}
+ *   Null when the hub knows no heading of the guide by it
+ */
+function findHeading (sections, anchor) {
+  for (const [index, section] of sections.entries()) {
+    if (section.sectionAnchor === anchor) {
+      return { anchor, slug: section.slug, title: section.title, page: index + 1 }
+    }
+
+    const inside = section.headingSectionAnchors.indexOf(anchor)
+
+    if (inside !== -1) {
+      return { anchor, slug: section.headingIds[inside], title: section.headingTitles[inside], page: index + 1 }
+    }
+  }
+
+  return null
 }
 
 /**
@@ -262,14 +298,39 @@ function _imageEdit (image, start, resolve) {
 }
 
 /**
+ * Whether the hub gives a heading a section ID, so that it can be pinned and
+ * bookmarked: as the API reads a guide (rpa-ai-guidance-hub-api,
+ * `app/guidance/documents/reader.py`), a heading is a line of its own that
+ * begins with two or more `#`, so not one in a quote or a list, nor one
+ * underlined.
+ *
+ * @private
+ * @param {import('marked').Tokens.Heading} heading - Not inside another token
+ * @returns {boolean}
+ */
+function _hasSectionId (heading) {
+  return heading.raw.startsWith('##')
+}
+
+/**
  * @private
  * @param {string} title
- * @param {string|null} slug
- * @param {string[]} raw
- * @returns {{title: string, slug: string|null, raw: string[], headingIds: string[], subheadings: Array<{title: string, slug: string}>}}
+ * @param {ReturnType<typeof _anchorsOf>} [anchors]
+ * @param {import('marked').Tokens.Heading} [heading] - The section's own;
+ *   none for an Introduction
+ * @returns {{title: string, slug: string|null, sectionAnchor: string|null, raw: string[], headingIds: string[], headingTitles: string[], headingSectionAnchors: Array<string|null>, subheadings: Array<{title: string, slug: string}>}}
  */
-function _part (title, slug, raw) {
-  return { title, slug, raw, headingIds: [], subheadings: [] }
+function _part (title, anchors, heading) {
+  return {
+    title,
+    slug: anchors?.onPage.get(heading) ?? null,
+    sectionAnchor: anchors?.ofSection.get(heading) ?? null,
+    raw: [],
+    headingIds: [],
+    headingTitles: [],
+    headingSectionAnchors: [],
+    subheadings: []
+  }
 }
 
 /**
@@ -279,10 +340,13 @@ function _part (title, slug, raw) {
  */
 function _build (parts) {
   return parts
-    .map(({ title, slug, raw, headingIds, subheadings }) => ({
+    .map(({ title, slug, sectionAnchor, raw, headingIds, headingTitles, headingSectionAnchors, subheadings }) => ({
       title,
       slug,
+      sectionAnchor,
       headingIds,
+      headingTitles,
+      headingSectionAnchors,
       subheadings,
       markdown: raw.join('').trim()
     }))
@@ -291,27 +355,47 @@ function _build (parts) {
 }
 
 /**
- * The anchor each heading is linked by: its text in lower case, without
- * punctuation, its spaces made hyphens, and a number added to repeats. This
- * is how the API writes the guide's links.
+ * The anchors each heading goes by: its text in lower case, without
+ * punctuation, its spaces made hyphens, and a number added to repeats. Which
+ * headings a repeat counts differs, so after one they can differ too:
+ *
+ * - `onPage`, the anchor the page gives it, counts every heading, the title
+ *   and those in quotes and lists too;
+ * - `ofSection`, the anchor the hub knows its section by, counts only the
+ *   headings the hub gives a section ID, as the API numbers them
+ *   (rpa-ai-guidance-hub-api, `app/guidance/parsing/anchors.py`). Other
+ *   headings have none.
  *
  * @private
  * @param {import('marked').Token[]} tokens
- * @returns {Map<import('marked').Token, string>}
+ * @returns {{onPage: Map<import('marked').Token, string>, ofSection: Map<import('marked').Token, string>}}
  */
-function _slugsOf (tokens) {
+function _anchorsOf (tokens) {
+  return {
+    onPage: _numbered(_headingsIn(tokens)),
+    ofSection: _numbered(tokens.filter(token => token.type === 'heading' && _hasSectionId(token)))
+  }
+}
+
+/**
+ * @private
+ * @param {import('marked').Tokens.Heading[]} headings - In source order
+ * @returns {Map<import('marked').Token, string>} Each heading's slug, a
+ *   number added to each repeat among `headings`
+ */
+function _numbered (headings) {
   const slugs = new Map()
   const seen = new Map()
 
-  for (const token of _headingsIn(tokens)) {
-    const base = _plainText(token)
+  for (const heading of headings) {
+    const base = _plainText(heading)
       .toLowerCase()
       .replaceAll(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, '')
       .replaceAll(' ', '-')
     const count = seen.get(base) ?? 0
 
     seen.set(base, count + 1)
-    slugs.set(token, count === 0 ? base : `${base}-${count}`)
+    slugs.set(heading, count === 0 ? base : `${base}-${count}`)
   }
 
   return slugs
@@ -370,6 +454,7 @@ function _plainText (token) {
 }
 
 export {
+  findHeading,
   resolveAnchors,
   resolveImages,
   splitIntoSections

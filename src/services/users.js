@@ -102,6 +102,24 @@ async function pinnedOf (request) {
 }
 
 /**
+ * The signed-in user's cases, in their order, each with the guides and
+ * sections bookmarked to it. Not known when the user cannot be had, which is
+ * logged: a page shows without them rather than failing.
+ *
+ * @param {import('@hapi/hapi').Request} request - Signed in
+ * @returns {Promise<Array<{key: string, type: string, ref: string, guides: Array<object>}>|null>}
+ */
+async function casesOf (request) {
+  try {
+    return (await _userOf(request)).cases ?? []
+  } catch (err) {
+    logger.warn(buildErrorLog(err, { type: 'cases_unavailable' }), `Could not find the user's cases: ${err.message}`)
+
+    return null
+  }
+}
+
+/**
  * Pin a guide at the top of the signed-in user's pins.
  *
  * @param {import('@hapi/hapi').Request} request - Signed in
@@ -215,6 +233,7 @@ export {
   listRecentlyOpened,
   movePin,
   pin,
+  casesOf,
   pinnedOf,
   recordOpened,
   signIn,

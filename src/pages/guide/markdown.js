@@ -2,6 +2,7 @@ import { Marked } from 'marked'
 
 // The palette is shared with the client-side editor, so the server-rendered
 // viewer colours the same spans the same way.
+import { bookmarkedToHtml, headingBookmarkHtml } from '../../constants/heading-bookmarks.js'
 import { COLOURED_SPAN, colourClass } from '../../constants/text-colours.js'
 import { relativeHref } from '../common/relative-href.js'
 
@@ -130,9 +131,12 @@ const COLOURED_SPAN_EXTENSION = {
  * @param {string} markdown
  * @param {string[]} [headingIds] - The ids to give the headings, in order, so
  *   the guide's links to them work without the client viewer
+ * @param {Array<import('../../constants/heading-bookmarks.js').HeadingBookmark>} [headingBookmarks]
+ *   - Each heading's bookmark control, in order; a heading without one has
+ *   none
  * @returns {string} HTML that is safe to output unescaped
  */
-function renderMarkdownFallback (markdown, headingIds = []) {
+function renderMarkdownFallback (markdown, headingIds = [], headingBookmarks = []) {
   let headings = 0
 
   const renderer = new Marked({
@@ -141,11 +145,19 @@ function renderMarkdownFallback (markdown, headingIds = []) {
       ...SAFE_RENDERER,
       heading ({ tokens, depth }) {
         const id = headingIds[headings]
+        const bookmark = headingBookmarks[headings]
 
         headings += 1
         const idAttribute = id ? ` id="${_escape(id)}"` : ''
+        const html = `<h${depth}${idAttribute}>${this.parser.parseInline(tokens)}</h${depth}>`
 
-        return `<h${depth}${idAttribute}>${this.parser.parseInline(tokens)}</h${depth}>\n`
+        if (!bookmark) {
+          return `${html}\n`
+        }
+
+        const text = this.parser.parseInline(tokens, this.parser.textRenderer)
+
+        return `<div class="app-guide-heading"><div class="app-guide-heading-row app-guide-heading-row--sub">${html}${headingBookmarkHtml(bookmark, text)}</div>${bookmarkedToHtml(bookmark)}</div>\n`
       }
     }
   })

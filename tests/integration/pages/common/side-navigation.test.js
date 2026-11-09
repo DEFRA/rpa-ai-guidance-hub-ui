@@ -5,7 +5,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { initiateUploadResponse } from '../../../fixtures/cdp-uploader.js'
-import { guidePageResponse, schemesResponse, userResponse } from '../../../fixtures/guidance-api.js'
+import { caseResponse, guidePageResponse, schemesResponse, userResponse } from '../../../fixtures/guidance-api.js'
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
@@ -197,6 +197,219 @@ describe('Side navigation', () => {
       })
 
       expect(statusCode).toBe(expected)
+    })
+  })
+
+  describe('the user\'s case bookmarks', () => {
+    const { id: USER_ID } = userResponse()
+    const GUIDE = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
+    const BEFORE = { sectionId: '019a0000-0000-7000-8000-000000000011', section: '11-before-you-begin', heading: '1.1 Before you begin', position: 1 }
+    const ASSIGN = { sectionId: '019a0000-0000-7000-8000-000000000002', section: '2-assign-case', heading: '2 Assign case', position: 0 }
+
+    async function bookmarksSection (cases) {
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ cases }))
+      const cookie = await loginAsDevUser(server)
+      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+      const start = payload.indexOf('id="side-nav-bookmarks"')
+
+      return payload.slice(start, payload.indexOf('app-side-nav__footer', start))
+    }
+
+    test('are counted beside "Case bookmarks", one for each case', async () => {
+      const section = await bookmarksSection([caseResponse(), caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', ref: 'W7654321' })])
+
+      expect(section).toMatch(/Case bookmarks<\/span>\s*<span class="app-side-nav__section-count">2<span class="govuk-visually-hidden"> cases<\/span>/)
+    })
+
+    test('are listed in the user\'s order, each with its guides and their number, each guide with its sections in the guide\'s order', async () => {
+      const section = await bookmarksSection([
+        caseResponse({ ref: 'W7654321', guides: [{ id: GUIDE, title: 'Claiming a payment', bookmarks: [BEFORE, ASSIGN] }] }),
+        caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', type: 'sbi', ref: '123456789' })
+      ])
+
+      const shown = [...section.matchAll(/app-side-nav__ref-type">([^<]+)<[^]*?<\/span>([^<]+)<\/span>\s*<span class="app-side-nav__meta">([^<]+)</g)]
+        .map(([, type, ref, guides]) => [type, ref.trim(), guides])
+      const links = [...section.matchAll(/<a class="app-side-nav__sublink[^"]*" href="([^"]+)"[^>]*>([^<]+)<\/a>/g)]
+        .map(([, href, text]) => [text, href])
+
+      expect(shown).toEqual([['Case', 'W7654321', '1 guide'], ['SBI', '123456789', '0 guides']])
+      expect(links).toEqual([
+        ['Claiming a payment', `/guides/${GUIDE}`],
+        ['1.1 Before you begin', `/guides/${GUIDE}?section=11-before-you-begin`],
+        ['2 Assign case', `/guides/${GUIDE}?section=2-assign-case`]
+      ])
+    })
+
+    describe('changed from their menus', () => {
+      const K1 = caseResponse().key
+      const K2 = '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c'
+      const OTHER = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
+      const INTRO = { sectionId: '019a0000-0000-7000-8000-000000000001', section: '1-introduction', heading: '1 Introduction', position: 0 }
+      const ASSIGNED = { ...ASSIGN, position: 2 }
+      const CLOSE = { sectionId: '019a0000-0000-7000-8000-000000000003', section: '3-close-case', heading: '3 Close case', position: 1 }
+      const W1 = caseResponse({
+        guides: [
+          { id: GUIDE, title: 'Claiming a payment', bookmarks: [INTRO, ASSIGNED] },
+          { id: OTHER, title: 'Closing a case', bookmarks: [CLOSE] }
+        ]
+      })
+      const SBI = caseResponse({ key: K2, type: 'sbi', ref: '123456789', guides: [{ id: GUIDE, title: 'Claiming a payment', bookmarks: [{ ...INTRO }] }] })
+
+      async function postAs (url, payload, cases = [W1, SBI]) {
+        nock(GUIDANCE_API_BASE_URL)
+          .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+          .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ cases }))
+        const cookie = await loginAsDevUser(server)
+
+        return server.inject({ method: 'POST', url, headers: { cookie }, payload })
+      }
+
+      function patching (operations) {
+        return nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`, operations).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+      }
+
+      test('give each case a menu to remove it and move it, moving only where it can go', async () => {
+        const section = await bookmarksSection([W1, SBI])
+        const [first] = section.split('<li class="app-side-nav__case"').slice(1)
+
+        expect(first).toContain('More actions for Case W1234567')
+        expect(first).toMatch(new RegExp(`action="/case-bookmarks/remove">\\s*<input type="hidden" name="key" value="${K1}">[^]*?>Remove bookmark<`))
+        expect(first).toMatch(/data-reorder-move="-1" hidden>/)
+        expect(first).toMatch(new RegExp(`action="/case-bookmarks/order" data-reorder-move="1">\\s*<input type="hidden" name="order" value="${K1}"><input type="hidden" name="order" value="${K2}">\\s*<input type="hidden" name="from" value="0">\\s*<input type="hidden" name="to" value="1">`))
+      })
+
+      test('give each guide a menu to remove it or move it, and each section one to remove it', async () => {
+        const section = await bookmarksSection([W1, SBI])
+        const guides = section.slice(section.indexOf('app-side-nav__sublist'), section.indexOf('<li class="app-side-nav__case"', section.indexOf('app-side-nav__sublist')))
+        const [first, second] = guides.split('<li data-reorder-id').slice(1)
+
+        expect(first).toContain('More actions for Claiming a payment')
+        expect(first).toMatch(new RegExp(`name="guideId" value="${GUIDE}">[^]*?>Remove<span class="govuk-visually-hidden"> Claiming a payment from Case W1234567<`))
+        expect(first).toMatch(/data-reorder-move="-1" hidden>/)
+        expect(first).toMatch(new RegExp(`action="/case-bookmarks/guide-order" data-reorder-move="1">\\s*<input type="hidden" name="key" value="${K1}">\\s*<input type="hidden" name="order" value="${GUIDE}"><input type="hidden" name="order" value="${OTHER}">\\s*<input type="hidden" name="from" value="0">\\s*<input type="hidden" name="to" value="1">`))
+        expect(first).toContain('More actions for 2 Assign case')
+        expect(first).toMatch(new RegExp(`name="sectionId" value="${ASSIGN.sectionId}">[^]*?>Remove<span class="govuk-visually-hidden"> 2 Assign case from Case W1234567<`))
+        expect(first.slice(first.indexOf('app-side-nav__section-list'))).not.toContain('Move')
+        expect(second).toMatch(/data-reorder-move="1" hidden>/)
+      })
+
+      test('remove a case, then go back to the page\'s case bookmarks', async () => {
+        const removing = patching([
+          { op: 'test', path: '/1/key', value: K2 },
+          { op: 'remove', path: '/1' }
+        ])
+
+        const { statusCode, headers } = await postAs('/case-bookmarks/remove', { key: K2, returnTo: '/hub' })
+
+        expect(removing.isDone()).toBe(true)
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+        expect(headers.location).toBe('/hub#side-nav-bookmarks')
+      })
+
+      test.each([
+        [
+          'a guide, with all its sections',
+          { guideId: GUIDE },
+          [
+            { op: 'test', path: '/0/key', value: K1 },
+            { op: 'test', path: '/0/bookmarks/2/guideId', value: GUIDE },
+            { op: 'test', path: '/0/bookmarks/0/guideId', value: GUIDE },
+            { op: 'remove', path: '/0/bookmarks/2' },
+            { op: 'remove', path: '/0/bookmarks/0' }
+          ]
+        ],
+        [
+          'a section',
+          { guideId: GUIDE, sectionId: ASSIGN.sectionId },
+          [
+            { op: 'test', path: '/0/key', value: K1 },
+            { op: 'test', path: '/0/bookmarks/2/sectionId', value: ASSIGN.sectionId },
+            { op: 'remove', path: '/0/bookmarks/2' }
+          ]
+        ]
+      ])('remove %s from a case, then go back to the page\'s case bookmarks', async (_what, form, operations) => {
+        const removing = patching(operations)
+
+        const { statusCode, headers } = await postAs('/case-bookmarks/remove', { key: K1, returnTo: '/hub', ...form })
+
+        expect(removing.isDone()).toBe(true)
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+        expect(headers.location).toBe('/hub#side-nav-bookmarks')
+      })
+
+      test.each([
+        ['its last section', { guideId: GUIDE, sectionId: INTRO.sectionId }, { op: 'test', path: '/1/bookmarks/0/sectionId', value: INTRO.sectionId }],
+        ['its only guide', { guideId: GUIDE }, { op: 'test', path: '/1/bookmarks/0/guideId', value: GUIDE }]
+      ])('remove the case with %s, only if nothing was added to it since', async (_what, form, tested) => {
+        const removing = patching([
+          { op: 'test', path: '/1/key', value: K2 },
+          tested,
+          { op: 'remove', path: '/1/bookmarks/0' },
+          { op: 'test', path: '/1/bookmarks', value: [] },
+          { op: 'remove', path: '/1' }
+        ])
+
+        const { statusCode, headers } = await postAs('/case-bookmarks/remove', { key: K2, returnTo: '/hub', ...form })
+
+        expect(removing.isDone()).toBe(true)
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+        expect(headers.location).toBe('/hub#side-nav-bookmarks')
+      })
+
+      test('move a case, answering a script that dragged it with nothing to show', async () => {
+        const moving = patching([
+          { op: 'test', path: '/0/key', value: K1 },
+          { op: 'test', path: '/1/key', value: K2 },
+          { op: 'move', from: '/0', path: '/1' }
+        ])
+
+        const { statusCode } = await postAs('/case-bookmarks/order', { order: [K1, K2], from: '0', to: '1' })
+
+        expect(moving.isDone()).toBe(true)
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_NO_CONTENT)
+      })
+
+      test('move a guide with its sections, in one patch', async () => {
+        const moving = patching([
+          { op: 'test', path: '/0/key', value: K1 },
+          { op: 'test', path: '/0/bookmarks/0/guideId', value: GUIDE },
+          { op: 'test', path: '/0/bookmarks/2/guideId', value: GUIDE },
+          { op: 'test', path: '/0/bookmarks/1/guideId', value: OTHER },
+          { op: 'move', from: '/0/bookmarks/1', path: '/0/bookmarks/0' }
+        ])
+
+        const { statusCode } = await postAs('/case-bookmarks/guide-order', { key: K1, order: [GUIDE, OTHER], from: '1', to: '0' })
+
+        expect(moving.isDone()).toBe(true)
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_NO_CONTENT)
+      })
+
+      test.each([
+        ['/case-bookmarks/order', { order: [K1, K2], from: '1', to: '0', returnTo: '/hub' }],
+        ['/case-bookmarks/guide-order', { key: K1, order: [GUIDE, OTHER], from: '1', to: '0', returnTo: '/hub' }]
+      ])('move from %s without JavaScript, then go back to the page\'s case bookmarks', async (url, form) => {
+        nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+
+        const { statusCode, headers } = await postAs(url, form)
+
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+        expect(headers.location).toBe('/hub#side-nav-bookmarks')
+      })
+
+      test('answer a conflict for guides that are not as the page showed them', async () => {
+        const { statusCode } = await postAs('/case-bookmarks/guide-order', { key: K1, order: [OTHER, GUIDE], from: '1', to: '0' })
+
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_CONFLICT)
+      })
+    })
+
+    test('say when nothing is bookmarked to a case yet', async () => {
+      const section = await bookmarksSection([])
+
+      expect(section).toMatch(/Case bookmarks<\/span>\s*<span class="app-side-nav__section-count">0<span class="govuk-visually-hidden"> cases<\/span>/)
+      expect(section).toContain('You haven\'t bookmarked any guidance to a case yet.')
     })
   })
 

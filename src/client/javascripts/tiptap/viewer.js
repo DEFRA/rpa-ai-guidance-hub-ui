@@ -4,6 +4,7 @@
 
 import { Editor } from '@tiptap/core'
 
+import { extensionsWithBookmarks } from './bookmarked-heading.js'
 import { EXTENSIONS } from './extensions.js'
 
 /**
@@ -23,10 +24,11 @@ function mount (element) {
   element.replaceChildren(target)
 
   const editable = element.dataset.tiptapEditable === 'true'
+  const bookmarks = element.dataset.headingBookmarks ? JSON.parse(element.dataset.headingBookmarks) : []
 
   const editor = new Editor({
     element: target,
-    extensions: EXTENSIONS,
+    extensions: extensionsWithBookmarks(EXTENSIONS, bookmarks),
     content: markdown,
     contentType: 'markdown',
     editable,

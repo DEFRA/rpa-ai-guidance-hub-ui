@@ -1,3 +1,4 @@
+import { CASE_TYPES } from '../constants/case-types.js'
 import * as usersService from '../services/users.js'
 
 const UNTITLED = 'Untitled guide'
@@ -22,9 +23,63 @@ function _pinnedGuides (pinned) {
 }
 
 /**
+ * @private
+ * @param {number} position
+ * @param {number} count
+ * @returns {{position: number, isFirst: boolean, isLast: boolean}} Where an
+ *   item is in its list, which its menu's moves send
+ */
+function _placed (position, count) {
+  return { position, isFirst: position === 0, isLast: position === count - 1 }
+}
+
+/**
+ * @private
+ * The user's cases as the side navigation lists them: each named by its type
+ * and reference, and kept by its key, with its guides, each linking to the
+ * guide, and each guide's bookmarked sections, each linking to its place in
+ * the guide. Each list carries the ids it shows, which its moves send back.
+ *
+ * @param {Array<{key: string, type: string, ref: string, guides: Array<{id: string, title: string|null, bookmarks: Array<{sectionId: string, section: string, heading: string|null}>}>}>} cases
+ *   - In the user's order
+ * @returns {{cases: Array<object>, order: string[]}}
+ */
+function _caseBookmarks (cases) {
+  return {
+    order: cases.map(({ key }) => key),
+    cases: cases.map(({ key, type, ref, guides }, position) => ({
+      key,
+      typeLabel: CASE_TYPES[type].short,
+      ref,
+      name: `${CASE_TYPES[type].short} ${ref}`,
+      ..._placed(position, cases.length),
+      guideOrder: guides.map(({ id }) => id),
+      guides: guides.map((guide, at) => {
+        const href = `/guides/${encodeURIComponent(guide.id)}`
+
+        return {
+          id: guide.id,
+          title: guide.title ?? UNTITLED,
+          href,
+          ..._placed(at, guides.length),
+          sections: guide.bookmarks.map(({ sectionId, section, heading }) => ({
+            sectionId,
+            label: heading ?? section,
+            // The guide sends it on to the page and heading that have it.
+            href: `${href}?section=${encodeURIComponent(section)}`
+          }))
+        }
+      })
+    }))
+  }
+}
+
+/**
  * Gives a signed-in page what its side navigation shows of the user's own
- * lists - the guides they pinned, and how many - from one call to the hub for
- * the user. Without them, the side navigation lists no pins and counts none.
+ * lists - the guides they pinned, and how many, and their cases with the
+ * sections of guides bookmarked to them - from one call to the hub for the
+ * user. Without them, the side navigation lists no pins or cases and counts
+ * none.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -37,12 +92,13 @@ async function addSideNavLists (request, h) {
     return h.continue
   }
 
-  const pinned = await usersService.pinnedOf(request)
+  const [pinned, cases] = await Promise.all([usersService.pinnedOf(request), usersService.casesOf(request)])
 
   response.source.context = {
     ...response.source.context,
     pinnedGuides: _pinnedGuides(pinned ?? []),
-    pinnedCount: pinned?.length
+    pinnedCount: pinned?.length,
+    caseBookmarks: _caseBookmarks(cases ?? [])
   }
 
   return h.continue

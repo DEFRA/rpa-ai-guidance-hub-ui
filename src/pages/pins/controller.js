@@ -1,23 +1,9 @@
 import { statusCodes } from '../../constants/status-codes.js'
 import * as usersService from '../../services/users.js'
-import { relativeHref } from '../common/relative-href.js'
-
-const FALLBACK_RETURN_URL = '/hub'
+import { backTo } from '../common/relative-href.js'
 
 // Where the side navigation lists the pinned guides.
 const PINNED_SECTION = 'side-nav-pinned'
-
-/**
- * @private
- * @param {string} returnTo - The page to go back to, from the form
- * @param {string} [anchor] - A place on it
- * @returns {string} The page, without any place it named, at `anchor`
- */
-function _backTo (returnTo, anchor) {
-  const [page] = relativeHref(returnTo, FALLBACK_RETURN_URL).split('#')
-
-  return anchor ? `${page}#${anchor}` : page
-}
 
 /**
  * Pin a guide at the top, or unpin it from where the page showed it, then go
@@ -33,7 +19,7 @@ async function postPinToggle (request, h) {
 
   await (pin ? usersService.pin(request, guideId) : usersService.unpin(request, guideId, position))
 
-  return h.redirect(_backTo(returnTo, anchor))
+  return h.redirect(backTo(returnTo, anchor))
 }
 
 /**
@@ -55,7 +41,7 @@ async function postPinOrder (request, h) {
     return h.response().code(moved ? statusCodes.HTTP_STATUS_NO_CONTENT : statusCodes.HTTP_STATUS_CONFLICT)
   }
 
-  return h.redirect(_backTo(returnTo, PINNED_SECTION))
+  return h.redirect(backTo(returnTo, PINNED_SECTION))
 }
 
 export {

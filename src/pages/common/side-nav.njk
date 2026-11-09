@@ -146,7 +146,7 @@
       {{ icon("chevron-down", "app-side-nav__chevron") }}
     </summary>
     {% if pins.length %}
-      <ul class="app-side-nav__list" data-reorder-list="/pin-order">
+      <ul class="app-side-nav__list" data-reorder-list="/pin-order" data-reorder-elsewhere="/pin-toggle">
         {% for pin in pins %}
           <li class="app-side-nav__row" data-reorder-id="{{ pin.id }}" data-reorder-label="{{ pin.title }}">
             <a class="app-side-nav__link" href="{{ pin.href }}" draggable="false" data-reorder-handle>
@@ -195,10 +195,111 @@
   <details class="app-side-nav__section" id="side-nav-bookmarks" open>
     <summary class="app-side-nav__section-summary">
       <span class="app-side-nav__label">Case bookmarks</span>
-      <span class="app-side-nav__section-count">0<span class="govuk-visually-hidden"> bookmarked</span></span>
+      <span class="app-side-nav__section-count">{{ caseBookmarks.cases.length }}<span class="govuk-visually-hidden"> cases</span></span>
       {{ icon("chevron-down", "app-side-nav__chevron") }}
     </summary>
-    <p class="app-side-nav__empty">You haven't bookmarked any guidance to a case yet.</p>
+    {% if caseBookmarks.cases.length %}
+      <ul class="app-side-nav__list" data-reorder-list="/case-bookmarks/order">
+        {% for case in caseBookmarks.cases %}
+          <li class="app-side-nav__case" data-reorder-id="{{ case.key }}" data-reorder-label="{{ case.name }}">
+            <div class="app-side-nav__row">
+              <div class="app-side-nav__case-name" data-reorder-handle>
+                {{ icon("bookmark") }}
+                <span class="app-side-nav__text">
+                  <span class="app-side-nav__ref-type">{{ case.typeLabel }}</span>
+                  <span class="govuk-visually-hidden">: </span>{{ case.ref }}</span>
+                <span class="app-side-nav__meta">{{ case.guides.length }} guide{{ "s" if case.guides.length != 1 }}</span>
+              </div>
+              <details class="app-side-nav__more">
+                <summary class="app-side-nav__icon-button app-side-nav__more-button">
+                  {{ icon("more") }}
+                  <span class="govuk-visually-hidden">More actions for {{ case.name }}</span>
+                </summary>
+                <div class="app-side-nav__popover">
+                  <form method="post" action="/case-bookmarks/remove">
+                    <input type="hidden" name="key" value="{{ case.key }}">
+                    <input type="hidden" name="returnTo" value="{{ currentUrl }}">
+                    <button type="submit" class="app-side-nav__menu-item">Remove bookmark<span class="govuk-visually-hidden"> {{ case.name }}</span></button>
+                  </form>
+                  {% for move in [{ text: "Move up", step: -1, hidden: case.isFirst }, { text: "Move down", step: 1, hidden: case.isLast }] %}
+                    <form method="post" action="/case-bookmarks/order" data-reorder-move="{{ move.step }}"{% if move.hidden %} hidden{% endif %}>
+                      {% for shown in caseBookmarks.order %}<input type="hidden" name="order" value="{{ shown }}">{% endfor %}
+                      <input type="hidden" name="from" value="{{ case.position }}">
+                      <input type="hidden" name="to" value="{{ case.position + move.step }}">
+                      <input type="hidden" name="returnTo" value="{{ currentUrl }}">
+                      <button type="submit" class="app-side-nav__menu-item">{{ move.text }}<span class="govuk-visually-hidden"> {{ case.name }}</span></button>
+                    </form>
+                  {% endfor %}
+                </div>
+              </details>
+            </div>
+            {% if case.guides.length %}
+              <ul class="app-side-nav__sublist" aria-label="Guides bookmarked to {{ case.name }}" data-reorder-list="/case-bookmarks/guide-order" data-reorder-fields="{{ { key: case.key } | dump }}">
+                {% for guide in case.guides %}
+                  <li data-reorder-id="{{ guide.id }}" data-reorder-label="{{ guide.title }}">
+                    <div class="app-side-nav__row">
+                      <a class="app-side-nav__sublink" href="{{ guide.href }}" draggable="false" data-reorder-handle>{{ guide.title }}</a>
+                      <details class="app-side-nav__more">
+                        <summary class="app-side-nav__icon-button app-side-nav__more-button">
+                          {{ icon("more") }}
+                          <span class="govuk-visually-hidden">More actions for {{ guide.title }}</span>
+                        </summary>
+                        <div class="app-side-nav__popover">
+                          <form method="post" action="/case-bookmarks/remove">
+                            <input type="hidden" name="key" value="{{ case.key }}">
+                            <input type="hidden" name="guideId" value="{{ guide.id }}">
+                            <input type="hidden" name="returnTo" value="{{ currentUrl }}">
+                            <button type="submit" class="app-side-nav__menu-item">Remove<span class="govuk-visually-hidden"> {{ guide.title }} from {{ case.name }}</span></button>
+                          </form>
+                          {% for move in [{ text: "Move up", step: -1, hidden: guide.isFirst }, { text: "Move down", step: 1, hidden: guide.isLast }] %}
+                            <form method="post" action="/case-bookmarks/guide-order" data-reorder-move="{{ move.step }}"{% if move.hidden %} hidden{% endif %}>
+                              <input type="hidden" name="key" value="{{ case.key }}">
+                              {% for shown in case.guideOrder %}<input type="hidden" name="order" value="{{ shown }}">{% endfor %}
+                              <input type="hidden" name="from" value="{{ guide.position }}">
+                              <input type="hidden" name="to" value="{{ guide.position + move.step }}">
+                              <input type="hidden" name="returnTo" value="{{ currentUrl }}">
+                              <button type="submit" class="app-side-nav__menu-item">{{ move.text }}<span class="govuk-visually-hidden"> {{ guide.title }}</span></button>
+                            </form>
+                          {% endfor %}
+                        </div>
+                      </details>
+                    </div>
+                    {# Sections come in the guide's own order, so they are only
+                       ever removed, never moved. #}
+                    <ul class="app-side-nav__section-list" aria-label="Bookmarked sections of {{ guide.title }}">
+                      {% for section in guide.sections %}
+                        <li class="app-side-nav__row">
+                          <a class="app-side-nav__sublink app-side-nav__section-link" href="{{ section.href }}">{{ section.label }}</a>
+                          <details class="app-side-nav__more">
+                            <summary class="app-side-nav__icon-button app-side-nav__more-button">
+                              {{ icon("more") }}
+                              <span class="govuk-visually-hidden">More actions for {{ section.label }}</span>
+                            </summary>
+                            <div class="app-side-nav__popover">
+                              <form method="post" action="/case-bookmarks/remove">
+                                <input type="hidden" name="key" value="{{ case.key }}">
+                                <input type="hidden" name="guideId" value="{{ guide.id }}">
+                                <input type="hidden" name="sectionId" value="{{ section.sectionId }}">
+                                <input type="hidden" name="returnTo" value="{{ currentUrl }}">
+                                <button type="submit" class="app-side-nav__menu-item">Remove<span class="govuk-visually-hidden"> {{ section.label }} from {{ case.name }}</span></button>
+                              </form>
+                            </div>
+                          </details>
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  </li>
+                {% endfor %}
+              </ul>
+              <p class="govuk-visually-hidden" role="status" data-reorder-status></p>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="govuk-visually-hidden" role="status" data-reorder-status></p>
+    {% else %}
+      <p class="app-side-nav__empty">You haven't bookmarked any guidance to a case yet.</p>
+    {% endif %}
   </details>
 
   <ul class="app-side-nav__list app-side-nav__footer">
