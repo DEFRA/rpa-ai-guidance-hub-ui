@@ -87,7 +87,7 @@ describe('#uploadGuideController', () => {
       const file = page.getByLabelText('Upload a file')
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(page.getByRole('heading', { level: 1, name: 'Upload guidance' })).toBeInTheDocument()
-      expect(file.form).toHaveAttribute('action', expect.stringMatching(new RegExp(`/upload-and-scan/${uploadId}$`)))
+      expect(file.form).toHaveAttribute('action', `/upload-and-scan/${uploadId}`)
       expect(file).toHaveAttribute('type', 'file')
       expect(file).toHaveAttribute('accept', '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     })

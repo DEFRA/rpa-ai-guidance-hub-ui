@@ -154,7 +154,7 @@ async function expectFreshUploadForm (server, cookie) {
   })
 
   expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-  expect(pageOf(response.payload).getByLabelText('Upload a file').form).toHaveAttribute('action', expect.stringMatching(/\/upload-and-scan\/u-next$/))
+  expect(pageOf(response.payload).getByLabelText('Upload a file').form).toHaveAttribute('action', '/upload-and-scan/u-next')
 }
 
 export {

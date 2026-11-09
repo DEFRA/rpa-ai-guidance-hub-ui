@@ -101,7 +101,7 @@ describe('start-over', () => {
         headers: { cookie: mergeCookies(cookie, res.headers['set-cookie']) }
       })
 
-      expect(pageOf(reload.payload).document.querySelector('form.app-upload-panel')).toHaveAttribute('action', expect.stringMatching(/\/u-fresh$/))
+      expect(pageOf(reload.payload).getByLabelText('Upload a file').form).toHaveAttribute('action', '/upload-and-scan/u-fresh')
       expect(nock.pendingMocks()).toEqual([])
     })
 
@@ -183,7 +183,7 @@ describe('start-over', () => {
         headers: { cookie: mergeCookies(cookie, res.headers['set-cookie']) }
       })
 
-      expect(pageOf(reload.payload).document.querySelector('form.app-upload-panel')).toHaveAttribute('action', expect.stringMatching(/\/u-after-reset$/))
+      expect(pageOf(reload.payload).getByLabelText('Upload a file').form).toHaveAttribute('action', '/upload-and-scan/u-after-reset')
       expect(nock.pendingMocks()).toEqual([])
     })
   })
