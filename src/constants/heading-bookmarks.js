@@ -9,7 +9,9 @@
 /**
  * @typedef {Object} HeadingPin
  * @property {string} guideId
- * @property {string} section - The heading's anchor
+ * @property {string} section - The anchor the hub knows the heading's section
+ *   by
+ * @property {string} anchor - The heading's anchor on the page, to come back to
  * @property {string} returnTo - The page, to come back to
  * @property {{position: number, sectionId: string, key: string}|null} pinned
  *   - Where the user's pins have the heading's section; null when it is not
@@ -80,11 +82,11 @@ function headingBookmarkHtml ({ href, bookmarkedTo }, heading) {
  * @param {string} heading - The heading's text
  * @returns {string} HTML
  */
-function headingPinHtml ({ guideId, section, returnTo, pinned }, heading) {
+function headingPinHtml ({ guideId, section, anchor, returnTo, pinned }, heading) {
   const label = pinned ? 'Unpin section' : 'Pin section'
   const fields = pinned
-    ? { guideId, pin: 'false', position: pinned.position, sectionId: pinned.sectionId, section, returnTo }
-    : { guideId, pin: 'true', section, returnTo }
+    ? { guideId, pin: 'false', position: pinned.position, sectionId: pinned.sectionId, section, anchor, returnTo }
+    : { guideId, pin: 'true', section, anchor, returnTo }
 
   return [
     `<form class="app-guide-section-pin" method="post" action="/pin-toggle"${pinned ? ` data-reorder-follows="${_escape(pinned.key)}"` : ''}>`,

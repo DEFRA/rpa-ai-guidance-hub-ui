@@ -420,7 +420,7 @@ describe('#guideController', () => {
         .patch(`/users/${USER_ID}/pins`, [{ op: 'add', path: '/0', value: { guideId: GUIDE_ID, section: 'before-you-begin', heading: 'Before you begin' } }])
         .reply(statusCodes.HTTP_STATUS_NO_CONTENT)
 
-      const { statusCode, headers } = await post(`guideId=${GUIDE_ID}&pin=true&section=before-you-begin&returnTo=${encodeURIComponent(GUIDE_URL)}`)
+      const { statusCode, headers } = await post(`guideId=${GUIDE_ID}&pin=true&section=before-you-begin&anchor=before-you-begin&returnTo=${encodeURIComponent(GUIDE_URL)}`)
 
       expect(pinning.isDone()).toBe(true)
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
@@ -446,11 +446,30 @@ describe('#guideController', () => {
         ])
         .reply(statusCodes.HTTP_STATUS_NO_CONTENT)
 
-      const { statusCode, headers } = await post(`guideId=${GUIDE_ID}&pin=false&position=1&sectionId=${SECTION_ID}&section=before-you-begin&returnTo=${encodeURIComponent(GUIDE_URL)}`)
+      const { statusCode, headers } = await post(`guideId=${GUIDE_ID}&pin=false&position=1&sectionId=${SECTION_ID}&section=before-you-begin&anchor=before-you-begin&returnTo=${encodeURIComponent(GUIDE_URL)}`)
 
       expect(unpinning.isDone()).toBe(true)
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(headers.location).toBe(`${GUIDE_URL}#before-you-begin`)
+    })
+
+    function unpinGoingBackTo (anchor) {
+      nock(GUIDANCE_API_BASE_URL).post('/users').optionally().reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+      nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/pins`).optionally().reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+
+      return post(`guideId=${GUIDE_ID}&pin=false&position=1&sectionId=${SECTION_ID}&anchor=${encodeURIComponent(anchor)}&returnTo=${encodeURIComponent(GUIDE_URL)}`)
+    }
+
+    test('goes back to a heading whose anchor has letters beyond A to Z, and _, as a heading\'s can', async () => {
+      const { headers } = await unpinGoingBackTo('før_you-begin')
+
+      expect(headers.location).toBe(`${GUIDE_URL}#f%C3%B8r_you-begin`)
+    })
+
+    test('is refused when it names a place on the page by anything else', async () => {
+      const { statusCode } = await unpinGoingBackTo('a#b')
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
     })
   })
 

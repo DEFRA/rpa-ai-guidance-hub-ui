@@ -21,12 +21,13 @@ describe('headingPinHtml', () => {
   const GUIDE = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
 
   test('pins the heading\'s section by its anchor, its star named for the heading, escaping both', () => {
-    const html = headingPinHtml({ guideId: GUIDE, section: 'a"b', returnTo: '/guides/g?page=1&x=1', pinned: null }, '<Pay> & claim')
+    const html = headingPinHtml({ guideId: GUIDE, section: 'a"b', anchor: 'a-b-1', returnTo: '/guides/g?page=1&x=1', pinned: null }, '<Pay> & claim')
 
     expect(html).toMatch(/^<form class="app-guide-section-pin" method="post" action="\/pin-toggle">/)
     expect(html).toContain(`<input type="hidden" name="guideId" value="${GUIDE}">`)
     expect(html).toContain('<input type="hidden" name="pin" value="true">')
     expect(html).toContain('<input type="hidden" name="section" value="a&quot;b">')
+    expect(html).toContain('<input type="hidden" name="anchor" value="a-b-1">')
     expect(html).toContain('<input type="hidden" name="returnTo" value="/guides/g?page=1&amp;x=1">')
     expect(html).not.toContain('name="position"')
     expect(html).not.toContain('fill="currentColor"')

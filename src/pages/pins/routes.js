@@ -29,12 +29,13 @@ const routes = [
           pin: Joi.boolean().required(),
           position: position.when('pin', { is: false, then: Joi.required() }),
           // A section of the guide: by its id, to unpin it; by its anchor, to
-          // pin it and to come back to its heading.
+          // pin it.
           sectionId: id,
           section: Joi.string(),
           returnTo,
-          // The guide's star, to come back to: letters, digits and hyphens.
-          anchor: Joi.string().max(64).pattern(/^[A-Za-z0-9-]+$/)
+          // Where on the page to come back to, the star or the heading: as a
+          // heading's anchor is made, letters, digits, `_` and hyphens.
+          anchor: Joi.string().pattern(/^[\p{L}\p{M}\p{N}\p{Pc}-]+$/u)
         }),
         failAction: () => { throw Boom.badRequest() }
       }

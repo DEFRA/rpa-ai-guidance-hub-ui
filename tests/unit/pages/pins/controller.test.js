@@ -39,13 +39,23 @@ describe('pins controller', () => {
 
     test('pins a section by its anchor, with its heading as the guide has it now, then goes back to the heading', async () => {
       vi.spyOn(guidesService, 'headingOf').mockResolvedValue({ anchor: 'før-you-begin', title: 'Før you begin', page: 1 })
-      const request = { payload: { guideId: GUIDE, pin: true, section: 'før-you-begin', returnTo: `/guides/${GUIDE}?page=1` } }
+      const request = { payload: { guideId: GUIDE, pin: true, section: 'før-you-begin', anchor: 'før-you-begin', returnTo: `/guides/${GUIDE}?page=1` } }
 
       await controller.postPinToggle(request, h)
 
       expect(guidesService.headingOf).toHaveBeenCalledWith(GUIDE, 'før-you-begin')
       expect(usersService.pin).toHaveBeenCalledWith(request, GUIDE, { section: 'før-you-begin', heading: 'Før you begin' })
       expect(h.redirect).toHaveBeenCalledWith(`/guides/${GUIDE}?page=1#f%C3%B8r-you-begin`)
+    })
+
+    test('goes back to the heading\'s anchor on the page, which a repeated heading makes differ from its section\'s', async () => {
+      vi.spyOn(guidesService, 'headingOf').mockResolvedValue({ anchor: 'help-1', slug: 'help-3', title: 'Help', page: 2 })
+      const request = { payload: { guideId: GUIDE, pin: true, section: 'help-1', anchor: 'help-3', returnTo: `/guides/${GUIDE}?page=2` } }
+
+      await controller.postPinToggle(request, h)
+
+      expect(usersService.pin).toHaveBeenCalledWith(request, GUIDE, { section: 'help-1', heading: 'Help' })
+      expect(h.redirect).toHaveBeenCalledWith(`/guides/${GUIDE}?page=2#help-3`)
     })
 
     test('refuses to pin a section the guide does not have', async () => {
@@ -58,7 +68,7 @@ describe('pins controller', () => {
     })
 
     test('unpins a section from where the page showed it, then goes back to its heading', async () => {
-      const request = { payload: { guideId: GUIDE, pin: false, position: 1, sectionId: OTHER, section: 'assign-case', returnTo: `/guides/${GUIDE}?page=2` } }
+      const request = { payload: { guideId: GUIDE, pin: false, position: 1, sectionId: OTHER, section: 'assign-case', anchor: 'assign-case', returnTo: `/guides/${GUIDE}?page=2` } }
 
       await controller.postPinToggle(request, h)
 

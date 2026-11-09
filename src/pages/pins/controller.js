@@ -10,8 +10,8 @@ const PINNED_SECTION = 'side-nav-pinned'
 
 /**
  * Pin a guide, or a section of it, at the top, or unpin it from where the
- * page showed it, then go back to the page: to the section's heading, for a
- * section. A page that showed pins which have changed since changes nothing,
+ * page showed it, then go back to the page, where the form says: to the star,
+ * or the section's heading, which is not always at its section's anchor. A page that showed pins which have changed since changes nothing,
  * and the page shows them as they now are.
  *
  * @param {import('@hapi/hapi').Request} request
@@ -28,7 +28,7 @@ async function postPinToggle (request, h) {
     await usersService.unpin(request, guideId, position, sectionId ?? null)
   }
 
-  return h.redirect(backTo(returnTo, section ? encodeURIComponent(section) : anchor))
+  return h.redirect(backTo(returnTo, anchor && encodeURIComponent(anchor)))
 }
 
 /**
