@@ -192,6 +192,19 @@ async function _nothingToFilter (source, request, guides, panel) {
 }
 
 /**
+ * @private
+ * How many guides a list's rows are of, as the API's filter counts count
+ * them: once each, though the Pinned page lists a guide and its sections as
+ * rows of their own.
+ *
+ * @param {Array<{id: string}>} guides - The list's rows
+ * @returns {number}
+ */
+function _guideCount (guides) {
+  return new Set(guides.map((guide) => guide.id)).size
+}
+
+/**
  * One of the side navigation's lists on its own, in its own order (the
  * user's, for the pinned guides; newest first, for the recently opened
  * ones), beside the filters, which narrow it; there is no sort. A list with
@@ -209,7 +222,7 @@ async function getHubListPage (request, h) {
 
   const filters = filtersFrom(request.query)
   const { guides, counts, rowOf } = await _refusingUnknownFilters(source(request, filters))
-  const panel = filterPanel({ path: `/hub/${request.params.list}`, filters, counts, sort: sortFrom(), total: guides.length, withSort: false })
+  const panel = filterPanel({ path: `/hub/${request.params.list}`, filters, counts, sort: sortFrom(), total: _guideCount(guides), withSort: false })
 
   const viewModel = new HubViewModel({
     shown,
