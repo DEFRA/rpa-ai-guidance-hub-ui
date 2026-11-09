@@ -1,7 +1,10 @@
 import { constants as statusCodes } from 'node:http2'
 
+import { within } from '@testing-library/dom'
+
 import { createServer } from '../../../../src/server/server.js'
 import { loginAsDevUser } from '../../helpers/login.js'
+import { pageOf } from '../../helpers/page.js'
 
 describe('#homepageController', () => {
   let server
@@ -19,38 +22,39 @@ describe('#homepageController', () => {
     async function signInPage () {
       const { payload } = await server.inject({ method: 'GET', url: '/' })
 
-      return payload
+      return pageOf(payload)
     }
 
     test('has the design\'s green hero, with a white start button and a panel of what the hub does', async () => {
-      const payload = await signInPage()
+      const page = await signInPage()
 
-      expect(payload).toContain('<div class="app-sign-in-hero">')
-      expect(payload).toContain('<p class="app-sign-in-hero__caption">Rural Payments Agency</p>')
-      expect(payload).toMatch(/<a href="\/login" class="govuk-button govuk-button--start app-sign-in-hero__start-button"[^>]*>\s*Sign in/)
-      expect(payload).toMatch(/class="app-sign-in-hero__panel"[^]*What you can do in the hub/)
+      expect(page.document.querySelector('.app-sign-in-hero')).toBeInTheDocument()
+      expect(page.getByText('Rural Payments Agency')).toHaveClass('app-sign-in-hero__caption')
+      expect(page.getByRole('button', { name: 'Sign in' })).toHaveAttribute('href', '/login')
+      expect(page.getByRole('button', { name: 'Sign in' })).toHaveClass('govuk-button--start', 'app-sign-in-hero__start-button')
+      expect(page.getByRole('heading', { name: 'What you can do in the hub' }).parentElement).toHaveClass('app-sign-in-hero__panel')
     })
 
     test('is titled Guidance hub', async () => {
-      const payload = await signInPage()
+      const page = await signInPage()
 
-      expect(payload).toContain('<h1 class="govuk-heading-xl app-sign-in-hero__title">Guidance hub</h1>')
+      expect(page.getByRole('heading', { level: 1, name: 'Guidance hub' })).toHaveClass('app-sign-in-hero__title')
     })
 
     test('has a header with only the Defra logo, so the hero is the one place to sign in', async () => {
-      const payload = await signInPage()
+      const page = await signInPage()
 
-      const header = payload.slice(payload.indexOf('<header'), payload.indexOf('</header>'))
-      expect(header).toContain('class="defra-header__logo"')
-      expect(header).not.toContain('defra-header__service-name')
-      expect(header).not.toContain('Sign in')
-      expect(payload.split('href="/login"')).toHaveLength(2)
+      const header = within(page.document.body).getByRole('banner')
+      expect(header.querySelector('.defra-header__logo')).toBeInTheDocument()
+      expect(header.querySelector('.defra-header__service-name')).not.toBeInTheDocument()
+      expect(within(header).queryByText('Sign in')).not.toBeInTheDocument()
+      expect(page.document.querySelectorAll('a[href="/login"]')).toHaveLength(1)
     })
 
     test('says what to do if you cannot sign in', async () => {
-      const payload = await signInPage()
+      const page = await signInPage()
 
-      expect(payload).toContain('If you cannot sign in')
+      expect(page.getByRole('heading', { name: 'If you cannot sign in' })).toBeInTheDocument()
     })
   })
 
