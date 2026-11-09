@@ -1,10 +1,12 @@
 import { constants as statusCodes } from 'node:http2'
 
+import { within } from '@testing-library/dom'
 import nock from 'nock'
 
 import { createServer } from '../../../../src/server/server.js'
 import { MISSING_ROLES_FLASH_KEY } from '../../../../src/server/access-control/hub-access.js'
 import { loginAsDevUser } from '../../helpers/login.js'
+import { pageOf, sideNavOf } from '../../helpers/page.js'
 
 const EDITOR_ROUTES = [
   ['GET', '/create-guidance/upload-guide'],
@@ -117,11 +119,12 @@ describe('Access control (Hub.Editor)', () => {
 
       const page = await followRedirect(cookie, refused)
 
+      const shown = pageOf(page.payload)
       expect(page.statusCode).toBe(statusCodes.HTTP_STATUS_FORBIDDEN)
-      expect(page.payload).toContain('You do not have permission to do this')
-      expect(page.payload).toContain('You need the <strong>Designer</strong> role to upload a new guide.')
-      expect(page.payload).toContain('app-side-nav')
-      expect(page.payload).toContain('href="/logout"')
+      expect(shown.getByRole('heading', { level: 1, name: 'You do not have permission to do this' })).toBeInTheDocument()
+      expect(shown.getByText('Designer', { selector: 'strong' }).parentElement).toHaveTextContent('You need the Designer role to upload a new guide.')
+      expect(within(shown.document.body).getByRole('navigation', { name: 'Guidance hub' })).toBeInTheDocument()
+      expect(shown.getByRole('link', { name: 'sign out' })).toHaveAttribute('href', '/logout')
     })
 
     test('is shown once: reloading it goes back to the hub', async () => {
@@ -154,7 +157,7 @@ describe('Access control (Hub.Editor)', () => {
       const page = await followRedirect(cookie, refused)
 
       expect(page.statusCode).toBe(statusCodes.HTTP_STATUS_FORBIDDEN)
-      expect(page.payload).toContain('You need the <strong>Designer and Administrator</strong> roles to do both.')
+      expect(pageOf(page.payload).getByText('Designer and Administrator', { selector: 'strong' }).parentElement).toHaveTextContent('You need the Designer and Administrator roles to do both.')
     })
 
     test('sends a direct visit with nothing refused to the hub', async () => {
@@ -172,16 +175,18 @@ describe('Access control (Hub.Editor)', () => {
     test('is not rendered with an editor section for a viewer', async () => {
       const { payload } = await inject('Hub.Viewer', 'GET', '/hub')
 
-      expect(payload).not.toContain('Designing')
-      expect(payload).not.toContain('Upload guidance')
-      expect(payload).not.toContain('/create-guidance/upload-guide')
+      const everywhere = within(pageOf(payload).document.body)
+      expect(everywhere.queryByRole('heading', { name: 'Designing' })).not.toBeInTheDocument()
+      expect(everywhere.queryByRole('link', { name: 'Upload guidance' })).not.toBeInTheDocument()
+      expect(pageOf(payload).document.querySelector('a[href="/create-guidance/upload-guide"]')).not.toBeInTheDocument()
     })
 
     test('is rendered with an editor section for a user with both roles', async () => {
       const { payload } = await inject('Hub.Viewer,Hub.Editor', 'GET', '/hub')
 
-      expect(payload).toContain('Upload guidance')
-      expect(payload).toContain('>Designing</h2>')
+      const nav = sideNavOf(pageOf(payload))
+      expect(nav.getByRole('link', { name: 'Upload guidance' })).toHaveAttribute('href', '/create-guidance/upload-guide')
+      expect(nav.getByRole('heading', { level: 2, name: 'Designing' })).toBeInTheDocument()
     })
   })
 
