@@ -87,9 +87,10 @@ function headingPinHtml ({ guideId, section, anchor, returnTo, pinned }, heading
   const fields = pinned
     ? { guideId, pin: 'false', position: pinned.position, sectionId: pinned.sectionId, section, anchor, returnTo }
     : { guideId, pin: 'true', section, anchor, returnTo }
+  const follows = pinned ? ` data-reorder-follows="${_escape(pinned.key)}"` : ''
 
   return [
-    `<form class="app-guide-section-pin" method="post" action="/pin-toggle"${pinned ? ` data-reorder-follows="${_escape(pinned.key)}"` : ''}>`,
+    `<form class="app-guide-section-pin" method="post" action="/pin-toggle"${follows}>`,
     ...Object.entries(fields).map(([name, value]) => `<input type="hidden" name="${name}" value="${_escape(value)}">`),
     `<button type="submit" class="app-guide-section-pin__button${pinned ? ' app-guide-section-pin__button--active' : ''}" data-side-nav-tooltip>`,
     `<svg ${ICON_ATTRIBUTES}><path${pinned ? ' fill="currentColor"' : ''} d="${STAR_PATH}"/></svg>`,
