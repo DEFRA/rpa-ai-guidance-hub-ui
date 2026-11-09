@@ -1,9 +1,11 @@
 import { constants as statusCodes } from 'node:http2'
 
+import { within } from '@testing-library/dom'
 import nock from 'nock'
 
 import { guidePageResponse } from '../../../fixtures/guidance-api.js'
 import { generateEntraJwt, getJwks } from '../../../utils/oidc.js'
+import { pageOf, sideNavOf } from '../../helpers/page.js'
 
 const ENTRA_HOST = 'https://login.microsoftonline.com'
 const TENANT_PATH = '/fake-tenant-id'
@@ -101,7 +103,7 @@ describe('#loginController under the entra provider', () => {
       })
 
       expect(hub.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(hub.payload).toContain('Test User')
+      expect(sideNavOf(pageOf(hub.payload)).getByText('Test User')).toHaveClass('app-side-nav__user-name')
     })
 
     test.each([
@@ -136,7 +138,7 @@ describe('#loginController under the entra provider', () => {
 
       const denied = await server.inject({ method: 'GET', url: '/access-denied', headers: { cookie } })
       expect(denied.statusCode).toBe(statusCodes.HTTP_STATUS_FORBIDDEN)
-      expect(denied.payload).not.toContain('app-side-nav')
+      expect(within(pageOf(denied.payload).document.body).queryByRole('navigation', { name: 'Guidance hub' })).not.toBeInTheDocument()
     })
 
     test.each([
@@ -178,13 +180,14 @@ describe('#loginController under the entra provider', () => {
         headers: { cookie: cookieHeader(callback) }
       })
 
+      const page = pageOf(hub.payload)
       expect(hub.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(hub.payload).toContain('Test User')
+      expect(sideNavOf(page).getByText('Test User')).toHaveClass('app-side-nav__user-name')
 
       if (caption) {
-        expect(hub.payload).toContain(`class="app-side-nav__user-roles">${caption}</div>`)
+        expect(sideNavOf(page).getByText(caption)).toHaveClass('app-side-nav__user-roles')
       } else {
-        expect(hub.payload).not.toContain('app-side-nav__user-roles')
+        expect(page.document.querySelector('.app-side-nav__user-roles')).not.toBeInTheDocument()
       }
     })
   })
