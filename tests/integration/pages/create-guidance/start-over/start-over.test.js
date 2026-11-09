@@ -7,6 +7,7 @@ import { audiencesResponse, schemesResponse, stagedDocumentResponse, systemsResp
 import { createServer } from '../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../helpers/login.js'
 import { mergeCookies } from '../../../helpers/cookies.js'
+import { pageOf, summaryValueOf } from '../../../helpers/page.js'
 import { config } from '../../../../../src/config/config.js'
 
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
@@ -100,7 +101,7 @@ describe('start-over', () => {
         headers: { cookie: mergeCookies(cookie, res.headers['set-cookie']) }
       })
 
-      expect(reload.payload).toContain('u-fresh')
+      expect(pageOf(reload.payload).document.querySelector('form.app-upload-panel')).toHaveAttribute('action', expect.stringMatching(/\/u-fresh$/))
       expect(nock.pendingMocks()).toEqual([])
     })
 
@@ -131,12 +132,13 @@ describe('start-over', () => {
 
       const res = await server.inject({ method: 'GET', url: START_OVER_URL, headers: { cookie } })
 
+      const page = pageOf(res.payload)
       expect(res.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(res.payload).toContain('Are you sure you want to start over?')
+      expect(page.getByRole('heading', { level: 1, name: 'Are you sure you want to start over?' })).toBeInTheDocument()
       // The version number is the user's to enter, and none was yet: not the
       // document's own.
-      expect(res.payload).toMatch(/Version number\s*<\/dt>\s*<dd class="govuk-summary-list__value">\s*Not provided\s*</)
-      expect(res.payload).not.toContain('1.4')
+      expect(summaryValueOf(page, 'Version number')).toHaveTextContent('Not provided')
+      expect(page.document.querySelector('main')).not.toHaveTextContent('1.4')
       expect(nock.pendingMocks()).toEqual([])
 
       // Confirming this GET did not itself clear anything - the upload is
@@ -161,7 +163,7 @@ describe('start-over', () => {
         headers: { cookie }
       })
 
-      expect(res.payload).toContain('href="/create-guidance/upload-guide/metadata"')
+      expect(pageOf(res.payload).getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/create-guidance/upload-guide/metadata')
     })
   })
 
@@ -181,7 +183,7 @@ describe('start-over', () => {
         headers: { cookie: mergeCookies(cookie, res.headers['set-cookie']) }
       })
 
-      expect(reload.payload).toContain('u-after-reset')
+      expect(pageOf(reload.payload).document.querySelector('form.app-upload-panel')).toHaveAttribute('action', expect.stringMatching(/\/u-after-reset$/))
       expect(nock.pendingMocks()).toEqual([])
     })
   })
