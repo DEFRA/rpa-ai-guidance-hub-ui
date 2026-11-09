@@ -151,15 +151,23 @@ describe('#guideController', () => {
     })
 
     test.each([
-      ['a section', 'assign-case', 'Assign case'],
-      ['a heading inside a section', 'before-you-begin', 'Introduction'],
-      ['no heading the guide has', 'never', 'Introduction']
-    ])('opens at the page that has %s the address names', async (_case, section, current) => {
+      ['a section', 'assign-case', '?page=2#assign-case'],
+      ['a heading inside a section', 'before-you-begin', '?page=1#before-you-begin']
+    ])('sends an address that names %s to its page, at its heading', async (_case, section, at) => {
       mockGuide()
 
-      const { payload } = await get(`${GUIDE_URL}?section=${section}`)
+      const { statusCode, headers } = await get(`${GUIDE_URL}?section=${section}`)
 
-      expect(payload).toMatch(new RegExp(`aria-current="page">${current}<`))
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(headers.location).toBe(`${GUIDE_URL}${at}`)
+    })
+
+    test('opens at the first page when the address names a section the guide has not', async () => {
+      mockGuide()
+
+      const { payload } = await get(`${GUIDE_URL}?section=never`)
+
+      expect(payload).toMatch(/aria-current="page">Introduction</)
     })
 
     test('names the section a Next or Previous link goes to', async () => {

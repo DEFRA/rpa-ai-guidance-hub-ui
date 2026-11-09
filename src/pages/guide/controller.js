@@ -7,6 +7,7 @@ import * as guidesService from '../../services/guides.js'
 import * as usersService from '../../services/users.js'
 import { guideAssetHref } from './asset-href.js'
 import { BOOKMARKED } from './bookmark/controller.js'
+import { sectionHref } from './bookmark/view-model.js'
 import { isPanelCollapsed, setPanelCollapsed } from './panel.js'
 import { getReadingWidth, setReadingWidth } from './reading-width.js'
 import { buildMetadataRows, GuideViewModel } from './view-model.js'
@@ -23,14 +24,14 @@ const ALLOWED_ASSET_CONTENT_TYPES = new Set([
 /**
  * @private
  * @param {{page?: unknown, section?: unknown}} query - The page's number, or
- *   the anchor of a heading on it, as a link to a bookmarked section names it
+ *   the anchor the hub knows a section by, as a link to a bookmarked section
+ *   names it
  * @param {import('../../services/guide-sections.js').GuideSection[]} sections
- * @returns {number} The page as a whole number within 1..sections.length
+ * @returns {{slug: string, page: number}|null} The heading of the section the
+ *   address names, when it names no page
  */
-function _pageNumber ({ page, section }, sections) {
-  const named = page === undefined && typeof section === 'string' ? findHeading(sections, section)?.page : null
-
-  return _pageWithin(named ?? page, sections.length)
+function _namedHeading ({ page, section }, sections) {
+  return page === undefined && typeof section === 'string' ? findHeading(sections, section) : null
 }
 
 /**
@@ -101,6 +102,14 @@ async function getGuidePage (request, h) {
     throw Boom.notFound()
   }
 
+  // Only the guide's content says which page has the section, and its
+  // heading's anchor there, which can differ from the hub's.
+  const named = _namedHeading(request.query, split)
+
+  if (named) {
+    return h.redirect(sectionHref(guide.id, named))
+  }
+
   // Every view counts as opening the guide: a direct link can name a page, so
   // its address doesn't tell an opening from moving between its parts.
   await usersService.recordOpened(request, guide.id)
@@ -113,7 +122,7 @@ async function getGuidePage (request, h) {
   const viewModel = new GuideViewModel({
     guide,
     sections,
-    pageNumber: _pageNumber(request.query, sections),
+    pageNumber: _pageWithin(request.query.page, sections.length),
     readingWidth: getReadingWidth(request),
     returnTo: _currentUrl(request),
     panelCollapsed: isPanelCollapsed(request),

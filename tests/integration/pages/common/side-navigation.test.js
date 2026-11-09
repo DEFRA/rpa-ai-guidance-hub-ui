@@ -237,8 +237,8 @@ describe('Side navigation', () => {
       expect(shown).toEqual([['Case', 'W7654321', '1 guide'], ['SBI', '123456789', '0 guides']])
       expect(links).toEqual([
         ['Claiming a payment', `/guides/${GUIDE}`],
-        ['1.1 Before you begin', `/guides/${GUIDE}?section=11-before-you-begin#11-before-you-begin`],
-        ['2 Assign case', `/guides/${GUIDE}?section=2-assign-case#2-assign-case`]
+        ['1.1 Before you begin', `/guides/${GUIDE}?section=11-before-you-begin`],
+        ['2 Assign case', `/guides/${GUIDE}?section=2-assign-case`]
       ])
     })
 

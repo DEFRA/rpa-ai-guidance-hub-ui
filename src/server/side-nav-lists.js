@@ -65,7 +65,8 @@ function _caseBookmarks (cases) {
           sections: guide.bookmarks.map(({ sectionId, section, heading }) => ({
             sectionId,
             label: heading ?? section,
-            href: `${href}?section=${encodeURIComponent(section)}#${encodeURIComponent(section)}`
+            // The guide sends it on to the page and heading that have it.
+            href: `${href}?section=${encodeURIComponent(section)}`
           }))
         }
       })

@@ -146,12 +146,14 @@ class GuideViewModel {
       }
     })
     const bookmarkedTo = bookmarkedSections(cases ?? [], guide.id)
-    const bookmarkOf = anchor => ({
-      href: `/guides/${encodeURIComponent(guide.id)}/bookmark?section=${encodeURIComponent(anchor)}`,
-      bookmarkedTo: bookmarkedTo.get(anchor) ?? null
-    })
-
-    const markableOf = section => anchor => section.markableIds.includes(anchor) ? bookmarkOf(anchor) : null
+    // By the anchor the hub knows the section by, which is not always the
+    // heading's anchor on the page.
+    const bookmarkOf = anchor => anchor
+      ? {
+          href: `/guides/${encodeURIComponent(guide.id)}/bookmark?section=${encodeURIComponent(anchor)}`,
+          bookmarkedTo: bookmarkedTo.get(anchor) ?? null
+        }
+      : null
 
     // Every section is on the page, the others hidden until the browser's
     // find-in-page reaches into one. Each heading the hub gives a section ID
@@ -159,8 +161,8 @@ class GuideViewModel {
     this.pages = sections.map((section, index) => ({
       pageNumber: index + 1,
       section,
-      bookmark: section.slug ? markableOf(section)(section.slug) : null,
-      headingBookmarks: section.headingIds.map(markableOf(section)),
+      bookmark: bookmarkOf(section.sectionAnchor),
+      headingBookmarks: section.headingSectionAnchors.map(bookmarkOf),
       isCurrent: index + 1 === pageNumber,
       progressPercentage: Math.round((index + 1) / sections.length * 100),
       previous: adjacent(index),

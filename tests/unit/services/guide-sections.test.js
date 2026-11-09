@@ -24,9 +24,10 @@ describe('splitIntoSections', () => {
         id: 'section-1',
         title: '1 Overview',
         slug: '1-overview',
+        sectionAnchor: '1-overview',
         headingIds: ['11-detail'],
         headingTitles: ['1.1 Detail'],
-        markableIds: ['1-overview', '11-detail'],
+        headingSectionAnchors: ['11-detail'],
         subheadings: [{ title: '1.1 Detail', slug: '11-detail' }],
         markdown: 'Overview text.\n\n### 1.1 Detail\n\n- one\n- two'
       },
@@ -34,9 +35,10 @@ describe('splitIntoSections', () => {
         id: 'section-2',
         title: '2 Assign case',
         slug: '2-assign-case',
+        sectionAnchor: '2-assign-case',
         headingIds: [],
         headingTitles: [],
-        markableIds: ['2-assign-case'],
+        headingSectionAnchors: [],
         subheadings: [],
         markdown: 'Assign text.'
       }
@@ -58,14 +60,14 @@ describe('splitIntoSections', () => {
 
   test('keeps a section that has a heading but no text', () => {
     expect(splitIntoSections('## Empty\n\n## Next\n\nBody.')).toEqual([
-      { id: 'section-1', title: 'Empty', slug: 'empty', headingIds: [], headingTitles: [], markableIds: ['empty'], subheadings: [], markdown: '' },
-      { id: 'section-2', title: 'Next', slug: 'next', headingIds: [], headingTitles: [], markableIds: ['next'], subheadings: [], markdown: 'Body.' }
+      { id: 'section-1', title: 'Empty', slug: 'empty', sectionAnchor: 'empty', headingIds: [], headingTitles: [], headingSectionAnchors: [], subheadings: [], markdown: '' },
+      { id: 'section-2', title: 'Next', slug: 'next', sectionAnchor: 'next', headingIds: [], headingTitles: [], headingSectionAnchors: [], subheadings: [], markdown: 'Body.' }
     ])
   })
 
   test('is one Introduction section when there are no headings', () => {
     expect(splitIntoSections('Just text.')).toEqual([
-      { id: 'section-1', title: 'Introduction', slug: null, headingIds: [], headingTitles: [], markableIds: [], subheadings: [], markdown: 'Just text.' }
+      { id: 'section-1', title: 'Introduction', slug: null, sectionAnchor: null, headingIds: [], headingTitles: [], headingSectionAnchors: [], subheadings: [], markdown: 'Just text.' }
     ])
   })
 
@@ -156,7 +158,20 @@ describe('splitIntoSections', () => {
 
       expect(sections.map(section => section.slug)).toEqual(['1-intro', 'underlined'])
       expect(sections[0].headingIds).toEqual(['11-own', 'quoted', 'listed'])
-      expect(sections.map(section => section.markableIds)).toEqual([['1-intro', '11-own'], []])
+      expect(sections.map(section => [section.sectionAnchor, section.headingSectionAnchors])).toEqual([
+        ['1-intro', ['11-own', null, null]],
+        [null, []]
+      ])
+    })
+
+    test('are known to the hub by anchors that number a repeat among them alone, not counting the title, nor headings in quotes or lists', () => {
+      const sections = splitIntoSections('# Help\n\n## Help\n\n> ### Help\n\n- ### Help\n\n## Help\n\n### Help')
+
+      expect(sections.map(section => [section.slug, section.sectionAnchor])).toEqual([['help-1', 'help'], ['help-4', 'help-1']])
+      expect(sections.map(section => [section.headingIds, section.headingSectionAnchors])).toEqual([
+        [['help-2', 'help-3'], [null, null]],
+        [['help-5'], ['help-2']]
+      ])
     })
   })
 })
@@ -276,13 +291,25 @@ describe('findHeading', () => {
   ].join('\n'))
 
   test.each([
-    ['a section\'s own heading', '2-assign-case', { anchor: '2-assign-case', title: '2 Assign case', page: 2 }],
-    ['a heading inside a section, as plain text', '11-before-you-begin', { anchor: '11-before-you-begin', title: '1.1 Before you begin', page: 1 }]
+    ['a section\'s own heading', '2-assign-case', { anchor: '2-assign-case', slug: '2-assign-case', title: '2 Assign case', page: 2 }],
+    ['a heading inside a section, as plain text', '11-before-you-begin', { anchor: '11-before-you-begin', slug: '11-before-you-begin', title: '1.1 Before you begin', page: 1 }]
   ])('finds %s, with its page', (_case, anchor, found) => {
     expect(findHeading(sections, anchor)).toEqual(found)
   })
 
-  test('finds nothing at an anchor the guide has not', () => {
-    expect(findHeading(sections, '9-never')).toBeNull()
+  test.each([
+    ['first', 'help', { anchor: 'help', slug: 'help-1', title: 'Help', page: 1 }],
+    ['second', 'help-1', { anchor: 'help-1', slug: 'help-2', title: 'Help', page: 2 }]
+  ])('finds the %s of two sections that repeat the title by the hub\'s anchor, with its anchor on the page', (_which, anchor, found) => {
+    const repeated = splitIntoSections('# Help\n\n## Help\n\nFirst.\n\n## Help\n\nSecond.')
+
+    expect(findHeading(repeated, anchor)).toEqual(found)
+  })
+
+  test.each([
+    ['an anchor the guide has not', '9-never'],
+    ['a heading the hub gives no section ID', 'quoted']
+  ])('finds nothing at %s', (_case, anchor) => {
+    expect(findHeading(splitIntoSections('## Section\n\n> ### Quoted'), anchor)).toBeNull()
   })
 })

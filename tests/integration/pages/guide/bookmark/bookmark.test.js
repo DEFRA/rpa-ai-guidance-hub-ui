@@ -373,3 +373,77 @@ describe('a guide\'s headings', () => {
     expect(payload).toContain('Bookmark to a case: 1.1 Before you begin')
   })
 })
+
+describe('a guide that repeats a heading', () => {
+  // "Help" is its title, both its sections' headings and a heading quoted in
+  // the first. The page numbers a repeat among all its headings, so the
+  // sections' headings are at `help-1` and `help-3`, where the guide's links
+  // land; the hub numbers one only among the headings it gives a section ID,
+  // and knows the sections as `help` and `help-1`.
+  const REPEATED = ['# Help', '', '## Help', '', 'First.', '', '> ### Help', '', '## Help', '', 'Second.'].join('\n')
+  const SECOND = { sectionId: '019a0000-0000-7000-8000-000000000021', section: 'help-1', heading: 'Help', position: 0 }
+
+  let server, cookie
+
+  beforeAll(async () => {
+    server = await createServer()
+    await server.initialize()
+    nock.disableNetConnect()
+  })
+
+  beforeEach(async () => {
+    cookie = await loginAsDevUser(server)
+  })
+
+  afterEach(() => {
+    nock.cleanAll()
+  })
+
+  afterAll(async () => {
+    nock.enableNetConnect()
+    await server?.stop({ timeout: 0 })
+  })
+
+  function get (url) {
+    return server.inject({ method: 'GET', url, headers: { cookie } })
+  }
+
+  test('gives each section\'s control the hub\'s anchor, and marks the section bookmarked', async () => {
+    mockGuideAndUser([caseResponse({ guides: [{ id: GUIDE_ID, title: 'Help', bookmarks: [SECOND] }] })], REPEATED)
+    nock(GUIDANCE_API_BASE_URL).post(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+
+    const { payload } = await get(GUIDE_PAGE)
+
+    expect(payload).toMatch(/<h2[^>]*id="help-1"[^>]*>.*?<\/h2>\s*<a class="app-guide-section-bookmark" href="[^"]*\/bookmark\?section=help"/)
+    expect(payload).toMatch(/<h2[^>]*id="help-3"[^>]*>.*?<\/h2>\s*<a class="app-guide-section-bookmark app-guide-section-bookmark--active" href="[^"]*\/bookmark\?section=help-1"/)
+    expect(payload).toContain('id="help-2"')
+  })
+
+  test.each([
+    ['first', 'help', '?page=1#help-1'],
+    ['second', 'help-1', '?page=2#help-3']
+  ])('bookmarks the %s section by the hub\'s anchor, then shows the guide at its heading', async (_which, section, at) => {
+    mockGuideAndUser([], REPEATED)
+    const patching = nock(GUIDANCE_API_BASE_URL)
+      .patch(`/users/${USER_ID}/cases`, [
+        { op: 'add', path: '/0', value: { type: 'case', ref: 'W7654321', bookmarks: [{ guideId: GUIDE_ID, section, heading: 'Help' }] } }
+      ])
+      .reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+
+    const { headers } = await server.inject({
+      method: 'POST', url: BOOKMARK_PAGE, headers: { cookie }, payload: { section, choice: 'new-case', newCase: 'W7654321' }
+    })
+
+    expect(patching.isDone()).toBe(true)
+    expect(headers.location).toBe(`${GUIDE_PAGE}${at}`)
+  })
+
+  test('opens at the heading of the section a link names by the hub\'s anchor, as the side navigation links to it', async () => {
+    mockGuideAndUser([], REPEATED)
+
+    const { statusCode, headers } = await get(`${GUIDE_PAGE}?section=help-1`)
+
+    expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+    expect(headers.location).toBe(`${GUIDE_PAGE}?page=2#help-3`)
+  })
+})

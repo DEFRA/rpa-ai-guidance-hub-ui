@@ -81,14 +81,14 @@ function chosenCase (answer, cases, sbiBookmarks) {
 }
 
 /**
- * The guide's address at a section, on the page that has it.
+ * The guide's address at a section's heading, on the page that has it.
  *
  * @param {string} guideId
- * @param {{anchor: string, page: number}} heading
+ * @param {{slug: string, page: number}} heading - As `findHeading` gives it
  * @returns {string}
  */
 function sectionHref (guideId, heading) {
-  return `${GuideViewModel.pageHref(guideId, heading.page)}#${heading.anchor}`
+  return `${GuideViewModel.pageHref(guideId, heading.page)}#${heading.slug}`
 }
 
 class BookmarkViewModel {
@@ -98,8 +98,8 @@ class BookmarkViewModel {
   /**
    * @param {Object} data
    * @param {{id: string, title: string|null}} data.guide
-   * @param {{anchor: string, title: string, page: number}} data.heading - The
-   *   section being bookmarked
+   * @param {{anchor: string, slug: string, title: string, page: number}} data.heading
+   *   - The section being bookmarked, as `findHeading` gives it
    * @param {Array<{key: string, type: string, ref: string}>} data.cases - The user's
    * @param {boolean} data.sbiBookmarks - Whether the SBI choices are switched on
    * @param {Object<string, string>} [data.answer] - As given, to show again

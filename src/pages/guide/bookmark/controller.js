@@ -18,8 +18,8 @@ const CHANGED_SINCE = 'Your case bookmarks changed while this page was open. Cho
 /**
  * @private
  * @param {import('@hapi/hapi').Request} request
- * @param {string|undefined} anchor - The section's
- * @returns {Promise<{guide: Object, heading: {anchor: string, title: string, page: number}}>}
+ * @param {string|undefined} anchor - The section's, as the hub knows it
+ * @returns {Promise<{guide: Object, heading: {anchor: string, slug: string, title: string, page: number}}>}
  * @throws {Boom.Boom} 404 when there is no such guide, or it has no heading
  *   there
  */
