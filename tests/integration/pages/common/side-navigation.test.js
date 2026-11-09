@@ -241,7 +241,7 @@ describe('Side navigation', () => {
 
       expect(nav).toContain('<form class="app-side-nav__search" method="get" action="/hub" role="search">')
       expect(nav).toContain('<label class="govuk-visually-hidden" for="side-nav-search">Search or ask question</label>')
-      expect(nav).toMatch(/<input [^>]*id="side-nav-search" name="search"/)
+      expect(nav).toMatch(/<input [^>]*id="side-nav-search" name="q"/)
     })
 
     test('leaves the search to the hub\'s own search box on the hub', async () => {

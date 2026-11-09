@@ -1,0 +1,39 @@
+{% from "govuk/components/pagination/macro.njk" import govukPagination %}
+
+{#
+  The guides' sections that have the words searched for, instead of the list
+  of guides, as the prototype's hub keyword results show them: each section's
+  number and heading as a link to it in its guide, the guide and how often the
+  section has the words, and the first sentence with them, the words marked.
+  Pages of results between them. Reads `search` (HubViewModel).
+#}
+<div class="app-hub-results" id="search-results">
+  <div class="app-hub-results__header">
+    <h2 class="govuk-heading-l govuk-!-margin-bottom-1">{{ search.heading }}</h2>
+    <p class="govuk-body govuk-!-margin-bottom-1"><a class="govuk-link" href="/hub">Clear search</a></p>
+  </div>
+
+  {% if search.emptyMessage %}
+    <p class="govuk-body">{{ search.emptyMessage }}</p>
+  {% else %}
+    <ul class="app-search-results">
+      {% for result in search.results %}
+        <li class="app-search-results__item">
+          <h3 class="govuk-heading-s app-search-results__name">
+            <a class="govuk-link" href="{{ result.href }}">{{ result.title }}</a>
+          </h3>
+          <p class="govuk-body-s app-search-results__dates govuk-!-margin-bottom-1">{{ result.hint }}</p>
+          <p class="govuk-body govuk-!-margin-bottom-0">
+            {%- for part in result.snippet -%}
+              {%- if part.match -%}<mark class="app-search-match">{{ part.text }}</mark>{%- else -%}{{ part.text }}{%- endif -%}
+            {%- endfor -%}
+          </p>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if search.pagination %}
+    {{ govukPagination(search.pagination) }}
+  {% endif %}
+</div>

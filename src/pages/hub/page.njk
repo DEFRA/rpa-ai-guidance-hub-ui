@@ -1,10 +1,11 @@
 {% extends "common/layout.njk" %}
 
 {% from "govuk/components/phase-banner/macro.njk" import govukPhaseBanner %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
 {% from "common/guidance-table.njk" import guidanceTablePanel %}
 {% from "common/guide-list.njk" import guideList %}
 
-{% set pageTitle = 'RPA Guidance Hub' %}
+{% set pageTitle = ('Error: ' if searchUnavailable else '') + 'RPA Guidance Hub' %}
 {% set page = 'hub' %}
 {# The hub has its own search box, so the side navigation leaves out its own. #}
 {% set hideNavSearch = true %}
@@ -39,7 +40,20 @@
   <div class="govuk-width-container">
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-full">
-        {% if filters %}
+        {% if searchUnavailable %}
+          {{ govukErrorSummary({
+            titleText: "There is a problem",
+            errorList: [{
+              text: "Search is not available at the moment. Try again later, or find a guide in the list below.",
+              href: "#hub-search"
+            }]
+          }) }}
+        {% endif %}
+
+        {% if search %}
+          {# The sections with the words, instead of the list and its filters. #}
+          {% include "hub/partials/search-results.njk" %}
+        {% elif filters %}
           {# The filters beside the list, as the prototype's hub has them. #}
           <div class="app-hub-columns">
             {% include "hub/partials/filters.njk" %}

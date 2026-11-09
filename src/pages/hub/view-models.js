@@ -1,5 +1,6 @@
 import { relativeHref } from '../common/relative-href.js'
 import { versionTag } from '../common/version-tag.js'
+import { searchPagination } from './search.js'
 
 const tableHeadClasses = {
   HALF_WIDTH: 'govuk-!-width-one-half',
@@ -126,6 +127,78 @@ function _buildTable ({ items, heading, emptyMessage, hintMessage, head, rows })
 }
 
 /**
+ * @private
+ * @param {number} count
+ * @param {string} one - The noun for one
+ * @param {string} many - The noun for any other count
+ * @returns {string}
+ */
+function _counted (count, one, many) {
+  return `${count} ${count === 1 ? one : many}`
+}
+
+/**
+ * @private
+ * @param {import('../../services/search.js').SearchResult} result
+ * @returns {Object} As `search-results.njk` shows it: its link made safe, and
+ *   its guide and how often it matches as one line
+ */
+function _searchRow (result) {
+  return {
+    title: result.title,
+    href: relativeHref(result.href),
+    hint: `${result.documentTitle} · ${_counted(result.matches, 'match', 'matches')}`,
+    snippet: result.snippet
+  }
+}
+
+/**
+ * @private
+ * @param {Object} search
+ * @param {string} search.words
+ * @param {number} search.page
+ * @param {import('../../services/search.js').SearchResults} search.found
+ * @returns {string|null} Why there are no results to list, if there are none
+ */
+function _searchEmptyMessage (search) {
+  if (search.found.tooManyMatches) {
+    return 'Too many matches. Use more specific words.'
+  }
+
+  if (search.found.total === 0) {
+    return `No guides have the words “${search.words}”. Check the spelling or try fewer words.`
+  }
+
+  if (search.found.results.length === 0) {
+    return `There is no page ${search.page} of results.`
+  }
+
+  return null
+}
+
+/**
+ * The results of searching the guides, as `search-results.njk` shows them.
+ *
+ * @private
+ * @param {Object} search
+ * @param {string} search.words
+ * @param {number} search.page
+ * @param {import('../../services/search.js').SearchResults} search.found
+ * @returns {Object}
+ */
+function _buildSearch (search) {
+  const found = search.found
+
+  return {
+    words: search.words,
+    heading: _counted(found.total, 'result', 'results'),
+    emptyMessage: _searchEmptyMessage(search),
+    results: found.tooManyMatches ? [] : found.results.map(_searchRow),
+    pagination: searchPagination({ words: search.words, page: search.page, total: found.total, tooManyMatches: found.tooManyMatches })
+  }
+}
+
+/**
  * HubViewModel - The guidance tables shown on the hub landing page.
  *
  * Each table is built entirely from data (headings, empty-state copy,
@@ -150,6 +223,10 @@ class HubViewModel {
    * @param {boolean} [data.nothingToFilter=false] - The list has no guides for
    *   the chosen filters to narrow, so they don't explain why it is empty
    * @param {string} [data.words=''] - Searched for, shown in the search box
+   * @param {{words: string, page: number, found: import('../../services/search.js').SearchResults}|null} [data.search=null]
+   *   - What searching for the words found, shown instead of the list
+   * @param {boolean} [data.searchUnavailable=false] - Searching failed, so the
+   *   list is shown with a warning instead
    */
   constructor (data = {}) {
     const {
@@ -160,7 +237,9 @@ class HubViewModel {
       shown = 'allGuides',
       filters = null,
       nothingToFilter = false,
-      words = ''
+      words = '',
+      search = null,
+      searchUnavailable = false
     } = data
 
     // Chosen filters that leave nothing say so, rather than that there are no
@@ -198,6 +277,8 @@ class HubViewModel {
     this.shown = this[shown]
     this.filters = filters
     this.words = words
+    this.search = search && _buildSearch(search)
+    this.searchUnavailable = searchUnavailable
   }
 }
 

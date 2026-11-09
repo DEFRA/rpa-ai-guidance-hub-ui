@@ -97,3 +97,10 @@
     @include app-side-nav-focus;
   }
 }
+
+// The words searched for, in each search result's sentence.
+.app-search-match {
+  padding: 0 2px;
+  background-color: govuk-colour('yellow');
+  color: $govuk-text-colour;
+}

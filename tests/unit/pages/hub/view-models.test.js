@@ -266,3 +266,75 @@ describe('#HubViewModel', () => {
     })
   })
 })
+
+describe('HubViewModel search', () => {
+  const result = {
+    title: '4.2 Claim rules',
+    href: '/guides/g-1#claim-rules',
+    documentTitle: 'CS final payments',
+    matches: 1,
+    snippet: [{ text: 'claim', match: true }]
+  }
+
+  function searched (found, page = 1) {
+    return new HubViewModel({ words: 'claim', search: { words: 'claim', page, found: { unavailable: false, tooManyMatches: false, ...found } } })
+  }
+
+  test('has no search when nothing was searched for', () => {
+    const viewModel = new HubViewModel()
+
+    expect(viewModel.search).toBeNull()
+    expect(viewModel.searchUnavailable).toBe(false)
+  })
+
+  test('counts the results, and shows each with its guide and how often it matches', () => {
+    const viewModel = searched({ total: 1, results: [result] })
+
+    expect(viewModel.search).toEqual({
+      words: 'claim',
+      heading: '1 result',
+      emptyMessage: null,
+      results: [{ title: '4.2 Claim rules', href: '/guides/g-1#claim-rules', hint: 'CS final payments · 1 match', snippet: [{ text: 'claim', match: true }] }],
+      pagination: null
+    })
+  })
+
+  test('counts many results and matches in the plural', () => {
+    const viewModel = searched({ total: 12, results: [{ ...result, matches: 3 }] })
+
+    expect(viewModel.search.heading).toBe('12 results')
+    expect(viewModel.search.results[0].hint).toBe('CS final payments · 3 matches')
+    expect(viewModel.search.pagination).not.toBeNull()
+  })
+
+  test('makes each result\'s link safe', () => {
+    const viewModel = searched({ total: 1, results: [{ ...result, href: 'javascript:alert(1)' }] })
+
+    expect(viewModel.search.results[0].href).toBe('#')
+  })
+
+  test('says when no guide has the words', () => {
+    const viewModel = searched({ total: 0, results: [] })
+
+    expect(viewModel.search.emptyMessage).toBe('No guides have the words “claim”. Check the spelling or try fewer words.')
+  })
+
+  test('says when there are too many matches, showing none', () => {
+    const viewModel = searched({ total: 1500, tooManyMatches: true, results: [] })
+
+    expect(viewModel.search.emptyMessage).toBe('Too many matches. Use more specific words.')
+    expect(viewModel.search.pagination).toBeNull()
+  })
+
+  test('says when the page asked for is beyond the results', () => {
+    const viewModel = searched({ total: 5, results: [] }, 4)
+
+    expect(viewModel.search.emptyMessage).toBe('There is no page 4 of results.')
+  })
+
+  test('says when search is unavailable', () => {
+    const viewModel = new HubViewModel({ searchUnavailable: true })
+
+    expect(viewModel.searchUnavailable).toBe(true)
+  })
+})

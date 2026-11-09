@@ -2,9 +2,11 @@ import Boom from '@hapi/boom'
 
 import { statusCodes } from '../../constants/status-codes.js'
 import * as guidesService from '../../services/guides.js'
+import * as searchService from '../../services/search.js'
 import * as usersService from '../../services/users.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { filterPanel, filtersFrom, sortFrom, wordsFrom } from './filters.js'
+import { pageFrom, RESULTS_PER_PAGE } from './search.js'
 import { HubViewModel } from './view-models.js'
 
 const HUB_VIEW = 'hub/page.njk'
@@ -86,15 +88,21 @@ async function _refusingUnknownFilters (listing) {
 }
 
 /**
- * The hub, listing every guide the filters let through, beside the filters
+ * @private
+ * The hub's list of every guide the filters let through, beside the filters
  * and sort, the user's pinned guides first. The words searched for are kept,
- * in the search box and as the filters change, but find nothing yet: the list
- * is every guide.
+ * in the search box and as the filters change.
+ *
+ * @param {import('@hapi/hapi').Request} request
+ * @param {import('@hapi/hapi').ResponseToolkit} h
+ * @param {Object} options
+ * @param {string} options.words - Searched for
+ * @param {boolean} options.searchUnavailable - Searching for them failed,
+ *   which the list says above itself
  */
-async function getHubPage (request, h) {
+async function _guideListPage (request, h, options) {
   const filters = filtersFrom(request.query)
   const sort = sortFrom(request.query)
-  const words = wordsFrom(request.query)
   const [{ guides, counts }, pinned] = await Promise.all([
     _refusingUnknownFilters(guidesService.listEveryGuide({ filters, sort })),
     usersService.pinnedOf(request)
@@ -103,12 +111,38 @@ async function getHubPage (request, h) {
 
   const viewModel = new HubViewModel({
     allGuides: _pinnedFirst(guides.map((guide) => _toGuideItem(guide, pinPositions))),
-    filters: filterPanel({ path: '/hub', filters, counts, sort, total: guides.length, withSort: true, words }),
-    words
+    filters: filterPanel({ path: '/hub', filters, counts, sort, total: guides.length, withSort: true, words: options.words }),
+    words: options.words,
+    searchUnavailable: options.searchUnavailable
   })
 
   return h
     .view(HUB_VIEW, viewModel)
+    .code(statusCodes.HTTP_STATUS_OK)
+}
+
+/**
+ * The hub. With no words searched for, every guide the filters let through.
+ * With words, a page of the guides' sections that have them, from the search
+ * service, instead of the list; when search can't answer, the list again,
+ * saying so, as the guides don't depend on search.
+ */
+async function getHubPage (request, h) {
+  const words = wordsFrom(request.query)
+
+  if (!words) {
+    return _guideListPage(request, h, { words, searchUnavailable: false })
+  }
+
+  const page = pageFrom(request.query)
+  const found = await searchService.searchGuides({ words, page, perPage: RESULTS_PER_PAGE })
+
+  if (found.unavailable) {
+    return _guideListPage(request, h, { words, searchUnavailable: true })
+  }
+
+  return h
+    .view(HUB_VIEW, new HubViewModel({ words, search: { words, page, found } }))
     .code(statusCodes.HTTP_STATUS_OK)
 }
 

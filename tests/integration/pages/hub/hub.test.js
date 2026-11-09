@@ -5,10 +5,12 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
+import * as searchApi from '../../../fixtures/search-api.js'
 import { guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
+const SEARCH_API_BASE_URL = config.get('searchApi.baseUrl')
 const LIST_HEADING = '<h2 class="govuk-heading-m">'
 
 /** The headings of the lists that the page's main area shows. */
@@ -240,7 +242,9 @@ describe('#hubController', () => {
       const cookie = await loginAsDevUser(server)
       const { payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
 
-      return { payload, hero: payload.slice(payload.indexOf('<div class="defra-hero defra-hero--hub'), payload.indexOf('id="hub-filters"')) }
+      const start = payload.indexOf('<div class="defra-hero defra-hero--hub')
+
+      return { payload, hero: payload.slice(start, payload.indexOf('</form>', start)) }
     }
 
     test('sits in the hero beside the side navigation, asking for words or a question', async () => {
@@ -253,18 +257,155 @@ describe('#hubController', () => {
       expect(payload).not.toContain('Search guidance')
     })
 
-    test('keeps the words searched for, in the box and in the filters', async () => {
-      const { hero: area, payload } = await hero('/hub?q=claim+rules')
+    test('keeps the words searched for in the box', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse())
+
+      const { hero: area } = await hero('/hub?q=claim+rules')
 
       expect(area).toMatch(/id="hub-search" name="q" type="search"[^>]*value="claim rules"/)
-      expect(payload).toContain('<input type="hidden" name="q" value="claim rules">')
     })
 
     test('escapes the words searched for', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse({ results: [], total: 0 }))
+
       const { payload } = await hero('/hub?q=%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E')
 
       expect(payload).not.toContain('<script>alert(1)')
       expect(payload).toContain('value="&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;"')
+    })
+  })
+
+  describe('searching', () => {
+    /** The page's main area, at `url`. */
+    async function mainOf (url) {
+      const cookie = await loginAsDevUser(server)
+      const { statusCode, payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
+
+      return { statusCode, main: payload.slice(payload.indexOf('<main'), payload.indexOf('</main>')) }
+    }
+
+    test('asks the search service for the first page of sections with the words', async () => {
+      const search = nock(SEARCH_API_BASE_URL)
+        .get('/v1/search')
+        .query({ q: 'claim rules', limit: '10', offset: '0' })
+        .reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse())
+
+      await mainOf('/hub?q=claim+rules')
+
+      expect(search.isDone()).toBe(true)
+    })
+
+    test('asks for the page of results the address asks for', async () => {
+      const search = nock(SEARCH_API_BASE_URL)
+        .get('/v1/search')
+        .query({ q: 'claim', limit: '10', offset: '20' })
+        .reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse({ total: 35 }))
+
+      await mainOf('/hub?q=claim&page=3')
+
+      expect(search.isDone()).toBe(true)
+    })
+
+    test('shows each section found, linked to it in its guide, its words marked, instead of the list and filters', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse())
+
+      const { statusCode, main } = await mainOf('/hub?q=claim')
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(main).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">1 result</h2>')
+      expect(main).toContain('<a class="govuk-link" href="/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7#claim-rules">4.2 Claim rules</a>')
+      expect(main).toContain('Countryside Stewardship final payments · 2 matches')
+      expect(main).toContain('Check the <mark class="app-search-match">claim</mark> was made on time.')
+      expect(main).toContain('<a class="govuk-link" href="/hub">Clear search</a>')
+      expect(main).not.toContain('id="hub-filters"')
+      expect(main).not.toContain('id="guide-results"')
+    })
+
+    test('escapes what the search service sends', async () => {
+      const section = searchApi.sectionResult({ heading: '<img src=x onerror=alert(1)>', snippet: [{ text: '<script>alert(1)</script>', match: true }] })
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse({ results: [section] }))
+
+      const { main } = await mainOf('/hub?q=claim')
+
+      expect(main).not.toContain('<img src=x')
+      expect(main).not.toContain('<script>alert(1)')
+      expect(main).toContain('<mark class="app-search-match">&lt;script&gt;alert(1)&lt;/script&gt;</mark>')
+    })
+
+    test('says when no guide has the words', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse({ results: [], total: 0 }))
+
+      const { main } = await mainOf('/hub?q=zebra')
+
+      expect(main).toContain('0 results')
+      expect(main).toContain('No guides have the words “zebra”. Check the spelling or try fewer words.')
+      expect(main).not.toContain('govuk-pagination')
+    })
+
+    test('says when there are too many matches to show', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.tooManyMatchesResponse(1500))
+
+      const { main } = await mainOf('/hub?q=the')
+
+      expect(main).toContain('1500 results')
+      expect(main).toContain('Too many matches. Use more specific words.')
+      expect(main).not.toContain('govuk-pagination')
+    })
+
+    test('pages between the results, keeping the words', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse({ total: 25 }))
+
+      const { main } = await mainOf('/hub?q=claim+rules&page=2')
+
+      expect(main).toContain('govuk-pagination')
+      expect(main).toContain('href="/hub?q=claim+rules"')
+      expect(main).toContain('href="/hub?q=claim+rules&amp;page=3"')
+      expect(main).toMatch(/aria-current="page"/)
+    })
+
+    test.each([
+      ['fails', (scope) => scope.reply(statusCodes.HTTP_STATUS_INTERNAL_SERVER_ERROR)],
+      ['can\'t be reached', (scope) => scope.replyWithError('connect ECONNREFUSED')]
+    ])('lists every guide, with the filters keeping the words, saying search is not available, when the search service %s', async (_, respond) => {
+      respond(nock(SEARCH_API_BASE_URL).get('/v1/search').query(true))
+
+      const { statusCode, main } = await mainOf('/hub?q=claim+rules')
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(main).toContain('govuk-error-summary')
+      expect(main).toContain('There is a problem')
+      expect(main).toMatch(/<a href="#hub-search">\s*Search is not available at the moment. Try again later, or find a guide in the list below.\s*<\/a>/)
+      expect(main).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">1 guide</h2>')
+      expect(main).toContain('<input type="hidden" name="q" value="claim rules">')
+    })
+
+    test('says there is an error in the page title when search is not available', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+      const cookie = await loginAsDevUser(server)
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub?q=claim', headers: { cookie } })
+
+      expect(payload).toMatch(/<title>\s*Error: RPA Guidance Hub/)
+    })
+
+    test('does not say there is an error when search answers', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse())
+      const cookie = await loginAsDevUser(server)
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub?q=claim', headers: { cookie } })
+
+      expect(payload).not.toContain('govuk-error-summary')
+      expect(payload).toMatch(/<title>\s*RPA Guidance Hub/)
+    })
+
+    test('does not search without words', async () => {
+      const search = nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse())
+
+      const { main } = await mainOf('/hub?q=+')
+
+      expect(search.isDone()).toBe(false)
+      expect(main).not.toContain('govuk-error-summary')
+      expect(main).toContain('id="hub-filters"')
     })
   })
 

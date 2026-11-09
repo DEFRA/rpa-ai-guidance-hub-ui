@@ -3,6 +3,7 @@ import { GuidanceApiError } from '../../../../src/infra/guidance-api/client.js'
 
 import { getHubListPage, getHubPage } from '../../../../src/pages/hub/controller.js'
 import * as guidesService from '../../../../src/services/guides.js'
+import * as searchService from '../../../../src/services/search.js'
 import * as usersService from '../../../../src/services/users.js'
 
 const COUNTS = {
@@ -58,7 +59,9 @@ describe('#hubController', () => {
         }),
         shown: expect.objectContaining({ heading: '0 guides' }),
         filters: expect.objectContaining({ action: '/hub' }),
-        words: ''
+        words: '',
+        search: null,
+        searchUnavailable: false
       })
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
     })
@@ -123,16 +126,63 @@ describe('#hubController', () => {
       expect(viewModel.filters.sort.options.find(option => option.selected).value).toBe('updated-oldest')
     })
 
-    test('Should keep the search words, in the search box and the filters, while listing every guide', async () => {
-      await getHubPage({ query: { q: 'claim rules', audience: 'Processor' } }, h)
+    describe('with words searched for', () => {
+      const found = {
+        unavailable: false,
+        total: 12,
+        tooManyMatches: false,
+        results: [{ title: '4.2 Claim rules', href: '/guides/g-1#claim-rules', documentTitle: 'CS final payments', matches: 2, snippet: [{ text: 'claim', match: true }] }]
+      }
 
-      const [, viewModel] = h.view.mock.calls[0]
-      expect(guidesService.listEveryGuide).toHaveBeenCalledWith({
-        filters: { audience: ['Processor'], system: [], scheme: [], noScheme: false },
-        sort: 'updated-newest'
+      beforeEach(() => {
+        vi.spyOn(searchService, 'searchGuides').mockResolvedValue(found)
       })
-      expect(viewModel.words).toBe('claim rules')
-      expect(viewModel.filters.words).toBe('claim rules')
+
+      test('Should search for the words, a page at a time, the page the address asks for', async () => {
+        await getHubPage({ query: { q: ' claim rules ', page: '2' } }, h)
+
+        expect(searchService.searchGuides).toHaveBeenCalledWith({ words: 'claim rules', page: 2, perPage: 10 })
+      })
+
+      test('Should show what search found instead of the list of guides and its filters', async () => {
+        await getHubPage({ query: { q: 'claim rules', audience: 'Processor' } }, h)
+
+        const [, viewModel] = h.view.mock.calls[0]
+        expect(guidesService.listEveryGuide).not.toHaveBeenCalled()
+        expect(usersService.pinnedOf).not.toHaveBeenCalled()
+        expect(viewModel.filters).toBeNull()
+        expect(viewModel.words).toBe('claim rules')
+        expect(viewModel.search).toEqual(expect.objectContaining({
+          heading: '12 results',
+          results: [expect.objectContaining({ title: '4.2 Claim rules', href: '/guides/g-1#claim-rules' })]
+        }))
+        expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
+      })
+
+      test('Should list every guide the filters let through, saying search is not available, when search can\'t answer', async () => {
+        searchService.searchGuides.mockResolvedValue({ unavailable: true, total: 0, tooManyMatches: false, results: [] })
+
+        await getHubPage({ query: { q: 'claim rules', audience: 'Processor' } }, h)
+
+        const [, viewModel] = h.view.mock.calls[0]
+        expect(guidesService.listEveryGuide).toHaveBeenCalledWith({
+          filters: { audience: ['Processor'], system: [], scheme: [], noScheme: false },
+          sort: 'updated-newest'
+        })
+        expect(viewModel.searchUnavailable).toBe(true)
+        expect(viewModel.search).toBeNull()
+        expect(viewModel.words).toBe('claim rules')
+        expect(viewModel.filters.words).toBe('claim rules')
+        expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
+      })
+    })
+
+    test('Should not search when no words are searched for', async () => {
+      vi.spyOn(searchService, 'searchGuides')
+
+      await getHubPage({ query: { q: '   ' } }, h)
+
+      expect(searchService.searchGuides).not.toHaveBeenCalled()
     })
 
     test('Should put the pinned guides first, in the user\'s order, then the rest as sorted', async () => {
