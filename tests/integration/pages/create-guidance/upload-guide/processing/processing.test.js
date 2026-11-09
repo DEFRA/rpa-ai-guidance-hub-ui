@@ -12,6 +12,7 @@ import { stagedDocumentResponse } from '../../../../../fixtures/guidance-api.js'
 import { createServer } from '../../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../../helpers/login.js'
 import { mergeCookies } from '../../../../helpers/cookies.js'
+import { errorSummaryOf, pageOf } from '../../../../helpers/page.js'
 import { config } from '../../../../../../src/config/config.js'
 
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
@@ -91,13 +92,16 @@ describe('upload guide processing page', () => {
 
       const res = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
 
+      const page = pageOf(res.payload)
+      const progress = page.document.querySelector('[data-module="app-progress"]')
       expect(res.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(res.payload).toContain('Document upload')
-      expect(res.payload).toContain('Scanning for viruses')
-      expect(res.payload).toContain(`data-poll-url="${STATUS_URL}"`)
-      expect(res.payload).toContain('data-redirect-url="/create-guidance/upload-guide/metadata"')
-      expect(res.payload).toContain('--progress-width: 50%')
-      expect(res.payload).not.toContain('style="width')
+      expect(page.getByRole('heading', { level: 1, name: 'Document upload' })).toBeInTheDocument()
+      expect(page.getByRole('progressbar', { name: 'Scanning for viruses' })).toHaveAttribute('aria-valuenow', '50')
+      expect(progress).toHaveAttribute('data-poll-url', STATUS_URL)
+      expect(progress).toHaveAttribute('data-redirect-url', '/create-guidance/upload-guide/metadata')
+      // The bar's width comes from the nonced style, as the CSP allows no inline style.
+      expect(page.document.querySelector('style[data-progress-style]')).toHaveTextContent('--progress-width: 50%')
+      expect(page.document.querySelector('[style*="width"]')).not.toBeInTheDocument()
       expect(scope.isDone()).toBe(true)
       expect(nock.pendingMocks()).toEqual([])
     })
@@ -115,7 +119,7 @@ describe('upload guide processing page', () => {
       const first = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
 
       expect(first.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(first.payload).toContain('Parsing document')
+      expect(pageOf(first.payload).getByRole('progressbar', { name: 'Parsing document' })).toBeInTheDocument()
 
       nock(GUIDANCE_API_URL)
         .get('/guides/staging/file-1')
@@ -142,14 +146,14 @@ describe('upload guide processing page', () => {
 
       const res = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
 
+      const page = pageOf(res.payload)
       expect(res.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(res.payload).toContain('There is a problem')
-      expect(res.payload).toContain('The selected file contains a virus')
-      expect(res.payload).toContain('File rejected')
-      expect(res.payload).toContain('Start over')
-      expect(res.payload).toContain('<title>')
-      expect(res.payload).toContain('Error: Document upload')
-      expect(res.payload).not.toContain('http-equiv="refresh"')
+      expect(errorSummaryOf(page).getByRole('heading', { name: 'There is a problem' })).toBeInTheDocument()
+      expect(page.getByRole('alert')).toHaveTextContent('The selected file contains a virus')
+      expect(page.getByRole('progressbar', { name: 'File rejected' })).toBeInTheDocument()
+      expect(page.getByRole('link', { name: 'Start over' })).toHaveAttribute('href', expect.stringMatching(/^\/create-guidance\/start-over\?/))
+      expect(page.document.title).toMatch(/^Error: Document upload/)
+      expect(page.document.querySelector('meta[http-equiv="refresh"]')).not.toBeInTheDocument()
     })
 
     test('explains a validation failure, and retrying starts a genuinely fresh upload', async () => {
@@ -164,7 +168,7 @@ describe('upload guide processing page', () => {
 
       const first = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
 
-      expect(first.payload).toContain('Parsing document')
+      expect(pageOf(first.payload).getByRole('progressbar', { name: 'Parsing document' })).toBeInTheDocument()
 
       nock(GUIDANCE_API_URL)
         .get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({
@@ -175,10 +179,11 @@ describe('upload guide processing page', () => {
       const failedCookie = mergeCookies(cookie, first.headers['set-cookie'])
       const second = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie: failedCookie } })
 
+      const failed = pageOf(second.payload)
       expect(second.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(second.payload).toContain('This file cannot be opened')
-      expect(second.payload).toContain('Check you selected the correct file and that it has not been corrupted')
-      expect(second.payload).toContain('Start over')
+      expect(failed.getByRole('alert')).toHaveTextContent('This file cannot be opened')
+      expect(failed.getByRole('alert')).toHaveTextContent('Check you selected the correct file and that it has not been corrupted')
+      expect(failed.getByRole('link', { name: 'Start over' })).toBeInTheDocument()
 
       // cdp-uploader still reports this file as scanned clean - only the
       // guidance API knows it failed - so both have to be checked before the
@@ -205,9 +210,10 @@ describe('upload guide processing page', () => {
         headers: { cookie: retryCookie }
       })
 
+      const fresh = pageOf(retry.payload)
       expect(retry.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(retry.payload).toContain('u-fresh')
-      expect(retry.payload).not.toContain('This file cannot be opened')
+      expect(fresh.getByLabelText('Upload a file').form).toHaveAttribute('action', expect.stringMatching(/\/u-fresh$/))
+      expect(fresh.document.body).not.toHaveTextContent('This file cannot be opened')
       expect(nock.pendingMocks()).toEqual([])
     })
 
@@ -219,7 +225,7 @@ describe('upload guide processing page', () => {
       const res = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
 
       expect(res.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(res.payload).toContain('Select a Word document to upload.')
+      expect(pageOf(res.payload).getByRole('alert')).toHaveTextContent('Select a Word document to upload.')
     })
 
     test('explains when cdp-uploader no longer knows the upload', async () => {
@@ -229,9 +235,10 @@ describe('upload guide processing page', () => {
 
       const res = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
 
+      const page = pageOf(res.payload)
       expect(res.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(res.payload).toContain('Upload not found')
-      expect(res.payload).toContain('Your upload could not be found. Upload the document again.')
+      expect(page.getByRole('progressbar', { name: 'Upload not found' })).toBeInTheDocument()
+      expect(page.getByRole('alert')).toHaveTextContent('Your upload could not be found. Upload the document again.')
     })
   })
 
@@ -352,10 +359,11 @@ describe('upload guide processing page', () => {
 
       const page = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
 
+      const shown = pageOf(page.payload)
       expect(page.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(page.payload).toContain('The selected file contains a virus')
-      expect(page.payload).toContain('/create-guidance/start-over')
-      expect(page.payload).not.toContain('/upload-and-scan/u-rejected')
+      expect(shown.getByRole('alert')).toHaveTextContent('The selected file contains a virus')
+      expect(shown.getByRole('link', { name: 'Start over' })).toHaveAttribute('href', expect.stringMatching(/^\/create-guidance\/start-over\?/))
+      expect(shown.document.querySelector('form[action$="/upload-and-scan/u-rejected"]')).not.toBeInTheDocument()
       expect(nock.pendingMocks()).toEqual([])
     })
   })
