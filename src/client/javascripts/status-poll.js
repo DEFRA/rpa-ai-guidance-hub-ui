@@ -8,10 +8,13 @@
  *
  */
 
-const START_DELAY_MS = 2000
+const START_DELAY_MS = 1000
 const POLL_INTERVAL_MS = 5000
 const REDIRECT_DELAY_MS = 1500
 const MAX_POLL_DURATION_MS = 2 * 60 * 1000
+// The polling limit is only checked between requests, so a request that hangs
+// is given up after this, and polled again.
+const REQUEST_TIMEOUT_MS = 3000
 
 const ERROR_CLASS = 'app-progress--error'
 const BAR_ERROR_CLASS = 'app-progress__bar--error'
@@ -101,7 +104,10 @@ async function _poll (panel, deadline) {
  */
 async function _fetchState (pollUrl) {
   try {
-    const response = await fetch(pollUrl, { headers: { accept: 'application/json' } })
+    const response = await fetch(pollUrl, {
+      headers: { accept: 'application/json' },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    })
 
     return response.ok ? await response.json() : null
   } catch {
