@@ -31,6 +31,28 @@ function pageOf (html) {
 }
 
 /**
+ * The side navigation's queries, for what it shows beside the page's own
+ * content; it is found as a screen reader finds it, by its role and name.
+ *
+ * @param {ReturnType<typeof pageOf>} page
+ * @returns {ReturnType<typeof within>}
+ */
+function sideNavOf (page) {
+  return within(within(page.document.body).getByRole('navigation', { name: 'Guidance hub' }))
+}
+
+/**
+ * The GOV.UK error summary's queries - its title, and a link to each field in
+ * error - found as a screen reader finds it: as the page's alert.
+ *
+ * @param {ReturnType<typeof pageOf>} page
+ * @returns {ReturnType<typeof within>}
+ */
+function errorSummaryOf (page) {
+  return within(page.getByRole('alert'))
+}
+
+/**
  * The value that a GOV.UK summary list gives for a key, found by the key's
  * text.
  *
@@ -43,6 +65,8 @@ function summaryValueOf (page, key) {
 }
 
 export {
+  errorSummaryOf,
   pageOf,
+  sideNavOf,
   summaryValueOf
 }
