@@ -1,9 +1,10 @@
 /**
  * @module The cases each user bookmarks sections of guides to, by a case ID or
  * an SBI application number, in their own order. The API keeps them on the
- * user's record and changes them by JSON Patch; a bookmark here is one patch,
- * which tests that the cases are still those the page offered, so a page whose
- * cases have changed since changes nothing.
+ * user's record and changes them by JSON Patch (RFC 6902), which it applies
+ * whole or not at all; a bookmark here is one patch, whose `test` operations
+ * check that the cases are still those the page offered, so a page whose cases
+ * have changed since changes nothing.
  */
 
 import { namedCases } from '../constants/case-types.js'
@@ -139,8 +140,8 @@ async function _patchCases (request, operations) {
  * @private
  * @param {number} position - The case's, among the user's
  * @param {string} key - The case's
- * @returns {{op: string, path: string, value: string}} The test that the case
- *   is still there
+ * @returns {{op: string, path: string, value: string}} A JSON Patch `test`
+ *   operation that the case is still there
  */
 function _caseStill (position, key) {
   return { op: 'test', path: `/${position}/key`, value: key }
@@ -194,7 +195,8 @@ async function removeCase (request, key) {
  * the case being empty once they are out shows.
  *
  * @param {{position: number, found: {key: string}}} now - The case
- * @param {Array<object>} removals - The tests and removals of its bookmarks
+ * @param {Array<object>} removals - The `test` and `remove` operations of its
+ *   bookmarks
  * @param {boolean} emptied - Whether they are all the case has
  * @returns {Array<object>}
  */

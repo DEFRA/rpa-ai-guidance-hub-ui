@@ -196,8 +196,9 @@ async function movePin (request, order, from, to) {
  * @param {number} position - Among the user's pins, from 0
  * @param {string} guideId
  * @param {string|null} [sectionId] - None for the whole guide
- * @returns {Array<object>} The tests that the guide, or that section of it,
- *   is pinned there
+ * @returns {Array<object>} JSON Patch `test` operations that the guide, or
+ *   that section of it, is pinned there: if either fails, the API refuses the
+ *   whole patch
  */
 function _pinnedAt (position, guideId, sectionId = null) {
   return [
@@ -266,6 +267,11 @@ async function recordOpened (request, guideId) {
 
 /**
  * @private
+ * Change the user's pins by a JSON Patch (RFC 6902), which the API applies
+ * whole or not at all: its `test` operations check that the pins are still as
+ * the page showed them, so a page whose pins have changed since changes
+ * nothing.
+ *
  * @param {import('@hapi/hapi').Request} request
  * @param {Array<object>} operations
  * @returns {Promise<boolean>} False when the API refused the patch as stale or
