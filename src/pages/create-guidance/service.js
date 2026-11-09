@@ -22,7 +22,6 @@ const RESULTS = {
   UPLOAD_FAILED: 'uploadFailed' // rejected, empty, or unknown to cdp-uploader
 }
 
-// cdp-uploader matches on MIME type only, unlike the form's `accept` attribute
 const ALLOWED_MIME_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ]
