@@ -395,6 +395,7 @@ describe('#hubController', () => {
       expect(first).toMatch(/app-search-results__pinned-tag">Pinned</)
       expect(first).toContain('<input type="hidden" name="pin" value="false">')
       expect(first).toContain('<input type="hidden" name="position" value="0">')
+      expect(first).toContain(`<input type="hidden" name="anchor" value="pin-${PINNED}">`)
       expect(first).toMatch(/aria-pressed="true"/)
       expect(second).toContain(`/guides/${OTHER}`)
       expect(second).not.toContain('Pinned<')
@@ -489,12 +490,14 @@ describe('#hubController', () => {
       expect(section).toContain(`data-reorder-follows="${PINNED}/${SECTION}"`)
       expect(section).toContain('<input type="hidden" name="position" value="0">')
       expect(section).toContain(`<input type="hidden" name="sectionId" value="${SECTION}">`)
-      expect(section).toContain(`<input type="hidden" name="anchor" value="pin-${SECTION}">`)
+      expect(section).toContain('<input type="hidden" name="anchor" value="guide-results">')
       expect(section).toContain(`id="pin-${SECTION}"`)
       expect(guide).toContain(`<a class="govuk-link" href="/guides/${PINNED}">Claiming the SFI payment</a>`)
       expect(guide).toContain('<input type="hidden" name="position" value="1">')
       expect(guide).not.toContain('name="sectionId"')
+      expect(guide).toContain('<input type="hidden" name="anchor" value="guide-results">')
       expect(guide).toContain(`id="pin-${PINNED}"`)
+      expect(main).toContain('id="guide-results"')
     })
 
     test('count a guide once in their own page\'s filters, as the API counts it, however many of its pins the page lists', async () => {

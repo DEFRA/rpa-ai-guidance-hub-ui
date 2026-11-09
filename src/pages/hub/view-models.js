@@ -88,17 +88,20 @@ function _guideRow ({ versionNumber, ...item }) {
  * @param {Object} list
  * @param {Array<object>} list.items
  * @param {string} [list.noun='guide'] - What the heading counts
+ * @param {boolean} [list.onlyPins=false] - Whether every row is one of the
+ *   user's pins, so unpinning one takes it out of the list
  * @param {string} list.emptyHtml - What it says when it has none: HTML, so a
  *   control it tells the user to select can be bold; always the hub's own
  *   words, never anything a user typed
  */
-function _buildGuideList ({ items, noun = 'guide', emptyHtml }) {
+function _buildGuideList ({ items, noun = 'guide', onlyPins = false, emptyHtml }) {
   const count = items.length
 
   return {
     heading: `${count} ${noun}${count === 1 ? '' : 's'}`,
     showing: count > 0 ? `Showing 1 to ${count}` : null,
     emptyHtml,
+    onlyPins,
     isGuideList: true,
     isEmpty: items.length === 0,
     count: items.length,
@@ -180,6 +183,7 @@ class HubViewModel {
     this.pinned = _buildGuideList({
       items: pinned,
       noun: 'pin',
+      onlyPins: true,
       emptyHtml: nothingMatches ?? 'You have not pinned any guidance yet. Select <strong>Pin guide</strong> on a guide, or the star next to a section heading, to add it here.'
     })
 
