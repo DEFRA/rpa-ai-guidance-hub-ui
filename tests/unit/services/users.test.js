@@ -273,10 +273,19 @@ describe('users service', () => {
 
       const listed = await usersService.listBookmarked(signedInRequest(), filters)
 
-      expect(usersApi.getBookmarkedGuides).toHaveBeenCalledWith(HUB_ID, filters)
+      expect(usersApi.getBookmarkedGuides).toHaveBeenCalledWith(HUB_ID, filters, undefined)
       expect(listed.guides.map(guide => guide.id)).toEqual(['guide-2', 'guide-1'])
       expect(listed.guides[0]).toEqual(expect.objectContaining({ title: 'Claiming the SFI payment' }))
       expect(listed.counts).toEqual(counts)
+    })
+
+    test('list those of one case alone, by its key', async () => {
+      usersApi.getBookmarkedGuides.mockResolvedValue({ ok: true, status: 200, data: guidanceApiFixtures.bookmarkedGuidesResponse() })
+      const filters = { audience: [], system: [], scheme: [], noScheme: false }
+
+      await usersService.listBookmarked(signedInRequest(), filters, 'key-1')
+
+      expect(usersApi.getBookmarkedGuides).toHaveBeenCalledWith(HUB_ID, filters, 'key-1')
     })
   })
 })

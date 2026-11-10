@@ -127,16 +127,19 @@ async function getRecentlyOpened (userId, filters = {}) {
 
 /**
  * The guides bookmarked to the user's cases, each once, in the order of the
- * cases, that the filters let through.
+ * cases, that the filters let through; or those of one case alone.
  *
  * @param {string} userId
  * @param {{audience?: string[], system?: string[], scheme?: string[], noScheme?: boolean}} [filters]
+ * @param {string} [caseKey] - The one case's key
  * @returns {Promise<{ok: boolean, status: number, data: any}>} - data is
  *   `{items, counts}`, each item a guide as `GET /guides` lists it
  * @throws {GuidanceApiError} - When response is not ok
  */
-async function getBookmarkedGuides (userId, filters = {}) {
-  return guidanceApiClient.request(`${_userPath(userId)}/bookmarked-guides`, { query: _filterQuery(filters) })
+async function getBookmarkedGuides (userId, filters = {}, caseKey = undefined) {
+  const query = { ..._filterQuery(filters), ...(caseKey && { case: caseKey }) }
+
+  return guidanceApiClient.request(`${_userPath(userId)}/bookmarked-guides`, { query })
 }
 
 /**

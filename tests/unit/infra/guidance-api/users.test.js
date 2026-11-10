@@ -90,5 +90,16 @@ describe('users infra', () => {
       expect(listing.isDone()).toBe(true)
       expect(res.data).toEqual(page)
     })
+
+    test('asks for those of one case alone, by its key', async () => {
+      const listing = nock(GUIDANCE_API)
+        .get(`/users/${HUB_ID}/bookmarked-guides`)
+        .query({ system: 'CRM', case: 'key-1' })
+        .reply(200, bookmarkedGuidesResponse())
+
+      await usersApi.getBookmarkedGuides(HUB_ID, { audience: [], system: ['CRM'], scheme: [], noScheme: false }, 'key-1')
+
+      expect(listing.isDone()).toBe(true)
+    })
   })
 })

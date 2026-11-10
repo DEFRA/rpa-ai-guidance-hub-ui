@@ -6,7 +6,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
-import { bookmarkedGuidesResponse, guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
+import { bookmarkedGuidesResponse, caseResponse, guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 import { pageOf, sideNavOf } from '../../helpers/page.js'
 
@@ -724,6 +724,69 @@ describe('#hubController', () => {
 
       expect(page.getByText(/^No guides match your search or filters\./)).toBeInTheDocument()
       expect(page.queryByText(/^You haven't bookmarked/)).not.toBeInTheDocument()
+    })
+
+    describe('narrowed to one case', () => {
+      const KEY = caseResponse().key
+      const NARROWED = `/hub/bookmarked-guides?case=${KEY}`
+      const CRM_COUNTS = { audience: [], system: [{ label: 'CRM', shortLabel: null, count: 1, retired: false }], scheme: [] }
+
+      /** The page at `url`, for a user with case W1234567, the API answering the case's guides for `query`. */
+      async function narrowedPage (url, query = { case: KEY }) {
+        nock.cleanAll()
+        const cookie = await signedIn({ cases: [caseResponse()] })
+        const listing = nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/bookmarked-guides`).query(query).reply(statusCodes.HTTP_STATUS_OK, bookmarkedGuidesResponse({
+          items: [guideSummaryResponse({ id: CLAIMS })],
+          counts: CRM_COUNTS
+        }))
+
+        const { statusCode, payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
+
+        return { statusCode, listing, page: pageOf(payload) }
+      }
+
+      test('list the guides of the case alone, by its key, showing it as a selected filter that takes it away', async () => {
+        const { statusCode, listing, page } = await narrowedPage(NARROWED)
+
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+        expect(listing.isDone()).toBe(true)
+        expect(rowsOf(page)[0].getByRole('link', { name: 'Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${CLAIMS}`)
+        expect(filtersOf(page).getByRole('link', { name: 'Remove filter Case: W1234567' })).toHaveAttribute('href', '/hub/bookmarked-guides')
+      })
+
+      test('keep the case as the other filters change, until they are cleared', async () => {
+        const { page } = await narrowedPage(`${NARROWED}&system=CRM`, { case: KEY, system: 'CRM' })
+        const filters = filtersOf(page)
+
+        expect(filters.getByRole('button', { name: 'Apply filters' }).form).toHaveFormValues({ case: KEY })
+        expect(filters.getByRole('checkbox', { name: 'CRM (1)' })).toBeChecked()
+        expect(filters.getByRole('link', { name: 'Remove filter CRM' })).toHaveAttribute('href', NARROWED)
+        expect(filters.getByRole('link', { name: 'Remove filter Case: W1234567' })).toHaveAttribute('href', '/hub/bookmarked-guides?system=CRM')
+        expect(filters.getByRole('link', { name: 'Clear filters' })).toHaveAttribute('href', '/hub/bookmarked-guides')
+      })
+
+      test('name the case neither in the address nor in the page title', async () => {
+        const { page } = await narrowedPage(NARROWED)
+
+        expect(page.document.title).not.toMatch(/W1234567|case|sbi/i)
+      })
+
+      test('still mark "Bookmarked guides" as the current page in the side navigation', async () => {
+        const { page } = await narrowedPage(NARROWED)
+
+        expect(sideNavOf(page).getByRole('link', { name: 'Bookmarked guides', current: 'page' })).toBeInTheDocument()
+      })
+
+      test.each([
+        ['a key the user does not have', '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c'],
+        ['the case\'s ID', 'W1234567']
+      ])('answer %s as page not found, listing nothing', async (_name, named) => {
+        const { statusCode, listing, page } = await narrowedPage(`/hub/bookmarked-guides?case=${named}`, true)
+
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_NOT_FOUND)
+        expect(page.getByText('Page not found')).toBeInTheDocument()
+        expect(listing.isDone()).toBe(false)
+      })
     })
 
     test('mark "Bookmarked guides" as the current page in the side navigation', async () => {

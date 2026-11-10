@@ -252,14 +252,15 @@ async function listRecentlyOpened (request, filters) {
 /**
  * The guides bookmarked to the signed-in user's cases, each once, in the
  * order of the cases and, in each, the user's order, that the filters let
- * through; and each filter's counts among them.
+ * through; or those of one case alone. And each filter's counts among them.
  *
  * @param {import('@hapi/hapi').Request} request - Signed in
  * @param {import('./guides.js').Filters} [filters]
+ * @param {string} [caseKey] - The one case's key
  * @returns {Promise<{guides: import('./guides.js').GuideSummary[], counts: import('./guides.js').FilterCounts}>}
  */
-async function listBookmarked (request, filters) {
-  const res = await usersApi.getBookmarkedGuides(await userIdOf(request), filters)
+async function listBookmarked (request, filters, caseKey) {
+  const res = await usersApi.getBookmarkedGuides(await userIdOf(request), filters, caseKey)
 
   return {
     guides: res.data.items.map(item => toGuideSummary(item)),
