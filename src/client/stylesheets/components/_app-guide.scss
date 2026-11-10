@@ -7,83 +7,9 @@
 @use 'app-side-nav' as *;
 
 // The merged guide page (app/views/playground/guide/**) — the hub -> guide
-// consolidation's visual redesign of the reading experience, plus its
-// right-hand panel, styled after the persistent side navigation
-// (_app-side-nav.scss, imported before this file so its tokens/mixins are
-// available here): light grey background, a bordered column, collapsible
-// to a slim icon rail rather than hidden outright. The panel is rendered
-// as a column of .app-shell itself (layouts/main.html's shellAside block),
-// a mirror image of .app-shell__nav — not nested inside the reading
-// column's own flex row, so these rules mostly just copy .app-shell__nav's
-// own (position, height, sticky) rather than reinventing them.
-
-// 320px default matches PANEL_WIDTH.default (guide/view-model.js); the
-// min/max match PANEL_WIDTH.min/max there too — keep both pairs in sync.
-$app-guide-panel-min-width: 280px;
-$app-guide-panel-max-width: 480px;
-
-.app-guide-panel {
-  position: sticky;
-  top: 0;
-  // flex-basis auto, not a fixed basis, so a resized `width` (dragging the
-  // handle, or the native resize grip below) actually takes effect — same
-  // fix .app-shell__nav needed. --app-guide-panel-width is the width saved
-  // for this session (page.njk's own panelWidth) — a var, not a plain
-  // inline `width`, so the narrow-screen override below (a plain
-  // stylesheet rule) can still win over it rather than being beaten by
-  // inline-style specificity.
-  flex: 0 0 auto;
-  box-sizing: border-box;
-  width: var(--app-guide-panel-width, 320px);
-  min-width: $app-guide-panel-min-width;
-  max-width: $app-guide-panel-max-width;
-  height: calc(100vh - var(--app-side-nav-top, 0px));
-  overflow-y: auto;
-  border-left: 1px solid $app-side-nav-divider;
-  background-color: $govuk-light-grey;
-}
-
-// No-JS fallback for resizing: the browser's own corner grip (overflow is
-// already auto). side-nav.js adds the full-height handle most people use.
-@include govuk-media-query($from: desktop) {
-  .app-guide-panel:not(.app-guide-panel--collapsed) {
-    resize: horizontal;
-  }
-}
-
-.app-guide-panel--collapsed {
-  width: $app-side-nav-rail-width;
-  min-width: 0;
-  max-width: none;
-  overflow: visible;
-}
-
-.app-guide-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 56px;
-  padding: 0 govuk-spacing(4);
-  border-bottom: 1px solid $app-side-nav-divider;
-}
-
-.app-guide-panel__body {
-  padding: govuk-spacing(4);
-}
-
-// Stacks below the reading column on narrow screens — the same breakpoint
-// .app-shell itself stacks the nav at.
-@include govuk-media-query($until: desktop) {
-  .app-guide-panel,
-  .app-guide-panel--collapsed {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    border-left: 0;
-    border-top: 1px solid $app-side-nav-divider;
-  }
-}
+// consolidation's visual redesign of the reading experience, styled after the
+// persistent side navigation (_app-side-nav.scss, imported before this file
+// so its tokens/mixins are available here).
 
 // The stepper/traditional format toggle — an in-page control rather than
 // the old separate /document/:id/view choice screen. Prototype-only: in
@@ -133,6 +59,82 @@ $app-guide-panel-max-width: 480px;
   @include govuk-media-query($from: tablet) {
     font-size: 40px;
   }
+}
+
+// The title, with the information button beside it.
+.app-guide-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: govuk-spacing(2);
+  margin: 0 0 govuk-spacing(2);
+
+  .app-guide-title {
+    margin-bottom: 0;
+  }
+}
+
+.app-guide-info-form {
+  flex: none;
+}
+
+// Rolled over, it looks like a button; open, it stays pressed in.
+.app-guide-info-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: $govuk-secondary-text-colour;
+  cursor: pointer;
+
+  .app-side-nav-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  &:hover {
+    border-color: $govuk-mid-grey;
+    background-color: $govuk-light-grey;
+    color: $govuk-black;
+  }
+
+  &[aria-expanded='true'] {
+    border-color: $govuk-mid-grey;
+    background-color: mix($govuk-black, $govuk-light-grey, 10%);
+    box-shadow: inset 0 2px 4px rgba($govuk-black, 0.25);
+    color: $govuk-black;
+  }
+
+  // Keyboard focus only, so a click leaves it looking pressed.
+  &:focus-visible {
+    @include govuk-focused-text;
+  }
+
+  &:hover .app-guide-info-toggle__tooltip,
+  &:focus-visible .app-guide-info-toggle__tooltip {
+    display: block;
+  }
+}
+
+// The guide's information, under the title, on the guide pane's grey.
+.app-guide-info {
+  box-sizing: border-box;
+  margin: 0 0 govuk-spacing(4);
+  padding: govuk-spacing(3) govuk-spacing(4);
+  background-color: $govuk-light-grey;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.app-guide-info__list {
+  margin-bottom: 0;
 }
 
 // The tags, the date, Pin guide and the page width in one row above the
@@ -518,69 +520,6 @@ $app-guide-toc-width: 340px;
   &:last-child {
     margin-bottom: 0;
   }
-}
-
-// The panel's own metadata list.
-.app-guide-metadata-list {
-  margin: 0 0 govuk-spacing(4);
-}
-
-.app-guide-metadata-list__row {
-  padding: govuk-spacing(2) 0;
-  border-bottom: 1px solid $govuk-mid-grey;
-
-  dt {
-    font-size: 14px;
-    font-weight: 700;
-    color: $govuk-secondary-text-colour;
-  }
-
-  dd {
-    margin: 0;
-    font-size: 16px;
-  }
-}
-
-// The panel's "Case bookmarks" section (partials/case-bookmarks.njk) — the
-// one task in the panel, so it sits first, styled like the side nav's own
-// list rows rather than the old boxed bookmark form.
-.app-guide-panel__section {
-  margin-bottom: govuk-spacing(4);
-  padding-bottom: govuk-spacing(4);
-  border-bottom: 1px solid $app-side-nav-divider;
-}
-
-.app-guide-panel__bookmarks-list {
-  margin: govuk-spacing(2) 0 govuk-spacing(3);
-}
-
-.app-guide-panel__bookmarks-item {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: govuk-spacing(2);
-  padding: govuk-spacing(1) 0;
-}
-
-.app-guide-panel__bookmarks-link {
-  display: block;
-}
-
-// A case's bookmarked sections of this guide, under the case itself.
-.app-guide-panel__bookmark-sections {
-  flex-basis: 100%;
-  margin: 0 0 0 govuk-spacing(3);
-  font-size: 16px;
-}
-
-.app-guide-panel__bookmark-section {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: govuk-spacing(2);
-  margin-bottom: govuk-spacing(1);
 }
 
 // A section heading with its bookmark icon beside it. The row takes the

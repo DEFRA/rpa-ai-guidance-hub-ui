@@ -246,7 +246,6 @@ describe('#guideController', () => {
 
       const { payload } = await get(GUIDE_URL)
 
-      expect(payload).toContain('About this guide')
       expect(payload).toContain('Sustainable Farming Incentive (SFI)')
       expect(payload).toContain('Processor')
       expect(payload).toContain('CRM')
@@ -541,14 +540,14 @@ describe('#guideController', () => {
   })
 
   describe('the page shell', () => {
-    test('runs the full width, with the panel as a column of the shell beside the reading column', async () => {
+    test('runs the full width, the shell holding the reading column', async () => {
       mockGuide()
 
       const { payload } = await get(GUIDE_URL)
 
       expect(payload).toContain('app-width-container--bleed')
       expect(payload).toContain('app-main-wrapper--bleed')
-      expect(payload).toMatch(/class="app-shell">[\s\S]*class="app-shell__main">[\s\S]*class="app-guide-panel"/)
+      expect(payload).toMatch(/class="app-shell">[\s\S]*class="app-shell__main">[\s\S]*class="app-guide-reading/)
     })
 
     test('keeps the contents a direct child of the reading column, where it can stick', async () => {
@@ -556,34 +555,7 @@ describe('#guideController', () => {
 
       const { payload } = await get(GUIDE_URL)
 
-      expect(payload).toMatch(/<div class="app-guide-reading app-guide-reading--standard">[\s\S]*?<\/h1>\s*<div class="app-guide-contents"/)
-    })
-
-    test('lists the guide\'s answers in the panel as the prototype\'s metadata list', async () => {
-      mockGuide()
-
-      const { payload } = await get(GUIDE_URL)
-
-      expect(payload).toContain('app-guide-metadata-list__row')
-      expect(payload).toContain('class="app-side-nav__icon-button"')
-    })
-
-    test('shows the collapsed panel as the prototype\'s rail, its button named and with a tooltip', async () => {
-      const { cookie: collapsedCookie } = await server.inject({
-        method: 'POST',
-        url: '/guides/panel-toggle',
-        headers: { cookie },
-        payload: { collapsed: 'true', returnTo: GUIDE_URL }
-      }).then(response => ({ cookie: mergeCookies(cookie, response.headers['set-cookie']) }))
-      mockGuide()
-
-      const { payload } = await server.inject({ method: 'GET', url: GUIDE_URL, headers: { cookie: collapsedCookie } })
-
-      expect(payload).toContain('app-side-nav app-side-nav--rail')
-      expect(payload).toContain('app-side-nav__rail-item')
-      expect(payload).toContain('data-side-nav-tooltip')
-      expect(payload).toContain('<span class="app-side-nav__rail-label">Show guide details</span>')
-      expect(payload).toContain('<span class="app-side-nav__tooltip" aria-hidden="true">Show guide details</span>')
+      expect(payload).toMatch(/<div class="app-guide-reading app-guide-reading--standard">[\s\S]*?<\/div>\s*<div class="app-guide-contents"/)
     })
   })
 
@@ -595,69 +567,6 @@ describe('#guideController', () => {
 
       expect(payload).toContain('<nav class="app-side-nav" aria-label="Guidance hub">')
       expect(payload).not.toContain('class="defra-header')
-    })
-  })
-
-  describe('the About this guide panel', () => {
-    async function togglePanel (collapsed) {
-      const response = await server.inject({
-        method: 'POST',
-        url: '/guides/panel-toggle',
-        headers: { cookie },
-        payload: { collapsed, returnTo: `${GUIDE_URL}?section=assign-case` }
-      })
-
-      return { response, cookie: mergeCookies(cookie, response.headers['set-cookie']) }
-    }
-
-    test('is open, offering to hide the details', async () => {
-      mockGuide()
-
-      const { payload } = await get(GUIDE_URL)
-
-      expect(payload).toContain('id="guide-panel-body"')
-      expect(payload).toContain('Hide guide details')
-      expect(payload).toMatch(/aria-expanded="true"/)
-      expect(payload).not.toContain('app-guide-panel--collapsed')
-    })
-
-    test('folds away to a rail that offers to show the details, and open again', async () => {
-      const { response, cookie: collapsed } = await togglePanel('true')
-
-      expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(response.headers.location).toBe(`${GUIDE_URL}?section=assign-case`)
-
-      mockGuide()
-      const rail = await server.inject({ method: 'GET', url: GUIDE_URL, headers: { cookie: collapsed } })
-
-      expect(rail.payload).toContain('app-guide-panel--collapsed')
-      expect(rail.payload).toContain('Show guide details')
-      expect(rail.payload).toMatch(/aria-expanded="false"/)
-      expect(rail.payload).not.toContain('id="guide-panel-body"')
-      expect(rail.payload).not.toContain('example.com')
-
-      const reopened = await togglePanel('false')
-      mockGuide()
-      const open = await server.inject({ method: 'GET', url: GUIDE_URL, headers: { cookie: reopened.cookie } })
-
-      expect(open.payload).toContain('id="guide-panel-body"')
-    })
-
-    test('does not go to another site', async () => {
-      const response = await server.inject({
-        method: 'POST',
-        url: '/guides/panel-toggle',
-        headers: { cookie },
-        payload: { collapsed: 'true', returnTo: 'https://evil.example' }
-      })
-
-      expect(response.headers.location).toBe('/hub')
-    })
-
-    test('refuses something that is not true or false', async () => {
-      const { response } = await togglePanel('maybe')
-
-      expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
     })
   })
 
@@ -739,8 +648,7 @@ describe('#guideController', () => {
     test.each([
       ['GET', GUIDE_URL],
       ['GET', `${GUIDE_URL}/assets/abc123.png`],
-      ['POST', '/guides/reading-width'],
-      ['POST', '/guides/panel-toggle']
+      ['POST', '/guides/reading-width']
     ])('redirects %s %s to the home page', async (method, url) => {
       const { statusCode, headers } = await server.inject({ method, url })
 

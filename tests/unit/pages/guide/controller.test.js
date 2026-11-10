@@ -13,10 +13,11 @@ const guide = {
 
 const markdown = '## One\n\nFirst.\n\n## Two\n\nSecond.\n\n## Three\n\nThird.'
 
-function createRequest ({ query = {}, payload, stored, format } = {}) {
+function createRequest ({ query = {}, payload, stored, format, informationShown } = {}) {
   const session = new Map([
     ...(stored ? [['guide-reading-width', stored]] : []),
-    ...(format ? [['guide-format', format]] : [])
+    ...(format ? [['guide-format', format]] : []),
+    ...(informationShown === undefined ? [] : [['guide-information-shown', informationShown]])
   ])
 
   return {
@@ -100,7 +101,6 @@ describe('guide controller', () => {
       await controller.getGuidePage(request, h)
 
       expect(h.view.mock.calls[0][1]).toMatchObject({
-        panelCollapsed: false,
         pageNumber: 2,
         readingWidth: 'full',
         returnTo: '/guides/guide-1?section=two'
@@ -133,6 +133,15 @@ describe('guide controller', () => {
       await controller.getGuidePage(createRequest({ query: { section: '21-deep' } }), h)
 
       expect(h.view.mock.calls[0][1].pageNumber).toBe(2)
+    })
+
+    test.each([
+      [undefined, false],
+      [true, true]
+    ])('shows the guide\'s information as the user chose (%j)', async (informationShown, shown) => {
+      await controller.getGuidePage(createRequest({ informationShown }), h)
+
+      expect(h.view.mock.calls[0][1].informationShown).toBe(shown)
     })
 
     test('ignores a page number in the address', async () => {
@@ -172,6 +181,23 @@ describe('guide controller', () => {
     })
   })
 
+  describe('postInformation', () => {
+    test.each([[true], [false]])('remembers the information as shown %s, and goes back to the page', (shown) => {
+      const request = createRequest({ payload: { shown, returnTo: '/guides/guide-1?section=two' } })
+
+      controller.postInformation(request, h)
+
+      expect(request.yar.session.get('guide-information-shown')).toBe(shown)
+      expect(h.redirect).toHaveBeenCalledWith('/guides/guide-1?section=two')
+    })
+
+    test.each([[''], ['https://evil.example']])('goes to the hub instead of %j', (returnTo) => {
+      controller.postInformation(createRequest({ payload: { shown: true, returnTo } }), h)
+
+      expect(h.redirect).toHaveBeenCalledWith('/hub')
+    })
+  })
+
   describe('postFormat', () => {
     test('remembers the format and goes back to the reader\'s place', () => {
       const request = createRequest({ payload: { format: 'stepper', returnTo: '/guides/guide-1?page=2#two' } })
@@ -185,26 +211,6 @@ describe('guide controller', () => {
     test.each([[''], ['https://evil.example'], ['//evil.example']])('goes to the hub instead of %j', (returnTo) => {
       controller.postFormat(createRequest({ payload: { format: 'traditional', returnTo } }), h)
 
-      expect(h.redirect).toHaveBeenCalledWith('/hub')
-    })
-  })
-
-  describe('postPanelToggle', () => {
-    test('remembers the panel as collapsed, and goes back to the page', () => {
-      const request = createRequest({ payload: { collapsed: true, returnTo: '/guides/guide-1?page=2' } })
-
-      controller.postPanelToggle(request, h)
-
-      expect(request.yar.session.get('guide-panel-collapsed')).toBe(true)
-      expect(h.redirect).toHaveBeenCalledWith('/guides/guide-1?page=2')
-    })
-
-    test('remembers the panel as open', () => {
-      const request = createRequest({ payload: { collapsed: false, returnTo: '' } })
-
-      controller.postPanelToggle(request, h)
-
-      expect(request.yar.session.get('guide-panel-collapsed')).toBe(false)
       expect(h.redirect).toHaveBeenCalledWith('/hub')
     })
   })

@@ -8,9 +8,9 @@ import * as usersService from '../../services/users.js'
 import { guideAssetHref } from './asset-href.js'
 import { BOOKMARKED } from './bookmark/controller.js'
 import { getGuideFormat, setGuideFormat } from './format.js'
-import { isPanelCollapsed, setPanelCollapsed } from './panel.js'
+import { isInformationShown, setInformationShown } from './information.js'
 import { getReadingWidth, setReadingWidth } from './reading-width.js'
-import { buildMetadataRows, GuideViewModel } from './view-model.js'
+import { buildInfoRows, GuideViewModel } from './view-model.js'
 
 const GUIDE_VIEW = 'guide/page.njk'
 const FALLBACK_RETURN_URL = '/hub'
@@ -139,13 +139,13 @@ async function getGuidePage (request, h) {
     pageNumber: _pageNamed(sections, request.query.section),
     readingWidth: getReadingWidth(request),
     returnTo: _currentUrl(request),
-    panelCollapsed: isPanelCollapsed(request),
-    metadataRows: buildMetadataRows(guide.metadata),
     pin: _pinOf(pinned, guide.id),
     pinnedSections: _pinnedSectionsOf(pinned, guide.id),
     cases,
     bookmarked: request.yar.flash(BOOKMARKED)[0],
-    format
+    format,
+    infoRows: buildInfoRows(guide),
+    informationShown: isInformationShown(request)
   })
 
   return h
@@ -186,17 +186,18 @@ function postFormat (request, h) {
 }
 
 /**
- * Fold the "About this guide" panel away to its rail, or open it again, then
- * send the user back to the page they did it on.
+ * Remember whether the user shows a guide's information under its title, then
+ * send them back to the page they chose it on. With JavaScript the page has
+ * changed already, and only the choice is sent.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
  * @returns {import('@hapi/hapi').ResponseObject}
  */
-function postPanelToggle (request, h) {
-  const { collapsed, returnTo } = request.payload
+function postInformation (request, h) {
+  const { shown, returnTo } = request.payload
 
-  setPanelCollapsed(request, collapsed)
+  setInformationShown(request, shown)
 
   return h.redirect(relativeHref(returnTo, FALLBACK_RETURN_URL))
 }
@@ -233,6 +234,6 @@ export {
   getGuideAsset,
   getGuidePage,
   postFormat,
-  postPanelToggle,
+  postInformation,
   postReadingWidth
 }

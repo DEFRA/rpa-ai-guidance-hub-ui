@@ -7,7 +7,7 @@
 // kept as they are. In the prototype the shell sits outside the page's width
 // container; here the guide page drops the container and the main wrapper's
 // padding (`app-width-container--bleed`, `app-main-wrapper--bleed`) so the
-// shell, and the panel at its right, run the full width and height.
+// shell runs the full width and height.
 
 .app-width-container--bleed {
   width: auto;
@@ -66,14 +66,4 @@ $app-guide-gutter-top: govuk-spacing(6);
   .app-guide-reading > .app-guide-contents {
     max-height: none;
   }
-}
-
-// The prototype's tooltip opens to the right of its item, which suits a left
-// side nav. The panel is on the right of the page, so it opens to the left,
-// still bridged by a transparent border so it stays while hovered.
-.app-guide-panel .app-side-nav__tooltip {
-  right: 100%;
-  left: auto;
-  border-right: 10px solid transparent;
-  border-left: 0;
 }
