@@ -556,7 +556,7 @@ describe('#guideController', () => {
 
       const { payload } = await get(GUIDE_URL)
 
-      expect(payload).toMatch(/<div class="app-guide-reading app-guide-reading--standard">[\s\S]*?<\/div>\s*<div class="app-guide-contents"/)
+      expect(payload).toMatch(/<div class="app-guide-reading app-guide-reading--standard">[\s\S]*?<\/h1>\s*<div class="app-guide-contents"/)
     })
 
     test('lists the guide\'s answers in the panel as the prototype\'s metadata list', async () => {

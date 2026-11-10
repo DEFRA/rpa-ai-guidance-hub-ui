@@ -135,9 +135,9 @@ $app-guide-panel-max-width: 480px;
   }
 }
 
-// The tags, the date and Pin guide in one row, centred on one line and evenly
-// spaced; where the column is too narrow, the row wraps between them, each
-// line starting where the tags do.
+// The tags, the date, Pin guide and the page width in one row above the
+// title, centred on one line and evenly spaced; where the column is too
+// narrow, the row wraps between them, each line starting where the tags do.
 .app-guide-byline {
   display: flex;
   flex-wrap: wrap;
@@ -191,31 +191,9 @@ $app-guide-panel-max-width: 480px;
   max-width: none;
 }
 
-// Pin guide and Page width, on one row under the title.
-.app-guide-tools {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: govuk-spacing(2) govuk-spacing(4);
-  margin-bottom: govuk-spacing(4);
-
-  // Nested so it outranks .govuk-button's own margin-bottom without
-  // needing !important.
-  .app-pin-button {
-    margin-bottom: 0;
-  }
-}
-
-.app-guide-reading-width {
-  display: flex;
-  align-items: center;
-  gap: govuk-spacing(2);
-}
-
-.app-guide-reading-width__label {
-  font-size: 16px;
-  font-weight: 700;
+// The page width, at the right of the byline's row.
+.app-guide-byline .app-guide-reading-width {
+  margin-left: auto;
 }
 
 // The format toggle's segmented look, on buttons rather than links: the

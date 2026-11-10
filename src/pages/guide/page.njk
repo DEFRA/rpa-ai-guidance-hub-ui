@@ -59,14 +59,11 @@
                 </button>
               </form>
             {% endif %}
-          </div>
-
-          <h1 class="app-guide-title">{{ title }}</h1>
-
-          <div class="app-guide-tools">
+            {# The page width, at the right of the row; named for screen readers
+               only, as the guide format is. #}
             <form class="app-guide-reading-width" method="post" action="/guides/reading-width">
               <input type="hidden" name="returnTo" value="{{ returnTo }}">
-              <span class="app-guide-reading-width__label" id="guide-reading-width-label">Page width</span>
+              <span class="govuk-visually-hidden" id="guide-reading-width-label">Page width</span>
               <div class="app-guide-format-toggle app-guide-reading-width__options" role="group" aria-labelledby="guide-reading-width-label">
                 {% for option in readingWidths %}
                   <button type="submit" name="width" value="{{ option.value }}"
@@ -76,6 +73,9 @@
               </div>
             </form>
           </div>
+
+          <h1 class="app-guide-title">{{ title }}</h1>
+
 
           {# The contents pane: Back, the whole guide or a section at a time,
              then the contents list. The format's return address names both the page
