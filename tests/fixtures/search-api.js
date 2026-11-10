@@ -75,8 +75,72 @@ function tooManyMatchesResponse (total = 1500) {
   }
 }
 
+/**
+ * One document in `GET /v1/search?group=document`'s results.
+ *
+ * @param {Object} [overrides] - Replaces any default field
+ * @returns {Object}
+ */
+function documentResult (overrides = {}) {
+  const sections = overrides.sections ?? [sectionResult()]
+
+  return {
+    documentId: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
+    documentTitle: 'Countryside Stewardship final payments',
+    versionId: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
+    status: 'published',
+    url: '/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7',
+    sectionTotal: sections.length,
+    sections,
+    ...overrides
+  }
+}
+
+/**
+ * Body of `GET /v1/search?q=&group=document` on 200.
+ *
+ * @param {Object} [options]
+ * @param {Array<Object>} [options.results] - Defaults to one document
+ * @param {number} [options.total] - Defaults to how many results there are
+ * @param {number} [options.sectionTotal] - Defaults to the results' sections
+ * @returns {Object}
+ */
+function documentSearchResponse (options = {}) {
+  const results = options.results ?? [documentResult()]
+
+  return {
+    queryId: '0f8fad5bd9cb469fa16570867728950e',
+    total: options.total ?? results.length,
+    sectionTotal: options.sectionTotal ?? results.reduce((sum, result) => sum + result.sectionTotal, 0),
+    results,
+    tooManyMatches: false,
+    message: null
+  }
+}
+
+/**
+ * Body of `GET /v1/search?q=&group=document` on 200 when more sections match
+ * than the service will give.
+ *
+ * @param {number} [sectionTotal]
+ * @returns {Object}
+ */
+function tooManyDocumentsResponse (sectionTotal = 1500) {
+  return {
+    queryId: '0f8fad5bd9cb469fa16570867728950e',
+    total: 0,
+    sectionTotal,
+    results: [],
+    tooManyMatches: true,
+    message: TOO_MANY_MATCHES
+  }
+}
+
 export {
+  documentResult,
+  documentSearchResponse,
   searchResponse,
   sectionResult,
+  tooManyDocumentsResponse,
   tooManyMatchesResponse
 }

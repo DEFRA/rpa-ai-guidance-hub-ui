@@ -127,21 +127,42 @@ describe('#hubController', () => {
     })
 
     describe('with words searched for', () => {
+      const GUIDE = '7c9e6679-7425-40de-944b-e07fc1f90ae7'
+      const section = { title: '4.2 Claim rules', href: '/guides/g-1#claim-rules', documentTitle: 'CS final payments', matches: 2, snippet: [{ text: 'claim', match: true }] }
       const found = {
         unavailable: false,
         total: 12,
+        sectionTotal: 30,
         tooManyMatches: false,
-        results: [{ title: '4.2 Claim rules', href: '/guides/g-1#claim-rules', documentTitle: 'CS final payments', matches: 2, snippet: [{ text: 'claim', match: true }] }]
+        results: [{ id: 'g-1', title: 'CS final payments', href: '/guides/g-1', sectionTotal: 1, sections: [section] }]
       }
 
       beforeEach(() => {
         vi.spyOn(searchService, 'searchGuides').mockResolvedValue(found)
+        vi.spyOn(searchService, 'searchGuide').mockResolvedValue({ unavailable: false, total: 1, tooManyMatches: false, results: [section] })
       })
 
-      test('Should search for the words, a page at a time, the page the address asks for', async () => {
+      test('Should search every guide for the words, a page of guides at a time, the page the address asks for', async () => {
         await getHubPage({ query: { q: ' claim rules ', page: '2' } }, h)
 
         expect(searchService.searchGuides).toHaveBeenCalledWith({ words: 'claim rules', page: 2, perPage: 10 })
+        expect(searchService.searchGuide).not.toHaveBeenCalled()
+      })
+
+      test('Should search inside the guide the address asks for, a page of its sections at a time', async () => {
+        await getHubPage({ query: { q: 'claim', guide: GUIDE, page: '2' } }, h)
+
+        const [, viewModel] = h.view.mock.calls[0]
+        expect(searchService.searchGuide).toHaveBeenCalledWith({ words: 'claim', guideId: GUIDE, page: 2, perPage: 10 })
+        expect(searchService.searchGuides).not.toHaveBeenCalled()
+        expect(viewModel.search.results).toEqual([expect.objectContaining({ title: '4.2 Claim rules' })])
+      })
+
+      test('Should search every guide when the address\'s guide is not one', async () => {
+        await getHubPage({ query: { q: 'claim', guide: 'nope' } }, h)
+
+        expect(searchService.searchGuides).toHaveBeenCalled()
+        expect(searchService.searchGuide).not.toHaveBeenCalled()
       })
 
       test('Should show what search found instead of the list of guides and its filters', async () => {
@@ -153,14 +174,17 @@ describe('#hubController', () => {
         expect(viewModel.filters).toBeNull()
         expect(viewModel.words).toBe('claim rules')
         expect(viewModel.search).toEqual(expect.objectContaining({
-          heading: '12 results',
-          results: [expect.objectContaining({ title: '4.2 Claim rules', href: '/guides/g-1#claim-rules' })]
+          heading: '12 guides',
+          guides: [expect.objectContaining({
+            title: 'CS final payments',
+            sections: [expect.objectContaining({ title: '4.2 Claim rules', href: '/guides/g-1#claim-rules' })]
+          })]
         }))
         expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
       })
 
       test('Should list every guide the filters let through, saying search is not available, when search can\'t answer', async () => {
-        searchService.searchGuides.mockResolvedValue({ unavailable: true, total: 0, tooManyMatches: false, results: [] })
+        searchService.searchGuides.mockResolvedValue({ unavailable: true, total: 0, sectionTotal: 0, tooManyMatches: false, results: [] })
 
         await getHubPage({ query: { q: 'claim rules', audience: 'Processor' } }, h)
 

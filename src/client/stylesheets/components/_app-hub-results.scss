@@ -36,6 +36,18 @@
   color: $govuk-secondary-text-colour;
 }
 
+// A guide's best sections, under the guide, set in from it.
+.app-search-results__sections {
+  margin: 0;
+  padding: 0 0 0 govuk-spacing(3);
+  border-left: 4px solid $govuk-border-colour;
+  list-style: none;
+}
+
+.app-search-results__section + .app-search-results__section {
+  margin-top: govuk-spacing(4);
+}
+
 // The tags sit at the start of the row, where the pin star will join them.
 .app-hub-results__top {
   justify-content: flex-start;

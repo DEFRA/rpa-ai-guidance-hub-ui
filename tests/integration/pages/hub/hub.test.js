@@ -284,76 +284,107 @@ describe('#hubController', () => {
       return { statusCode, main: payload.slice(payload.indexOf('<main'), payload.indexOf('</main>')) }
     }
 
-    test('asks the search service for the first page of sections with the words', async () => {
+    const GUIDE = '7c9e6679-7425-40de-944b-e07fc1f90ae7'
+
+    test('asks the search service for the first page of guides with the words, each with its best sections', async () => {
       const search = nock(SEARCH_API_BASE_URL)
         .get('/v1/search')
-        .query({ q: 'claim rules', limit: '10', offset: '0' })
-        .reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse())
+        .query({ q: 'claim rules', group: 'document', sections: '3', limit: '10', offset: '0' })
+        .reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
 
       await mainOf('/hub?q=claim+rules')
 
       expect(search.isDone()).toBe(true)
     })
 
-    test('asks for the page of results the address asks for', async () => {
+    test('asks for the page of guides the address asks for', async () => {
       const search = nock(SEARCH_API_BASE_URL)
         .get('/v1/search')
-        .query({ q: 'claim', limit: '10', offset: '20' })
-        .reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse({ total: 35 }))
+        .query({ q: 'claim', group: 'document', sections: '3', limit: '10', offset: '20' })
+        .reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ total: 35 }))
 
       await mainOf('/hub?q=claim&page=3')
 
       expect(search.isDone()).toBe(true)
     })
 
-    test('shows each section found, linked to it in its guide, its words marked, instead of the list and filters', async () => {
-      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse())
+    test('shows each guide found with its sections, linked to them, their words marked, instead of the list and filters', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
 
       const { statusCode, main } = await mainOf('/hub?q=claim')
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(main).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">1 result</h2>')
-      expect(main).toContain('<a class="govuk-link" href="/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7#claim-rules">4.2 Claim rules</a>')
-      expect(main).toContain('Countryside Stewardship final payments · 2 matches')
+      expect(main).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">1 guide</h2>')
+      expect(main).toContain(`<a class="govuk-link" href="/guides/${GUIDE}">Countryside Stewardship final payments</a>`)
+      expect(main).toContain('1 section with these words')
+      expect(main).toContain(`<a class="govuk-link" href="/guides/${GUIDE}#claim-rules">4.2 Claim rules</a>`)
+      expect(main).toContain('2 matches')
       expect(main).toContain('Check the <mark class="app-search-match">claim</mark> was made on time.')
       expect(main).toContain('<a class="govuk-link" href="/hub">Clear search</a>')
+      expect(main).not.toContain('See all')
       expect(main).not.toContain('id="hub-filters"')
       expect(main).not.toContain('id="guide-results"')
     })
 
+    test('links to every section of a guide that has more than it shows', async () => {
+      const document = searchApi.documentResult({ sectionTotal: 25 })
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [document] }))
+
+      const { main } = await mainOf('/hub?q=claim+rules')
+
+      expect(main).toContain(`<a class="govuk-link" href="/hub?q=claim+rules&amp;guide=${GUIDE}">See all 25 sections in this guide<span class="govuk-visually-hidden">: Countryside Stewardship final payments</span></a>`)
+    })
+
+    test('searches inside one guide, a page of its sections at a time, with a way back to every guide', async () => {
+      const search = nock(SEARCH_API_BASE_URL)
+        .get('/v1/search')
+        .query({ q: 'claim rules', tag: GUIDE, limit: '10', offset: '10' })
+        .reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse({ total: 25 }))
+
+      const { main } = await mainOf(`/hub?q=claim+rules&guide=${GUIDE}&page=2`)
+
+      expect(search.isDone()).toBe(true)
+      expect(main).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">25 sections</h2>')
+      expect(main).toContain('In Countryside Stewardship final payments')
+      expect(main).toMatch(/<a href="\/hub\?q=claim\+rules" class="govuk-back-link">All guides with these words<\/a>/)
+      expect(main).toContain(`<a class="govuk-link" href="/guides/${GUIDE}#claim-rules">4.2 Claim rules</a>`)
+      expect(main).toContain(`href="/hub?q=claim+rules&amp;guide=${GUIDE}&amp;page=3"`)
+    })
+
     test('escapes what the search service sends', async () => {
       const section = searchApi.sectionResult({ heading: '<img src=x onerror=alert(1)>', snippet: [{ text: '<script>alert(1)</script>', match: true }] })
-      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse({ results: [section] }))
+      const document = searchApi.documentResult({ documentTitle: '<b>bold</b>', sections: [section] })
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [document] }))
 
       const { main } = await mainOf('/hub?q=claim')
 
       expect(main).not.toContain('<img src=x')
+      expect(main).not.toContain('<b>bold')
       expect(main).not.toContain('<script>alert(1)')
       expect(main).toContain('<mark class="app-search-match">&lt;script&gt;alert(1)&lt;/script&gt;</mark>')
     })
 
     test('says when no guide has the words', async () => {
-      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse({ results: [], total: 0 }))
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [], total: 0 }))
 
       const { main } = await mainOf('/hub?q=zebra')
 
-      expect(main).toContain('0 results')
+      expect(main).toContain('0 guides')
       expect(main).toContain('No guides have the words “zebra”. Check the spelling or try fewer words.')
       expect(main).not.toContain('govuk-pagination')
     })
 
     test('says when there are too many matches to show', async () => {
-      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.tooManyMatchesResponse(1500))
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.tooManyDocumentsResponse(1500))
 
       const { main } = await mainOf('/hub?q=the')
 
-      expect(main).toContain('1500 results')
       expect(main).toContain('Too many matches. Use more specific words.')
       expect(main).not.toContain('govuk-pagination')
     })
 
-    test('pages between the results, keeping the words', async () => {
-      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse({ total: 25 }))
+    test('pages between the guides, keeping the words', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ total: 25 }))
 
       const { main } = await mainOf('/hub?q=claim+rules&page=2')
 
@@ -389,7 +420,7 @@ describe('#hubController', () => {
     })
 
     test('does not say there is an error when search answers', async () => {
-      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse())
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
       const cookie = await loginAsDevUser(server)
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub?q=claim', headers: { cookie } })

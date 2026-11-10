@@ -1,34 +1,67 @@
+{% from "govuk/components/back-link/macro.njk" import govukBackLink %}
 {% from "govuk/components/pagination/macro.njk" import govukPagination %}
 
 {#
-  The guides' sections that have the words searched for, instead of the list
-  of guides, as the prototype's hub keyword results show them: each section's
-  number and heading as a link to it in its guide, the guide and how often the
-  section has the words, and the first sentence with them, the words marked.
-  Pages of results between them. Reads `search` (HubViewModel).
+  What searching found, instead of the list of guides. Across every guide:
+  each guide that has the words, as a link to it, how many of its sections
+  have them, and its best few sections, with a link to the rest. Inside one
+  guide: each of its sections that have them. A section shows its number and
+  heading as a link to it in its guide, how often it has the words, and the
+  first sentence with them, the words marked. Pages of results between them.
+  Reads `search` (HubViewModel).
 #}
+{% macro _section(result, headingLevel) %}
+  <h{{ headingLevel }} class="govuk-heading-s app-search-results__name">
+    <a class="govuk-link" href="{{ result.href }}">{{ result.title }}</a>
+  </h{{ headingLevel }}>
+  <p class="govuk-body-s app-search-results__dates govuk-!-margin-bottom-1">{{ result.hint }}</p>
+  <p class="govuk-body govuk-!-margin-bottom-0">
+    {%- for part in result.snippet -%}
+      {%- if part.match -%}<mark class="app-search-match">{{ part.text }}</mark>{%- else -%}{{ part.text }}{%- endif -%}
+    {%- endfor -%}
+  </p>
+{% endmacro %}
+
 <div class="app-hub-results" id="search-results">
+  {% if search.backLink %}
+    {{ govukBackLink({ href: search.backLink.href, text: search.backLink.text }) }}
+  {% endif %}
+
   <div class="app-hub-results__header">
     <h2 class="govuk-heading-l govuk-!-margin-bottom-1">{{ search.heading }}</h2>
+    {% if search.summary %}
+      <p class="govuk-body govuk-!-margin-bottom-1">{{ search.summary }}</p>
+    {% endif %}
     <p class="govuk-body govuk-!-margin-bottom-1"><a class="govuk-link" href="/hub">Clear search</a></p>
   </div>
 
   {% if search.emptyMessage %}
     <p class="govuk-body">{{ search.emptyMessage }}</p>
+  {% elif search.guides | length %}
+    <ul class="app-search-results">
+      {% for guide in search.guides %}
+        <li class="app-search-results__item">
+          <h3 class="govuk-heading-m app-search-results__name">
+            <a class="govuk-link" href="{{ guide.href }}">{{ guide.title }}</a>
+          </h3>
+          <p class="govuk-body-s app-search-results__dates">{{ guide.hint }}</p>
+          <ul class="app-search-results__sections">
+            {% for section in guide.sections %}
+              <li class="app-search-results__section">{{ _section(section, 4) }}</li>
+            {% endfor %}
+          </ul>
+          {% if guide.more %}
+            <p class="govuk-body govuk-!-margin-top-3 govuk-!-margin-bottom-0">
+              <a class="govuk-link" href="{{ guide.more.href }}">{{ guide.more.text }}<span class="govuk-visually-hidden">: {{ guide.title }}</span></a>
+            </p>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
   {% else %}
     <ul class="app-search-results">
       {% for result in search.results %}
-        <li class="app-search-results__item">
-          <h3 class="govuk-heading-s app-search-results__name">
-            <a class="govuk-link" href="{{ result.href }}">{{ result.title }}</a>
-          </h3>
-          <p class="govuk-body-s app-search-results__dates govuk-!-margin-bottom-1">{{ result.hint }}</p>
-          <p class="govuk-body govuk-!-margin-bottom-0">
-            {%- for part in result.snippet -%}
-              {%- if part.match -%}<mark class="app-search-match">{{ part.text }}</mark>{%- else -%}{{ part.text }}{%- endif -%}
-            {%- endfor -%}
-          </p>
-        </li>
+        <li class="app-search-results__item">{{ _section(result, 3) }}</li>
       {% endfor %}
     </ul>
   {% endif %}

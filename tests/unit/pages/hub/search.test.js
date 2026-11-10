@@ -1,4 +1,4 @@
-import { pageFrom, searchHref, searchPagination } from '../../../../src/pages/hub/search.js'
+import { guideFrom, pageFrom, searchHref, searchPagination } from '../../../../src/pages/hub/search.js'
 
 describe('#pageFrom', () => {
   test.each([
@@ -16,10 +16,31 @@ describe('#pageFrom', () => {
   })
 })
 
+const GUIDE = '7c9e6679-7425-40de-944b-e07fc1f90ae7'
+
+describe('#guideFrom', () => {
+  test.each([
+    [{ guide: GUIDE }, GUIDE],
+    [{ guide: GUIDE.toUpperCase() }, GUIDE],
+    [{}, null],
+    [{ guide: '' }, null],
+    [{ guide: 'not-a-guide' }, null],
+    [{ guide: `${GUIDE}/../x` }, null],
+    [{ guide: [GUIDE, GUIDE] }, null]
+  ])('gives %j as %s', (query, guide) => {
+    expect(guideFrom(query)).toBe(guide)
+  })
+})
+
 describe('#searchHref', () => {
   test('keeps the words, and the page only when it is not the first', () => {
     expect(searchHref({ words: 'claim rules', page: 1 })).toBe('/hub?q=claim+rules')
     expect(searchHref({ words: 'claim & rules', page: 4 })).toBe('/hub?q=claim+%26+rules&page=4')
+  })
+
+  test('keeps the guide searched inside, when there is one', () => {
+    expect(searchHref({ words: 'claim', guide: GUIDE })).toBe(`/hub?q=claim&guide=${GUIDE}`)
+    expect(searchHref({ words: 'claim', guide: GUIDE, page: 2 })).toBe(`/hub?q=claim&guide=${GUIDE}&page=2`)
   })
 })
 
@@ -58,6 +79,12 @@ describe('#searchPagination', () => {
     const pagination = searchPagination({ words: 'claim', page: 5, total: 100 })
 
     expect(pagination.items.map((item) => item.ellipsis ? '…' : item.number)).toEqual([1, '…', 4, 5, 6, '…', 10])
+  })
+
+  test('keeps the guide searched inside on every page', () => {
+    const pagination = searchPagination({ words: 'claim', guide: GUIDE, page: 1, total: 25 })
+
+    expect(pagination.next).toEqual({ href: `/hub?q=claim&guide=${GUIDE}&page=2` })
   })
 
   test('goes back to the last page from a page beyond it', () => {

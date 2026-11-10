@@ -6,7 +6,7 @@ import * as searchService from '../../services/search.js'
 import * as usersService from '../../services/users.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { filterPanel, filtersFrom, sortFrom, wordsFrom } from './filters.js'
-import { pageFrom, RESULTS_PER_PAGE } from './search.js'
+import { guideFrom, pageFrom, RESULTS_PER_PAGE } from './search.js'
 import { HubViewModel } from './view-models.js'
 
 const HUB_VIEW = 'hub/page.njk'
@@ -123,9 +123,10 @@ async function _guideListPage (request, h, options) {
 
 /**
  * The hub. With no words searched for, every guide the filters let through.
- * With words, a page of the guides' sections that have them, from the search
- * service, instead of the list; when search can't answer, the list again,
- * saying so, as the guides don't depend on search.
+ * With words, a page of the guides that have them, from the search service,
+ * each with its best sections, instead of the list; with a guide too, a page
+ * of that guide's sections that have them. When search can't answer, the
+ * list again, saying so, as the guides don't depend on search.
  */
 async function getHubPage (request, h) {
   const words = wordsFrom(request.query)
@@ -135,14 +136,17 @@ async function getHubPage (request, h) {
   }
 
   const page = pageFrom(request.query)
-  const found = await searchService.searchGuides({ words, page, perPage: RESULTS_PER_PAGE })
+  const guide = guideFrom(request.query)
+  const found = guide
+    ? await searchService.searchGuide({ words, guideId: guide, page, perPage: RESULTS_PER_PAGE })
+    : await searchService.searchGuides({ words, page, perPage: RESULTS_PER_PAGE })
 
   if (found.unavailable) {
     return _guideListPage(request, h, { words, searchUnavailable: true })
   }
 
   return h
-    .view(HUB_VIEW, new HubViewModel({ words, search: { words, page, found } }))
+    .view(HUB_VIEW, new HubViewModel({ words, search: { words, page, guide, found } }))
     .code(statusCodes.HTTP_STATUS_OK)
 }
 

@@ -268,6 +268,7 @@ describe('#HubViewModel', () => {
 })
 
 describe('HubViewModel search', () => {
+  const GUIDE = '7c9e6679-7425-40de-944b-e07fc1f90ae7'
   const result = {
     title: '4.2 Claim rules',
     href: '/guides/g-1#claim-rules',
@@ -275,9 +276,16 @@ describe('HubViewModel search', () => {
     matches: 1,
     snippet: [{ text: 'claim', match: true }]
   }
+  const guide = {
+    id: GUIDE,
+    title: 'CS final payments',
+    href: `/guides/${GUIDE}`,
+    sectionTotal: 1,
+    sections: [result]
+  }
 
-  function searched (found, page = 1) {
-    return new HubViewModel({ words: 'claim', search: { words: 'claim', page, found: { unavailable: false, tooManyMatches: false, ...found } } })
+  function searched (found, page = 1, inside = null) {
+    return new HubViewModel({ words: 'claim', search: { words: 'claim', page, guide: inside, found: { unavailable: false, tooManyMatches: false, sectionTotal: 0, ...found } } })
   }
 
   test('has no search when nothing was searched for', () => {
@@ -287,49 +295,103 @@ describe('HubViewModel search', () => {
     expect(viewModel.searchUnavailable).toBe(false)
   })
 
-  test('counts the results, and shows each with its guide and how often it matches', () => {
-    const viewModel = searched({ total: 1, results: [result] })
+  describe('across every guide', () => {
+    test('counts the guides and their sections, and shows each guide with its sections', () => {
+      const viewModel = searched({ total: 1, sectionTotal: 1, results: [guide] })
 
-    expect(viewModel.search).toEqual({
-      words: 'claim',
-      heading: '1 result',
-      emptyMessage: null,
-      results: [{ title: '4.2 Claim rules', href: '/guides/g-1#claim-rules', hint: 'CS final payments · 1 match', snippet: [{ text: 'claim', match: true }] }],
-      pagination: null
+      expect(viewModel.search).toEqual({
+        words: 'claim',
+        heading: '1 guide',
+        summary: '1 section with these words',
+        backLink: null,
+        emptyMessage: null,
+        guides: [{
+          title: 'CS final payments',
+          href: `/guides/${GUIDE}`,
+          hint: '1 section with these words',
+          sections: [{ title: '4.2 Claim rules', href: '/guides/g-1#claim-rules', hint: '1 match', snippet: [{ text: 'claim', match: true }] }],
+          more: null
+        }],
+        results: [],
+        pagination: null
+      })
+    })
+
+    test('counts in the plural, and pages by guide', () => {
+      const viewModel = searched({ total: 12, sectionTotal: 40, results: [{ ...guide, sectionTotal: 3, sections: [{ ...result, matches: 3 }] }] })
+
+      expect(viewModel.search.heading).toBe('12 guides')
+      expect(viewModel.search.summary).toBe('40 sections with these words')
+      expect(viewModel.search.guides[0].sections[0].hint).toBe('3 matches')
+      expect(viewModel.search.pagination.next).toEqual({ href: '/hub?q=claim&page=2' })
+    })
+
+    test('links to every section of a guide that has more than it shows', () => {
+      const viewModel = searched({ total: 1, sectionTotal: 25, results: [{ ...guide, sectionTotal: 25 }] })
+
+      expect(viewModel.search.guides[0].more).toEqual({
+        href: `/hub?q=claim&guide=${GUIDE}`,
+        text: 'See all 25 sections in this guide'
+      })
+    })
+
+    test('makes each guide\'s and section\'s link safe', () => {
+      const viewModel = searched({ total: 1, results: [{ ...guide, href: 'javascript:alert(1)', sections: [{ ...result, href: 'javascript:alert(1)' }] }] })
+
+      expect(viewModel.search.guides[0].href).toBe('#')
+      expect(viewModel.search.guides[0].sections[0].href).toBe('#')
+    })
+
+    test('says when no guide has the words', () => {
+      const viewModel = searched({ total: 0, results: [] })
+
+      expect(viewModel.search.emptyMessage).toBe('No guides have the words “claim”. Check the spelling or try fewer words.')
+      expect(viewModel.search.summary).toBeNull()
+    })
+
+    test('says when there are too many matches, showing none', () => {
+      const viewModel = searched({ total: 0, sectionTotal: 1500, tooManyMatches: true, results: [] })
+
+      expect(viewModel.search.emptyMessage).toBe('Too many matches. Use more specific words.')
+      expect(viewModel.search.pagination).toBeNull()
+    })
+
+    test('says when the page asked for is beyond the results', () => {
+      const viewModel = searched({ total: 5, results: [] }, 4)
+
+      expect(viewModel.search.emptyMessage).toBe('There is no page 4 of results.')
     })
   })
 
-  test('counts many results and matches in the plural', () => {
-    const viewModel = searched({ total: 12, results: [{ ...result, matches: 3 }] })
+  describe('inside one guide', () => {
+    test('counts its sections, names it, and links back to every guide', () => {
+      const viewModel = searched({ total: 1, results: [result] }, 1, GUIDE)
 
-    expect(viewModel.search.heading).toBe('12 results')
-    expect(viewModel.search.results[0].hint).toBe('CS final payments · 3 matches')
-    expect(viewModel.search.pagination).not.toBeNull()
-  })
+      expect(viewModel.search).toEqual({
+        words: 'claim',
+        heading: '1 section',
+        summary: 'In CS final payments',
+        backLink: { href: '/hub?q=claim', text: 'All guides with these words' },
+        emptyMessage: null,
+        guides: [],
+        results: [{ title: '4.2 Claim rules', href: '/guides/g-1#claim-rules', hint: '1 match', snippet: [{ text: 'claim', match: true }] }],
+        pagination: null
+      })
+    })
 
-  test('makes each result\'s link safe', () => {
-    const viewModel = searched({ total: 1, results: [{ ...result, href: 'javascript:alert(1)' }] })
+    test('pages its sections, keeping the guide', () => {
+      const viewModel = searched({ total: 25, results: [result] }, 1, GUIDE)
 
-    expect(viewModel.search.results[0].href).toBe('#')
-  })
+      expect(viewModel.search.heading).toBe('25 sections')
+      expect(viewModel.search.pagination.next).toEqual({ href: `/hub?q=claim&guide=${GUIDE}&page=2` })
+    })
 
-  test('says when no guide has the words', () => {
-    const viewModel = searched({ total: 0, results: [] })
+    test('says when the guide has no sections with the words', () => {
+      const viewModel = searched({ total: 0, results: [] }, 1, GUIDE)
 
-    expect(viewModel.search.emptyMessage).toBe('No guides have the words “claim”. Check the spelling or try fewer words.')
-  })
-
-  test('says when there are too many matches, showing none', () => {
-    const viewModel = searched({ total: 1500, tooManyMatches: true, results: [] })
-
-    expect(viewModel.search.emptyMessage).toBe('Too many matches. Use more specific words.')
-    expect(viewModel.search.pagination).toBeNull()
-  })
-
-  test('says when the page asked for is beyond the results', () => {
-    const viewModel = searched({ total: 5, results: [] }, 4)
-
-    expect(viewModel.search.emptyMessage).toBe('There is no page 4 of results.')
+      expect(viewModel.search.emptyMessage).toBe('This guide has no sections with the words “claim”.')
+      expect(viewModel.search.summary).toBeNull()
+    })
   })
 
   test('says when search is unavailable', () => {

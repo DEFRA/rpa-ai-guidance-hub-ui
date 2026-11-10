@@ -1,8 +1,13 @@
 /**
  * @module The hub's search: which page of results the address asks for, and
  * the GOV.UK pagination between them. The words live in the address (`q`), as
- * the filters do, so a search can be shared and bookmarked.
+ * the filters do, so a search can be shared and bookmarked. So does the guide
+ * being searched inside (`guide`), when the search is of one guide's
+ * sections rather than every guide.
  */
+
+// A guide's id: a UUID, as every guide's is.
+const GUIDE_ID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i
 
 const RESULTS_PER_PAGE = 10
 
@@ -31,16 +36,36 @@ function pageFrom (query = {}) {
 }
 
 /**
- * The address of a page of results for these words: the page only when it is
- * not the first.
+ * The guide to search inside, from the address (`guide`); null for every
+ * guide, as for anything but one guide's id.
+ *
+ * @param {Object} query - The request's query
+ * @returns {string|null}
+ */
+function guideFrom (query = {}) {
+  if (typeof query.guide !== 'string' || !GUIDE_ID.test(query.guide)) {
+    return null
+  }
+
+  return query.guide.toLowerCase()
+}
+
+/**
+ * The address of a page of results for these words: the guide only when
+ * searching inside one, the page only when it is not the first.
  *
  * @param {Object} options
  * @param {string} options.words
- * @param {number} options.page
+ * @param {string|null} [options.guide]
+ * @param {number} [options.page]
  * @returns {string}
  */
 function searchHref (options) {
   const params = new URLSearchParams({ q: options.words })
+
+  if (options.guide) {
+    params.set('guide', options.guide)
+  }
 
   if (options.page > 1) {
     params.set('page', String(options.page))
@@ -80,6 +105,7 @@ function _numbered (page, pages) {
  *
  * @param {Object} options
  * @param {string} options.words
+ * @param {string|null} [options.guide] - Searched inside, if one
  * @param {number} options.page - The current one
  * @param {number} options.total - Every matching result
  * @param {boolean} [options.tooManyMatches]
@@ -92,7 +118,7 @@ function searchPagination (options) {
     return null
   }
 
-  const href = (page) => searchHref({ words: options.words, page })
+  const href = (page) => searchHref({ words: options.words, guide: options.guide, page })
   const page = options.page
 
   return {
@@ -109,6 +135,7 @@ function searchPagination (options) {
 }
 
 export {
+  guideFrom,
   pageFrom,
   RESULTS_PER_PAGE,
   searchHref,
