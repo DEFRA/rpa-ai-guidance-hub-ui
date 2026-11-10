@@ -82,10 +82,10 @@
           {# The contents pane: the whole guide or a section at a time, then the
              contents list. The format's return address names both the page
              and the heading the reader is at, so either format can take them
-             back there. #}
+             back there; guide-place.js moves it to where they have scrolled. #}
           <div class="app-guide-contents" id="guide-contents">
             <form class="app-guide-format" method="post" action="/guides/format">
-              <input type="hidden" name="returnTo" value="{{ place }}">
+              <input type="hidden" name="returnTo" value="{{ place }}" data-guide-place>
               <div class="app-guide-format-toggle app-guide-format__options" role="group" aria-label="Guide format">
                 {% for option in formats %}
                   <button type="submit" name="format" value="{{ option.value }}"
