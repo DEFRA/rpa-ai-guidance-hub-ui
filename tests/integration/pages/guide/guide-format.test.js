@@ -118,6 +118,15 @@ describe('A guide\'s format', () => {
       expect(stepper.form).toHaveFormValues({ returnTo: `${GUIDE_URL}?section=assign-case#assign-case` })
     })
 
+    test('has Back to the hub at the top of the contents pane, above the switch', async () => {
+      const page = await guidePage()
+      const pane = page.document.getElementById(page.getByLabelText('Resize contents').getAttribute('aria-controls'))
+      const back = within(pane).getByRole('link', { name: 'Back' })
+
+      expect(back).toHaveAttribute('href', '/hub')
+      expect(back.compareDocumentPosition(page.getByRole('group', { name: 'Guide format' })) & page.document.defaultView.Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
     test('tells the script that follows the reader the format, and the heading each contents entry goes to', async () => {
       const page = await guidePage()
       const contents = within(page.getByRole('navigation', { name: 'Contents' }))

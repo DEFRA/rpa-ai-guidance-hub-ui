@@ -31,8 +31,6 @@
   <div class="app-shell">
     <div class="app-shell__main">
       <div class="app-guide-gutter">
-        {{ govukBackLink({ text: "Back", href: "/hub" }) }}
-
         <div class="app-guide-reading app-guide-reading--{{ readingWidth }}">
           {% if bookmarkAdded %}
             {% call govukNotificationBanner({ type: "success" }) %}
@@ -79,13 +77,15 @@
             </form>
           </div>
 
-          {# The contents pane: the whole guide or a section at a time, then the
-             contents list. The format's return address names both the page
+          {# The contents pane: Back, the whole guide or a section at a time,
+             then the contents list. The format's return address names both the page
              and the heading the reader is at, so either format can take them
              back there; guide-place.js moves it to where they have scrolled.
              With JavaScript, the contents mark where the reader is, and the
              address follows them (guide-contents.js). #}
           <div class="app-guide-contents" id="guide-contents" data-guide-format="{{ format }}">
+            {{ govukBackLink({ text: "Back", href: "/hub" }) }}
+
             <form class="app-guide-format" method="post" action="/guides/format">
               <input type="hidden" name="returnTo" value="{{ place }}" data-guide-place>
               <div class="app-guide-format-toggle app-guide-format__options" role="group" aria-label="Guide format">
