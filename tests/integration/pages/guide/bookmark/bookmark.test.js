@@ -9,6 +9,9 @@ import { caseResponse, guideResponse, refusalResponse, userResponse } from '../.
 import { mergeCookies } from '../../../helpers/cookies.js'
 import { loginAsDevUser } from '../../../helpers/login.js'
 import { errorSummaryOf, pageOf } from '../../../helpers/page.js'
+import { CASE_TYPES } from '../../../../../src/constants/case-types.js'
+import { HEADING_BOOKMARK_MESSAGES } from '../../../../../src/constants/heading-bookmarks.js'
+import { BOOKMARK_MESSAGES } from '../../../../../src/pages/guide/bookmark/view-model.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const GUIDE_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
@@ -181,11 +184,11 @@ describe('bookmarking a section of a guide to a case', () => {
 
   describe('the answer', () => {
     test.each([
-      [{}, 'Select if you are bookmarking to an existing or new case ID or SBI application number'],
-      [{ choice: 'new-case', newCase: '' }, 'Enter a case ID'],
+      [{}, BOOKMARK_MESSAGES.noChoice],
+      [{ choice: 'new-case', newCase: '' }, BOOKMARK_MESSAGES.enter(CASE_TYPES.case)],
       [{ choice: 'new-case', newCase: 'W12345' }, 'Case ID must be a letter followed by 7 numbers'],
-      [{ choice: 'new-sbi', newSbi: '123456789' }, 'Select if you are bookmarking to an existing or new case ID or SBI application number'],
-      [{ choice: 'existing-case', existingCase: 'W7654321' }, 'Select an existing case ID']
+      [{ choice: 'new-sbi', newSbi: '123456789' }, BOOKMARK_MESSAGES.noChoice],
+      [{ choice: 'existing-case', existingCase: 'W7654321' }, BOOKMARK_MESSAGES.selectExisting(CASE_TYPES.case)]
     ])('is checked: %j says "%s"', async (answer, message) => {
       mockGuideAndUser([caseResponse()])
 
@@ -205,7 +208,7 @@ describe('bookmarking a section of a guide to a case', () => {
 
       const { payload } = await post({ section: '11-before-you-begin' })
 
-      expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: /^Select if you are bookmarking/ })).toHaveAttribute('href', href)
+      expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: BOOKMARK_MESSAGES.noChoice })).toHaveAttribute('href', href)
     })
 
     test('saves nothing, saying the service cannot do it now, when the user\'s cases cannot be read', async () => {
@@ -218,7 +221,7 @@ describe('bookmarking a section of a guide to a case', () => {
       const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: 'W7654321' })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_GATEWAY)
-      expect(pageOf(payload).getByText('The case bookmarks cannot be read')).toBeInTheDocument()
+      expect(pageOf(payload).getByText(BOOKMARK_MESSAGES.casesUnreadable)).toBeInTheDocument()
     })
 
     test('asks again with the cases as they are now, which the next save checks', async () => {
@@ -289,7 +292,7 @@ describe('bookmarking a section of a guide to a case', () => {
       const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [caseResponse().key] })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_CONFLICT)
-      expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: 'Your case bookmarks changed while this page was open. Choose again.' })).toBeInTheDocument()
+      expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: BOOKMARK_MESSAGES.changedSince })).toBeInTheDocument()
     })
 
     test('asks again, saving nothing, when the cases are not those the page offered, as when one was removed and made again', async () => {
@@ -298,7 +301,7 @@ describe('bookmarking a section of a guide to a case', () => {
       const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [caseResponse().key] })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_CONFLICT)
-      expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: 'Your case bookmarks changed while this page was open. Choose again.' })).toBeInTheDocument()
+      expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: BOOKMARK_MESSAGES.changedSince })).toBeInTheDocument()
     })
 
     test('asks again, saving nothing, when the hub finds the section bookmarked to the case already, as by another page', async () => {
@@ -308,7 +311,7 @@ describe('bookmarking a section of a guide to a case', () => {
       const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [caseResponse().key] })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_CONFLICT)
-      expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: 'Your case bookmarks changed while this page was open. Choose again.' })).toBeInTheDocument()
+      expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: BOOKMARK_MESSAGES.changedSince })).toBeInTheDocument()
     })
 
     test('is shown once on the guide', async () => {
@@ -392,7 +395,7 @@ describe('a guide\'s headings', () => {
       caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', type: 'sbi', ref: '123456789', guides: [{ id: GUIDE_ID, title: 'Claiming the SFI payment', bookmarks: [SECTION] }] })
     ])
 
-    expect(page.getByText('Bookmarked to Case W1234567, SBI 123456789')).toHaveClass('app-guide-section-bookmarked')
+    expect(page.getByText(HEADING_BOOKMARK_MESSAGES.bookmarkedTo('Case W1234567, SBI 123456789'))).toHaveClass('app-guide-section-bookmarked')
     expect(page.getByRole('link', { name: 'Bookmarked – add another case: 1.1 Before you begin' })).toBeInTheDocument()
     expect(page.getByRole('link', { name: 'Bookmark to a case: 1 Introduction' })).toBeInTheDocument()
   })
@@ -402,7 +405,7 @@ describe('a guide\'s headings', () => {
       caseResponse({ guides: [{ id: OTHER_GUIDE_ID, title: 'Another guide', bookmarks: [SECTION] }] })
     ])
 
-    expect(page.queryByText(/^Bookmarked to Case W1234567/)).not.toBeInTheDocument()
+    expect(page.queryByText(HEADING_BOOKMARK_MESSAGES.bookmarkedTo('Case W1234567'))).not.toBeInTheDocument()
     expect(page.getByRole('link', { name: 'Bookmark to a case: 1.1 Before you begin' })).toBeInTheDocument()
   })
 })

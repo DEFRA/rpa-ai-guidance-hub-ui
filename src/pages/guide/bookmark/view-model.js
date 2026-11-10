@@ -20,7 +20,19 @@ const CHOICES = Object.freeze([
   { value: 'new-sbi', text: 'New SBI', type: 'sbi', isExisting: false, field: 'newSbi' }
 ])
 
-const NO_CHOICE = 'Select if you are bookmarking to an existing or new case ID or SBI application number'
+/**
+ * What the bookmark page says of an answer it cannot take, or a save it cannot
+ * make, named once, so that one test holds their words and the rest name
+ * them. `selectExisting` and `enter` take the names of a type of case
+ * (`CASE_TYPES`).
+ */
+const BOOKMARK_MESSAGES = Object.freeze({
+  noChoice: 'Select if you are bookmarking to an existing or new case ID or SBI application number',
+  selectExisting: (names) => `Select an existing ${names.lower}`,
+  enter: (names) => `Enter ${names.withArticle}`,
+  changedSince: 'Your case bookmarks changed while this page was open. Choose again.',
+  casesUnreadable: 'The case bookmarks cannot be read'
+})
 
 // The radios' id prefix, as the page gives it; GOV.UK Frontend gives the first
 // radio the prefix alone, and each other one its number after it.
@@ -59,7 +71,7 @@ function chosenCase (answer, cases, sbiBookmarks) {
   const choice = CHOICES.find(each => each.value === answer.choice)
 
   if (!choice || !_isOffered(choice, cases, sbiBookmarks)) {
-    return { errors: { choice: NO_CHOICE } }
+    return { errors: { choice: BOOKMARK_MESSAGES.noChoice } }
   }
 
   const names = CASE_TYPES[choice.type]
@@ -68,11 +80,11 @@ function chosenCase (answer, cases, sbiBookmarks) {
   if (choice.isExisting) {
     return _refsOf(cases, choice.type).includes(text)
       ? { type: choice.type, ref: text }
-      : { errors: { [choice.field]: `Select an existing ${names.lower}` } }
+      : { errors: { [choice.field]: BOOKMARK_MESSAGES.selectExisting(names) } }
   }
 
   if (text.trim() === '') {
-    return { errors: { [choice.field]: `Enter ${names.withArticle}` } }
+    return { errors: { [choice.field]: BOOKMARK_MESSAGES.enter(names) } }
   }
 
   const ref = keptReference(choice.type, text)
@@ -134,6 +146,7 @@ class BookmarkViewModel {
 }
 
 export {
+  BOOKMARK_MESSAGES,
   BookmarkViewModel,
   chosenCase,
   sectionHref

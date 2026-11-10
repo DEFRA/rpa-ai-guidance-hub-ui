@@ -114,6 +114,15 @@ function headingControlsHtml (controls, heading) {
 }
 
 /**
+ * What a heading says of its bookmarks, named once, so that one test holds the
+ * words and the rest name them: `bookmarkedTo` names the cases it is
+ * bookmarked to, as `namedCases` names them.
+ */
+const HEADING_BOOKMARK_MESSAGES = Object.freeze({
+  bookmarkedTo: (cases) => `Bookmarked to ${cases}`
+})
+
+/**
  * Which cases a heading is bookmarked to, as words under it, since a tooltip
  * never shows on a touch screen.
  *
@@ -121,11 +130,12 @@ function headingControlsHtml (controls, heading) {
  * @returns {string} HTML; empty when it is bookmarked to none
  */
 function bookmarkedToHtml ({ bookmarkedTo }) {
-  return bookmarkedTo ? `<p class="app-guide-section-bookmarked">Bookmarked to ${_escape(bookmarkedTo)}</p>` : ''
+  return bookmarkedTo ? `<p class="app-guide-section-bookmarked">${_escape(HEADING_BOOKMARK_MESSAGES.bookmarkedTo(bookmarkedTo))}</p>` : ''
 }
 
 export {
   bookmarkedToHtml,
+  HEADING_BOOKMARK_MESSAGES,
   headingBookmarkHtml,
   headingControlsHtml,
   headingPinHtml
