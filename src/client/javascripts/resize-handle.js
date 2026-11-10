@@ -1,6 +1,7 @@
 /**
- * @module A handle on the trailing edge of something resizable - the open
- * side navigation - as the prototype's side-nav.js has it: dragged by its
+ * @module A handle on the trailing edge of something resizable - the guide's
+ * contents column, and the open side navigation - as the prototype's
+ * side-nav.js has them: dragged by its
  * edge, or moved with the arrow keys, Home and End, between the handle's
  * `aria-valuemin` and `aria-valuemax`; a double-click puts it back to its
  * default. The width holds until the next page. Without JavaScript the handle
@@ -59,6 +60,7 @@ function keyedWidth (key, width, limits) {
 
 // The things that can be resized, each by its handle.
 const RESIZABLES = Object.freeze([
+  { handle: '[data-guide-contents-resize]', scope: '.app-guide-reading', property: '--app-guide-toc-width', resizingClass: 'app-guide-reading--resizing' },
   { handle: '[data-side-nav-resize]', scope: '.app-layout', property: '--app-side-nav-width', resizingClass: 'app-layout--resizing' }
 ])
 

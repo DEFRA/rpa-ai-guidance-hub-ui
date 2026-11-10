@@ -133,3 +133,50 @@ describe('the side navigation\'s resize handle', () => {
     expect(handle).toHaveAttribute('aria-valuenow', '280')
   })
 })
+
+describe('the contents column\'s resize handle', () => {
+  /** A guide's reading column, its contents and their handle, as `guide/page.njk` makes them. */
+  function render () {
+    document.body.innerHTML = `
+      <div class="app-guide-reading app-guide-reading--standard">
+        <nav class="app-guide-contents" id="guide-contents" aria-label="Contents"></nav>
+        <div class="app-guide-contents-resize" role="separator" aria-orientation="vertical"
+          aria-label="Resize contents" aria-controls="guide-contents"
+          aria-valuemin="240" aria-valuemax="560" aria-valuenow="340" aria-valuetext="340 pixels wide"
+          data-guide-contents-resize data-default-width="340" tabindex="0" hidden></div>
+      </div>`
+
+    initResizeHandles()
+
+    return {
+      reading: document.querySelector('.app-guide-reading'),
+      handle: screen.getByRole('separator', { name: 'Resize contents' })
+    }
+  }
+
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  test('shows once the script can move it, and resizes the contents column within its own limits', () => {
+    const { reading, handle } = render()
+
+    fireEvent.keyDown(handle, { key: 'End' })
+
+    expect(handle).toBeVisible()
+    expect(reading.style.getPropertyValue('--app-guide-toc-width')).toBe('560px')
+    expect(handle).toHaveAttribute('aria-valuetext', '560 pixels wide')
+  })
+
+  test('marks the reading column as resizing while the edge is dragged', () => {
+    const { reading, handle } = render()
+    // jsdom has no pointer capture, which keeps the drag on the handle.
+    handle.setPointerCapture = vi.fn()
+
+    fireEvent.pointerDown(handle, { clientX: 340 })
+    fireEvent.pointerMove(handle, { clientX: 300 })
+
+    expect(reading).toHaveClass('app-guide-reading--resizing')
+    expect(reading.style.getPropertyValue('--app-guide-toc-width')).toBe('300px')
+  })
+})
