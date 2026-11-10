@@ -8,6 +8,7 @@ import * as usersService from '../../services/users.js'
 import { guideAssetHref } from './asset-href.js'
 import { BOOKMARKED } from './bookmark/controller.js'
 import { sectionHref } from './bookmark/view-model.js'
+import { getGuideFormat, setGuideFormat } from './format.js'
 import { isPanelCollapsed, setPanelCollapsed } from './panel.js'
 import { getReadingWidth, setReadingWidth } from './reading-width.js'
 import { buildMetadataRows, GuideViewModel } from './view-model.js'
@@ -99,8 +100,8 @@ function _pinnedSectionsOf (pinned, guideId) {
 }
 
 /**
- * Show one section of a guide, with its contents and what the guide is
- * about.
+ * Show a guide, whole or a section at a time as the user chose, with its
+ * contents and what the guide is about.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -135,10 +136,13 @@ async function getGuidePage (request, h) {
   // its address doesn't tell an opening from moving between its parts.
   await usersService.recordOpened(request, guide.id)
 
-  const sections = resolveImages(
-    resolveAnchors(split, page => GuideViewModel.pageHref(guideId, page)),
-    href => guideAssetHref(href, guideId)
-  )
+  const format = getGuideFormat(request)
+  // In the traditional view every heading is on the page, so the guide's
+  // links to them work as they are.
+  const linked = format === 'stepper'
+    ? resolveAnchors(split, page => GuideViewModel.pageHref(guideId, page))
+    : split
+  const sections = resolveImages(linked, href => guideAssetHref(href, guideId))
 
   const viewModel = new GuideViewModel({
     guide,
@@ -151,7 +155,8 @@ async function getGuidePage (request, h) {
     pin: _pinOf(pinned, guide.id),
     pinnedSections: _pinnedSectionsOf(pinned, guide.id),
     cases,
-    bookmarked: request.yar.flash(BOOKMARKED)[0]
+    bookmarked: request.yar.flash(BOOKMARKED)[0],
+    format
   })
 
   return h
@@ -171,6 +176,22 @@ function postReadingWidth (request, h) {
   const { width, returnTo } = request.payload
 
   setReadingWidth(request, width)
+
+  return h.redirect(relativeHref(returnTo, FALLBACK_RETURN_URL))
+}
+
+/**
+ * Remember how the user reads guides, whole or a section at a time, then send
+ * them back to their place in the guide.
+ *
+ * @param {import('@hapi/hapi').Request} request
+ * @param {import('@hapi/hapi').ResponseToolkit} h
+ * @returns {import('@hapi/hapi').ResponseObject}
+ */
+function postFormat (request, h) {
+  const { format, returnTo } = request.payload
+
+  setGuideFormat(request, format)
 
   return h.redirect(relativeHref(returnTo, FALLBACK_RETURN_URL))
 }
@@ -222,6 +243,7 @@ async function getGuideAsset (request, h) {
 export {
   getGuideAsset,
   getGuidePage,
+  postFormat,
   postPanelToggle,
   postReadingWidth
 }

@@ -221,8 +221,10 @@ $app-guide-panel-max-width: 480px;
   font-weight: 700;
 }
 
-// The format toggle's segmented look, on buttons rather than links.
-.app-guide-reading-width__options {
+// The format toggle's segmented look, on buttons rather than links: the
+// page width's, and the guide format's own.
+.app-guide-reading-width__options,
+.app-guide-format__options {
   margin-bottom: 0;
 
   .app-guide-format-toggle__option {
@@ -451,6 +453,11 @@ $app-guide-toc-width: 340px;
   padding: govuk-spacing(3) govuk-spacing(4);
   margin-bottom: govuk-spacing(6);
   background-color: $govuk-light-grey;
+}
+
+// The guide format's switch, at the top of the contents pane.
+.app-guide-contents .app-guide-format {
+  margin-bottom: govuk-spacing(4);
 }
 
 .app-guide-contents__list {

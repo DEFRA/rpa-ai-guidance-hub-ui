@@ -13,8 +13,11 @@ const guide = {
 
 const markdown = '## One\n\nFirst.\n\n## Two\n\nSecond.\n\n## Three\n\nThird.'
 
-function createRequest ({ query = {}, payload, stored } = {}) {
-  const session = new Map(stored ? [['guide-reading-width', stored]] : [])
+function createRequest ({ query = {}, payload, stored, format } = {}) {
+  const session = new Map([
+    ...(stored ? [['guide-reading-width', stored]] : []),
+    ...(format ? [['guide-format', format]] : [])
+  ])
 
   return {
     params: { guideId: 'guide-1', name: 'abc.png' },
@@ -105,6 +108,15 @@ describe('guide controller', () => {
     })
 
     test.each([
+      [undefined, 'traditional'],
+      ['stepper', 'stepper']
+    ])('shows the guide in the format chosen, whole until one is (%j)', async (format, shown) => {
+      await controller.getGuidePage(createRequest({ format }), h)
+
+      expect(h.view.mock.calls[0][1].format).toBe(shown)
+    })
+
+    test.each([
       ['0', 1],
       ['-4', 1],
       ['99', 3],
@@ -143,6 +155,23 @@ describe('guide controller', () => {
 
     test.each([[''], ['https://evil.example'], ['//evil.example']])('goes to the hub instead of %j', (returnTo) => {
       controller.postReadingWidth(createRequest({ payload: { width: 'full', returnTo } }), h)
+
+      expect(h.redirect).toHaveBeenCalledWith('/hub')
+    })
+  })
+
+  describe('postFormat', () => {
+    test('remembers the format and goes back to the reader\'s place', () => {
+      const request = createRequest({ payload: { format: 'stepper', returnTo: '/guides/guide-1?page=2#two' } })
+
+      controller.postFormat(request, h)
+
+      expect(request.yar.session.get('guide-format')).toBe('stepper')
+      expect(h.redirect).toHaveBeenCalledWith('/guides/guide-1?page=2#two')
+    })
+
+    test.each([[''], ['https://evil.example'], ['//evil.example']])('goes to the hub instead of %j', (returnTo) => {
+      controller.postFormat(createRequest({ payload: { format: 'traditional', returnTo } }), h)
 
       expect(h.redirect).toHaveBeenCalledWith('/hub')
     })

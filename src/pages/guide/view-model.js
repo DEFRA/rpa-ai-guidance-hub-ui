@@ -4,9 +4,15 @@ import { NOT_SCHEME_SPECIFIC } from '../../services/reference-data.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { versionTag } from '../common/version-tag.js'
 import { CONTENTS_WIDTH } from './contents-width.js'
+import { GUIDE_FORMATS } from './format.js'
 import { READING_WIDTHS } from './reading-width.js'
 
 const UNTITLED = 'Untitled guide'
+const TRADITIONAL = 'traditional'
+
+// The top of the page's own content (the GOV.UK template's `main`), where a
+// section without a heading of its own begins.
+const TOP_OF_GUIDE = '#main-content'
 
 /**
  * @typedef {Object} MetadataRow
@@ -92,9 +98,49 @@ function _ownerRow (owner) {
 }
 
 /**
- * GuideViewModel - One section of a guide, with the page furniture around
- * it: byline, contents, previous and next links, and the "About this
- * guide" rows.
+ * The contents list. In the traditional view every section is on the page,
+ * so each entry goes to its heading and none is current; in the stepper each
+ * section is a page of its own.
+ *
+ * @private
+ * @param {import('../../services/guide-sections.js').GuideSection[]} sections
+ * @param {number} pageNumber
+ * @param {boolean} isTraditional
+ * @param {(page: number) => string} href - The address of a page
+ * @returns {Array<{title: string, href: string, isCurrent: boolean, subheadings: Array<{title: string, href: string}>}>}
+ */
+function _contents (sections, pageNumber, isTraditional, href) {
+  return sections.map((section, index) => {
+    const isCurrent = !isTraditional && index + 1 === pageNumber
+    const isOnThePage = isTraditional || isCurrent
+
+    return {
+      title: section.title,
+      href: isTraditional ? _headingHref(section.slug) : href(index + 1),
+      isCurrent,
+      // On the page already, a heading's link need only scroll to it.
+      subheadings: (section.subheadings ?? []).map(subheading => ({
+        title: subheading.title,
+        href: `${isOnThePage ? '' : href(index + 1)}#${subheading.slug}`
+      }))
+    }
+  })
+}
+
+/**
+ * @private
+ * @param {string|null} slug - A section's heading's anchor
+ * @returns {string} A link to the heading on this page, or to the top of the
+ *   guide for a section without one
+ */
+function _headingHref (slug) {
+  return slug ? `#${slug}` : TOP_OF_GUIDE
+}
+
+/**
+ * GuideViewModel - A guide, whole or a section at a time, with the page
+ * furniture around it: byline, contents, the format and width controls,
+ * previous and next links, and the "About this guide" rows.
  */
 class GuideViewModel {
   /**
@@ -116,9 +162,11 @@ class GuideViewModel {
    *   sections bookmarked to it; null when not known
    * @param {{guideId: string, type: string, ref: string, heading: string}} [data.bookmarked]
    *   - A section just bookmarked, to say so once
+   * @param {string} data.format - One of `GUIDE_FORMATS`' values
    */
-  constructor ({ guide, sections, pageNumber, readingWidth, returnTo, metadataRows, panelCollapsed = false, pin = null, pinnedSections = null, cases = null, bookmarked }) {
+  constructor ({ guide, sections, pageNumber, readingWidth, returnTo, metadataRows, panelCollapsed = false, pin = null, pinnedSections = null, cases = null, bookmarked, format }) {
     const href = page => GuideViewModel.pageHref(guide.id, page)
+    const isTraditional = format === TRADITIONAL
     const adjacent = (page) => {
       const section = sections[page - 1]
 
@@ -135,20 +183,7 @@ class GuideViewModel {
     this.totalPages = sections.length
     // How far through the guide the reader is, by page count.
     this.progressPercentage = sections.length === 0 ? 0 : Math.round(pageNumber / sections.length * 100)
-    this.contents = sections.map((section, index) => {
-      const isCurrent = index + 1 === pageNumber
-
-      return {
-        title: section.title,
-        href: href(index + 1),
-        isCurrent,
-        // On the page already, a heading's link need only scroll to it.
-        subheadings: (section.subheadings ?? []).map(subheading => ({
-          title: subheading.title,
-          href: `${isCurrent ? '' : href(index + 1)}#${subheading.slug}`
-        }))
-      }
-    })
+    this.contents = _contents(sections, pageNumber, isTraditional, href)
     const bookmarkedTo = bookmarkedSections(cases ?? [], guide.id)
     // By the anchor the hub knows the section by, which is not always the
     // heading's anchor on the page (`slug`).
@@ -160,16 +195,17 @@ class GuideViewModel {
         }
       : null
 
-    // Every section is on the page, the others hidden until the browser's
-    // find-in-page reaches into one. Each heading the hub gives a section ID
-    // has its star, which pins its section, and its bookmark control; one in a
-    // quote or a list has neither.
+    // Every section is on the page. In the stepper the others are hidden until
+    // the browser's find-in-page reaches into one. Each heading the hub gives a
+    // section ID has its star, which pins its section, and its bookmark
+    // control; one in a quote or a list has neither.
     this.pages = sections.map((section, index) => ({
       pageNumber: index + 1,
       section,
       bookmark: bookmarkOf(section.sectionAnchor, section.slug),
       headingBookmarks: section.headingSectionAnchors.map((anchor, at) => bookmarkOf(anchor, section.headingIds[at])),
       isCurrent: index + 1 === pageNumber,
+      isShown: isTraditional || index + 1 === pageNumber,
       progressPercentage: Math.round((index + 1) / sections.length * 100),
       previous: adjacent(index),
       next: adjacent(index + 2)
@@ -189,6 +225,12 @@ class GuideViewModel {
       ? { text: `‘${bookmarked.heading}’ bookmarked to ${CASE_TYPES[bookmarked.type].lower} ${bookmarked.ref}` }
       : null
     this.panelCollapsed = panelCollapsed
+    this.format = format
+    this.formats = GUIDE_FORMATS.map(option => ({ ...option, isChosen: option.value === format }))
+    // Where changing the format takes the reader: the page the address names,
+    // at its heading. Each format reads the part it needs: the stepper the
+    // page, the traditional view the heading.
+    this.place = `${href(pageNumber)}${this.section?.slug ? `#${this.section.slug}` : ''}`
   }
 
   /**

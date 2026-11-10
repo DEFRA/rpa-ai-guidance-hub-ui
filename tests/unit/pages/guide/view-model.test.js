@@ -4,10 +4,11 @@ import {
 } from '../../../../src/pages/guide/view-model.js'
 
 const sections = [
-  { id: 'section-1', title: 'Introduction', markdown: 'One.', headingIds: [], headingSectionAnchors: [], subheadings: [] },
+  { id: 'section-1', title: 'Introduction', slug: 'introduction', markdown: 'One.', headingIds: [], headingSectionAnchors: [], subheadings: [] },
   {
     id: 'section-2',
     title: 'Assign case',
+    slug: 'assign-case',
     markdown: 'Two.',
     headingIds: ['21-check', '22-assign'],
     headingSectionAnchors: ['21-check', '22-assign'],
@@ -16,6 +17,7 @@ const sections = [
   {
     id: 'section-3',
     title: 'Close case',
+    slug: 'close-case',
     markdown: 'Three.',
     headingIds: ['31-close'],
     headingSectionAnchors: ['31-close'],
@@ -42,6 +44,8 @@ function build (overrides = {}) {
     readingWidth: 'wide',
     returnTo: '/guides/guide-1?page=2',
     metadataRows: [],
+    // A section at a time, which most of what follows is about.
+    format: 'stepper',
     ...overrides
   })
 }
@@ -96,11 +100,12 @@ describe('GuideViewModel', () => {
     expect(viewModel.next).toEqual({ href: '/guides/guide-1?page=3', labelText: 'Close case' })
   })
 
-  test('has every section as a page, marking the current one, each with its own progress and neighbours', () => {
+  test('has every section as a page, showing only the current one, each with its own progress and neighbours', () => {
     const { pages } = build({ pageNumber: 2 })
 
     expect(pages.map(page => page.pageNumber)).toEqual([1, 2, 3])
     expect(pages.map(page => page.isCurrent)).toEqual([false, true, false])
+    expect(pages.map(page => page.isShown)).toEqual([false, true, false])
     expect(pages[0].section).toBe(sections[0])
     expect(pages.map(page => page.progressPercentage)).toEqual([33, 67, 100])
     expect(pages[0].previous).toBeNull()
@@ -140,6 +145,49 @@ describe('GuideViewModel', () => {
 
     expect(viewModel.readingWidth).toBe('wide')
     expect(viewModel.readingWidths.map(option => option.value)).toEqual(['standard', 'wide', 'full'])
+  })
+})
+
+describe('GuideViewModel in the traditional view', () => {
+  const traditional = (overrides = {}) => build({ format: 'traditional', ...overrides })
+
+  test('shows every section', () => {
+    expect(traditional().pages.map(page => page.isShown)).toEqual([true, true, true])
+  })
+
+  test('links the contents to each section on the page, marking none as current', () => {
+    expect(traditional().contents.map(({ title, href, isCurrent }) => ({ title, href, isCurrent }))).toEqual([
+      { title: 'Introduction', href: '#introduction', isCurrent: false },
+      { title: 'Assign case', href: '#assign-case', isCurrent: false },
+      { title: 'Close case', href: '#close-case', isCurrent: false }
+    ])
+  })
+
+  test('scrolls to every subheading, all of them being on the page', () => {
+    expect(traditional().contents[2].subheadings).toEqual([{ title: '3.1 Close', href: '#31-close' }])
+  })
+
+  test('takes a section without a heading of its own to the top of the guide', () => {
+    const untitled = [{ ...sections[0], slug: null }, sections[1]]
+
+    expect(traditional({ sections: untitled }).contents[0].href).toBe('#main-content')
+  })
+})
+
+describe('GuideViewModel\'s choice of format', () => {
+  test('offers each format, marking the chosen one', () => {
+    expect(build({ format: 'traditional' }).formats).toEqual([
+      { value: 'traditional', text: 'Traditional', isChosen: true },
+      { value: 'stepper', text: 'Stepper', isChosen: false }
+    ])
+  })
+
+  test.each([['traditional'], ['stepper']])('comes back from %s to the page and heading the address names', (format) => {
+    expect(build({ format, pageNumber: 2 }).place).toBe('/guides/guide-1?page=2#assign-case')
+  })
+
+  test('comes back to the page alone when its section has no heading of its own', () => {
+    expect(build({ sections: [{ ...sections[0], slug: null }], pageNumber: 1 }).place).toBe('/guides/guide-1?page=1')
   })
 })
 

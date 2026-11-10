@@ -70,6 +70,13 @@ describe('#guideController', () => {
     return server.inject({ method: 'GET', url, headers: { cookie } })
   }
 
+  // A guide opens whole; these show it a section at a time.
+  async function getInStepper (url) {
+    const chosen = await server.inject({ method: 'POST', url: '/guides/format', headers: { cookie }, payload: { format: 'stepper', returnTo: url } })
+
+    return server.inject({ method: 'GET', url, headers: { cookie: mergeCookies(cookie, chosen.headers['set-cookie']) } })
+  }
+
   describe('GET /guides/{guideId}', () => {
     test('shows the title as the one main heading, with its version, Live tag and date', async () => {
       mockGuide()
@@ -99,7 +106,7 @@ describe('#guideController', () => {
     test('shows how far through each page of the guide the reader is, without an inline style', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const { payload } = await getInStepper(GUIDE_URL)
 
       expect(payload).toContain('app-progress__track app-guide-progress')
       expect(payload).toMatch(/#guide-progress-bar-1 \{\s*--progress-width: 33%;/)
@@ -110,7 +117,7 @@ describe('#guideController', () => {
     test('shows the section being read, and where the reader is', async () => {
       mockGuide()
 
-      const { payload } = await get(`${GUIDE_URL}?page=2`)
+      const { payload } = await getInStepper(`${GUIDE_URL}?page=2`)
 
       expect(payload).toContain('Page 2 of 3')
       expect(payload).toMatch(/<div class="app-guide-page" data-guide-page="2">/)
@@ -119,7 +126,7 @@ describe('#guideController', () => {
     test('keeps the other sections for find-in-page, hidden until it finds a match', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const { payload } = await getInStepper(GUIDE_URL)
 
       expect(payload).toMatch(/<div class="app-guide-page" data-guide-page="1">/)
       expect(payload).toContain('data-guide-page="2" hidden="until-found"')
@@ -131,7 +138,7 @@ describe('#guideController', () => {
     test('gives only the section being read to the viewer', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const { payload } = await getInStepper(GUIDE_URL)
 
       expect(payload.match(/data-tiptap-markdown/g)).toHaveLength(1)
       expect(payload.match(/<script type="application\/json">/g)).toHaveLength(1)
@@ -141,7 +148,7 @@ describe('#guideController', () => {
     test('lists every section in the contents, linking to each', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const { payload } = await getInStepper(GUIDE_URL)
 
       expect(payload).toContain('aria-labelledby="guide-contents-heading"')
       expect(payload).toContain(`href="${GUIDE_URL}?page=1" aria-current="page">Introduction`)
@@ -165,7 +172,7 @@ describe('#guideController', () => {
     test('opens at the first page when the address names a section the guide has not', async () => {
       mockGuide()
 
-      const { payload } = await get(`${GUIDE_URL}?section=never`)
+      const { payload } = await getInStepper(`${GUIDE_URL}?section=never`)
 
       expect(payload).toMatch(/aria-current="page">Introduction</)
     })
@@ -173,7 +180,7 @@ describe('#guideController', () => {
     test('names the section a Next or Previous link goes to', async () => {
       mockGuide()
 
-      const { payload } = await get(`${GUIDE_URL}?page=2`)
+      const { payload } = await getInStepper(`${GUIDE_URL}?page=2`)
 
       expect(payload).toContain('Page 2 of 3')
       expect(payload).toMatch(/govuk-pagination__link-label[^>]*>Introduction</)
@@ -183,7 +190,7 @@ describe('#guideController', () => {
     test('has no Previous link on the first page and no Next link on the last', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const { payload } = await getInStepper(GUIDE_URL)
       const [first, , last] = payload.split('data-guide-page=').slice(1)
 
       expect(first).not.toContain('govuk-pagination__prev')
@@ -218,7 +225,7 @@ describe('#guideController', () => {
     test('takes a link to another section to the page that has it, and leave one to this page', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const { payload } = await getInStepper(GUIDE_URL)
 
       expect(payload).toContain(`<a href="${GUIDE_URL}?page=2#assign-case">2 Assign case</a>`)
       expect(payload).toContain('<a href="#before-you-begin">Before you begin</a>')
@@ -527,7 +534,7 @@ describe('#guideController', () => {
     test('links a subheading on another page to that page', async () => {
       mockGuide({ markdown: '## One\n\ntext\n\n## Two\n\n### 2.1 Deep\n\ntext' })
 
-      const { payload } = await get(GUIDE_URL)
+      const { payload } = await getInStepper(GUIDE_URL)
 
       expect(payload).toContain(`href="${GUIDE_URL}?page=2#21-deep">2.1 Deep`)
     })
@@ -549,7 +556,7 @@ describe('#guideController', () => {
 
       const { payload } = await get(GUIDE_URL)
 
-      expect(payload).toMatch(/<div class="app-guide-reading app-guide-reading--standard">[\s\S]*?<\/div>\s*<nav class="app-guide-contents"/)
+      expect(payload).toMatch(/<div class="app-guide-reading app-guide-reading--standard">[\s\S]*?<\/div>\s*<div class="app-guide-contents"/)
     })
 
     test('lists the guide\'s answers in the panel as the prototype\'s metadata list', async () => {
