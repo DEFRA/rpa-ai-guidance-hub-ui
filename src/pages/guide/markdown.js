@@ -3,6 +3,7 @@ import { Marked } from 'marked'
 // The palette is shared with the client-side editor, so the server-rendered
 // viewer colours the same spans the same way.
 import { bookmarkedToHtml, headingControlsHtml } from '../../constants/heading-bookmarks.js'
+import { NEW_TAB_TEXT, opensInNewTab } from '../../constants/new-tab-links.js'
 import { COLOURED_SPAN, colourClass } from '../../constants/text-colours.js'
 import { relativeHref } from '../common/relative-href.js'
 
@@ -68,7 +69,7 @@ function _safeHref (href) {
  * The renderers that keep guide Markdown, which comes from an uploaded
  * document and so is untrusted, from putting anything unsafe in the page:
  * raw HTML is escaped rather than passed through, and unsafe link and image
- * addresses are dropped.
+ * addresses are dropped. A link out of the hub opens in a new tab, saying so.
  */
 const SAFE_RENDERER = {
   html ({ text }) {
@@ -84,7 +85,11 @@ const SAFE_RENDERER = {
 
     const titleAttribute = title ? ` title="${_escape(title)}"` : ''
 
-    return `<a href="${_escape(safe)}"${titleAttribute}>${text}</a>`
+    if (!opensInNewTab(safe)) {
+      return `<a href="${_escape(safe)}"${titleAttribute}>${text}</a>`
+    }
+
+    return `<a href="${_escape(safe)}"${titleAttribute} target="_blank" rel="noopener noreferrer">${text}<span class="govuk-visually-hidden">${NEW_TAB_TEXT}</span></a>`
   },
   image ({ href, title, text }) {
     const safe = _safeHref(href)
