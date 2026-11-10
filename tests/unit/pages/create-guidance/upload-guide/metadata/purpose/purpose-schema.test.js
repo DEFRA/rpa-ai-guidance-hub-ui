@@ -1,4 +1,4 @@
-import { buildPurposeSchema } from '../../../../../../../src/pages/create-guidance/upload-guide/metadata/purpose/schemas/purpose-schema.js'
+import { buildPurposeSchema, PURPOSE_MESSAGES } from '../../../../../../../src/pages/create-guidance/upload-guide/metadata/purpose/schemas/purpose-schema.js'
 
 const systemOptions = [{ label: 'CRM' }, { label: 'Siti Agri' }]
 const audienceOptions = [{ label: 'Processor' }, { label: 'Team leader' }]
@@ -23,6 +23,18 @@ function messages (payload) {
 }
 
 describe('#buildPurposeSchema', () => {
+  test('says what is wrong with an answer in these words', () => {
+    expect(PURPOSE_MESSAGES).toEqual({
+      ownerRequired: 'Enter an email address',
+      ownerFormat: 'Enter an email address in the correct format',
+      goalRequired: 'Enter what this guidance aims to achieve',
+      goalTooLong: 'Purpose must be 200 characters or fewer',
+      requirementsRequired: 'Enter what users need to perform or understand',
+      systemsRequired: 'Select the systems this guidance uses',
+      audienceRequired: 'Select who this guidance is for'
+    })
+  })
+
   test('accepts a fully valid payload', () => {
     const { error, value } = validate(validPayload())
 
@@ -52,25 +64,25 @@ describe('#buildPurposeSchema', () => {
       'owner', 'goal', 'requirements', 'systems', 'audience'
     ])
     expect(error.details.map((detail) => detail.message)).toEqual([
-      'Enter an email address',
-      'Enter what this guidance aims to achieve',
-      'Enter what users need to perform or understand',
-      'Select the systems this guidance uses',
-      'Select who this guidance is for'
+      PURPOSE_MESSAGES.ownerRequired,
+      PURPOSE_MESSAGES.goalRequired,
+      PURPOSE_MESSAGES.requirementsRequired,
+      PURPOSE_MESSAGES.systemsRequired,
+      PURPOSE_MESSAGES.audienceRequired
     ])
   })
 
   test('reports empty strings with the required messages', () => {
     expect(messages(validPayload({ owner: '', goal: ' ', requirements: '' }))).toEqual([
-      'Enter an email address',
-      'Enter what this guidance aims to achieve',
-      'Enter what users need to perform or understand'
+      PURPOSE_MESSAGES.ownerRequired,
+      PURPOSE_MESSAGES.goalRequired,
+      PURPOSE_MESSAGES.requirementsRequired
     ])
   })
 
   test('rejects an invalid email format', () => {
     expect(messages(validPayload({ owner: 'not-an-email' }))).toEqual([
-      'Enter an email address in the correct format'
+      PURPOSE_MESSAGES.ownerFormat
     ])
   })
 
@@ -80,7 +92,7 @@ describe('#buildPurposeSchema', () => {
 
   test('rejects a purpose longer than 200 characters', () => {
     expect(messages(validPayload({ goal: 'a'.repeat(201) }))).toEqual([
-      'Purpose must be 200 characters or fewer'
+      PURPOSE_MESSAGES.goalTooLong
     ])
   })
 
@@ -90,15 +102,15 @@ describe('#buildPurposeSchema', () => {
 
   test('rejects system and audience values that are not in the reference options', () => {
     expect(messages(validPayload({ systems: ['CRM', 'unknown'], audience: 'nobody' }))).toEqual([
-      'Select the systems this guidance uses',
-      'Select who this guidance is for'
+      PURPOSE_MESSAGES.systemsRequired,
+      PURPOSE_MESSAGES.audienceRequired
     ])
   })
 
   test('rejects empty selections', () => {
     expect(messages(validPayload({ systems: [], audience: [] }))).toEqual([
-      'Select the systems this guidance uses',
-      'Select who this guidance is for'
+      PURPOSE_MESSAGES.systemsRequired,
+      PURPOSE_MESSAGES.audienceRequired
     ])
   })
 

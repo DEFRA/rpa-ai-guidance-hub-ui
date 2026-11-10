@@ -1,10 +1,18 @@
 import Joi from 'joi'
 
 const MAX_TITLE_LENGTH = 200
-const SCHEME_REQUIRED_MESSAGE = 'Select at least one scheme this guidance relates to'
-const VERSION_NUMBER_REQUIRED_MESSAGE = 'Enter the version number'
-const VERSION_NUMBER_FORMAT_MESSAGE =
-  'Enter the version number as 2 whole numbers with a full stop between them, for example 1.0'
+
+/**
+ * What the guide details form says of an answer it cannot take, named once, so
+ * that one test holds their words and the rest name them.
+ */
+const METADATA_MESSAGES = Object.freeze({
+  titleRequired: 'Enter the guidance title',
+  titleTooLong: 'Guidance title must be 200 characters or fewer',
+  versionNumberRequired: 'Enter the version number',
+  versionNumberFormat: 'Enter the version number as 2 whole numbers with a full stop between them, for example 1.0',
+  schemeRequired: 'Select at least one scheme this guidance relates to'
+})
 
 // ASCII digits only: a version number is typed as SharePoint shows it.
 const DIGITS = '0123456789'
@@ -60,18 +68,18 @@ function buildMetadataSchema (schemeOptions) {
       .required()
       .max(MAX_TITLE_LENGTH)
       .messages({
-        'any.required': 'Enter the guidance title',
-        'string.empty': 'Enter the guidance title',
-        'string.max': 'Guidance title must be 200 characters or fewer'
+        'any.required': METADATA_MESSAGES.titleRequired,
+        'string.empty': METADATA_MESSAGES.titleRequired,
+        'string.max': METADATA_MESSAGES.titleTooLong
       }),
     versionNumber: Joi.string()
       .trim()
       .required()
       .custom(_majorMinor)
       .messages({
-        'any.required': VERSION_NUMBER_REQUIRED_MESSAGE,
-        'string.empty': VERSION_NUMBER_REQUIRED_MESSAGE,
-        'string.majorMinor': VERSION_NUMBER_FORMAT_MESSAGE
+        'any.required': METADATA_MESSAGES.versionNumberRequired,
+        'string.empty': METADATA_MESSAGES.versionNumberRequired,
+        'string.majorMinor': METADATA_MESSAGES.versionNumberFormat
       }),
     schemes: Joi.array()
       .items(Joi.string().valid(...schemeLabels))
@@ -79,14 +87,15 @@ function buildMetadataSchema (schemeOptions) {
       .min(1)
       .required()
       .messages({
-        'array.min': SCHEME_REQUIRED_MESSAGE,
-        'any.required': SCHEME_REQUIRED_MESSAGE,
-        'array.base': SCHEME_REQUIRED_MESSAGE,
-        'any.only': SCHEME_REQUIRED_MESSAGE
+        'array.min': METADATA_MESSAGES.schemeRequired,
+        'any.required': METADATA_MESSAGES.schemeRequired,
+        'array.base': METADATA_MESSAGES.schemeRequired,
+        'any.only': METADATA_MESSAGES.schemeRequired
       })
   })
 }
 
 export {
-  buildMetadataSchema
+  buildMetadataSchema,
+  METADATA_MESSAGES
 }
