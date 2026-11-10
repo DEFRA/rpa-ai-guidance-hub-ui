@@ -4,9 +4,9 @@
  * same whichever drew it. The icon is the stylesheet's.
  */
 
-// An address with a host of its own leaves the hub; the guide's links within
-// it are paths and fragments.
-const LEAVES_THE_HUB = /^(https?:)?\/\//i
+// How an address with a host of its own starts: one that leaves the hub. The
+// guide's links within it are paths and fragments.
+const OTHER_HOST = Object.freeze(['http://', 'https://', '//'])
 
 /** What a screen reader hears after the link's own text. */
 const NEW_TAB_TEXT = ' (opens in new tab)'
@@ -17,7 +17,9 @@ const NEW_TAB_TEXT = ' (opens in new tab)'
  *   leaves the hub does
  */
 function opensInNewTab (href) {
-  return LEAVES_THE_HUB.test(href)
+  const address = href.toLowerCase()
+
+  return OTHER_HOST.some(start => address.startsWith(start))
 }
 
 export { NEW_TAB_TEXT, opensInNewTab }
