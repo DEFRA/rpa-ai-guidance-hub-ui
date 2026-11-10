@@ -480,8 +480,8 @@ describe('Side navigation', () => {
 
   test.each([
     ['Hub.Viewer', 'Viewer'],
-    ['Hub.Editor,Hub.Viewer', 'Viewer, Designer'],
-    ['Hub.Admin,Hub.Editor,Hub.Viewer', 'Viewer, Designer, Administrator'],
+    ['Hub.Editor,Hub.Viewer', 'Viewer, Maintainer'],
+    ['Hub.Admin,Hub.Editor,Hub.Viewer', 'Viewer, Maintainer, Administrator'],
     ['Hub.Viewer,toString', 'Viewer']
   ])('displays the user name and role caption for DEV_USER_ROLES=%s', async (roles, caption) => {
     vi.stubEnv('DEV_USER_ROLES', roles)
@@ -520,7 +520,7 @@ describe('Side navigation', () => {
       expect(nav).not.toContain('app-side-nav__search')
     })
 
-    test('links to the hub and each list of guides, then a designer\'s work, in order', async () => {
+    test('links to the hub and each list of guides, then a maintainer\'s work, in order', async () => {
       const nav = await navOf('/hub')
 
       expect(linkTexts(nav)).toEqual([
@@ -530,7 +530,7 @@ describe('Side navigation', () => {
         ['Bookmarked guides', '/hub/bookmarked-guides'],
         ['Upload guidance', '/create-guidance/upload-guide']
       ])
-      expect(nav).toContain('>Designing</h2>')
+      expect(nav).toContain('>Maintenance</h2>')
     })
 
     test('has sections for pinned guidance and case bookmarks, empty for now', async () => {
@@ -600,13 +600,13 @@ describe('Side navigation', () => {
       expect(payload).toMatch(/name="collapsed" value="false"/)
     })
 
-    test('keeps a designer\'s work in a list of its own, after the lists of guides', async () => {
+    test('keeps a maintainer\'s work in a list of its own, after the lists of guides', async () => {
       const signedIn = await loginAsDevUser(server)
 
       const { cookie } = await fold(signedIn, true, '/hub')
       const payload = await pageOf(cookie, '/hub')
 
-      const designing = payload.indexOf('<ul class="app-side-nav__rail-list" aria-label="Designing">')
+      const designing = payload.indexOf('<ul class="app-side-nav__rail-list" aria-label="Maintenance">')
       expect(designing).toBeGreaterThan(payload.indexOf('<span class="app-side-nav__rail-label">Bookmarked guides</span>'))
       expect(payload.indexOf('<span class="app-side-nav__rail-label">Upload guidance</span>')).toBeGreaterThan(designing)
     })

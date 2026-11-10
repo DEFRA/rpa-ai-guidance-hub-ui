@@ -67,13 +67,13 @@ describe('#hubController', () => {
       expect(listHeadings(main)).toEqual([])
     })
 
-    test('leaves a designer\'s work to the side navigation', async () => {
+    test('leaves a maintainer\'s work to the side navigation', async () => {
       const cookie = await loginAsDevUser(server)
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
-      expect(main).not.toContain('Designing')
+      expect(main).not.toContain('Maintenance')
       expect(main).not.toContain('Upload guidance')
       expect(main).not.toContain('Awaiting my review')
     })

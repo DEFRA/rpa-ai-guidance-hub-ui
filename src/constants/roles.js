@@ -6,7 +6,7 @@ const ROLES = {
 
 const ROLE_DISPLAY_NAMES = new Map([
   [ROLES.VIEWER, 'Viewer'],
-  [ROLES.EDITOR, 'Designer'],
+  [ROLES.EDITOR, 'Maintainer'],
   [ROLES.ADMIN, 'Administrator']
 ])
 

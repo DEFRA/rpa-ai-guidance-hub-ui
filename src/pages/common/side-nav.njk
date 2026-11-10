@@ -61,7 +61,7 @@
 
   {# An editor's work in a list of its own: the strip draws a line above it. #}
   {% if isEditor %}
-    <ul class="app-side-nav__rail-list" aria-label="Designing">
+    <ul class="app-side-nav__rail-list" aria-label="Maintenance">
       {% for item in editorItems %}
         <li>{{ railItem(item.text, item.icon, item.href, item.current) }}</li>
       {% endfor %}
@@ -116,8 +116,8 @@
   </ul>
 
   {% if isEditor %}
-    <h2 class="app-side-nav__label" id="side-nav-designing">Designing</h2>
-    <ul class="app-side-nav__list" aria-labelledby="side-nav-designing">
+    <h2 class="app-side-nav__label" id="side-nav-maintenance">Maintenance</h2>
+    <ul class="app-side-nav__list" aria-labelledby="side-nav-maintenance">
       {% for item in editorItems %}
         <li>
           <a class="app-side-nav__link{% if item.current %} app-side-nav__link--current{% endif %}" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>
