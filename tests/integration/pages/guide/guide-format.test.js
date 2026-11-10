@@ -109,13 +109,13 @@ describe('A guide\'s format', () => {
     })
 
     test('offers the stepper, to come back to the page and heading the address names', async () => {
-      const formats = formatsOf(await guidePage(`${GUIDE_URL}?page=2`))
+      const formats = formatsOf(await guidePage(`${GUIDE_URL}?section=assign-case`))
       const stepper = formats.getByRole('button', { name: 'Stepper', pressed: false })
 
       expect(formats.getByRole('button', { name: 'Traditional', pressed: true })).toBeInTheDocument()
       expect(stepper.form).toHaveAttribute('action', '/guides/format')
       expect(stepper.form).toHaveAttribute('method', 'post')
-      expect(stepper.form).toHaveFormValues({ returnTo: `${GUIDE_URL}?page=2#assign-case` })
+      expect(stepper.form).toHaveFormValues({ returnTo: `${GUIDE_URL}?section=assign-case#assign-case` })
     })
 
     test('sits at the top of the contents pane, above the contents list', async () => {
@@ -132,9 +132,9 @@ describe('A guide\'s format', () => {
 
   describe('when the reader chooses the stepper', () => {
     test('goes back to their place, now a section at a time, and stays chosen', async () => {
-      const place = `${GUIDE_URL}?page=2#assign-case`
+      const place = `${GUIDE_URL}?section=assign-case#assign-case`
       const response = await chooseFormat('stepper', place)
-      const page = await guidePage(`${GUIDE_URL}?page=2`, mergeCookies(cookie, response.headers['set-cookie']))
+      const page = await guidePage(`${GUIDE_URL}?section=assign-case`, mergeCookies(cookie, response.headers['set-cookie']))
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(response.headers.location).toBe(place)

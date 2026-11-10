@@ -23,7 +23,7 @@ function createRequest ({ query = {}, payload, stored, format } = {}) {
     params: { guideId: 'guide-1', name: 'abc.png' },
     query,
     payload,
-    url: { pathname: '/guides/guide-1', search: '?page=2' },
+    url: { pathname: '/guides/guide-1', search: '?section=two' },
     yar: { get: key => session.get(key), set: (key, value) => session.set(key, value), flash: () => [], session }
   }
 }
@@ -79,8 +79,8 @@ describe('guide controller', () => {
       expect(usersService.recordOpened).toHaveBeenCalledWith(request, 'guide-1')
     })
 
-    test('records the guide as opened when a direct link names a page', async () => {
-      const request = createRequest({ query: { page: '2' } })
+    test('records the guide as opened when a link names one of its sections', async () => {
+      const request = createRequest({ query: { section: 'two' } })
 
       await controller.getGuidePage(request, h)
 
@@ -95,7 +95,7 @@ describe('guide controller', () => {
     })
 
     test('renders the section asked for, and the chosen width', async () => {
-      const request = createRequest({ query: { page: '2' }, stored: 'full' })
+      const request = createRequest({ query: { section: 'two' }, stored: 'full' })
 
       await controller.getGuidePage(request, h)
 
@@ -103,7 +103,7 @@ describe('guide controller', () => {
         panelCollapsed: false,
         pageNumber: 2,
         readingWidth: 'full',
-        returnTo: '/guides/guide-1?page=2'
+        returnTo: '/guides/guide-1?section=two'
       })
     })
 
@@ -117,16 +117,28 @@ describe('guide controller', () => {
     })
 
     test.each([
-      ['0', 1],
-      ['-4', 1],
-      ['99', 3],
-      ['abc', 1],
-      [undefined, 1],
-      ['2.9', 2]
-    ])('shows page %j as page %i', async (page, expected) => {
-      await controller.getGuidePage(createRequest({ query: { page } }), h)
+      ['two', 2],
+      ['never', 1],
+      [undefined, 1]
+    ])('shows the page with section %j as page %i, without sending the reader on', async (section, expected) => {
+      await controller.getGuidePage(createRequest({ query: { section } }), h)
 
       expect(h.view.mock.calls[0][1].pageNumber).toBe(expected)
+      expect(h.redirect).not.toHaveBeenCalled()
+    })
+
+    test('shows the page that has a heading inside one of its sections', async () => {
+      guidesService.getGuideContent.mockResolvedValue({ markdown: '## One\n\nFirst.\n\n## Two\n\n### 2.1 Deep\n\nSecond.' })
+
+      await controller.getGuidePage(createRequest({ query: { section: '21-deep' } }), h)
+
+      expect(h.view.mock.calls[0][1].pageNumber).toBe(2)
+    })
+
+    test('ignores a page number in the address', async () => {
+      await controller.getGuidePage(createRequest({ query: { page: '2' } }), h)
+
+      expect(h.view.mock.calls[0][1].pageNumber).toBe(1)
     })
 
     test.each([

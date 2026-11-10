@@ -152,7 +152,7 @@ describe('Side navigation', () => {
       const moveDown = first.split('<form').find((form) => form.includes('data-reorder-move="1"'))
 
       expect(second).toContain(`data-reorder-id="${SECOND}/${SECTION}" data-reorder-label="2 Close it, in Closing a case"`)
-      expect(second).toContain(`href="/guides/${SECOND}?section=2-close-it"`)
+      expect(second).toContain(`href="/guides/${SECOND}?section=2-close-it#2-close-it"`)
       expect(second).toContain('<span class="app-side-nav__text">2 Close it<span class="govuk-visually-hidden">, in </span><span class="app-side-nav__in-guide">Closing a case</span></span>')
       expect(first).not.toContain('app-side-nav__in-guide')
       // Another guide may have a heading of the same name, so its controls name the guide too.
@@ -294,8 +294,8 @@ describe('Side navigation', () => {
       expect(shown).toEqual([['Case', 'W7654321', '1 guide'], ['SBI', '123456789', '0 guides']])
       expect(links).toEqual([
         ['Claiming a payment', `/guides/${GUIDE}`],
-        ['1.1 Before you begin', `/guides/${GUIDE}?section=11-before-you-begin`],
-        ['2 Assign case', `/guides/${GUIDE}?section=2-assign-case`]
+        ['1.1 Before you begin', `/guides/${GUIDE}?section=11-before-you-begin#11-before-you-begin`],
+        ['2 Assign case', `/guides/${GUIDE}?section=2-assign-case#2-assign-case`]
       ])
     })
 

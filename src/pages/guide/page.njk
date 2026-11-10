@@ -128,7 +128,7 @@
              handed to the viewer: swapping a hidden one's HTML would lose the
              match. #}
           {% for item in pages %}
-            <div class="app-guide-page" data-guide-page="{{ item.pageNumber }}"{% if not item.isShown %} hidden="until-found"{% endif %}>
+            <div class="app-guide-page" data-guide-page="{{ item.pageNumber }}"{% if not item.isShown %} hidden="until-found"{% endif %} data-guide-page-href="{{ item.href }}">
               {% if format == 'stepper' %}
                 <p class="app-guide-section__eyebrow">Page {{ item.pageNumber }} of {{ totalPages }}</p>
                 <div class="app-progress__track app-guide-progress" role="presentation">

@@ -117,10 +117,10 @@ describe('#guideController', () => {
     test('shows the section being read, and where the reader is', async () => {
       mockGuide()
 
-      const { payload } = await getInStepper(`${GUIDE_URL}?page=2`)
+      const { payload } = await getInStepper(`${GUIDE_URL}?section=assign-case`)
 
       expect(payload).toContain('Page 2 of 3')
-      expect(payload).toMatch(/<div class="app-guide-page" data-guide-page="2">/)
+      expect(payload).toMatch(/<div class="app-guide-page" data-guide-page="2" data-guide-page-href=/)
     })
 
     test('keeps the other sections for find-in-page, hidden until it finds a match', async () => {
@@ -128,7 +128,7 @@ describe('#guideController', () => {
 
       const { payload } = await getInStepper(GUIDE_URL)
 
-      expect(payload).toMatch(/<div class="app-guide-page" data-guide-page="1">/)
+      expect(payload).toMatch(/<div class="app-guide-page" data-guide-page="1" data-guide-page-href=/)
       expect(payload).toContain('data-guide-page="2" hidden="until-found"')
       expect(payload).toContain('data-guide-page="3" hidden="until-found"')
       expect(payload).toContain('Assign it.')
@@ -151,22 +151,22 @@ describe('#guideController', () => {
       const { payload } = await getInStepper(GUIDE_URL)
 
       expect(payload).toContain('aria-labelledby="guide-contents-heading"')
-      expect(payload).toContain(`href="${GUIDE_URL}?page=1" aria-current="page">Introduction`)
-      expect(payload).toContain(`href="${GUIDE_URL}?page=2">Assign case`)
-      expect(payload).toContain(`href="${GUIDE_URL}?page=3">Close case`)
+      expect(payload).toContain(`href="${GUIDE_URL}?section=introduction" aria-current="page">Introduction`)
+      expect(payload).toContain(`href="${GUIDE_URL}?section=assign-case">Assign case`)
+      expect(payload).toContain(`href="${GUIDE_URL}?section=close-case">Close case`)
       expect(payload).toContain('data-guide-contents-page="2"')
     })
 
     test.each([
-      ['a section', 'assign-case', '?page=2#assign-case'],
-      ['a heading inside a section', 'before-you-begin', '?page=1#before-you-begin']
-    ])('sends an address that names %s to its page, at its heading', async (_case, section, at) => {
+      ['a section', 'assign-case', '2'],
+      ['a heading inside a section', 'before-you-begin', '1']
+    ])('shows the page with %s an address names, without sending the reader on', async (_case, section, page) => {
       mockGuide()
 
-      const { statusCode, headers } = await get(`${GUIDE_URL}?section=${section}`)
+      const { statusCode, payload } = await getInStepper(`${GUIDE_URL}?section=${section}`)
 
-      expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(headers.location).toBe(`${GUIDE_URL}${at}`)
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(payload).toMatch(new RegExp(`<div class="app-guide-page" data-guide-page="${page}" data-guide-page-href=`))
     })
 
     test('opens at the first page when the address names a section the guide has not', async () => {
@@ -180,7 +180,7 @@ describe('#guideController', () => {
     test('names the section a Next or Previous link goes to', async () => {
       mockGuide()
 
-      const { payload } = await getInStepper(`${GUIDE_URL}?page=2`)
+      const { payload } = await getInStepper(`${GUIDE_URL}?section=assign-case`)
 
       expect(payload).toContain('Page 2 of 3')
       expect(payload).toMatch(/govuk-pagination__link-label[^>]*>Introduction</)
@@ -227,7 +227,7 @@ describe('#guideController', () => {
 
       const { payload } = await getInStepper(GUIDE_URL)
 
-      expect(payload).toContain(`<a href="${GUIDE_URL}?page=2#assign-case">2 Assign case</a>`)
+      expect(payload).toContain(`<a href="${GUIDE_URL}?section=assign-case#assign-case">2 Assign case</a>`)
       expect(payload).toContain('<a href="#before-you-begin">Before you begin</a>')
       expect(payload).toMatch(/<h2[^>]*id="introduction"/)
       expect(payload).toContain('data-heading-ids="[&quot;before-you-begin&quot;]"')
@@ -499,11 +499,11 @@ describe('#guideController', () => {
       expect(recording.isDone()).toBe(true)
     })
 
-    test.each(['1', '2'])('is recorded when a direct link opens it at part %s', async (page) => {
+    test.each(['introduction', 'assign-case'])('is recorded when a link opens it at section %s', async (section) => {
       mockGuide()
       const recording = mockRecording()
 
-      const { statusCode } = await get(`${GUIDE_URL}?page=${page}`)
+      const { statusCode } = await get(`${GUIDE_URL}?section=${section}#${section}`)
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(recording.isDone()).toBe(true)
@@ -536,7 +536,7 @@ describe('#guideController', () => {
 
       const { payload } = await getInStepper(GUIDE_URL)
 
-      expect(payload).toContain(`href="${GUIDE_URL}?page=2#21-deep">2.1 Deep`)
+      expect(payload).toContain(`href="${GUIDE_URL}?section=two#21-deep">2.1 Deep`)
     })
   })
 
@@ -604,7 +604,7 @@ describe('#guideController', () => {
         method: 'POST',
         url: '/guides/panel-toggle',
         headers: { cookie },
-        payload: { collapsed, returnTo: `${GUIDE_URL}?page=2` }
+        payload: { collapsed, returnTo: `${GUIDE_URL}?section=assign-case` }
       })
 
       return { response, cookie: mergeCookies(cookie, response.headers['set-cookie']) }
@@ -625,7 +625,7 @@ describe('#guideController', () => {
       const { response, cookie: collapsed } = await togglePanel('true')
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(response.headers.location).toBe(`${GUIDE_URL}?page=2`)
+      expect(response.headers.location).toBe(`${GUIDE_URL}?section=assign-case`)
 
       mockGuide()
       const rail = await server.inject({ method: 'GET', url: GUIDE_URL, headers: { cookie: collapsed } })
@@ -662,7 +662,7 @@ describe('#guideController', () => {
   })
 
   describe('POST /guides/reading-width', () => {
-    async function choose (width, returnTo = `${GUIDE_URL}?page=2`) {
+    async function choose (width, returnTo = `${GUIDE_URL}?section=assign-case`) {
       const response = await server.inject({
         method: 'POST',
         url: '/guides/reading-width',
@@ -677,7 +677,7 @@ describe('#guideController', () => {
       const { response, cookie: updated } = await choose('wide')
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(response.headers.location).toBe(`${GUIDE_URL}?page=2`)
+      expect(response.headers.location).toBe(`${GUIDE_URL}?section=assign-case`)
 
       mockGuide()
       const { payload } = await server.inject({ method: 'GET', url: GUIDE_URL, headers: { cookie: updated } })

@@ -485,7 +485,7 @@ describe('#hubController', () => {
       const [section, guide] = main.split('<li class="app-search-results__item').slice(1)
 
       expect(main).toContain('2 pins<')
-      expect(section).toContain(`<a class="govuk-link" href="/guides/${PINNED}?section=1-pay">1 Pay<span class="govuk-visually-hidden">, in Claiming the SFI payment</span></a>`)
+      expect(section).toContain(`<a class="govuk-link" href="/guides/${PINNED}?section=1-pay#1-pay">1 Pay<span class="govuk-visually-hidden">, in Claiming the SFI payment</span></a>`)
       expect(section).toContain('<span class="govuk-visually-hidden">Pin 1 Pay, in Claiming the SFI payment</span>')
       expect(section).toContain('In Claiming the SFI payment')
       expect(section).toContain(`data-reorder-follows="${PINNED}/${SECTION}"`)

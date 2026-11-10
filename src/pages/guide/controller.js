@@ -7,7 +7,6 @@ import * as guidesService from '../../services/guides.js'
 import * as usersService from '../../services/users.js'
 import { guideAssetHref } from './asset-href.js'
 import { BOOKMARKED } from './bookmark/controller.js'
-import { sectionHref } from './bookmark/view-model.js'
 import { getGuideFormat, setGuideFormat } from './format.js'
 import { isPanelCollapsed, setPanelCollapsed } from './panel.js'
 import { getReadingWidth, setReadingWidth } from './reading-width.js'
@@ -24,31 +23,27 @@ const ALLOWED_ASSET_CONTENT_TYPES = new Set([
 
 /**
  * @private
- * @param {{page?: unknown, section?: unknown}} query - The page's number, or
- *   the anchor the hub knows a section by, as a link to a bookmarked section
- *   names it
  * @param {import('../../services/guide-sections.js').GuideSection[]} sections
- * @returns {{slug: string, page: number}|null} The heading of the section the
- *   address names, when it names no page
+ * @param {unknown} anchor - The `section` query parameter: a heading's anchor
+ *   as the hub knows it, as links from elsewhere name it; or, for a heading the
+ *   hub gives none, its anchor on the page
+ * @returns {number} The number of the page that has the heading; the first
+ *   when the guide has none by that anchor
  */
-function _namedHeading ({ page, section }, sections) {
-  return page === undefined && typeof section === 'string' ? findHeading(sections, section) : null
-}
-
-/**
- * @private
- * @param {unknown} page - The `page` query parameter
- * @param {number} totalPages
- * @returns {number} `page` as a whole number within 1..totalPages
- */
-function _pageWithin (page, totalPages) {
-  const number = Number.parseInt(page, 10)
-
-  if (Number.isNaN(number)) {
+function _pageNamed (sections, anchor) {
+  if (typeof anchor !== 'string') {
     return 1
   }
 
-  return Math.min(Math.max(number, 1), Math.max(totalPages, 1))
+  const heading = findHeading(sections, anchor)
+
+  if (heading) {
+    return heading.page
+  }
+
+  const index = sections.findIndex(section => section.slug === anchor || section.headingIds.includes(anchor))
+
+  return index === -1 ? 1 : index + 1
 }
 
 /**
@@ -101,7 +96,9 @@ function _pinnedSectionsOf (pinned, guideId) {
 
 /**
  * Show a guide, whole or a section at a time as the user chose, with its
- * contents and what the guide is about.
+ * contents and what the guide is about. `?section=` names a heading, and in
+ * the stepper the page that has it is shown; the guide never sends the reader
+ * on, so the browser keeps a link's fragment.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -124,30 +121,22 @@ async function getGuidePage (request, h) {
     throw Boom.notFound()
   }
 
-  // Only the guide's content says which page has the section, and its
-  // heading's anchor there, which can differ from the hub's.
-  const named = _namedHeading(request.query, split)
-
-  if (named) {
-    return h.redirect(sectionHref(guide.id, named))
-  }
-
-  // Every view counts as opening the guide: a direct link can name a page, so
-  // its address doesn't tell an opening from moving between its parts.
+  // Every view counts as opening the guide: a direct link can name a section,
+  // so its address doesn't tell an opening from moving between its parts.
   await usersService.recordOpened(request, guide.id)
 
   const format = getGuideFormat(request)
   // In the traditional view every heading is on the page, so the guide's
   // links to them work as they are.
   const linked = format === 'stepper'
-    ? resolveAnchors(split, page => GuideViewModel.pageHref(guideId, page))
+    ? resolveAnchors(split, page => GuideViewModel.pageHref(guideId, split[page - 1]))
     : split
   const sections = resolveImages(linked, href => guideAssetHref(href, guideId))
 
   const viewModel = new GuideViewModel({
     guide,
     sections,
-    pageNumber: _pageWithin(request.query.page, sections.length),
+    pageNumber: _pageNamed(sections, request.query.section),
     readingWidth: getReadingWidth(request),
     returnTo: _currentUrl(request),
     panelCollapsed: isPanelCollapsed(request),

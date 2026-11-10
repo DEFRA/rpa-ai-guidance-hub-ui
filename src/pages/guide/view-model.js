@@ -165,7 +165,7 @@ class GuideViewModel {
    * @param {string} data.format - One of `GUIDE_FORMATS`' values
    */
   constructor ({ guide, sections, pageNumber, readingWidth, returnTo, metadataRows, panelCollapsed = false, pin = null, pinnedSections = null, cases = null, bookmarked, format }) {
-    const href = page => GuideViewModel.pageHref(guide.id, page)
+    const href = page => GuideViewModel.pageHref(guide.id, sections[page - 1])
     const isTraditional = format === TRADITIONAL
     const adjacent = (page) => {
       const section = sections[page - 1]
@@ -201,6 +201,7 @@ class GuideViewModel {
     // control; one in a quote or a list has neither.
     this.pages = sections.map((section, index) => ({
       pageNumber: index + 1,
+      href: href(index + 1),
       section,
       bookmark: bookmarkOf(section.sectionAnchor, section.slug),
       headingBookmarks: section.headingSectionAnchors.map((anchor, at) => bookmarkOf(anchor, section.headingIds[at])),
@@ -234,12 +235,19 @@ class GuideViewModel {
   }
 
   /**
+   * A page of the guide in the stepper: the guide's own address, naming the
+   * page's section by its anchor - the hub's, or, for a heading the hub gives
+   * none, the heading's on the page. Just the guide's own address for a first
+   * section without a heading of its own.
+   *
    * @param {string} guideId
-   * @param {number} page
+   * @param {import('../../services/guide-sections.js').GuideSection} [section]
    * @returns {string}
    */
-  static pageHref (guideId, page) {
-    return `/guides/${encodeURIComponent(guideId)}?page=${page}`
+  static pageHref (guideId, section) {
+    const anchor = section?.sectionAnchor ?? section?.slug
+
+    return `/guides/${encodeURIComponent(guideId)}${anchor ? `?section=${encodeURIComponent(anchor)}` : ''}`
   }
 }
 

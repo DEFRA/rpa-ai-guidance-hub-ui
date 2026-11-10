@@ -4,11 +4,12 @@ import {
 } from '../../../../src/pages/guide/view-model.js'
 
 const sections = [
-  { id: 'section-1', title: 'Introduction', slug: 'introduction', markdown: 'One.', headingIds: [], headingSectionAnchors: [], subheadings: [] },
+  { id: 'section-1', title: 'Introduction', slug: 'introduction', sectionAnchor: 'introduction', markdown: 'One.', headingIds: [], headingSectionAnchors: [], subheadings: [] },
   {
     id: 'section-2',
     title: 'Assign case',
     slug: 'assign-case',
+    sectionAnchor: 'assign-case',
     markdown: 'Two.',
     headingIds: ['21-check', '22-assign'],
     headingSectionAnchors: ['21-check', '22-assign'],
@@ -18,6 +19,7 @@ const sections = [
     id: 'section-3',
     title: 'Close case',
     slug: 'close-case',
+    sectionAnchor: 'close-case',
     markdown: 'Three.',
     headingIds: ['31-close'],
     headingSectionAnchors: ['31-close'],
@@ -42,7 +44,7 @@ function build (overrides = {}) {
     sections,
     pageNumber: 2,
     readingWidth: 'wide',
-    returnTo: '/guides/guide-1?page=2',
+    returnTo: '/guides/guide-1?section=assign-case',
     metadataRows: [],
     // A section at a time, which most of what follows is about.
     format: 'stepper',
@@ -61,9 +63,9 @@ describe('GuideViewModel', () => {
 
   test('lists every section in the contents, marking the current one', () => {
     expect(build().contents.map(({ title, href, isCurrent }) => ({ title, href, isCurrent }))).toEqual([
-      { title: 'Introduction', href: '/guides/guide-1?page=1', isCurrent: false },
-      { title: 'Assign case', href: '/guides/guide-1?page=2', isCurrent: true },
-      { title: 'Close case', href: '/guides/guide-1?page=3', isCurrent: false }
+      { title: 'Introduction', href: '/guides/guide-1?section=introduction', isCurrent: false },
+      { title: 'Assign case', href: '/guides/guide-1?section=assign-case', isCurrent: true },
+      { title: 'Close case', href: '/guides/guide-1?section=close-case', isCurrent: false }
     ])
   })
 
@@ -76,7 +78,7 @@ describe('GuideViewModel', () => {
       { title: '2.2 Assign', href: '#22-assign' }
     ])
     expect(contents[2].subheadings).toEqual([
-      { title: '3.1 Close', href: '/guides/guide-1?page=3#31-close' }
+      { title: '3.1 Close', href: '/guides/guide-1?section=close-case#31-close' }
     ])
   })
 
@@ -96,8 +98,8 @@ describe('GuideViewModel', () => {
   test('names the sections either side in the previous and next links', () => {
     const viewModel = build()
 
-    expect(viewModel.previous).toEqual({ href: '/guides/guide-1?page=1', labelText: 'Introduction' })
-    expect(viewModel.next).toEqual({ href: '/guides/guide-1?page=3', labelText: 'Close case' })
+    expect(viewModel.previous).toEqual({ href: '/guides/guide-1?section=introduction', labelText: 'Introduction' })
+    expect(viewModel.next).toEqual({ href: '/guides/guide-1?section=close-case', labelText: 'Close case' })
   })
 
   test('has every section as a page, showing only the current one, each with its own progress and neighbours', () => {
@@ -109,8 +111,20 @@ describe('GuideViewModel', () => {
     expect(pages[0].section).toBe(sections[0])
     expect(pages.map(page => page.progressPercentage)).toEqual([33, 67, 100])
     expect(pages[0].previous).toBeNull()
-    expect(pages[0].next).toEqual({ href: '/guides/guide-1?page=2', labelText: sections[1].title })
+    expect(pages[0].next).toEqual({ href: '/guides/guide-1?section=assign-case', labelText: sections[1].title })
     expect(pages[2].next).toBeNull()
+  })
+
+  test('names the first page by the guide\'s address alone when it has no heading of its own', () => {
+    const untitled = [{ ...sections[0], slug: null, sectionAnchor: null }, sections[1]]
+
+    expect(build({ sections: untitled }).contents[0].href).toBe('/guides/guide-1')
+  })
+
+  test('names a page whose heading the hub gives no anchor by the heading\'s anchor on the page', () => {
+    const overview = [sections[0], { ...sections[1], title: 'Overview', slug: 'overview', sectionAnchor: null }]
+
+    expect(build({ sections: overview }).contents[1].href).toBe('/guides/guide-1?section=overview')
   })
 
   test('has no previous link on the first page and no next link on the last', () => {
@@ -168,7 +182,7 @@ describe('GuideViewModel in the traditional view', () => {
   })
 
   test('takes a section without a heading of its own to the top of the guide', () => {
-    const untitled = [{ ...sections[0], slug: null }, sections[1]]
+    const untitled = [{ ...sections[0], slug: null, sectionAnchor: null }, sections[1]]
 
     expect(traditional({ sections: untitled }).contents[0].href).toBe('#main-content')
   })
@@ -183,11 +197,11 @@ describe('GuideViewModel\'s choice of format', () => {
   })
 
   test.each([['traditional'], ['stepper']])('comes back from %s to the page and heading the address names', (format) => {
-    expect(build({ format, pageNumber: 2 }).place).toBe('/guides/guide-1?page=2#assign-case')
+    expect(build({ format, pageNumber: 2 }).place).toBe('/guides/guide-1?section=assign-case#assign-case')
   })
 
   test('comes back to the page alone when its section has no heading of its own', () => {
-    expect(build({ sections: [{ ...sections[0], slug: null }], pageNumber: 1 }).place).toBe('/guides/guide-1?page=1')
+    expect(build({ sections: [{ ...sections[0], slug: null, sectionAnchor: null }], pageNumber: 1 }).place).toBe('/guides/guide-1')
   })
 })
 
