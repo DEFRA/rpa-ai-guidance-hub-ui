@@ -208,13 +208,13 @@
         {% for case in caseBookmarks.cases %}
           <li class="app-side-nav__case" data-reorder-id="{{ case.key }}" data-reorder-label="{{ case.name }}">
             <div class="app-side-nav__row">
-              <div class="app-side-nav__case-name" data-reorder-handle>
+              <a class="app-side-nav__link" href="{{ case.href }}" draggable="false" data-reorder-handle>
                 {{ icon("bookmark") }}
                 <span class="app-side-nav__text">
                   <span class="app-side-nav__ref-type">{{ case.typeLabel }}</span>
                   <span class="govuk-visually-hidden">: </span>{{ case.ref }}</span>
                 <span class="app-side-nav__meta">{{ case.guides.length }} guide{{ "s" if case.guides.length != 1 }}</span>
-              </div>
+              </a>
               <details class="app-side-nav__more">
                 <summary class="app-side-nav__icon-button app-side-nav__more-button">
                   {{ icon("more") }}

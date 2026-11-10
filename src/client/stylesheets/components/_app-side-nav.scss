@@ -708,18 +708,6 @@ details:not([open]) > summary .app-side-nav__chevron {
 
 // The case bookmarks: each case's guides under it, and each guide's
 // bookmarked sections under that.
-.app-side-nav__case-name {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  min-height: 40px;
-  box-sizing: border-box;
-  padding: 6px 10px 6px 12px;
-  line-height: 1.25;
-}
-
 .app-side-nav__meta {
   flex: none;
   color: $app-side-nav-muted;

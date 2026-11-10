@@ -338,7 +338,9 @@ describe('Side navigation', () => {
         getNodeText(within(row).getByText(/^(W\d{7}|\d{9})$/)).trim(),
         within(row).getByText(/ guides?$/, { ignore: '.govuk-visually-hidden' }).textContent
       ])
-      const links = within(section).getAllByRole('link').map((link) => [link.textContent, link.getAttribute('href')])
+      const links = within(section).getAllByRole('list', { name: /^Guides bookmarked to / })
+        .flatMap((guides) => within(guides).getAllByRole('link'))
+        .map((link) => [link.textContent, link.getAttribute('href')])
 
       expect(shown).toEqual([['Case', 'W7654321', '1 guide'], ['SBI', '123456789', '0 guides']])
       expect(links).toEqual([
@@ -346,6 +348,15 @@ describe('Side navigation', () => {
         ['1.1 Before you begin', `/guides/${GUIDE}?section=11-before-you-begin`],
         ['2 Assign case', `/guides/${GUIDE}?section=2-assign-case`]
       ])
+    })
+
+    test('each link to the Bookmarked guides page narrowed to them, by their key, not their reference', async () => {
+      const OTHER = '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c'
+      const section = await bookmarksSection([caseResponse(), caseResponse({ key: OTHER, type: 'sbi', ref: '123456789' })])
+
+      const hrefs = caseRowsOf(section).map((row) => within(row).getByRole('link', { name: /^(Case|SBI)\b/ }).getAttribute('href'))
+
+      expect(hrefs).toEqual([`/hub/bookmarked-guides?case=${caseResponse().key}`, `/hub/bookmarked-guides?case=${OTHER}`])
     })
 
     describe('changed from their menus', () => {
