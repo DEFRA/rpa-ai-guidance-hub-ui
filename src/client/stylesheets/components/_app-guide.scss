@@ -135,20 +135,17 @@ $app-guide-panel-max-width: 480px;
   }
 }
 
+// The tags, the date and Pin guide in one row, centred on one line and evenly
+// spaced; where the column is too narrow, the row wraps between them, each
+// line starting where the tags do.
 .app-guide-byline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: govuk-spacing(2);
   margin: 0 0 govuk-spacing(2);
   font-size: 16px;
   color: $govuk-secondary-text-colour;
-}
-
-.app-guide-byline__updated {
-  margin-left: govuk-spacing(2);
-}
-
-// Pin guide / Unpin guide, at the end of the byline.
-.app-pin-form {
-  display: inline-block;
-  margin-left: govuk-spacing(2);
 }
 
 .app-pin-button {
