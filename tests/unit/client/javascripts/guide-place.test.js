@@ -14,11 +14,13 @@ describe('readerPlace', () => {
   ]
 
   test('is the last page start or heading that has scrolled up to the reading line', () => {
-    expect(readerPlace(marks, 120)).toEqual({ href: `${GUIDE_URL}?section=assign-case`, id: 'assign-case' })
+    expect(readerPlace(marks, 120)).toBe(marks[2])
   })
 
   test('is the first of them when none has', () => {
-    expect(readerPlace(marks.map(mark => ({ ...mark, top: mark.top + 2000 })), 120)).toEqual({ href: GUIDE_URL, id: '' })
+    const below = marks.map(mark => ({ ...mark, top: mark.top + 2000 }))
+
+    expect(readerPlace(below, 120)).toBe(below[0])
   })
 
   test('is nowhere in a page without any', () => {

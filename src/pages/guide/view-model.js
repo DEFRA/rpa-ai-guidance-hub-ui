@@ -107,7 +107,10 @@ function _ownerRow (owner) {
  * @param {number} pageNumber
  * @param {boolean} isTraditional
  * @param {(page: number) => string} href - The address of a page
- * @returns {Array<{title: string, href: string, isCurrent: boolean, subheadings: Array<{title: string, href: string}>}>}
+ * @returns {Array<{title: string, href: string, anchor: string, isCurrent: boolean, subheadings: Array<{title: string, href: string, anchor: string}>}>}
+ *   Each entry with the anchor of the heading it goes to on the page, for the
+ *   script that follows the reader (guide-contents.js); none for a section
+ *   without a heading
  */
 function _contents (sections, pageNumber, isTraditional, href) {
   return sections.map((section, index) => {
@@ -117,11 +120,13 @@ function _contents (sections, pageNumber, isTraditional, href) {
     return {
       title: section.title,
       href: isTraditional ? _headingHref(section.slug) : href(index + 1),
+      anchor: section.slug ?? '',
       isCurrent,
       // On the page already, a heading's link need only scroll to it.
       subheadings: (section.subheadings ?? []).map(subheading => ({
         title: subheading.title,
-        href: `${isOnThePage ? '' : href(index + 1)}#${subheading.slug}`
+        href: `${isOnThePage ? '' : href(index + 1)}#${subheading.slug}`,
+        anchor: subheading.slug
       }))
     }
   })

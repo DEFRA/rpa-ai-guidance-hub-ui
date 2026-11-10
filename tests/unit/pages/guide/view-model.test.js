@@ -74,11 +74,11 @@ describe('GuideViewModel', () => {
 
     expect(contents[0].subheadings).toEqual([])
     expect(contents[1].subheadings).toEqual([
-      { title: '2.1 Check', href: '#21-check' },
-      { title: '2.2 Assign', href: '#22-assign' }
+      { title: '2.1 Check', href: '#21-check', anchor: '21-check' },
+      { title: '2.2 Assign', href: '#22-assign', anchor: '22-assign' }
     ])
     expect(contents[2].subheadings).toEqual([
-      { title: '3.1 Close', href: '/guides/guide-1?section=close-case#31-close' }
+      { title: '3.1 Close', href: '/guides/guide-1?section=close-case#31-close', anchor: '31-close' }
     ])
   })
 
@@ -178,7 +178,14 @@ describe('GuideViewModel in the traditional view', () => {
   })
 
   test('scrolls to every subheading, all of them being on the page', () => {
-    expect(traditional().contents[2].subheadings).toEqual([{ title: '3.1 Close', href: '#31-close' }])
+    expect(traditional().contents[2].subheadings).toEqual([{ title: '3.1 Close', href: '#31-close', anchor: '31-close' }])
+  })
+
+  test('gives each entry the heading it goes to on the page, for the script that follows the reader; none for a section without one', () => {
+    const untitled = [{ ...sections[0], slug: null, sectionAnchor: null }, sections[1]]
+
+    expect(traditional().contents.map(entry => entry.anchor)).toEqual(['introduction', 'assign-case', 'close-case'])
+    expect(traditional({ sections: untitled }).contents[0].anchor).toBe('')
   })
 
   test('takes a section without a heading of its own to the top of the guide', () => {

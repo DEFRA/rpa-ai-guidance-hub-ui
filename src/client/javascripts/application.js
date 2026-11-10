@@ -1,6 +1,7 @@
 import * as govukFrontend from 'govuk-frontend'
 
 import { initGuideImages, initPanelHeight, initRailTooltips } from './guide.js'
+import { initGuideContents } from './guide-contents.js'
 import { initGuidePages } from './guide-pages.js'
 import { initGuidePlace } from './guide-place.js'
 import { initSortSelect } from './hub-sort.js'
@@ -16,6 +17,7 @@ initPanelHeight()
 initGuideImages()
 initGuidePages()
 initGuidePlace()
+initGuideContents()
 initSortSelect()
 initReorder()
 initResizeHandles()

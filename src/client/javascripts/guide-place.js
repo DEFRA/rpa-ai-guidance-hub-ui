@@ -17,17 +17,17 @@ const READING_LINE = 120
 const READING_LINE_SHARE = 0.2
 
 /**
- * Where the reader is: the last page start or heading that has scrolled up to
- * the reading line, or the first of them if none has.
+ * Where the reader is: the last of the marks that has scrolled up to the
+ * reading line, or the first of them if none has. The guide's contents follow
+ * the same rule (guide-contents.js).
  *
- * @param {PlaceMark[]} marks - In the order they are on the page
+ * @template {{top: number}} Mark
+ * @param {Mark[]} marks - In the order they are on the page
  * @param {number} line - The reading line, from the top of the window
- * @returns {{href: string, id: string}|null} Null when there are none
+ * @returns {Mark|null} Null when there are none
  */
 function readerPlace (marks, line) {
-  const reached = marks.findLast(mark => mark.top <= line) ?? marks[0]
-
-  return reached ? { href: reached.href, id: reached.id } : null
+  return marks.findLast(mark => mark.top <= line) ?? marks[0] ?? null
 }
 
 /**
@@ -62,11 +62,10 @@ function _placeMarks () {
 }
 
 /**
- * @private
  * @returns {number} The reading line; at the very end of the guide the last
  *   headings can never scroll that high, so there it is the window's foot
  */
-function _readingLine () {
+function readingLine () {
   const scroller = document.scrollingElement ?? document.documentElement
   const atEnd = window.innerHeight + window.scrollY >= scroller.scrollHeight - 2
 
@@ -83,7 +82,7 @@ function initGuidePlace () {
   const input = document.querySelector('[data-guide-place]')
 
   input?.form.addEventListener('submit', () => {
-    const place = readerPlace(_placeMarks(), _readingLine())
+    const place = readerPlace(_placeMarks(), readingLine())
 
     if (place) {
       input.value = placeHref(place)
@@ -91,4 +90,4 @@ function initGuidePlace () {
   })
 }
 
-export { initGuidePlace, placeHref, readerPlace }
+export { initGuidePlace, placeHref, readerPlace, readingLine }

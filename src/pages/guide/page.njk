@@ -82,8 +82,10 @@
           {# The contents pane: the whole guide or a section at a time, then the
              contents list. The format's return address names both the page
              and the heading the reader is at, so either format can take them
-             back there; guide-place.js moves it to where they have scrolled. #}
-          <div class="app-guide-contents" id="guide-contents">
+             back there; guide-place.js moves it to where they have scrolled.
+             With JavaScript, the contents mark where the reader is, and the
+             address follows them (guide-contents.js). #}
+          <div class="app-guide-contents" id="guide-contents" data-guide-format="{{ format }}">
             <form class="app-guide-format" method="post" action="/guides/format">
               <input type="hidden" name="returnTo" value="{{ place }}" data-guide-place>
               <div class="app-guide-format-toggle app-guide-format__options" role="group" aria-label="Guide format">
@@ -99,12 +101,12 @@
               <h2 class="govuk-heading-s" id="guide-contents-heading">Contents</h2>
               {% for item in contents %}
                 <p class="app-guide-contents__section{{ ' app-guide-contents__section--current' if item.isCurrent }}" data-guide-contents-page="{{ loop.index }}">
-                  <a class="govuk-link app-guide-contents__section-link" href="{{ item.href }}"{% if item.isCurrent %} aria-current="page"{% endif %}>{{ item.title }}</a>
+                  <a class="govuk-link app-guide-contents__section-link" data-guide-contents-target="{{ item.anchor }}" href="{{ item.href }}"{% if item.isCurrent %} aria-current="page"{% endif %}>{{ item.title }}</a>
                 </p>
                 {% if item.subheadings.length %}
                   <ol class="govuk-list app-guide-contents__list">
                     {% for subheading in item.subheadings %}
-                      <li><a class="govuk-link app-guide-contents__link" href="{{ subheading.href }}">{{ subheading.title }}</a></li>
+                      <li><a class="govuk-link app-guide-contents__link" data-guide-contents-target="{{ subheading.anchor }}" href="{{ subheading.href }}">{{ subheading.title }}</a></li>
                     {% endfor %}
                   </ol>
                 {% endif %}

@@ -118,6 +118,14 @@ describe('A guide\'s format', () => {
       expect(stepper.form).toHaveFormValues({ returnTo: `${GUIDE_URL}?section=assign-case#assign-case` })
     })
 
+    test('tells the script that follows the reader the format, and the heading each contents entry goes to', async () => {
+      const page = await guidePage()
+      const contents = within(page.getByRole('navigation', { name: 'Contents' }))
+
+      expect(page.document.getElementById('guide-contents')).toHaveAttribute('data-guide-format', 'traditional')
+      expect(contents.getByRole('link', { name: 'Assign case' })).toHaveAttribute('data-guide-contents-target', 'assign-case')
+    })
+
     test('sits at the top of the contents pane, above the contents list', async () => {
       const page = await guidePage()
       const pane = page.document.getElementById(page.getByLabelText('Resize contents').getAttribute('aria-controls'))
