@@ -140,6 +140,7 @@ describe('Side navigation', () => {
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(sideNavOf(pageOf(payload)).getByRole('link', { name: /^Pinned/ })).toHaveTextContent(/^Pinned$/)
+      expect(sideNavOf(pageOf(payload)).getByRole('link', { name: /^Bookmarked/ })).toHaveTextContent(/^Bookmarked$/)
     })
 
     /** The side navigation's Pinned guidance section, for a user with `pinned`. */
@@ -325,6 +326,17 @@ describe('Side navigation', () => {
       const section = await bookmarksSection([caseResponse(), caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', ref: 'W7654321' })])
 
       expect(section.querySelector('summary')).toHaveTextContent('Case bookmarks 2 cases')
+    })
+
+    test('are counted beside "Bookmarked", one for each case', async () => {
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ cases: [caseResponse(), caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', ref: 'W7654321' })] }))
+      const cookie = await loginAsDevUser(server)
+
+      const nav = sideNavOf(await pageAt('/hub', cookie))
+
+      expect(nav.getByRole('link', { name: /^Bookmarked/ })).toHaveTextContent(/^Bookmarked 2 cases$/)
     })
 
     test('are listed in the user\'s order, each with its guides and their number, each guide with its sections in the guide\'s order', async () => {
@@ -597,7 +609,7 @@ describe('Side navigation', () => {
         ['Hub', '/hub'],
         ['Recently opened', '/hub/recently-opened'],
         ['Pinned', '/hub/pinned'],
-        ['Bookmarked guides', '/hub/bookmarked-guides'],
+        ['Bookmarked', '/hub/bookmarked-guides'],
         ['Upload guidance', '/create-guidance/upload-guide']
       ])
       expect(nav.getByRole('heading', { name: 'Designing' })).toBeInTheDocument()
@@ -614,7 +626,7 @@ describe('Side navigation', () => {
       ['/hub', 'Hub'],
       ['/hub/recently-opened', 'Recently opened'],
       ['/hub/pinned', 'Pinned'],
-      ['/hub/bookmarked-guides', 'Bookmarked guides'],
+      ['/hub/bookmarked-guides', 'Bookmarked'],
       ['/create-guidance/upload-guide', 'Upload guidance']
     ])('marks the current page on %s', async (url, current) => {
       const nav = await navOf(url)
@@ -658,7 +670,7 @@ describe('Side navigation', () => {
       expect(response.headers.location).toBe('/hub')
       expect(nav.queryByRole('button', { name: 'Collapse navigation' })).not.toBeInTheDocument()
       expect(nav.getByRole('button', { name: 'Expand navigation' }).form).toHaveFormValues({ collapsed: 'false' })
-      for (const name of ['Hub', 'Recently opened', 'Pinned', 'Bookmarked guides', 'Upload guidance', 'Sign out']) {
+      for (const name of ['Hub', 'Recently opened', 'Pinned', 'Bookmarked', 'Upload guidance', 'Sign out']) {
         expect(nav.getByRole('link', { name })).toBeInTheDocument()
       }
       expect(page.document.body).not.toHaveTextContent('Awaiting my review')
@@ -675,7 +687,7 @@ describe('Side navigation', () => {
 
       const lists = nav.getAllByRole('list')
       const designing = nav.getByRole('list', { name: 'Designing' })
-      expect(lists.indexOf(designing)).toBe(lists.indexOf(nav.getByRole('link', { name: 'Bookmarked guides' }).closest('ul')) + 1)
+      expect(lists.indexOf(designing)).toBe(lists.indexOf(nav.getByRole('link', { name: 'Bookmarked' }).closest('ul')) + 1)
       expect(designing).toContainElement(nav.getByRole('link', { name: 'Upload guidance' }))
     })
 

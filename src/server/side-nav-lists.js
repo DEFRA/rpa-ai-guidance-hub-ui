@@ -88,9 +88,9 @@ function _caseBookmarks (cases) {
 /**
  * Gives a signed-in page what its side navigation shows of the user's own
  * lists - the guides and sections they pinned, and how many, and their cases
- * with the sections of guides bookmarked to them - from one call to the hub
- * for the user. Without them, the side navigation lists no pins or cases and
- * counts none.
+ * with the sections of guides bookmarked to them, and how many - from one call
+ * to the hub for the user. Without them, the side navigation lists no pins or
+ * cases and counts none.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -109,7 +109,8 @@ async function addSideNavLists (request, h) {
     ...response.source.context,
     pins: _pins(pinned ?? []),
     pinnedCount: pinned?.length,
-    caseBookmarks: _caseBookmarks(cases ?? [])
+    caseBookmarks: _caseBookmarks(cases ?? []),
+    caseCount: cases?.length
   }
 
   return h.continue

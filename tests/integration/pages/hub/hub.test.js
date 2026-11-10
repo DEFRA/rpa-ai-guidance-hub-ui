@@ -771,10 +771,10 @@ describe('#hubController', () => {
         expect(page.document.title).not.toMatch(/W1234567|case|sbi/i)
       })
 
-      test('still mark "Bookmarked guides" as the current page in the side navigation', async () => {
+      test('still mark "Bookmarked" as the current page in the side navigation', async () => {
         const { page } = await narrowedPage(NARROWED)
 
-        expect(sideNavOf(page).getByRole('link', { name: 'Bookmarked guides', current: 'page' })).toBeInTheDocument()
+        expect(sideNavOf(page).getByRole('link', { name: /^Bookmarked\b/, current: 'page' })).toBeInTheDocument()
       })
 
       test.each([
@@ -789,14 +789,14 @@ describe('#hubController', () => {
       })
     })
 
-    test('mark "Bookmarked guides" as the current page in the side navigation', async () => {
+    test('mark "Bookmarked" as the current page in the side navigation', async () => {
       nock.cleanAll()
       const cookie = await signedIn({})
       nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/bookmarked-guides`).reply(statusCodes.HTTP_STATUS_OK, bookmarkedGuidesResponse())
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub/bookmarked-guides', headers: { cookie } })
 
-      expect(sideNavOf(pageOf(payload)).getByRole('link', { name: 'Bookmarked guides', current: 'page' })).toBeInTheDocument()
+      expect(sideNavOf(pageOf(payload)).getByRole('link', { name: /^Bookmarked\b/, current: 'page' })).toBeInTheDocument()
     })
   })
 })
