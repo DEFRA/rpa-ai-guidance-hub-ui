@@ -21,12 +21,13 @@ async function signIn (signedIn) {
 }
 
 /**
- * The user, with the guides they have pinned and their cases.
+ * The user, with the guides and sections they have pinned and their cases.
  *
  * @param {string} userId - The hub's id for them
  * @returns {Promise<{ok: boolean, status: number, data: any}>} - data is
  *   `{id, identity, displayName, createdAt, pinned, cases}`, `pinned` in the
- *   user's order, each `{id, title}`; `cases` in the user's order, each
+ *   user's order, each `{id, title, sectionId, section, heading}`, the last
+ *   three null for a whole guide; `cases` in the user's order, each
  *   `{key, type, ref, guides}`, each guide `{id, title, bookmarks}` with its
  *   bookmarked sections in the guide's order, each
  *   `{sectionId, section, heading, position}`
@@ -37,10 +38,11 @@ async function getUser (userId) {
 }
 
 /**
- * Change the user's pinned guides by a JSON Patch on their ordered ids.
+ * Change the user's pins by a JSON Patch on the ordered list of them, each
+ * `{guideId, sectionId, section, heading}`, a whole guide with no section.
  *
  * @param {string} userId
- * @param {Array<{op: string, path: string, value?: string, from?: string}>} operations
+ * @param {Array<{op: string, path: string, value?: any, from?: string}>} operations
  * @returns {Promise<{ok: boolean, status: number, data: any}>} - 204; not ok
  *   with 409 when a `test` failed (the pins changed since the page showed
  *   them) or 422 when the patch cannot apply (a guide pinned already)

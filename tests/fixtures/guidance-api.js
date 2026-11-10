@@ -186,13 +186,13 @@ function guidePageResponse (overrides = {}) {
 
 /**
  * Body of `POST /users` (201, or 200 for a user signed in before) and of
- * `GET /users/{id}` on 200: the hub's user, with the guides they have pinned,
- * in their order, and their cases (`caseResponse`), in their order. By
- * default the dev user `loginAsDevUser` signs in, with nothing pinned and no
- * cases.
+ * `GET /users/{id}` on 200: the hub's user, with the guides and sections they
+ * have pinned (`pinResponse`), in their order, and their cases
+ * (`caseResponse`), in their order. By default the dev user `loginAsDevUser`
+ * signs in, with nothing pinned and no cases.
  *
  * Verified against the guidance API's `User` schema on 2026-11-08: id,
- * identity, displayName, createdAt, pinned as `{id, title}` items, and cases
+ * identity, displayName, createdAt, pinned as `PinInBrief` items, and cases
  * as `CaseInBrief` items.
  *
  * @param {Object} [overrides]
@@ -206,6 +206,28 @@ function userResponse (overrides = {}) {
     createdAt: '2026-10-06T08:00:00Z',
     pinned: [],
     cases: [],
+    ...overrides
+  }
+}
+
+/**
+ * One of `GET /users/{id}`'s pins: a guide the user has pinned, or a section of
+ * one, with the guide's title. By default the whole guide `guideResponse`
+ * makes, with no section.
+ *
+ * Verified against the guidance API's `PinInBrief` schema on 2026-11-08: id,
+ * title, and sectionId, section and heading, each null for a whole guide.
+ *
+ * @param {Object} [overrides]
+ * @returns {{id: string, title: string|null, sectionId: string|null, section: string|null, heading: string|null}}
+ */
+function pinResponse (overrides = {}) {
+  return {
+    id: 'guide-1',
+    title: 'Claiming the SFI payment',
+    sectionId: null,
+    section: null,
+    heading: null,
     ...overrides
   }
 }
@@ -235,10 +257,25 @@ function caseResponse (overrides = {}) {
 }
 
 /**
- * Body of `GET /users/{id}/pins` on 200: the guides the user has pinned, in
- * their order, each as `GET /guides` lists it with its position among all
- * their pins, and each filter's counts among them. By default one pinned
- * guide, and no counts.
+ * One item of `GET /users/{id}/pins`: a pin, with its guide as `GET /guides`
+ * lists it, its position among all the user's pins and, for a section, the
+ * section's id, anchor and heading. By default a whole guide, first.
+ *
+ * Verified on 2026-11-08 by validating this item, with UUIDs for its ids,
+ * against the guidance API's `PinnedSummary` schema, as a whole guide and as
+ * a section.
+ *
+ * @param {Object} [overrides]
+ * @returns {Object}
+ */
+function pinnedSummaryResponse (overrides = {}) {
+  return guideSummaryResponse({ position: 0, sectionId: null, section: null, heading: null, ...overrides })
+}
+
+/**
+ * Body of `GET /users/{id}/pins` on 200: the user's pins, guides and sections
+ * of guides, in their order (`pinnedSummaryResponse`), and each filter's
+ * counts among their guides. By default one pinned guide, and no counts.
  *
  * Verified against the guidance API's `Pinned` schema on 2026-11-05: items as
  * `PinnedSummary`, and counts of `OptionCount` by filter.
@@ -248,7 +285,7 @@ function caseResponse (overrides = {}) {
  */
 function pinnedGuidesResponse (overrides = {}) {
   return {
-    items: [guideSummaryResponse({ position: 0 })],
+    items: [pinnedSummaryResponse()],
     counts: { audience: [], system: [], scheme: [] },
     ...overrides
   }
@@ -294,6 +331,8 @@ export {
   guideResponse,
   guideSummaryResponse,
   pinnedGuidesResponse,
+  pinnedSummaryResponse,
+  pinResponse,
   recentlyOpenedResponse,
   refusalResponse,
   versionResponse,

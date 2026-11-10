@@ -1,13 +1,13 @@
 /**
  * @module Headings as a guide's page draws them in the viewer: each with its
- * bookmark control after it and, once bookmarked, the cases under it, as the
- * server-rendered fallback has them, so the page does not change when the
- * viewer takes over.
+ * controls after it - its star and its bookmark - and, once bookmarked, the
+ * cases under it, as the server-rendered fallback has them, so the page does
+ * not change when the viewer takes over.
  */
 
 import { Heading } from '@tiptap/extension-heading'
 
-import { bookmarkedToHtml, headingBookmarkHtml } from '../../../constants/heading-bookmarks.js'
+import { bookmarkedToHtml, headingControlsHtml } from '../../../constants/heading-bookmarks.js'
 
 /**
  * @param {import('@tiptap/pm/model').Node} doc
@@ -47,7 +47,7 @@ const BookmarkedHeading = Heading.extend({
       dom.append(row)
 
       if (bookmark) {
-        row.insertAdjacentHTML('beforeend', headingBookmarkHtml(bookmark, node.textContent))
+        row.insertAdjacentHTML('beforeend', headingControlsHtml(bookmark, node.textContent))
         dom.insertAdjacentHTML('beforeend', bookmarkedToHtml(bookmark))
       }
 

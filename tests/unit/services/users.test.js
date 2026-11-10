@@ -110,8 +110,8 @@ describe('users service', () => {
     test('list them in the user\'s order, narrowed by the filters, with each filter\'s counts', async () => {
       const page = guidanceApiFixtures.pinnedGuidesResponse({
         items: [
-          guidanceApiFixtures.guideSummaryResponse({ id: 'guide-2', position: 0 }),
-          guidanceApiFixtures.guideSummaryResponse({ id: 'guide-1', position: 2 })
+          guidanceApiFixtures.pinnedSummaryResponse({ id: 'guide-2', position: 0 }),
+          guidanceApiFixtures.pinnedSummaryResponse({ id: 'guide-1', position: 2, sectionId: 'section-1', section: '1-pay', heading: '1 Pay' })
         ]
       })
       usersApi.getPins.mockResolvedValue({ ok: true, status: 200, data: page })
@@ -121,8 +121,8 @@ describe('users service', () => {
 
       expect(usersApi.getPins).toHaveBeenCalledWith(HUB_ID, filters)
       expect(listed.guides).toEqual([
-        expect.objectContaining({ id: 'guide-2', title: 'Claiming the SFI payment', position: 0 }),
-        expect.objectContaining({ id: 'guide-1', title: 'Claiming the SFI payment', position: 2 })
+        expect.objectContaining({ id: 'guide-2', title: 'Claiming the SFI payment', position: 0, sectionId: null, section: null, heading: null }),
+        expect.objectContaining({ id: 'guide-1', title: 'Claiming the SFI payment', position: 2, sectionId: 'section-1', section: '1-pay', heading: '1 Pay' })
       ])
       expect(listed.counts).toEqual(page.counts)
     })
@@ -132,7 +132,7 @@ describe('users service', () => {
 
       await usersService.pin(signedInRequest(), 'guide-3')
 
-      expect(usersApi.patchPins).toHaveBeenCalledWith(HUB_ID, [{ op: 'add', path: '/0', value: 'guide-3' }])
+      expect(usersApi.patchPins).toHaveBeenCalledWith(HUB_ID, [{ op: 'add', path: '/0', value: { guideId: 'guide-3' } }])
     })
 
     test('a guide is moved only if the pins are still in the order the page showed', async () => {
@@ -141,9 +141,12 @@ describe('users service', () => {
       await usersService.movePin(signedInRequest(), ['guide-2', 'guide-1', 'guide-3'], 0, 1)
 
       expect(usersApi.patchPins).toHaveBeenCalledWith(HUB_ID, [
-        { op: 'test', path: '/0', value: 'guide-2' },
-        { op: 'test', path: '/1', value: 'guide-1' },
-        { op: 'test', path: '/2', value: 'guide-3' },
+        { op: 'test', path: '/0/guideId', value: 'guide-2' },
+        { op: 'test', path: '/0/sectionId', value: null },
+        { op: 'test', path: '/1/guideId', value: 'guide-1' },
+        { op: 'test', path: '/1/sectionId', value: null },
+        { op: 'test', path: '/2/guideId', value: 'guide-3' },
+        { op: 'test', path: '/2/sectionId', value: null },
         { op: 'move', from: '/0', path: '/1' }
       ])
     })
@@ -154,9 +157,53 @@ describe('users service', () => {
       await usersService.unpin(signedInRequest(), 'guide-1', 1)
 
       expect(usersApi.patchPins).toHaveBeenCalledWith(HUB_ID, [
-        { op: 'test', path: '/1', value: 'guide-1' },
+        { op: 'test', path: '/1/guideId', value: 'guide-1' },
+        { op: 'test', path: '/1/sectionId', value: null },
         { op: 'remove', path: '/1' }
       ])
+    })
+
+    test('a section is pinned at the top, by its anchor, with its heading', async () => {
+      usersApi.patchPins.mockResolvedValue({ ok: true, status: 204 })
+
+      await usersService.pin(signedInRequest(), 'guide-3', { section: '1-claimed-amounts', heading: '1 Claimed amounts' })
+
+      expect(usersApi.patchPins).toHaveBeenCalledWith(HUB_ID, [
+        { op: 'add', path: '/0', value: { guideId: 'guide-3', section: '1-claimed-amounts', heading: '1 Claimed amounts' } }
+      ])
+    })
+
+    test('a section is unpinned from where the page showed it, if that section is still there', async () => {
+      usersApi.patchPins.mockResolvedValue({ ok: true, status: 204 })
+
+      await usersService.unpin(signedInRequest(), 'guide-1', 2, 'section-1')
+
+      expect(usersApi.patchPins).toHaveBeenCalledWith(HUB_ID, [
+        { op: 'test', path: '/2/guideId', value: 'guide-1' },
+        { op: 'test', path: '/2/sectionId', value: 'section-1' },
+        { op: 'remove', path: '/2' }
+      ])
+    })
+
+    test('guides and sections are moved by their keys, each tested for its guide and section', async () => {
+      usersApi.patchPins.mockResolvedValue({ ok: true, status: 204 })
+      const section = usersService.pinKey({ id: 'guide-1', sectionId: 'section-1' })
+      const guide = usersService.pinKey({ id: 'guide-2', sectionId: null })
+
+      await usersService.movePin(signedInRequest(), [section, guide], 1, 0)
+
+      expect(usersApi.patchPins).toHaveBeenCalledWith(HUB_ID, [
+        { op: 'test', path: '/0/guideId', value: 'guide-1' },
+        { op: 'test', path: '/0/sectionId', value: 'section-1' },
+        { op: 'test', path: '/1/guideId', value: 'guide-2' },
+        { op: 'test', path: '/1/sectionId', value: null },
+        { op: 'move', from: '/1', path: '/0' }
+      ])
+    })
+
+    test('a pinned guide is named by its id, and a pinned section by its guide\'s id and its own', () => {
+      expect(usersService.pinKey({ id: 'guide-1', sectionId: null })).toBe('guide-1')
+      expect(usersService.pinKey({ id: 'guide-1', sectionId: 'section-1' })).toBe('guide-1/section-1')
     })
   })
 

@@ -84,12 +84,12 @@ function _userOf (request) {
 }
 
 /**
- * The guides the signed-in user has pinned, in their order, each with its
- * title. Not known when the user cannot be had, which is logged: a page shows
- * without them rather than failing.
+ * The guides, and sections of guides, the signed-in user has pinned, in their
+ * order, each with its guide's title. Not known when the user cannot be had,
+ * which is logged: a page shows without them rather than failing.
  *
  * @param {import('@hapi/hapi').Request} request - Signed in
- * @returns {Promise<Array<{id: string, title: string|null}>|null>}
+ * @returns {Promise<Array<{id: string, title: string|null, sectionId: string|null, section: string|null, heading: string|null}>|null>}
  */
 async function pinnedOf (request) {
   try {
@@ -119,65 +119,115 @@ async function casesOf (request) {
   }
 }
 
+// Between a pinned section's guide id and its own, in its key.
+const KEY_SEPARATOR = '/'
+
 /**
- * Pin a guide at the top of the signed-in user's pins.
+ * What a page names a pin by, among the user's pins: a whole guide by its id,
+ * a section by its guide's id and its own.
  *
- * @param {import('@hapi/hapi').Request} request - Signed in
- * @param {string} guideId
- * @returns {Promise<boolean>} Whether it changed anything (not if pinned already)
+ * @param {{id: string, sectionId: string|null}} pin - As the user's record has it
+ * @returns {string}
  */
-async function pin (request, guideId) {
-  return _patchPins(request, [{ op: 'add', path: '/0', value: guideId }])
+function pinKey ({ id, sectionId }) {
+  return sectionId ? `${id}${KEY_SEPARATOR}${sectionId}` : id
 }
 
 /**
- * Unpin a guide from where the page showed it. If the pins have changed since,
- * nothing changes.
+ * @param {string} key - A pin's, as `pinKey` makes it
+ * @returns {string[]} The ids in it: its guide's, then its section's for a
+ *   section
+ */
+function idsOfPinKey (key) {
+  return key.split(KEY_SEPARATOR)
+}
+
+/**
+ * Pin a guide, or a section of it, at the top of the signed-in user's pins.
+ *
+ * @param {import('@hapi/hapi').Request} request - Signed in
+ * @param {string} guideId
+ * @param {{section: string, heading: string}|null} [place] - The section, by
+ *   its anchor, with its heading as the guide has it now; none for the whole
+ *   guide
+ * @returns {Promise<boolean>} Whether it changed anything (not if pinned already)
+ */
+async function pin (request, guideId, place = null) {
+  return _patchPins(request, [{ op: 'add', path: '/0', value: { guideId, ...place } }])
+}
+
+/**
+ * Unpin a guide, or a section of it, from where the page showed it. If the
+ * pins have changed since, nothing changes.
  *
  * @param {import('@hapi/hapi').Request} request - Signed in
  * @param {string} guideId
  * @param {number} position - Where the page showed it, from 0
+ * @param {string|null} [sectionId] - The section's; none for the whole guide
  * @returns {Promise<boolean>} Whether it changed anything
  */
-async function unpin (request, guideId, position) {
+async function unpin (request, guideId, position, sectionId = null) {
   return _patchPins(request, [
-    { op: 'test', path: `/${position}`, value: guideId },
+    ..._pinnedAt(position, guideId, sectionId),
     { op: 'remove', path: `/${position}` }
   ])
 }
 
 /**
- * Move a pinned guide from one position to another, if the pins are still in
- * the order the page showed: every position is checked, so a page whose pins
- * have changed since, anywhere, changes nothing.
+ * Move a pin from one position to another, if the pins are still in the order
+ * the page showed: every position is checked, so a page whose pins have
+ * changed since, anywhere, changes nothing.
  *
  * @param {import('@hapi/hapi').Request} request - Signed in
- * @param {string[]} order - The pinned guides' ids, as the page showed them
- * @param {number} from - Where the guide to move is, from 0
+ * @param {string[]} order - The pins' keys (`pinKey`), as the page showed them
+ * @param {number} from - Where the pin to move is, from 0
  * @param {number} to - Where it goes, in the list without it (JSON Patch's move)
  * @returns {Promise<boolean>} Whether it changed anything
  */
 async function movePin (request, order, from, to) {
   return _patchPins(request, [
-    ...order.map((guideId, position) => ({ op: 'test', path: `/${position}`, value: guideId })),
+    ...order.flatMap((key, position) => _pinnedAt(position, ...idsOfPinKey(key))),
     { op: 'move', from: `/${from}`, path: `/${to}` }
   ])
 }
 
 /**
- * The guides the signed-in user has pinned, in their order, that the filters
- * let through, each with its position among all their pins, which unpinning it
- * sends; and each filter's counts among them.
+ * @private
+ * @param {number} position - Among the user's pins, from 0
+ * @param {string} guideId
+ * @param {string|null} [sectionId] - None for the whole guide
+ * @returns {Array<object>} JSON Patch `test` operations that the guide, or
+ *   that section of it, is pinned there: if either fails, the API refuses the
+ *   whole patch
+ */
+function _pinnedAt (position, guideId, sectionId = null) {
+  return [
+    { op: 'test', path: `/${position}/guideId`, value: guideId },
+    { op: 'test', path: `/${position}/sectionId`, value: sectionId }
+  ]
+}
+
+/**
+ * The signed-in user's pins, guides and sections of guides, in their order,
+ * whose guides the filters let through: each its guide, with its position
+ * among all their pins, which unpinning it sends, and for a section its id,
+ * anchor and heading; and each filter's counts among their guides.
  *
  * @param {import('@hapi/hapi').Request} request - Signed in
  * @param {import('./guides.js').Filters} [filters]
- * @returns {Promise<{guides: Array<import('./guides.js').GuideSummary & {position: number}>, counts: import('./guides.js').FilterCounts}>}
+ * @returns {Promise<{guides: Array<import('./guides.js').GuideSummary & {position: number, sectionId: string|null, section: string|null, heading: string|null}>, counts: import('./guides.js').FilterCounts}>}
  */
 async function listPinned (request, filters) {
   const res = await usersApi.getPins(await userIdOf(request), filters)
 
   return {
-    guides: res.data.items.map(item => ({ ...toGuideSummary(item), position: item.position })),
+    guides: res.data.items.map(item => ({
+      ...toGuideSummary(item),
+      position: item.position,
+      sectionId: item.sectionId,
+      section: item.section,
+      heading: item.heading
+    })),
     counts: res.data.counts ?? {}
   }
 }
@@ -217,6 +267,11 @@ async function recordOpened (request, guideId) {
 
 /**
  * @private
+ * Change the user's pins by a JSON Patch (RFC 6902), which the API applies
+ * whole or not at all: its `test` operations check that the pins are still as
+ * the page showed them, so a page whose pins have changed since changes
+ * nothing.
+ *
  * @param {import('@hapi/hapi').Request} request
  * @param {Array<object>} operations
  * @returns {Promise<boolean>} False when the API refused the patch as stale or
@@ -229,10 +284,12 @@ async function _patchPins (request, operations) {
 }
 
 export {
+  idsOfPinKey,
   listPinned,
   listRecentlyOpened,
   movePin,
   pin,
+  pinKey,
   casesOf,
   pinnedOf,
   recordOpened,

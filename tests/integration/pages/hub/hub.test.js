@@ -5,7 +5,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
-import { guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
+import { guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -385,7 +385,7 @@ describe('#hubController', () => {
       nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({
         items: [guideSummaryResponse({ id: OTHER }), guideSummaryResponse({ id: PINNED })]
       }))
-      const cookie = await signedIn({ pinned: [{ id: PINNED, title: 'Claiming the SFI payment' }] })
+      const cookie = await signedIn({ pinned: [pinResponse({ id: PINNED, title: 'Claiming the SFI payment' })] })
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub?system=CRM', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
@@ -395,6 +395,7 @@ describe('#hubController', () => {
       expect(first).toMatch(/app-search-results__pinned-tag">Pinned</)
       expect(first).toContain('<input type="hidden" name="pin" value="false">')
       expect(first).toContain('<input type="hidden" name="position" value="0">')
+      expect(first).toContain(`<input type="hidden" name="anchor" value="pin-${PINNED}">`)
       expect(first).toMatch(/aria-pressed="true"/)
       expect(second).toContain(`/guides/${OTHER}`)
       expect(second).not.toContain('Pinned<')
@@ -403,9 +404,33 @@ describe('#hubController', () => {
       expect(second).toContain(`id="pin-${OTHER}"`)
     })
 
+    test('count a guide as pinned only when it is pinned whole, at its own place among the pins', async () => {
+      nock.cleanAll()
+      nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({
+        items: [guideSummaryResponse({ id: OTHER }), guideSummaryResponse({ id: PINNED })]
+      }))
+      const section = { sectionId: '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d99', section: '1-pay', heading: '1 Pay' }
+      const cookie = await signedIn({ pinned: [pinResponse({ id: OTHER, ...section }), pinResponse({ id: PINNED }), pinResponse({ id: PINNED, ...section })] })
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      const [first, second] = main.split('<li class="app-search-results__item').slice(1)
+
+      expect(first).toContain(`/guides/${PINNED}`)
+      expect(first).toContain('<input type="hidden" name="position" value="1">')
+      expect(first).toContain(`data-reorder-follows="${PINNED}"`)
+      expect(second).toContain(`/guides/${OTHER}`)
+      expect(second).toContain('<input type="hidden" name="pin" value="true">')
+      expect(second).not.toContain('data-reorder-follows')
+    })
+
     test.each([
-      ['pins at the top', { pin: 'true' }, [{ op: 'add', path: '/0', value: OTHER }]],
-      ['unpins from where the page showed it', { pin: 'false', position: '2' }, [{ op: 'test', path: '/2', value: OTHER }, { op: 'remove', path: '/2' }]]
+      ['pins at the top', { pin: 'true' }, [{ op: 'add', path: '/0', value: { guideId: OTHER } }]],
+      ['unpins from where the page showed it', { pin: 'false', position: '2' }, [
+        { op: 'test', path: '/2/guideId', value: OTHER },
+        { op: 'test', path: '/2/sectionId', value: null },
+        { op: 'remove', path: '/2' }
+      ]]
     ])('a star %s, through the hub, then goes back to it', async (_name, form, patch) => {
       nock.cleanAll()
       const cookie = await signedIn({})
@@ -427,21 +452,73 @@ describe('#hubController', () => {
       nock.cleanAll()
       // The list says where each guide is among all the pins; the user's record,
       // read for the side navigation, may say otherwise if they changed between.
-      const cookie = await signedIn({ pinned: [{ id: PINNED, title: 'Claiming the SFI payment' }] })
+      const cookie = await signedIn({ pinned: [pinResponse({ id: PINNED, title: 'Claiming the SFI payment' })] })
       nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/pins`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, pinnedGuidesResponse({
-        items: [guideSummaryResponse({ id: PINNED, position: 1 })]
+        items: [pinnedSummaryResponse({ id: PINNED, position: 1 })]
       }))
 
       const { statusCode, payload } = await server.inject({ method: 'GET', url: '/hub/pinned?system=CRM', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(main).toContain('1 pinned guide<')
+      expect(main).toContain('1 pin<')
       expect(main).toContain(`/guides/${PINNED}`)
       expect(main).toMatch(/app-search-results__pinned-tag">Pinned</)
       expect(main).toContain('<input type="hidden" name="position" value="1">')
       expect(main).toContain('action="/hub/pinned#guide-results"')
       expect(main).not.toContain('name="sort"')
+    })
+
+    test('list a pinned section on their own page as a row of its own, by its heading, linking to the section, with its guide\'s title', async () => {
+      nock.cleanAll()
+      const SECTION = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d99'
+      const cookie = await signedIn({})
+      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/pins`).reply(statusCodes.HTTP_STATUS_OK, pinnedGuidesResponse({
+        items: [
+          pinnedSummaryResponse({ id: PINNED, sectionId: SECTION, section: '1-pay', heading: '1 Pay' }),
+          pinnedSummaryResponse({ id: PINNED, position: 1 })
+        ]
+      }))
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned', headers: { cookie } })
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      const [section, guide] = main.split('<li class="app-search-results__item').slice(1)
+
+      expect(main).toContain('2 pins<')
+      expect(section).toContain(`<a class="govuk-link" href="/guides/${PINNED}?section=1-pay">1 Pay<span class="govuk-visually-hidden">, in Claiming the SFI payment</span></a>`)
+      expect(section).toContain('<span class="govuk-visually-hidden">Pin 1 Pay, in Claiming the SFI payment</span>')
+      expect(section).toContain('In Claiming the SFI payment')
+      expect(section).toContain(`data-reorder-follows="${PINNED}/${SECTION}"`)
+      expect(section).toContain('<input type="hidden" name="position" value="0">')
+      expect(section).toContain(`<input type="hidden" name="sectionId" value="${SECTION}">`)
+      expect(section).toContain('<input type="hidden" name="anchor" value="guide-results">')
+      expect(section).toContain(`id="pin-${SECTION}"`)
+      expect(guide).toContain(`<a class="govuk-link" href="/guides/${PINNED}">Claiming the SFI payment</a>`)
+      expect(guide).toContain('<input type="hidden" name="position" value="1">')
+      expect(guide).not.toContain('name="sectionId"')
+      expect(guide).toContain('<input type="hidden" name="anchor" value="guide-results">')
+      expect(guide).toContain(`id="pin-${PINNED}"`)
+      expect(main).toContain('id="guide-results"')
+    })
+
+    test('count a guide once in their own page\'s filters, as the API counts it, however many of its pins the page lists', async () => {
+      nock.cleanAll()
+      const cookie = await signedIn({})
+      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/pins`).reply(statusCodes.HTTP_STATUS_OK, pinnedGuidesResponse({
+        items: [
+          pinnedSummaryResponse({ id: PINNED, sectionId: '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d99', section: '1-pay', heading: '1 Pay' }),
+          pinnedSummaryResponse({ id: PINNED, position: 1 })
+        ],
+        counts: { audience: [{ label: 'Processor', shortLabel: null, count: 1 }], system: [], scheme: [] }
+      }))
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned', headers: { cookie } })
+      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      const filters = main.slice(main.indexOf('<aside class="app-hub-filters"'), main.indexOf('</aside>'))
+
+      expect(main).toContain('2 pins<')
+      expect(filters).toMatch(/value="Processor"[^>]*>\s*<label[^>]*>\s*Processor <span class="app-hub-filters__count">\(1\)<\/span>/)
+      expect(filters).toMatch(/value="2026" checked disabled>\s*<label[^>]*>\s*2026 <span class="app-hub-filters__count">\(1\)<\/span>/)
     })
 
     test('say on their own page when nothing is pinned yet', async () => {
@@ -452,7 +529,7 @@ describe('#hubController', () => {
       const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
-      expect(main).toContain('You haven&#39;t pinned any guidance yet. Select &#39;Pin guide&#39; on a guide to add it here.')
+      expect(main).toContain('You have not pinned any guidance yet. Select <strong>Pin guide</strong> on a guide, or the star next to a section heading, to add it here.')
     })
 
     test('say on their own page when nothing is pinned yet, even with filters chosen', async () => {
@@ -465,7 +542,7 @@ describe('#hubController', () => {
       const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned?system=CRM', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
-      expect(main).toContain('You haven&#39;t pinned any guidance yet. Select &#39;Pin guide&#39; on a guide to add it here.')
+      expect(main).toContain('You have not pinned any guidance yet. Select <strong>Pin guide</strong> on a guide, or the star next to a section heading, to add it here.')
       expect(main).not.toContain('No guides match')
     })
 
@@ -480,7 +557,7 @@ describe('#hubController', () => {
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
       expect(main).toContain('No guides match your search or filters.')
-      expect(main).not.toContain('You haven&#39;t pinned')
+      expect(main).not.toContain('You have not pinned')
     })
 
     test('an unpin without the position the page showed is refused', async () => {
@@ -521,7 +598,7 @@ describe('#hubController', () => {
 
     test('list on their own page newest first, beside the filters, without a sort, each with its star', async () => {
       nock.cleanAll()
-      const cookie = await signedIn({ pinned: [{ id: OLDER, title: 'Claiming the SFI payment' }] })
+      const cookie = await signedIn({ pinned: [pinResponse({ id: OLDER, title: 'Claiming the SFI payment' })] })
       nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/recently-opened`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, recentlyOpenedResponse({
         items: [
           guideSummaryResponse({ id: NEWER, latestVersion: versionResponse({ title: 'Closing a case' }), openedAt: '2026-11-03T17:00:00' }),
@@ -553,7 +630,7 @@ describe('#hubController', () => {
       const { payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
-      expect(main).toContain('You haven&#39;t opened any guidance yet. Any guidance you open will appear here.')
+      expect(main).toContain("You haven't opened any guidance yet. Any guidance you open will appear here.")
     })
 
     test('say on their own page when none has been opened yet, even with filters chosen', async () => {
@@ -566,7 +643,7 @@ describe('#hubController', () => {
       const { payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened?system=CRM', headers: { cookie } })
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
-      expect(main).toContain('You haven&#39;t opened any guidance yet. Any guidance you open will appear here.')
+      expect(main).toContain("You haven't opened any guidance yet. Any guidance you open will appear here.")
       expect(main).not.toContain('No guides match')
     })
 
@@ -581,7 +658,7 @@ describe('#hubController', () => {
       const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
       expect(main).toContain('No guides match your search or filters.')
-      expect(main).not.toContain('You haven&#39;t opened')
+      expect(main).not.toContain("You haven't opened")
     })
   })
 })

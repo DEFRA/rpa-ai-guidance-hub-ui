@@ -25,7 +25,7 @@ describe('#HubViewModel', () => {
       expect(viewModel.recentlyOpened).toEqual(expect.objectContaining({
         heading: '0 recently opened guides',
         isGuideList: true,
-        emptyMessage: "You haven't opened any guidance yet. Any guidance you open will appear here.",
+        emptyHtml: "You haven't opened any guidance yet. Any guidance you open will appear here.",
         isEmpty: true,
         guides: []
       }))
@@ -35,7 +35,7 @@ describe('#HubViewModel', () => {
       expect(viewModel.allGuides).toEqual(expect.objectContaining({
         heading: '0 guides',
         showing: null,
-        emptyMessage: 'There are no guides yet.',
+        emptyHtml: 'There are no guides yet.',
         isGuideList: true,
         isEmpty: true,
         count: 0,
@@ -45,9 +45,9 @@ describe('#HubViewModel', () => {
 
     test('Should return an empty list of pinned guides, saying how to pin one', () => {
       expect(viewModel.pinned).toEqual(expect.objectContaining({
-        heading: '0 pinned guides',
+        heading: '0 pins',
         showing: null,
-        emptyMessage: "You haven't pinned any guidance yet. Select 'Pin guide' on a guide to add it here.",
+        emptyHtml: 'You have not pinned any guidance yet. Select <strong>Pin guide</strong> on a guide, or the star next to a section heading, to add it here.',
         isGuideList: true,
         isEmpty: true,
         guides: []
@@ -171,8 +171,8 @@ describe('#HubViewModel', () => {
       const filtered = new HubViewModel({ allGuides: [], filters: { selected: [{ text: 'CRM', href: '/hub' }] } })
       const unfiltered = new HubViewModel({ allGuides: [], filters: { selected: [] } })
 
-      expect(filtered.allGuides.emptyMessage).toBe('No guides match your search or filters. Try removing some filters or using different search terms.')
-      expect(unfiltered.allGuides.emptyMessage).toBe('There are no guides yet.')
+      expect(filtered.allGuides.emptyHtml).toBe('No guides match your search or filters. Try removing some filters or using different search terms.')
+      expect(unfiltered.allGuides.emptyHtml).toBe('There are no guides yet.')
     })
 
     test('Should not link to an untrusted href', () => {
@@ -196,22 +196,22 @@ describe('#HubViewModel', () => {
       published: '1 July 2026'
     }
 
-    test('Should list the pinned guides as the hub lists guides, counting them in its heading', () => {
+    test('Should list the pins as the hub lists guides, counting them in its heading', () => {
       const { pinned } = new HubViewModel({ pinned: [guide, { ...guide, id: 'guide-2' }] })
 
-      expect(pinned.heading).toBe('2 pinned guides')
+      expect(pinned.heading).toBe('2 pins')
       expect(pinned.showing).toBe('Showing 1 to 2')
       expect(pinned.guides[0]).toEqual(expect.objectContaining({ id: 'guide-1', pin: { pinned: true, position: 0 }, versionTag: { text: 'Version 2.1', colour: 'green' } }))
     })
 
-    test('Should say one pinned guide in the singular', () => {
-      expect(new HubViewModel({ pinned: [guide] }).pinned.heading).toBe('1 pinned guide')
+    test('Should say one pin in the singular', () => {
+      expect(new HubViewModel({ pinned: [guide] }).pinned.heading).toBe('1 pin')
     })
 
     test('Should say when chosen filters leave none of the pinned guides', () => {
       const { pinned } = new HubViewModel({ shown: 'pinned', filters: { selected: [{ text: 'CRM', href: '/hub/pinned' }] } })
 
-      expect(pinned.emptyMessage).toBe('No guides match your search or filters. Try removing some filters or using different search terms.')
+      expect(pinned.emptyHtml).toBe('No guides match your search or filters. Try removing some filters or using different search terms.')
     })
 
     test('Should say nothing is pinned when chosen filters had nothing to narrow', () => {
@@ -221,7 +221,7 @@ describe('#HubViewModel', () => {
         nothingToFilter: true
       })
 
-      expect(pinned.emptyMessage).toBe("You haven't pinned any guidance yet. Select 'Pin guide' on a guide to add it here.")
+      expect(pinned.emptyHtml).toBe('You have not pinned any guidance yet. Select <strong>Pin guide</strong> on a guide, or the star next to a section heading, to add it here.')
     })
   })
 
@@ -252,7 +252,7 @@ describe('#HubViewModel', () => {
     test('Should say when chosen filters leave none of the recently opened guides', () => {
       const { recentlyOpened } = new HubViewModel({ shown: 'recentlyOpened', filters: { selected: [{ text: 'CRM', href: '/hub/recently-opened' }] } })
 
-      expect(recentlyOpened.emptyMessage).toBe('No guides match your search or filters. Try removing some filters or using different search terms.')
+      expect(recentlyOpened.emptyHtml).toBe('No guides match your search or filters. Try removing some filters or using different search terms.')
     })
 
     test('Should say none has been opened when chosen filters had nothing to narrow', () => {
@@ -262,7 +262,7 @@ describe('#HubViewModel', () => {
         nothingToFilter: true
       })
 
-      expect(recentlyOpened.emptyMessage).toBe("You haven't opened any guidance yet. Any guidance you open will appear here.")
+      expect(recentlyOpened.emptyHtml).toBe("You haven't opened any guidance yet. Any guidance you open will appear here.")
     })
   })
 })

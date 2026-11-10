@@ -88,15 +88,20 @@ function _guideRow ({ versionNumber, ...item }) {
  * @param {Object} list
  * @param {Array<object>} list.items
  * @param {string} [list.noun='guide'] - What the heading counts
- * @param {string} list.emptyMessage
+ * @param {boolean} [list.onlyPins=false] - Whether every row is one of the
+ *   user's pins, so unpinning one takes it out of the list
+ * @param {string} list.emptyHtml - What it says when it has none: HTML, so a
+ *   control it tells the user to select can be bold; always the hub's own
+ *   words, never anything a user typed
  */
-function _buildGuideList ({ items, noun = 'guide', emptyMessage }) {
+function _buildGuideList ({ items, noun = 'guide', onlyPins = false, emptyHtml }) {
   const count = items.length
 
   return {
     heading: `${count} ${noun}${count === 1 ? '' : 's'}`,
     showing: count > 0 ? `Showing 1 to ${count}` : null,
-    emptyMessage,
+    emptyHtml,
+    onlyPins,
     isGuideList: true,
     isEmpty: items.length === 0,
     count: items.length,
@@ -172,13 +177,14 @@ class HubViewModel {
     this.recentlyOpened = _buildGuideList({
       items: recentlyOpened,
       noun: 'recently opened guide',
-      emptyMessage: nothingMatches ?? "You haven't opened any guidance yet. Any guidance you open will appear here."
+      emptyHtml: nothingMatches ?? "You haven't opened any guidance yet. Any guidance you open will appear here."
     })
 
     this.pinned = _buildGuideList({
       items: pinned,
-      noun: 'pinned guide',
-      emptyMessage: nothingMatches ?? "You haven't pinned any guidance yet. Select 'Pin guide' on a guide to add it here."
+      noun: 'pin',
+      onlyPins: true,
+      emptyHtml: nothingMatches ?? 'You have not pinned any guidance yet. Select <strong>Pin guide</strong> on a guide, or the star next to a section heading, to add it here.'
     })
 
     this.bookmarkedGuides = _buildTable({
@@ -192,7 +198,7 @@ class HubViewModel {
 
     this.allGuides = _buildGuideList({
       items: allGuides,
-      emptyMessage: nothingMatches ?? 'There are no guides yet.'
+      emptyHtml: nothingMatches ?? 'There are no guides yet.'
     })
 
     this.shown = this[shown]

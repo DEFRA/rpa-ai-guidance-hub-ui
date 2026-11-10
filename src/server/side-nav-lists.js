@@ -1,26 +1,8 @@
 import { CASE_TYPES } from '../constants/case-types.js'
+import { guideSectionHref } from '../pages/common/guide-section-href.js'
 import * as usersService from '../services/users.js'
 
 const UNTITLED = 'Untitled guide'
-
-/**
- * @private
- * The user's pinned guides as the side navigation lists them: each with its
- * address, and its position, which its menu's forms send back.
- *
- * @param {Array<{id: string, title: string|null}>} pinned - In the user's order
- * @returns {Array<object>}
- */
-function _pinnedGuides (pinned) {
-  return pinned.map((pin, position) => ({
-    id: pin.id,
-    title: pin.title ?? UNTITLED,
-    href: `/guides/${encodeURIComponent(pin.id)}`,
-    position,
-    isFirst: position === 0,
-    isLast: position === pinned.length - 1
-  }))
-}
 
 /**
  * @private
@@ -31,6 +13,33 @@ function _pinnedGuides (pinned) {
  */
 function _placed (position, count) {
   return { position, isFirst: position === 0, isLast: position === count - 1 }
+}
+
+/**
+ * @private
+ * The user's pins as the side navigation lists them: a guide by its title, a
+ * section by its heading, with its guide's title. Each is named by its key,
+ * with its address, and its position, which its menu's forms send back.
+ *
+ * @param {Array<{id: string, title: string|null, sectionId: string|null, section: string|null, heading: string|null}>} pinned
+ *   - In the user's order
+ * @returns {Array<object>}
+ */
+function _pins (pinned) {
+  return pinned.map((pin, position) => {
+    const title = pin.title ?? UNTITLED
+    const href = `/guides/${encodeURIComponent(pin.id)}`
+
+    return {
+      key: usersService.pinKey(pin),
+      id: pin.id,
+      sectionId: pin.sectionId,
+      label: pin.sectionId ? pin.heading ?? pin.section ?? title : title,
+      guideTitle: pin.sectionId ? title : null,
+      href: pin.section ? guideSectionHref(pin.id, pin.section) : href,
+      ..._placed(position, pinned.length)
+    }
+  })
 }
 
 /**
@@ -65,8 +74,7 @@ function _caseBookmarks (cases) {
           sections: guide.bookmarks.map(({ sectionId, section, heading }) => ({
             sectionId,
             label: heading ?? section,
-            // The guide sends it on to the page and heading that have it.
-            href: `${href}?section=${encodeURIComponent(section)}`
+            href: guideSectionHref(guide.id, section)
           }))
         }
       })
@@ -76,10 +84,10 @@ function _caseBookmarks (cases) {
 
 /**
  * Gives a signed-in page what its side navigation shows of the user's own
- * lists - the guides they pinned, and how many, and their cases with the
- * sections of guides bookmarked to them - from one call to the hub for the
- * user. Without them, the side navigation lists no pins or cases and counts
- * none.
+ * lists - the guides and sections they pinned, and how many, and their cases
+ * with the sections of guides bookmarked to them - from one call to the hub
+ * for the user. Without them, the side navigation lists no pins or cases and
+ * counts none.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -96,7 +104,7 @@ async function addSideNavLists (request, h) {
 
   response.source.context = {
     ...response.source.context,
-    pinnedGuides: _pinnedGuides(pinned ?? []),
+    pins: _pins(pinned ?? []),
     pinnedCount: pinned?.length,
     caseBookmarks: _caseBookmarks(cases ?? [])
   }

@@ -48,7 +48,7 @@
             {# Pin guide / Unpin guide: the label says the state, so no
                aria-pressed. #}
             {% if pin %}
-              <form class="app-pin-form" method="post" action="/pin-toggle">
+              <form class="app-pin-form" method="post" action="/pin-toggle"{% if pin.pinned %} data-reorder-follows="{{ guideId }}"{% endif %}>
                 <input type="hidden" name="guideId" value="{{ guideId }}">
                 <input type="hidden" name="pin" value="{{ 'false' if pin.pinned else 'true' }}">
                 {% if pin.pinned %}<input type="hidden" name="position" value="{{ pin.position }}">{% endif %}
@@ -108,7 +108,7 @@
                 <div class="app-guide-heading">
                   <div class="app-guide-heading-row">
                     <h2 class="app-guide-heading-1" id="{{ item.section.slug }}">{{ item.section.title }}</h2>
-                    {{ item.bookmark | headingBookmark(item.section.title) }}
+                    {{ item.bookmark | headingControls(item.section.title) }}
                   </div>
                   {{ item.bookmark | bookmarkedTo }}
                 </div>

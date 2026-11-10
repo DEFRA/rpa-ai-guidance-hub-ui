@@ -335,10 +335,10 @@ describe('a guide\'s headings', () => {
     return (await server.inject({ method: 'GET', url: GUIDE_PAGE, headers: { cookie } })).payload
   }
 
-  test('each have a control after them to bookmark their section to a case', async () => {
+  test('each have a control after them, after the star, to bookmark their section to a case', async () => {
     const payload = await guidePage([])
 
-    expect(payload).toMatch(/<h2[^>]*id="1-introduction"[^>]*>.*?<\/h2>\s*<a class="app-guide-section-bookmark" href="\/guides\/[^"]*\/bookmark\?section=1-introduction"/)
+    expect(payload).toMatch(/<h2[^>]*id="1-introduction"[^>]*>.*?<\/h2>\s*<form class="app-guide-section-pin"[^]*?<\/form><a class="app-guide-section-bookmark" href="\/guides\/[^"]*\/bookmark\?section=1-introduction"/)
     expect(payload).toContain(`href="${BOOKMARK_PAGE}?section=11-before-you-begin"`)
     expect(payload).toContain('<span class="govuk-visually-hidden">Bookmark to a case: 1.1 Before you begin</span>')
     expect(payload).toContain('data-heading-bookmarks="[{&quot;href&quot;:&quot;')
@@ -414,8 +414,8 @@ describe('a guide that repeats a heading', () => {
 
     const { payload } = await get(GUIDE_PAGE)
 
-    expect(payload).toMatch(/<h2[^>]*id="help-1"[^>]*>.*?<\/h2>\s*<a class="app-guide-section-bookmark" href="[^"]*\/bookmark\?section=help"/)
-    expect(payload).toMatch(/<h2[^>]*id="help-3"[^>]*>.*?<\/h2>\s*<a class="app-guide-section-bookmark app-guide-section-bookmark--active" href="[^"]*\/bookmark\?section=help-1"/)
+    expect(payload).toMatch(/<h2[^>]*id="help-1"[^>]*>.*?<\/h2>\s*<form class="app-guide-section-pin"[^]*?<\/form><a class="app-guide-section-bookmark" href="[^"]*\/bookmark\?section=help"/)
+    expect(payload).toMatch(/<h2[^>]*id="help-3"[^>]*>.*?<\/h2>\s*<form class="app-guide-section-pin"[^]*?<\/form><a class="app-guide-section-bookmark app-guide-section-bookmark--active" href="[^"]*\/bookmark\?section=help-1"/)
     expect(payload).toContain('id="help-2"')
   })
 
@@ -436,6 +436,38 @@ describe('a guide that repeats a heading', () => {
 
     expect(patching.isDone()).toBe(true)
     expect(headers.location).toBe(`${GUIDE_PAGE}${at}`)
+  })
+
+  test('gives each section\'s star the hub\'s anchor, and its heading\'s anchor on the page to come back to', async () => {
+    mockGuideAndUser([], REPEATED)
+    nock(GUIDANCE_API_BASE_URL).post(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+
+    const { payload } = await get(GUIDE_PAGE)
+    const starAfter = id => payload.slice(payload.indexOf(`id="${id}"`), payload.indexOf('</form>', payload.indexOf(`id="${id}"`)))
+
+    expect(starAfter('help-1')).toContain('<input type="hidden" name="section" value="help">')
+    expect(starAfter('help-1')).toContain('<input type="hidden" name="anchor" value="help-1">')
+    expect(starAfter('help-3')).toContain('<input type="hidden" name="section" value="help-1">')
+    expect(starAfter('help-3')).toContain('<input type="hidden" name="anchor" value="help-3">')
+  })
+
+  test('pins the second section by the hub\'s anchor, then goes back to its heading', async () => {
+    nock(GUIDANCE_API_BASE_URL)
+      .get(`/guides/${GUIDE_ID}/content`).reply(statusCodes.HTTP_STATUS_OK, REPEATED, { 'Content-Type': 'text/plain' })
+      .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+    const pinning = nock(GUIDANCE_API_BASE_URL)
+      .patch(`/users/${USER_ID}/pins`, [{ op: 'add', path: '/0', value: { guideId: GUIDE_ID, section: 'help-1', heading: 'Help' } }])
+      .reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+
+    const { headers } = await server.inject({
+      method: 'POST',
+      url: '/pin-toggle',
+      headers: { cookie, 'content-type': 'application/x-www-form-urlencoded' },
+      payload: `guideId=${GUIDE_ID}&pin=true&section=help-1&anchor=help-3&returnTo=${encodeURIComponent(GUIDE_PAGE)}`
+    })
+
+    expect(pinning.isDone()).toBe(true)
+    expect(headers.location).toBe(`${GUIDE_PAGE}#help-3`)
   })
 
   test('opens at the heading of the section a link names by the hub\'s anchor, as the side navigation links to it', async () => {

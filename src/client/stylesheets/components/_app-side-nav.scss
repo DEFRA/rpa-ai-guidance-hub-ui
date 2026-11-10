@@ -727,9 +727,12 @@ details:not([open]) > summary .app-side-nav__chevron {
   font-weight: 400;
 }
 
-// Case ID or SBI application number, shown as text so the two kinds of
-// bookmark aren't told apart by icon alone.
-.app-side-nav__ref-type {
+// A case's type (Case ID or SBI application number) above its reference,
+// shown as text so the two kinds of bookmark aren't told apart by icon alone;
+// and a pinned section's guide under its heading. Each is a line of its own
+// within the item's text, so it wraps with it.
+.app-side-nav__ref-type,
+.app-side-nav__in-guide {
   display: block;
   color: $app-side-nav-muted;
   font-size: 14px;
