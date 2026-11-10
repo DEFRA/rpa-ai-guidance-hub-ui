@@ -20,6 +20,10 @@ import {
   stagedDocumentResponse,
   systemsResponse
 } from '../../../../../../fixtures/guidance-api.js'
+import { METADATA_MESSAGES } from '../../../../../../../src/pages/create-guidance/upload-guide/metadata/schemas/metadata-schema.js'
+import { CONVERSION_MESSAGES } from '../../../../../../../src/pages/create-guidance/upload-guide/converting/progress.js'
+import { REFUSAL_MESSAGES } from '../../../../../../../src/pages/create-guidance/upload-guide/metadata/check-answers/controller.js'
+import { RESULTS } from '../../../../../../../src/services/guides.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const CHECK_ANSWERS_URL = '/create-guidance/upload-guide/metadata/check-answers'
@@ -286,8 +290,8 @@ describe('#checkAnswersController Integration', () => {
         const page = await converting(cookie, saving({ savingStatus: 'failed', saveStepsCompleted: 3, saveStepsTotal: 74, saveError: 'refused' }))
 
         const shown = pageOf(page.result)
-        expect(shown.getByRole('alert')).toHaveTextContent('The document could not be converted')
-        expect(shown.getByRole('alert')).toHaveTextContent('Go back to check your answers and select Convert document again. If this keeps happening, contact the support team')
+        expect(shown.getByRole('alert')).toHaveTextContent(CONVERSION_MESSAGES.failed)
+        expect(shown.getByRole('alert')).toHaveTextContent(CONVERSION_MESSAGES.failedDetail)
         expect(shown.document.title).toMatch(/^Error: Converting your document \| /)
       })
     })
@@ -312,12 +316,12 @@ describe('#checkAnswersController Integration', () => {
       })
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
-      expect(pageOf(response.payload).getByRole('alert')).toHaveTextContent('The uploaded document has expired. Start again and upload it again')
+      expect(pageOf(response.payload).getByRole('alert')).toHaveTextContent(REFUSAL_MESSAGES[RESULTS.UPLOAD_EXPIRED])
     })
 
     test.each([
-      ['unfinished', 'in_progress', 'The uploaded document is still being processed. Wait a few seconds, then select Convert document again'],
-      ['failed', 'failed', 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team']
+      ['unfinished', 'in_progress', REFUSAL_MESSAGES[RESULTS.PARSE_PENDING]],
+      ['failed', 'failed', REFUSAL_MESSAGES[RESULTS.PARSE_FAILED]]
     ])('POST redisplays check answers explaining why when the document parse is %s', async (_, parsingStatus, message) => {
       const devCookie = await loginAsDevUser(server)
       const cookie = await completeAllMetadata(server, devCookie)
@@ -403,7 +407,7 @@ describe('#checkAnswersController Integration', () => {
       const errors = errorSummaryOf(pageOf(response.payload))
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
       expect(errors.getByRole('heading', { name: 'There is a problem' })).toBeInTheDocument()
-      expect(errors.getByRole('link', { name: 'Select at least one scheme this guidance relates to' })).toBeInTheDocument()
+      expect(errors.getByRole('link', { name: METADATA_MESSAGES.schemeRequired })).toBeInTheDocument()
     })
   })
 
