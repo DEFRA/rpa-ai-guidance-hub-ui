@@ -5,10 +5,10 @@ import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
-import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
+import { HUB_MESSAGES, HubViewModel } from '../../../../src/pages/hub/view-models.js'
 import { guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
-import { pageOf, sideNavOf } from '../../helpers/page.js'
+import { pageOf, sideNavOf, textOf } from '../../helpers/page.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 
@@ -138,7 +138,7 @@ describe('#hubController', () => {
 
   describe('a list of guides', () => {
     test.each([
-      ['/hub/bookmarked-guides', 'Bookmarked guides', "You haven't bookmarked any guidance yet. Bookmark a section of a guide to add it here."]
+      ['/hub/bookmarked-guides', 'Bookmarked guides', HUB_MESSAGES.noneBookmarked]
     ])('%s shows only the %s list', async (url, heading, emptyMessage) => {
       const cookie = await loginAsDevUser(server)
 
@@ -249,7 +249,7 @@ describe('#hubController', () => {
       const page = await hubListing([])
 
       expect(page.getByRole('heading', { level: 2, name: '0 guides' })).toBeInTheDocument()
-      expect(page.getByText('There are no guides yet.')).toBeInTheDocument()
+      expect(page.getByText(HUB_MESSAGES.noGuides)).toBeInTheDocument()
       expect(page.queryByText(/^Showing/)).not.toBeInTheDocument()
     })
   })
@@ -379,8 +379,8 @@ describe('#hubController', () => {
     test('say that no guides match when the chosen values leave none', async () => {
       const { page } = await hubWith({ system: 'CRM' }, guidePageResponse({ items: [], counts: COUNTS }))
 
-      expect(page.getByText('No guides match your search or filters. Try removing some filters or using different search terms.')).toBeInTheDocument()
-      expect(page.queryByText('There are no guides yet.')).not.toBeInTheDocument()
+      expect(page.getByText(HUB_MESSAGES.noneMatch)).toBeInTheDocument()
+      expect(page.queryByText(HUB_MESSAGES.noGuides)).not.toBeInTheDocument()
     })
 
     test('answer a value the hub does not have as a bad request', async () => {
@@ -562,7 +562,7 @@ describe('#hubController', () => {
       const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned', headers: { cookie } })
       const page = pageOf(payload)
 
-      expect(page.getByText('Pin guide').closest('p')).toHaveTextContent('You have not pinned any guidance yet. Select Pin guide on a guide, or the star next to a section heading, to add it here.')
+      expect(page.getByText('Pin guide').closest('p')).toHaveTextContent(textOf(HUB_MESSAGES.nonePinned))
       expect(page.getByText('Pin guide').tagName).toBe('STRONG')
     })
 
@@ -576,8 +576,8 @@ describe('#hubController', () => {
       const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned?system=CRM', headers: { cookie } })
       const page = pageOf(payload)
 
-      expect(page.getByText('Pin guide').closest('p')).toHaveTextContent('You have not pinned any guidance yet. Select Pin guide on a guide, or the star next to a section heading, to add it here.')
-      expect(page.queryByText(/^No guides match/)).not.toBeInTheDocument()
+      expect(page.getByText('Pin guide').closest('p')).toHaveTextContent(textOf(HUB_MESSAGES.nonePinned))
+      expect(page.queryByText(HUB_MESSAGES.noneMatch)).not.toBeInTheDocument()
     })
 
     test('say when the chosen filters leave none of them', async () => {
@@ -590,8 +590,8 @@ describe('#hubController', () => {
       const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned?system=CRM', headers: { cookie } })
       const page = pageOf(payload)
 
-      expect(page.getByText(/^No guides match your search or filters\./)).toBeInTheDocument()
-      expect(page.queryByText(/^You have not pinned/)).not.toBeInTheDocument()
+      expect(page.getByText(HUB_MESSAGES.noneMatch)).toBeInTheDocument()
+      expect(page.document.querySelector('main')).not.toHaveTextContent(textOf(HUB_MESSAGES.nonePinned))
     })
 
     test('an unpin without the position the page showed is refused', async () => {
@@ -663,7 +663,7 @@ describe('#hubController', () => {
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened', headers: { cookie } })
 
-      expect(pageOf(payload).getByText("You haven't opened any guidance yet. Any guidance you open will appear here.")).toBeInTheDocument()
+      expect(pageOf(payload).getByText(HUB_MESSAGES.noneOpened)).toBeInTheDocument()
     })
 
     test('say on their own page when none has been opened yet, even with filters chosen', async () => {
@@ -676,8 +676,8 @@ describe('#hubController', () => {
       const { payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened?system=CRM', headers: { cookie } })
       const page = pageOf(payload)
 
-      expect(page.getByText("You haven't opened any guidance yet. Any guidance you open will appear here.")).toBeInTheDocument()
-      expect(page.queryByText(/^No guides match/)).not.toBeInTheDocument()
+      expect(page.getByText(HUB_MESSAGES.noneOpened)).toBeInTheDocument()
+      expect(page.queryByText(HUB_MESSAGES.noneMatch)).not.toBeInTheDocument()
     })
 
     test('say when the chosen filters leave none of them', async () => {
@@ -690,8 +690,8 @@ describe('#hubController', () => {
       const { payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened?system=CRM', headers: { cookie } })
       const page = pageOf(payload)
 
-      expect(page.getByText(/^No guides match your search or filters\./)).toBeInTheDocument()
-      expect(page.queryByText(/^You haven't opened/)).not.toBeInTheDocument()
+      expect(page.getByText(HUB_MESSAGES.noneMatch)).toBeInTheDocument()
+      expect(page.queryByText(HUB_MESSAGES.noneOpened)).not.toBeInTheDocument()
     })
   })
 })
