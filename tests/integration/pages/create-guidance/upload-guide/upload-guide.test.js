@@ -7,6 +7,7 @@ import { stagedDocumentResponse } from '../../../../fixtures/guidance-api.js'
 import { createServer } from '../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../helpers/login.js'
 import { mergeCookies } from '../../../helpers/cookies.js'
+import { pageOf } from '../../../helpers/page.js'
 import { config } from '../../../../../src/config/config.js'
 import * as referenceDataService from '../../../../../src/services/reference-data.js'
 
@@ -67,7 +68,7 @@ describe('#uploadGuideController', () => {
     })
 
     expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-    expect(payload).toContain('Upload guidance')
+    expect(pageOf(payload).getByRole('heading', { level: 1, name: 'Upload guidance' })).toBeInTheDocument()
   })
 
   describe('once a migration has been started', () => {
@@ -82,10 +83,13 @@ describe('#uploadGuideController', () => {
         headers: { cookie }
       })
 
+      const page = pageOf(payload)
+      const file = page.getByLabelText('Upload a file')
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(payload).toContain('Upload guidance')
-      expect(payload).toContain(`/upload-and-scan/${uploadId}`)
-      expect(payload).toMatch(/<input[^>]*type="file"[^>]*accept="\.docx,application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document"/)
+      expect(page.getByRole('heading', { level: 1, name: 'Upload guidance' })).toBeInTheDocument()
+      expect(file.form).toHaveAttribute('action', `/upload-and-scan/${uploadId}`)
+      expect(file).toHaveAttribute('type', 'file')
+      expect(file).toHaveAttribute('accept', '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     })
 
     test('redirects to the processing page while the upload is still being scanned', async () => {
@@ -200,7 +204,7 @@ describe('#uploadGuideController', () => {
       })
 
       expect(first.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(first.payload).toContain('You have already uploaded a document for this guide')
+      expect(pageOf(first.payload).getByRole('region', { name: 'Important' })).toHaveTextContent('You have already uploaded a document for this guide')
 
       const second = await server.inject({
         method: 'GET',
@@ -209,7 +213,7 @@ describe('#uploadGuideController', () => {
       })
 
       expect(second.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(second.payload).not.toContain('You have already uploaded a document for this guide')
+      expect(pageOf(second.payload).queryByRole('region', { name: 'Important' })).not.toBeInTheDocument()
 
       nock.cleanAll()
     })

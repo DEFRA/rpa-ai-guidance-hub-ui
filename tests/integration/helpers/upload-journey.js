@@ -3,6 +3,7 @@ import nock from 'nock'
 
 import { config } from '../../../src/config/config.js'
 import { mergeCookies } from './cookies.js'
+import { pageOf } from './page.js'
 import {
   audiencesResponse,
   schemesResponse,
@@ -153,7 +154,7 @@ async function expectFreshUploadForm (server, cookie) {
   })
 
   expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-  expect(response.payload).toContain('/upload-and-scan/u-next')
+  expect(pageOf(response.payload).getByLabelText('Upload a file').form).toHaveAttribute('action', '/upload-and-scan/u-next')
 }
 
 export {

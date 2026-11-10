@@ -1,8 +1,10 @@
 import { constants as statusCodes } from 'node:http2'
+import { within } from '@testing-library/dom'
 import nock from 'nock'
 import { createServer } from '../../../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../../../helpers/login.js'
 import { mergeCookies } from '../../../../../helpers/cookies.js'
+import { errorSummaryOf, pageOf, summaryValueOf } from '../../../../../helpers/page.js'
 import {
   completeAllMetadata,
   expectFreshUploadForm,
@@ -97,25 +99,22 @@ describe('#checkAnswersController Integration', () => {
         headers: { cookie }
       })
 
+      const page = pageOf(response.payload)
+      const cardTitled = (title) => within(page.getByRole('heading', { name: title }).closest('.govuk-summary-card'))
+      const details = cardTitled('The guide\'s details')
+      const purpose = cardTitled('Owner and purpose')
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(response.payload).toContain('The guide&#39;s details')
-      expect(response.payload).toContain('Owner and purpose')
-      expect(response.payload).not.toContain('Who it&#39;s for and system access')
-      expect(response.payload).toContain('Complete Guide Title')
-      expect(response.payload).toMatch(/Version number\s*<\/dt>\s*<dd class="govuk-summary-list__value">\s*1\.0\s*</)
-      expect(response.payload).not.toContain('1.2')
-      expect(response.payload).toContain('designer@example.com')
-      expect(response.payload).toContain('Clear guidance purpose')
-      expect(response.payload).toContain('Required knowledge and training')
-      expect(response.payload).toContain('Standard training required')
-      expect(response.payload).toContain('Who is this guidance for?')
-      expect(response.payload).toContain('Processor')
-      expect(response.payload).toContain(
-        'href="/create-guidance/upload-guide/metadata?from=check"'
-      )
-      expect(response.payload).toContain(
-        'href="/create-guidance/upload-guide/metadata/purpose?from=check"'
-      )
+      expect(page.queryByRole('heading', { name: 'Who it\'s for and system access' })).not.toBeInTheDocument()
+      expect(summaryValueOf(details, 'Guidance title')).toHaveTextContent('Complete Guide Title')
+      // The version number the user gave, not the document's own.
+      expect(summaryValueOf(details, 'Version number')).toHaveTextContent(/^1\.0$/)
+      expect(page.document.querySelector('main')).not.toHaveTextContent('1.2')
+      expect(summaryValueOf(purpose, 'Owner email')).toHaveTextContent('designer@example.com')
+      expect(summaryValueOf(purpose, 'Purpose of guidance')).toHaveTextContent('Clear guidance purpose')
+      expect(summaryValueOf(purpose, 'Required knowledge and training')).toHaveTextContent('Standard training required')
+      expect(summaryValueOf(purpose, 'Who is this guidance for?')).toHaveTextContent('Processor')
+      expect(details.getByRole('link', { name: /^Change/ })).toHaveAttribute('href', '/create-guidance/upload-guide/metadata?from=check')
+      expect(purpose.getByRole('link', { name: /^Change/ })).toHaveAttribute('href', '/create-guidance/upload-guide/metadata/purpose?from=check')
     })
 
     test('Change action returns to check-answers when continuing from metadata screen', async () => {
@@ -134,9 +133,7 @@ describe('#checkAnswersController Integration', () => {
       })
 
       expect(getChangeResponse.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(getChangeResponse.payload).toContain(
-        'action="/create-guidance/upload-guide/metadata?from=check"'
-      )
+      expect(pageOf(getChangeResponse.payload).getByLabelText('Guidance title').form).toHaveAttribute('action', '/create-guidance/upload-guide/metadata?from=check')
 
       nock(GUIDANCE_API_BASE_URL)
         .get('/reference/schemes')
@@ -248,11 +245,12 @@ describe('#checkAnswersController Integration', () => {
 
         const page = await converting(cookie, saving({ saveStepsCompleted: 37, saveStepsTotal: 74 }))
 
+        const shown = pageOf(page.result)
+        const progress = shown.getByRole('progressbar', { name: 'Saving the document: 37 of 74 parts saved' })
         expect(page.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-        expect(page.result).toContain('class="app-progress"')
-        expect(page.result).toContain('aria-valuenow="50"')
-        expect(page.result).toContain('Saving the document: 37 of 74 parts saved')
-        expect(page.result).toContain('data-poll-url="/create-guidance/upload-guide/converting/status"')
+        expect(progress).toHaveAttribute('aria-valuenow', '50')
+        expect(progress.parentElement).toHaveClass('app-progress')
+        expect(shown.document.querySelector('[data-module="app-progress"]')).toHaveAttribute('data-poll-url', '/create-guidance/upload-guide/converting/status')
       })
 
       test('the page gets the progress again from the status the browser polls', async () => {
@@ -279,7 +277,7 @@ describe('#checkAnswersController Integration', () => {
         })
 
         expect(confirmation.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-        expect(confirmation.result).toContain('Complete Guide Title')
+        expect(pageOf(confirmation.result).getByText('Complete Guide Title')).toHaveClass('govuk-panel__body')
       })
 
       test('when the save fails, the page shows an error that tells the user what to do next', async () => {
@@ -287,9 +285,10 @@ describe('#checkAnswersController Integration', () => {
 
         const page = await converting(cookie, saving({ savingStatus: 'failed', saveStepsCompleted: 3, saveStepsTotal: 74, saveError: 'refused' }))
 
-        expect(page.result).toContain('The document could not be converted')
-        expect(page.result).toContain('Go back to check your answers and select Convert document again. If this keeps happening, contact the support team')
-        expect(page.result.replace(/\s+/g, ' ')).toMatch(/<title> Error: Converting your document \| /)
+        const shown = pageOf(page.result)
+        expect(shown.getByRole('alert')).toHaveTextContent('The document could not be converted')
+        expect(shown.getByRole('alert')).toHaveTextContent('Go back to check your answers and select Convert document again. If this keeps happening, contact the support team')
+        expect(shown.document.title).toMatch(/^Error: Converting your document \| /)
       })
     })
 
@@ -313,7 +312,7 @@ describe('#checkAnswersController Integration', () => {
       })
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
-      expect(response.payload).toContain('The uploaded document has expired. Start again and upload it again')
+      expect(pageOf(response.payload).getByRole('alert')).toHaveTextContent('The uploaded document has expired. Start again and upload it again')
     })
 
     test.each([
@@ -340,7 +339,7 @@ describe('#checkAnswersController Integration', () => {
       })
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
-      expect(response.payload).toContain(message)
+      expect(pageOf(response.payload).getByRole('alert')).toHaveTextContent(message)
     })
 
     test('POST waits for a conversion slower than the API client\'s timeout, then starts a new guide', async () => {
@@ -401,11 +400,10 @@ describe('#checkAnswersController Integration', () => {
         headers: { cookie }
       })
 
+      const errors = errorSummaryOf(pageOf(response.payload))
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
-      expect(response.payload).toContain('There is a problem')
-      expect(response.payload).toContain(
-        'Select at least one scheme this guidance relates to'
-      )
+      expect(errors.getByRole('heading', { name: 'There is a problem' })).toBeInTheDocument()
+      expect(errors.getByRole('link', { name: 'Select at least one scheme this guidance relates to' })).toBeInTheDocument()
     })
   })
 

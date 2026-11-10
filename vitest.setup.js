@@ -14,6 +14,8 @@ process.env.CDP_UPLOADER_BASE_URL = 'http://cdp-uploader.test'
 process.env.SOURCE_DOCS_S3_BUCKET = 'rpa-ai-guidance-hub-source-docs'
 
 import { afterEach, vi } from 'vitest'
+// Matchers that say, when they fail, what an element was expected to have.
+import '@testing-library/jest-dom/vitest'
 
 afterEach(() => {
   vi.clearAllMocks()

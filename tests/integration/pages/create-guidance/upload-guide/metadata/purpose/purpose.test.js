@@ -1,8 +1,10 @@
 import { constants as statusCodes } from 'node:http2'
+import { within } from '@testing-library/dom'
 import nock from 'nock'
 import { createServer } from '../../../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../../../helpers/login.js'
 import { mergeCookies } from '../../../../../helpers/cookies.js'
+import { errorSummaryOf, pageOf, summaryValueOf } from '../../../../../helpers/page.js'
 import { config } from '../../../../../../../src/config/config.js'
 import {
   schemesResponse,
@@ -121,22 +123,23 @@ describe('#purposeController Integration', () => {
 
       const response = await server.inject({ method: 'GET', url: PURPOSE_URL, headers: { cookie } })
 
+      const page = pageOf(response.payload)
+      const owner = page.getByLabelText('Owner email')
+      const goal = page.getByLabelText('What is the purpose of this guidance?')
+      const systems = page.getByRole('group', { name: 'What systems will you use?' })
+      const audience = page.getByRole('group', { name: 'Who is this guidance for?' })
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(response.payload).toContain('Owner and purpose')
-      expect(response.payload).toContain('Owner email')
-      expect(response.payload).toContain('The email address of who approves and publishes this guide')
-      expect(response.payload).toContain('autocomplete="email"')
-      expect(response.payload).toContain('What is the purpose of this guidance?')
-      expect(response.payload).toContain('data-maxlength="200"')
-      expect(response.payload).toContain('You can enter up to 200 characters')
-      expect(response.payload).toContain('Required knowledge and training')
-      expect(response.payload).toContain('What systems will you use?')
-      expect(response.payload).toContain('Select all systems this guidance uses.')
-      expect(response.payload).toContain('SITI Agri')
-      expect(response.payload).toContain('Who is this guidance for?')
-      expect(response.payload).toContain('Select all that apply.')
-      expect(response.payload).toContain('Team leader')
-      expect(response.payload).toContain('href="/create-guidance/upload-guide/metadata"')
+      expect(page.getByRole('heading', { level: 1, name: 'Owner and purpose' })).toBeInTheDocument()
+      expect(owner).toHaveAccessibleDescription('The email address of who approves and publishes this guide')
+      expect(owner).toHaveAttribute('autocomplete', 'email')
+      expect(goal.closest('.govuk-character-count')).toHaveAttribute('data-maxlength', '200')
+      expect(goal).toHaveAccessibleDescription('You can enter up to 200 characters Provide a brief overview of what this guidance covers and when it should be used.')
+      expect(page.getByLabelText('Required knowledge and training')).toBeInTheDocument()
+      expect(systems).toHaveAccessibleDescription('Select all systems this guidance uses.')
+      expect(within(systems).getByRole('checkbox', { name: 'SITI Agri' })).toBeInTheDocument()
+      expect(audience).toHaveAccessibleDescription('Select all that apply.')
+      expect(within(audience).getByRole('checkbox', { name: 'Team leader' })).toBeInTheDocument()
+      expect(within(page.document.body).getByRole('link', { name: 'Back' })).toHaveAttribute('href', '/create-guidance/upload-guide/metadata')
     })
 
     test('POST with an empty payload re-renders 400 listing every error in page order', async () => {
@@ -146,20 +149,16 @@ describe('#purposeController Integration', () => {
 
       const response = await server.inject({ method: 'POST', url: PURPOSE_URL, payload: {}, headers: { cookie } })
 
+      const errors = errorSummaryOf(pageOf(response.payload))
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
-      expect(response.payload).toContain('There is a problem')
-
-      const expectedOrder = [
+      expect(errors.getByRole('heading', { name: 'There is a problem' })).toBeInTheDocument()
+      expect(errors.getAllByRole('link').map((link) => link.textContent.trim())).toEqual([
         'Enter an email address',
         'Enter what this guidance aims to achieve',
         'Enter what users need to perform or understand',
         'Select the systems this guidance uses',
         'Select who this guidance is for'
-      ]
-      const positions = expectedOrder.map((message) => response.payload.indexOf(message))
-
-      expect(positions.every((position) => position !== -1)).toBe(true)
-      expect([...positions].sort((a, b) => a - b)).toEqual(positions)
+      ])
     })
 
     test('POST with an invalid email re-renders 400 keeping the entered values', async () => {
@@ -173,12 +172,13 @@ describe('#purposeController Integration', () => {
         headers: { cookie }
       })
 
+      const page = pageOf(response.payload)
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
-      expect(response.payload).toContain('Enter an email address in the correct format')
-      expect(response.payload).toContain('value="not-an-email"')
-      expect(response.payload).toContain('Explains how to process a claim')
-      expect(response.payload).toMatch(/value="siti-agri"\s+checked/)
-      expect(response.payload).toMatch(/value="team-leader"\s+checked/)
+      expect(errorSummaryOf(page).getByRole('link', { name: 'Enter an email address in the correct format' })).toBeInTheDocument()
+      expect(page.getByLabelText('Owner email')).toHaveValue('not-an-email')
+      expect(page.getByLabelText('What is the purpose of this guidance?')).toHaveValue('Explains how to process a claim')
+      expect(page.getByRole('checkbox', { name: 'SITI Agri' })).toBeChecked()
+      expect(page.getByRole('checkbox', { name: 'Team leader' })).toBeChecked()
     })
 
     test('POST with valid answers saves them and redirects to check answers', async () => {
@@ -196,26 +196,28 @@ describe('#purposeController Integration', () => {
       mockReferenceOptions()
       const checkAnswers = await server.inject({ method: 'GET', url: CHECK_ANSWERS_URL, headers: { cookie: savedCookie } })
 
+      const answers = pageOf(checkAnswers.payload)
       expect(checkAnswers.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(checkAnswers.payload).toContain('Check the details before you convert')
-      expect(checkAnswers.payload).toContain('A valid title')
-      expect(checkAnswers.payload).toContain('Sustainable Farming Incentive (SFI)')
-      expect(checkAnswers.payload).toContain('owner@example.com')
-      expect(checkAnswers.payload).toContain('CRM')
-      expect(checkAnswers.payload).toContain('Processor')
-      expect(checkAnswers.payload).toContain('Team leader')
+      expect(answers.getByRole('heading', { level: 1, name: 'Check the details before you convert' })).toBeInTheDocument()
+      expect(summaryValueOf(answers, 'Guidance title')).toHaveTextContent('A valid title')
+      expect(summaryValueOf(answers, 'Scheme')).toHaveTextContent('Sustainable Farming Incentive (SFI)')
+      expect(summaryValueOf(answers, 'Owner email')).toHaveTextContent('owner@example.com')
+      expect(summaryValueOf(answers, 'Systems')).toHaveTextContent('CRM')
+      expect(summaryValueOf(answers, 'Who is this guidance for?')).toHaveTextContent('Processor')
+      expect(summaryValueOf(answers, 'Who is this guidance for?')).toHaveTextContent('Team leader')
 
       mockReferenceOptions()
       const purpose = await server.inject({ method: 'GET', url: PURPOSE_URL, headers: { cookie: savedCookie } })
 
-      expect(purpose.payload).toContain('value="owner@example.com"')
-      expect(purpose.payload).toMatch(/value="crm"\s+checked/)
+      const purposeAgain = pageOf(purpose.payload)
+      expect(purposeAgain.getByLabelText('Owner email')).toHaveValue('owner@example.com')
+      expect(purposeAgain.getByRole('checkbox', { name: 'CRM' })).toBeChecked()
 
       // ...and the guide details, proving the two screens merged into one session object
       mockSchemes()
       const details = await server.inject({ method: 'GET', url: '/create-guidance/upload-guide/metadata', headers: { cookie: savedCookie } })
 
-      expect(details.payload).toContain('value="A valid title"')
+      expect(pageOf(details.payload).getByLabelText('Guidance title')).toHaveValue('A valid title')
     })
 
     test('GET check answers redirects to the purpose form if its answers are missing', async () => {

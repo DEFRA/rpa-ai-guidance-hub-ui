@@ -4,6 +4,7 @@ import { createServer } from '../../../../../../src/server/server.js'
 import { config } from '../../../../../../src/config/config.js'
 import { loginAsDevUser } from '../../../../helpers/login.js'
 import { mergeCookies } from '../../../../helpers/cookies.js'
+import { pageOf } from '../../../../helpers/page.js'
 import { completeAllMetadata, mockReferenceData } from '../../../../helpers/upload-journey.js'
 import { createdGuideResponse } from '../../../../../fixtures/guidance-api.js'
 
@@ -60,7 +61,7 @@ describe('Guidance converted page', () => {
       return {
         submitted,
         confirmation,
-        text: confirmation.payload.replaceAll(/\s+/g, ' '),
+        page: pageOf(confirmation.payload),
         cookie: mergeCookies(convertedCookie, confirmation.headers['set-cookie'])
       }
     }
@@ -74,29 +75,31 @@ describe('Guidance converted page', () => {
     })
 
     test('the page shows a GOV.UK panel with Guidance converted and the guide title the user gave', async () => {
-      const { text } = await convertAndConfirm()
+      const { page } = await convertAndConfirm()
 
-      expect(text).toMatch(/<div class="govuk-panel govuk-panel--confirmation"> <h1 class="govuk-panel__title"> Guidance converted <\/h1> <div class="govuk-panel__body"> Complete Guide Title <\/div> <\/div>/)
+      const panel = page.getByRole('heading', { level: 1, name: 'Guidance converted' }).closest('.govuk-panel')
+      expect(panel).toHaveClass('govuk-panel--confirmation')
+      expect(panel.querySelector('.govuk-panel__body')).toHaveTextContent(/^Complete Guide Title$/)
     })
 
     test('the page shows the What happens next text from the prototype', async () => {
-      const { text } = await convertAndConfirm()
+      const { page } = await convertAndConfirm()
 
-      expect(text).toContain('<h2 class="govuk-heading-m">What happens next</h2>')
-      expect(text).toContain('Your document is now markdown in the hub, saved as a draft. Only you can see it until it is reviewed and published.')
-      expect(text).toContain('Have a look at how it converted before you take it any further.')
+      expect(page.getByRole('heading', { level: 2, name: 'What happens next' })).toBeInTheDocument()
+      expect(page.getByText('Your document is now markdown in the hub, saved as a draft. Only you can see it until it is reviewed and published.')).toBeInTheDocument()
+      expect(page.getByText('Have a look at how it converted before you take it any further.')).toBeInTheDocument()
     })
 
     test('the page shows a View the guidance button that does not open a different page', async () => {
-      const { text } = await convertAndConfirm()
+      const { page } = await convertAndConfirm()
 
-      expect(text).toMatch(/<a href="#" [^>]*class="govuk-button"[^>]*> View the guidance <\/a>/)
+      expect(page.getByRole('button', { name: 'View the guidance' })).toHaveAttribute('href', '#')
     })
 
     test('the page shows a Convert another document link to the start of the upload', async () => {
-      const { text } = await convertAndConfirm()
+      const { page } = await convertAndConfirm()
 
-      expect(text).toContain('<a class="govuk-link" href="/create-guidance/upload-guide">Convert another document</a>')
+      expect(page.getByRole('link', { name: 'Convert another document' })).toHaveAttribute('href', '/create-guidance/upload-guide')
     })
 
     test('the page shows one time only: a refresh shows the Hub and does not convert the document again', async () => {
@@ -130,9 +133,9 @@ describe('Guidance converted page', () => {
     })
 
     test('the browser tab shows the title Guidance converted', async () => {
-      const { text } = await convertAndConfirm()
+      const { page } = await convertAndConfirm()
 
-      expect(text).toMatch(/<title> Guidance converted \| /)
+      expect(page.document.title).toMatch(/^Guidance converted \| /)
     })
   })
 })
