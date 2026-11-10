@@ -253,4 +253,30 @@ describe('users service', () => {
       expect(listed.counts).toEqual(counts)
     })
   })
+
+  describe('the user\'s bookmarked guides', () => {
+    function signedInRequest () {
+      return { auth: { credentials: { sessionId: 's-1', profile, token: 't', userId: HUB_ID } }, app: {} }
+    }
+
+    test('list them in the API\'s order, narrowed by the filters, with each filter\'s counts', async () => {
+      const counts = { scheme: [], system: [], audience: [] }
+      usersApi.getBookmarkedGuides.mockResolvedValue({
+        ok: true,
+        status: 200,
+        data: guidanceApiFixtures.bookmarkedGuidesResponse({
+          items: [guidanceApiFixtures.guideSummaryResponse({ id: 'guide-2' }), guidanceApiFixtures.guideSummaryResponse({ id: 'guide-1' })],
+          counts
+        })
+      })
+      const filters = { audience: [], system: ['CRM'], scheme: [], noScheme: false }
+
+      const listed = await usersService.listBookmarked(signedInRequest(), filters)
+
+      expect(usersApi.getBookmarkedGuides).toHaveBeenCalledWith(HUB_ID, filters)
+      expect(listed.guides.map(guide => guide.id)).toEqual(['guide-2', 'guide-1'])
+      expect(listed.guides[0]).toEqual(expect.objectContaining({ title: 'Claiming the SFI payment' }))
+      expect(listed.counts).toEqual(counts)
+    })
+  })
 })

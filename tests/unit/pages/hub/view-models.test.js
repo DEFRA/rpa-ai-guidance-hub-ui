@@ -1,23 +1,16 @@
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
 
-const item = {
-  title: 'CS MA Claim - Revenue Options Claim Rule at Signoff 2026',
-  href: '/guidance/1',
-  lastModified: '20 July 2026',
-  version: '1',
-  removeHref: '/hub/remove/1'
-}
-
 describe('#HubViewModel', () => {
   describe('when no guidance is provided', () => {
     const viewModel = new HubViewModel()
 
-    test('Should return an empty bookmarkedGuides table', () => {
+    test('Should return an empty list of bookmarked guides, saying how to bookmark one', () => {
       expect(viewModel.bookmarkedGuides).toEqual(expect.objectContaining({
-        heading: 'Bookmarked guides',
+        heading: '0 bookmarked guides',
+        isGuideList: true,
+        emptyHtml: "You haven't bookmarked any guidance yet. Bookmark a section of a guide to add it here.",
         isEmpty: true,
-        count: 0,
-        rows: []
+        guides: []
       }))
     })
 
@@ -64,61 +57,66 @@ describe('#HubViewModel', () => {
   })
 
   describe('bookmarkedGuides', () => {
-    test('Should build a title/lastModified/version/action row, defaulting status to Published', () => {
-      const viewModel = new HubViewModel({ bookmarkedGuides: [item] })
+    const guide = {
+      id: 'guide-1',
+      pin: { pinned: false, position: null },
+      title: 'Claiming the SFI payment',
+      href: '/guides/guide-1',
+      versionNumber: '2.1',
+      purpose: 'Explain the claim.',
+      lastUpdated: '20 July 2026',
+      published: '1 July 2026'
+    }
 
-      expect(viewModel.bookmarkedGuides.rows).toEqual([[
-        { type: 'title', text: item.title, href: item.href, statusText: 'Published', statusColour: 'green' },
-        { type: 'text', text: item.lastModified },
-        { type: 'version', version: item.version, colour: 'green' },
-        { type: 'removeAction', text: item.title, href: item.removeHref }
-      ]])
+    test('Should list the bookmarked guides as the hub lists guides, counting them in its heading', () => {
+      const { bookmarkedGuides } = new HubViewModel({ bookmarkedGuides: [guide, { ...guide, id: 'guide-2' }] })
+
+      expect(bookmarkedGuides.heading).toBe('2 bookmarked guides')
+      expect(bookmarkedGuides.showing).toBe('Showing 1 to 2')
+      expect(bookmarkedGuides.guides.map(row => row.id)).toEqual(['guide-1', 'guide-2'])
     })
 
-    test('Should use a provided status over the Published default', () => {
-      const viewModel = new HubViewModel({ bookmarkedGuides: [{ ...item, status: 'Archived' }] })
-
-      expect(viewModel.bookmarkedGuides.rows[0][0]).toEqual(
-        expect.objectContaining({ statusText: 'Archived', statusColour: 'green' })
-      )
+    test('Should say one bookmarked guide in the singular', () => {
+      expect(new HubViewModel({ bookmarkedGuides: [guide] }).bookmarkedGuides.heading).toBe('1 bookmarked guide')
     })
 
-    test.each([
-      ['1', 'green'],
-      ['0.5', 'green'],
-      ['1.1', 'purple'],
-      ['2', 'purple']
-    ])('Should tag version %s as %s', (version, colour) => {
-      const viewModel = new HubViewModel({ bookmarkedGuides: [{ ...item, version }] })
+    test('Should say when chosen filters leave none of the bookmarked guides', () => {
+      const { bookmarkedGuides } = new HubViewModel({ shown: 'bookmarkedGuides', filters: { selected: [{ text: 'CRM', href: '/hub/bookmarked-guides' }] } })
 
-      expect(viewModel.bookmarkedGuides.rows[0][2]).toEqual({ type: 'version', version, colour })
-    })
-  })
-
-  describe('untrusted hrefs', () => {
-    test.each([
-      ['javascript: URI', 'javascript:alert(document.cookie)'],
-      ['data: URI', 'data:text/html,<script>alert(1)</script>'],
-      ['protocol-relative URL', '//evil.example.com'],
-      ['backslash protocol-relative URL', '/\\evil.example.com'],
-      ['newline protocol-relative URL', '/\n/evil.example.com'],
-      ['carriage return protocol-relative URL', '/\r/evil.example.com'],
-      ['tab protocol-relative URL', '/\t/evil.example.com'],
-      ['unparseable URL', '//['],
-      ['absolute URL', 'https://evil.example.com'],
-      ['missing href', undefined]
-    ])('Should replace a %s href with "#"', (_, href) => {
-      const viewModel = new HubViewModel({ bookmarkedGuides: [{ ...item, href, removeHref: href }] })
-
-      expect(viewModel.bookmarkedGuides.rows[0][0].href).toBe('#')
-      expect(viewModel.bookmarkedGuides.rows[0][3].href).toBe('#')
+      expect(bookmarkedGuides.emptyHtml).toBe('No guides match your search or filters. Try removing some filters or using different search terms.')
     })
 
-    test('Should keep a same-origin relative href', () => {
-      const viewModel = new HubViewModel({ bookmarkedGuides: [item] })
+    test('Should say nothing is bookmarked when chosen filters had nothing to narrow', () => {
+      const { bookmarkedGuides } = new HubViewModel({
+        shown: 'bookmarkedGuides',
+        filters: { selected: [{ text: 'CRM', href: '/hub/bookmarked-guides' }] },
+        nothingToFilter: true
+      })
 
-      expect(viewModel.bookmarkedGuides.rows[0][0].href).toBe(item.href)
-      expect(viewModel.bookmarkedGuides.rows[0][3].href).toBe(item.removeHref)
+      expect(bookmarkedGuides.emptyHtml).toBe("You haven't bookmarked any guidance yet. Bookmark a section of a guide to add it here.")
+    })
+
+    describe('untrusted hrefs', () => {
+      test.each([
+        ['javascript: URI', 'javascript:alert(document.cookie)'],
+        ['data: URI', 'data:text/html,<script>alert(1)</script>'],
+        ['protocol-relative URL', '//evil.example.com'],
+        ['backslash protocol-relative URL', '/\\evil.example.com'],
+        ['newline protocol-relative URL', '/\n/evil.example.com'],
+        ['carriage return protocol-relative URL', '/\r/evil.example.com'],
+        ['tab protocol-relative URL', '/\t/evil.example.com'],
+        ['unparseable URL', '//['],
+        ['absolute URL', 'https://evil.example.com'],
+        ['missing href', undefined]
+      ])('Should replace a %s href with "#"', (_, href) => {
+        const { bookmarkedGuides } = new HubViewModel({ bookmarkedGuides: [{ ...guide, href }] })
+
+        expect(bookmarkedGuides.guides[0].href).toBe('#')
+      })
+
+      test('Should keep a same-origin relative href', () => {
+        expect(new HubViewModel({ bookmarkedGuides: [guide] }).bookmarkedGuides.guides[0].href).toBe('/guides/guide-1')
+      })
     })
   })
 

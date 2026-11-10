@@ -2,7 +2,7 @@ import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
 import * as usersApi from '../../../../src/infra/guidance-api/users.js'
-import { pinnedGuidesResponse, recentlyOpenedResponse } from '../../../fixtures/guidance-api.js'
+import { bookmarkedGuidesResponse, pinnedGuidesResponse, recentlyOpenedResponse } from '../../../fixtures/guidance-api.js'
 
 const GUIDANCE_API = config.get('guidanceApi.baseUrl')
 const HUB_ID = '01a18d45-0000-7000-8000-000000000001'
@@ -71,6 +71,21 @@ describe('users infra', () => {
         .reply(200, page)
 
       const res = await usersApi.getRecentlyOpened(HUB_ID, { audience: [], system: [], scheme: ['Countryside Stewardship'], noScheme: false })
+
+      expect(listing.isDone()).toBe(true)
+      expect(res.data).toEqual(page)
+    })
+  })
+
+  describe('getBookmarkedGuides', () => {
+    test('asks for the guides bookmarked to the user\'s cases with each chosen value of a filter', async () => {
+      const page = bookmarkedGuidesResponse({ counts: COUNTS })
+      const listing = nock(GUIDANCE_API)
+        .get(`/users/${HUB_ID}/bookmarked-guides`)
+        .query({ system: ['CRM', 'Siti Agri'], no_scheme: 'true' })
+        .reply(200, page)
+
+      const res = await usersApi.getBookmarkedGuides(HUB_ID, { audience: [], system: ['CRM', 'Siti Agri'], scheme: [], noScheme: true })
 
       expect(listing.isDone()).toBe(true)
       expect(res.data).toEqual(page)

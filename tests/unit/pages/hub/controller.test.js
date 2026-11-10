@@ -226,17 +226,19 @@ describe('#hubController', () => {
       })
     })
 
-    test('Should show another list\'s empty message, without asking for the user\'s guides', async () => {
-      vi.spyOn(usersService, 'listPinned')
-      vi.spyOn(usersService, 'listRecentlyOpened')
+    test('Should list the bookmarked guides in the API\'s order, each with its star, beside the filters, without a sort', async () => {
+      vi.spyOn(usersService, 'listBookmarked').mockResolvedValue({ guides: [listedGuide, { ...listedGuide, id: 'guide-2' }], counts: COUNTS })
+      vi.spyOn(usersService, 'pinnedOf').mockResolvedValue([{ id: 'guide-2', sectionId: null }])
+      const request = { params: { list: 'bookmarked-guides' }, query: { system: 'CRM' } }
 
-      await getHubListPage({ params: { list: 'bookmarked-guides' }, query: {} }, h)
+      await getHubListPage(request, h)
 
       const [, viewModel] = h.view.mock.calls[0]
-      expect(usersService.listPinned).not.toHaveBeenCalled()
-      expect(usersService.listRecentlyOpened).not.toHaveBeenCalled()
-      expect(viewModel.shown.heading).toBe('Bookmarked guides')
-      expect(viewModel.filters).toBeNull()
+      expect(usersService.listBookmarked).toHaveBeenCalledWith(request, { audience: [], system: ['CRM'], scheme: [], noScheme: false })
+      expect(viewModel.shown).toBe(viewModel.bookmarkedGuides)
+      expect(viewModel.shown.guides.map((row) => [row.id, row.pin.pinned])).toEqual([['guide-1', false], ['guide-2', true]])
+      expect(viewModel.filters.action).toBe('/hub/bookmarked-guides')
+      expect(viewModel.filters.sort).toBeNull()
     })
   })
 })

@@ -126,6 +126,20 @@ async function getRecentlyOpened (userId, filters = {}) {
 }
 
 /**
+ * The guides bookmarked to the user's cases, each once, in the order of the
+ * cases, that the filters let through.
+ *
+ * @param {string} userId
+ * @param {{audience?: string[], system?: string[], scheme?: string[], noScheme?: boolean}} [filters]
+ * @returns {Promise<{ok: boolean, status: number, data: any}>} - data is
+ *   `{items, counts}`, each item a guide as `GET /guides` lists it
+ * @throws {GuidanceApiError} - When response is not ok
+ */
+async function getBookmarkedGuides (userId, filters = {}) {
+  return guidanceApiClient.request(`${_userPath(userId)}/bookmarked-guides`, { query: _filterQuery(filters) })
+}
+
+/**
  * @private
  * @param {{audience?: string[], system?: string[], scheme?: string[], noScheme?: boolean}} filters
  * @returns {Object} The hub's filters as the API's lists of a user's guides
@@ -150,6 +164,7 @@ function _userPath (userId) {
 }
 
 export {
+  getBookmarkedGuides,
   getPins,
   getRecentlyOpened,
   getUser,

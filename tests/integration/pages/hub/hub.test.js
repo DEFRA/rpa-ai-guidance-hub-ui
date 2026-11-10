@@ -6,7 +6,7 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
-import { guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
+import { bookmarkedGuidesResponse, guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 import { pageOf, sideNavOf } from '../../helpers/page.js'
 
@@ -97,60 +97,29 @@ describe('#hubController', () => {
       expect(main).not.toHaveTextContent('Awaiting my review')
     })
 
+    /** A guide as a list's row takes it, by `title` and `href`. */
+    function listedGuide (title, href) {
+      return { id: 'guide-1', pin: null, title, href, versionNumber: '1.0', purpose: null, lastUpdated: '23 September 2026', published: '1 September 2026' }
+    }
+
     test('Should escape HTML in guidance items to prevent XSS vulnerabilities', async () => {
       const xssTitle = '<script>alert("xss")</script>'
-      const items = [
-        {
-          title: xssTitle,
-          href: '/guidance/xss',
-          lastModified: '23 September 2026',
-          version: '1',
-          removeHref: '/hub/remove/xss'
-        }
-      ]
 
-      const renderedHtml = await server.render('hub/page.njk', new HubViewModel({ bookmarkedGuides: items, shown: 'bookmarkedGuides' }))
+      const renderedHtml = await server.render('hub/page.njk', new HubViewModel({ bookmarkedGuides: [listedGuide(xssTitle, '/guides/xss')], shown: 'bookmarkedGuides' }))
 
       const page = pageOf(renderedHtml)
-      expect(page.getByRole('link', { name: xssTitle })).toHaveAttribute('href', '/guidance/xss')
+      expect(page.getByRole('link', { name: xssTitle })).toHaveAttribute('href', '/guides/xss')
       expect(page.document.querySelector('main script')).toBeNull()
-      expect(page.getByRole('table')).toBeInTheDocument()
     })
 
     test('Should not render a javascript: href from a guidance item', async () => {
-      const items = [
-        {
-          title: 'Untrusted href',
-          href: 'javascript:alert(document.cookie)',
-          lastModified: '23 September 2026',
-          version: '1',
-          removeHref: '//evil.example.com'
-        }
-      ]
+      const renderedHtml = await server.render('hub/page.njk', new HubViewModel({ bookmarkedGuides: [listedGuide('Untrusted href', 'javascript:alert(document.cookie)')], shown: 'bookmarkedGuides' }))
 
-      const renderedHtml = await server.render('hub/page.njk', new HubViewModel({ bookmarkedGuides: items, shown: 'bookmarkedGuides' }))
-
-      const page = pageOf(renderedHtml)
-      expect(page.getByRole('link', { name: 'Untrusted href' })).toHaveAttribute('href', '#')
-      expect(page.getByText('Remove', { selector: 'a' })).toHaveAttribute('href', '#')
+      expect(pageOf(renderedHtml).getByRole('link', { name: 'Untrusted href' })).toHaveAttribute('href', '#')
     })
   })
 
   describe('a list of guides', () => {
-    test.each([
-      ['/hub/bookmarked-guides', 'Bookmarked guides', "You haven't bookmarked any guidance yet. Bookmark a section of a guide to add it here."]
-    ])('%s shows only the %s list', async (url, heading, emptyMessage) => {
-      const cookie = await loginAsDevUser(server)
-
-      const { statusCode, payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
-
-      const page = pageOf(payload)
-      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(textsOf(page.getAllByRole('heading', { level: 2 }))).toEqual([heading])
-      expect(page.getByText(emptyMessage)).toBeInTheDocument()
-      expect(page.queryByRole('tablist')).not.toBeInTheDocument()
-    })
-
     test.each([
       ['/hub/recently-opened'],
       ['/hub/pinned'],
@@ -692,6 +661,79 @@ describe('#hubController', () => {
 
       expect(page.getByText(/^No guides match your search or filters\./)).toBeInTheDocument()
       expect(page.queryByText(/^You haven't opened/)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('bookmarked guides', () => {
+    const { id: USER_ID } = userResponse()
+    const CLOSING = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
+    const CLAIMS = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
+
+    async function signedIn (user) {
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse(user))
+
+      return loginAsDevUser(server)
+    }
+
+    test('list on their own page in the API\'s order, as the hub\'s rows, beside the filters, without a sort', async () => {
+      nock.cleanAll()
+      const cookie = await signedIn({ pinned: [pinResponse({ id: CLAIMS, title: 'Claiming the SFI payment' })] })
+      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/bookmarked-guides`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, bookmarkedGuidesResponse({
+        items: [
+          guideSummaryResponse({ id: CLOSING, latestVersion: versionResponse({ title: 'Closing a case' }) }),
+          guideSummaryResponse({ id: CLAIMS })
+        ],
+        counts: { audience: [], system: [{ label: 'CRM', shortLabel: null, count: 2, retired: false }], scheme: [] }
+      }))
+
+      const { statusCode, payload } = await server.inject({ method: 'GET', url: '/hub/bookmarked-guides?system=CRM', headers: { cookie } })
+      const page = pageOf(payload)
+      const [closing, claims] = rowsOf(page)
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(page.getByRole('heading', { level: 2, name: '2 bookmarked guides' })).toBeInTheDocument()
+      expect(closing.getByRole('link', { name: 'Closing a case' })).toHaveAttribute('href', `/guides/${CLOSING}`)
+      expect(claims.getByRole('link', { name: 'Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${CLAIMS}`)
+      expect(starFormOf(claims)).toHaveFormValues({ position: '0' })
+      expect(filtersOf(page).getByRole('checkbox', { name: 'CRM (2)' })).toBeChecked()
+      expect(filtersOf(page).getByRole('button', { name: 'Apply filters' }).form).toHaveAttribute('action', '/hub/bookmarked-guides#guide-results')
+      expect(page.queryByRole('combobox', { name: 'Sort by:' })).not.toBeInTheDocument()
+    })
+
+    test('say on their own page when none is bookmarked yet', async () => {
+      nock.cleanAll()
+      const cookie = await signedIn({})
+      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/bookmarked-guides`).reply(statusCodes.HTTP_STATUS_OK, bookmarkedGuidesResponse({ items: [] }))
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub/bookmarked-guides', headers: { cookie } })
+
+      expect(pageOf(payload).getByText("You haven't bookmarked any guidance yet. Bookmark a section of a guide to add it here.")).toBeInTheDocument()
+    })
+
+    test('say when the chosen filters leave none of them', async () => {
+      nock.cleanAll()
+      const cookie = await signedIn({})
+      nock(GUIDANCE_API_BASE_URL)
+        .get(`/users/${USER_ID}/bookmarked-guides`).query({ system: 'CRM' }).reply(statusCodes.HTTP_STATUS_OK, bookmarkedGuidesResponse({ items: [] }))
+        .get(`/users/${USER_ID}/bookmarked-guides`).reply(statusCodes.HTTP_STATUS_OK, bookmarkedGuidesResponse())
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub/bookmarked-guides?system=CRM', headers: { cookie } })
+      const page = pageOf(payload)
+
+      expect(page.getByText(/^No guides match your search or filters\./)).toBeInTheDocument()
+      expect(page.queryByText(/^You haven't bookmarked/)).not.toBeInTheDocument()
+    })
+
+    test('mark "Bookmarked guides" as the current page in the side navigation', async () => {
+      nock.cleanAll()
+      const cookie = await signedIn({})
+      nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/bookmarked-guides`).reply(statusCodes.HTTP_STATUS_OK, bookmarkedGuidesResponse())
+
+      const { payload } = await server.inject({ method: 'GET', url: '/hub/bookmarked-guides', headers: { cookie } })
+
+      expect(sideNavOf(pageOf(payload)).getByRole('link', { name: 'Bookmarked guides', current: 'page' })).toBeInTheDocument()
     })
   })
 })
