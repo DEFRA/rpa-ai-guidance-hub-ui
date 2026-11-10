@@ -150,15 +150,28 @@
   color: $govuk-secondary-text-colour;
 }
 
-.app-pin-button {
+// The guide's controls at one height and in one type, as the spike has them:
+// Pin guide, the page width beside it, and the format at the top of the
+// contents pane.
+$app-guide-control-height: 32px;
+$app-guide-control-padding: 8px;
+
+// Nested to outrank .govuk-button's own size and type.
+.app-guide-byline .app-pin-button {
   display: inline-flex;
+  box-sizing: border-box;
   align-items: center;
-  gap: 6px;
+  gap: govuk-spacing(1);
+  height: $app-guide-control-height;
   margin-bottom: 0;
+  padding: 0 $app-guide-control-padding;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
 
   .app-side-nav-icon {
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
   }
 }
 
@@ -198,17 +211,24 @@
   margin-left: auto;
 }
 
-// The format toggle's segmented look, on buttons rather than links: the
-// page width's, and the guide format's own.
+// The format toggle's segmented look, on buttons rather than links, at the
+// controls' height: the page width's, and the guide format's own.
 .app-guide-reading-width__options,
 .app-guide-format__options {
+  box-sizing: border-box;
+  height: $app-guide-control-height;
   margin-bottom: 0;
 
   .app-guide-format-toggle__option {
+    display: inline-flex;
+    align-items: center;
     margin: 0;
+    padding: 0 $app-guide-control-padding;
     border: 0;
     background-color: $govuk-white;
     color: $govuk-black;
+    line-height: 1;
+    white-space: nowrap;
     cursor: pointer;
 
     &:not(:last-child) {
