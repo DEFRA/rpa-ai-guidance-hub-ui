@@ -164,9 +164,11 @@
               {% endif %}
 
               {% if format == 'stepper' and (item.previous or item.next) %}
+                {# "Previous page" and "Next page" in full, where GOV.UK's own
+                   wording hides "page" from sight. #}
                 {{ govukPagination({
-                  previous: { href: item.previous.href, labelText: item.previous.labelText } if item.previous else undefined,
-                  next: { href: item.next.href, labelText: item.next.labelText } if item.next else undefined
+                  previous: { text: "Previous page", href: item.previous.href, labelText: item.previous.labelText } if item.previous else undefined,
+                  next: { text: "Next page", href: item.next.href, labelText: item.next.labelText } if item.next else undefined
                 }) }}
               {% endif %}
             </div>

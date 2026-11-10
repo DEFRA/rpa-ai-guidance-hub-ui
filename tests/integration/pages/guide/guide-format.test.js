@@ -162,6 +162,23 @@ describe('A guide\'s format', () => {
     })
   })
 
+  describe('in the stepper', () => {
+    test('says "Previous page" and "Next page" in full on its links either side, each with its section\'s title', async () => {
+      const response = await chooseFormat('stepper', GUIDE_URL)
+      const page = await guidePage(`${GUIDE_URL}?section=assign-case`, mergeCookies(cookie, response.headers['set-cookie']))
+      const either = within(page.getByRole('navigation', { name: 'Pagination' }))
+
+      for (const [words, section] of [['Previous page', 'Introduction'], ['Next page', 'Close case']]) {
+        const link = either.getByRole('link', { name: new RegExp(`^${words}`) })
+        const title = within(link).getByText(words)
+
+        expect(link).toHaveTextContent(section)
+        // GOV.UK's own wording hides "page" from sight.
+        expect(title.querySelector('.govuk-visually-hidden')).toBeNull()
+      }
+    })
+  })
+
   describe('a choice of format', () => {
     test('goes back to the hub rather than to another site', async () => {
       const response = await chooseFormat('traditional', 'https://evil.example')
