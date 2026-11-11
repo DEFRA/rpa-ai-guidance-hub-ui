@@ -227,7 +227,8 @@ class GuideViewModel {
     // Where changing the format takes the reader: the page the address names,
     // at its heading. Each format reads the part it needs: the stepper the
     // page, the traditional view the heading.
-    this.place = `${href(pageNumber)}${this.section?.slug ? `#${this.section.slug}` : ''}`
+    const heading = this.section?.slug ? `#${this.section.slug}` : ''
+    this.place = `${href(pageNumber)}${heading}`
   }
 
   /**
@@ -242,8 +243,9 @@ class GuideViewModel {
    */
   static pageHref (guideId, section) {
     const anchor = section?.sectionAnchor ?? section?.slug
+    const query = anchor ? `?section=${encodeURIComponent(anchor)}` : ''
 
-    return `/guides/${encodeURIComponent(guideId)}${anchor ? `?section=${encodeURIComponent(anchor)}` : ''}`
+    return `/guides/${encodeURIComponent(guideId)}${query}`
   }
 }
 
