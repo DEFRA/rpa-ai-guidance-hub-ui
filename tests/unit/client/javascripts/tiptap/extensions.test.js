@@ -23,10 +23,13 @@ function viewerLink (href, text = 'go') {
 }
 
 describe('the viewer\'s links', () => {
-  test('open a link to another site in a new tab, saying so to a screen reader', () => {
-    const link = viewerLink('https://www.gov.uk/x', 'GOV.UK').getByRole('link', { name: /^GOV\.UK ?\(opens in new tab\)$/ })
+  test.each([
+    'https://www.gov.uk/x',
+    '//www.gov.uk/x'
+  ])('open a link to another site, %s, in a new tab, saying so to a screen reader', (href) => {
+    const link = viewerLink(href, 'GOV.UK').getByRole('link', { name: /^GOV\.UK ?\(opens in new tab\)$/ })
 
-    expect(link).toHaveAttribute('href', 'https://www.gov.uk/x')
+    expect(link).toHaveAttribute('href', href)
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
