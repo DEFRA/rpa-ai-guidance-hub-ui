@@ -1,4 +1,4 @@
-import { buildMetadataSchema } from '../../../../../../src/pages/create-guidance/upload-guide/metadata/schemas/metadata-schema.js'
+import { buildMetadataSchema, METADATA_MESSAGES } from '../../../../../../src/pages/create-guidance/upload-guide/metadata/schemas/metadata-schema.js'
 
 const schemeOptions = [{ label: 'Sustainable Farming Incentive' }, { label: 'Not scheme-specific' }]
 
@@ -12,6 +12,16 @@ function validPayload (overrides = {}) {
 }
 
 describe('#buildMetadataSchema', () => {
+  test('says what is wrong with an answer in these words', () => {
+    expect(METADATA_MESSAGES).toEqual({
+      titleRequired: 'Enter the guidance title',
+      titleTooLong: 'Guidance title must be 200 characters or fewer',
+      versionNumberRequired: 'Enter the version number',
+      versionNumberFormat: 'Enter the version number as 2 whole numbers with a full stop between them, for example 1.0',
+      schemeRequired: 'Select at least one scheme this guidance relates to'
+    })
+  })
+
   const metadataSchema = buildMetadataSchema(schemeOptions)
 
   test('accepts valid payload with valid scheme and title', () => {
@@ -32,36 +42,34 @@ describe('#buildMetadataSchema', () => {
   test('rejects missing or empty guideTitle', () => {
     const resultEmpty = metadataSchema.validate(validPayload({ guideTitle: '' }))
     expect(resultEmpty.error).toBeDefined()
-    expect(resultEmpty.error.details[0].message).toBe('Enter the guidance title')
+    expect(resultEmpty.error.details[0].message).toBe(METADATA_MESSAGES.titleRequired)
 
     const resultMissing = metadataSchema.validate({ schemes: ['sfi'] })
     expect(resultMissing.error).toBeDefined()
-    expect(resultMissing.error.details[0].message).toBe('Enter the guidance title')
+    expect(resultMissing.error.details[0].message).toBe(METADATA_MESSAGES.titleRequired)
   })
 
   test('rejects guideTitle longer than 200 characters', () => {
     const result = metadataSchema.validate(validPayload({ guideTitle: 'a'.repeat(201) }))
     expect(result.error).toBeDefined()
-    expect(result.error.details[0].message).toBe('Guidance title must be 200 characters or fewer')
+    expect(result.error.details[0].message).toBe(METADATA_MESSAGES.titleTooLong)
   })
 
   test('rejects missing or invalid scheme', () => {
     const resultMissing = metadataSchema.validate(validPayload({ schemes: undefined }))
     expect(resultMissing.error).toBeDefined()
-    expect(resultMissing.error.details[0].message).toBe('Select at least one scheme this guidance relates to')
+    expect(resultMissing.error.details[0].message).toBe(METADATA_MESSAGES.schemeRequired)
 
     const resultInvalid = metadataSchema.validate(validPayload({ schemes: ['invalid-scheme'] }))
     expect(resultInvalid.error).toBeDefined()
-    expect(resultInvalid.error.details[0].message).toBe('Select at least one scheme this guidance relates to')
+    expect(resultInvalid.error.details[0].message).toBe(METADATA_MESSAGES.schemeRequired)
   })
 
   describe('the version number', () => {
-    const MALFORMED = 'Enter the version number as 2 whole numbers with a full stop between them, for example 1.0'
-
     test.each([[''], ['   '], [undefined]])('is asked for when it is %j', (versionNumber) => {
       const result = metadataSchema.validate(validPayload({ versionNumber }))
 
-      expect(result.error.details[0].message).toBe('Enter the version number')
+      expect(result.error.details[0].message).toBe(METADATA_MESSAGES.versionNumberRequired)
     })
 
     test.each([
@@ -70,7 +78,7 @@ describe('#buildMetadataSchema', () => {
     ])('is refused as %j, not two whole numbers with a full stop between them', (versionNumber) => {
       const result = metadataSchema.validate(validPayload({ versionNumber }))
 
-      expect(result.error.details[0].message).toBe(MALFORMED)
+      expect(result.error.details[0].message).toBe(METADATA_MESSAGES.versionNumberFormat)
     })
 
     test.each([['1.0'], ['0.1'], ['12.3'], ['2024.10']])('is accepted as %s', (versionNumber) => {
@@ -91,7 +99,7 @@ describe('#buildMetadataSchema', () => {
     const result = otherSchema.validate(validPayload({ schemes: ['Sustainable Farming Incentive'] }))
 
     expect(result.error).toBeDefined()
-    expect(result.error.details[0].message).toBe('Select at least one scheme this guidance relates to')
+    expect(result.error.details[0].message).toBe(METADATA_MESSAGES.schemeRequired)
   })
 
   test('throws an error when no valid scheme options are provided', () => {

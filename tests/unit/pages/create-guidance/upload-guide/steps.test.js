@@ -1,6 +1,17 @@
-import { getStepState, STATUS_IDS, STEPS } from '../../../../../src/pages/create-guidance/upload-guide/steps.js'
+import { getStepState, STATUS_IDS, STEPS, UPLOAD_STEP_MESSAGES } from '../../../../../src/pages/create-guidance/upload-guide/steps.js'
 
 describe('upload guide steps', () => {
+  test('says why an upload failed in these words', () => {
+    expect(UPLOAD_STEP_MESSAGES).toEqual({
+      notChecked: 'The selected file could not be checked. Upload it again.',
+      notUploaded: 'The selected file could not be uploaded. Upload a different file.',
+      noFile: 'Select a Word document to upload.',
+      notFound: 'Your upload could not be found. Upload the document again.',
+      cannotOpen: 'This file cannot be opened',
+      cannotOpenDetail: 'Check you selected the correct file and that it has not been corrupted, then upload it again. If this keeps happening, contact the support team.'
+    })
+  })
+
   test('lists scanning and parse steps', () => {
     expect(STEPS.map((step) => step.id)).toEqual(['scanning', 'parse'])
   })
@@ -42,8 +53,8 @@ describe('upload guide steps', () => {
 
       expect(state.isError).toBe(true)
       expect(state.label).toBe('File could not be opened')
-      expect(state.message).toBe('This file cannot be opened')
-      expect(state.detail).toEqual(expect.any(String))
+      expect(state.message).toBe(UPLOAD_STEP_MESSAGES.cannotOpen)
+      expect(state.detail).toBe(UPLOAD_STEP_MESSAGES.cannotOpenDetail)
     })
 
     test('falls back to uploader:pending for unknown status', () => {
