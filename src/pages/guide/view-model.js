@@ -1,6 +1,7 @@
 import { CASE_TYPES } from '../../constants/case-types.js'
 import { bookmarkedSections } from '../../services/case-bookmarks.js'
 import { NOT_SCHEME_SPECIFIC } from '../../services/reference-data.js'
+import { caseGuidesHref } from '../common/case-guides-href.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { versionTag } from '../common/version-tag.js'
 import { CONTENTS_WIDTH } from './contents-width.js'
@@ -143,6 +144,26 @@ function _headingHref (slug) {
 }
 
 /**
+ * @private
+ * A section just bookmarked, as the message that confirms it says so, with
+ * the address of the Bookmarked guides page narrowed to the case, found among
+ * the user's by its type and reference.
+ *
+ * @param {{type: string, ref: string, heading: string}} bookmarked
+ * @param {Array<{key: string, type: string, ref: string}>} cases - The user's
+ * @returns {{text: string, caseHref: string|null}} `caseHref` null when the
+ *   case is not among them, as when it was removed since
+ */
+function _bookmarkAdded (bookmarked, cases) {
+  const found = cases.find(({ type, ref }) => type === bookmarked.type && ref === bookmarked.ref)
+
+  return {
+    text: `‘${bookmarked.heading}’ bookmarked to ${CASE_TYPES[bookmarked.type].lower} ${bookmarked.ref}`,
+    caseHref: found ? caseGuidesHref(found.key) : null
+  }
+}
+
+/**
  * GuideViewModel - A guide, whole or a section at a time, with the page
  * furniture around it: byline, contents, the format and width controls,
  * previous and next links, and the "About this guide" rows.
@@ -227,9 +248,7 @@ class GuideViewModel {
     this.contentsWidthLimits = CONTENTS_WIDTH
     this.returnTo = returnTo
     this.pin = pin
-    this.bookmarkAdded = bookmarked?.guideId === guide.id
-      ? { text: `‘${bookmarked.heading}’ bookmarked to ${CASE_TYPES[bookmarked.type].lower} ${bookmarked.ref}` }
-      : null
+    this.bookmarkAdded = bookmarked?.guideId === guide.id ? _bookmarkAdded(bookmarked, cases ?? []) : null
     this.panelCollapsed = panelCollapsed
     this.format = format
     this.formats = GUIDE_FORMATS.map(option => ({ ...option, isChosen: option.value === format }))

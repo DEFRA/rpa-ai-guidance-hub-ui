@@ -3,6 +3,7 @@ import { Editor, getSchema } from '@tiptap/core'
 
 import { extensionsWithBookmarks, headingsBefore } from '../../../../../src/client/javascripts/tiptap/bookmarked-heading.js'
 import { EXTENSIONS } from '../../../../../src/client/javascripts/tiptap/extensions.js'
+import { HEADING_BOOKMARK_MESSAGES } from '../../../../../src/constants/heading-bookmarks.js'
 
 describe('headingsBefore', () => {
   const schema = getSchema(EXTENSIONS)
@@ -48,7 +49,7 @@ describe('the headings the viewer draws', () => {
     expect(one.querySelector('h3').textContent).toBe('One')
     expect(one.querySelector('.app-guide-section-bookmark').getAttribute('href')).toBe('/guides/g/bookmark?section=one')
     expect(one.querySelector('.app-guide-section-bookmark').classList.contains('app-guide-section-bookmark--active')).toBe(true)
-    expect(one.querySelector('.app-guide-section-bookmarked').textContent).toBe('Bookmarked to Case W1234567')
+    expect(one.querySelector('.app-guide-section-bookmarked').textContent).toBe(HEADING_BOOKMARK_MESSAGES.bookmarkedTo('Case W1234567'))
     expect(quoted.closest('blockquote')).not.toBeNull()
     expect(quoted.querySelector('.app-guide-section-bookmark').getAttribute('href')).toBe('/guides/g/bookmark?section=quoted')
     expect(quoted.querySelector('.app-guide-section-bookmarked')).toBeNull()
@@ -85,7 +86,7 @@ describe('a heading the viewer draws', () => {
     expect(controls.map(control => control.className)).toEqual(['app-guide-section-pin', 'app-guide-section-bookmark app-guide-section-bookmark--active'])
     expect(controls[0].querySelector('input[name="section"]').value).toBe('one')
     expect(controls[0].textContent).toContain('Pin section: One')
-    expect(element.querySelector('.app-guide-section-bookmarked').textContent).toBe('Bookmarked to Case W1234567')
+    expect(element.querySelector('.app-guide-section-bookmarked').textContent).toBe(HEADING_BOOKMARK_MESSAGES.bookmarkedTo('Case W1234567'))
 
     editor.destroy()
   })

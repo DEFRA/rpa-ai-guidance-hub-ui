@@ -50,9 +50,13 @@ describe('listHref', () => {
     expect(listHref('/hub/recently-opened', NONE, 'updated-newest')).toBe('/hub/recently-opened')
   })
 
-  test('keeps the search words first, before the filters and sort', () => {
-    expect(listHref('/hub', { ...NONE, system: ['CRM'] }, 'updated-oldest', 'claim rules'))
+  test('keeps the list\'s own parameters first, as the search words, before the filters and sort', () => {
+    expect(listHref('/hub', { ...NONE, system: ['CRM'] }, 'updated-oldest', { q: 'claim rules' }))
       .toBe('/hub?q=claim+rules&system=CRM&sort=updated-oldest')
+  })
+
+  test('leaves out a parameter of the list\'s own that is empty', () => {
+    expect(listHref('/hub', NONE, 'updated-newest', { q: '', case: null })).toBe('/hub')
   })
 })
 
@@ -173,11 +177,24 @@ describe('filterPanel', () => {
   test('keeps the search words in the form, and in every tag and the clearing link', () => {
     const filters = { ...NONE, audience: ['Checker'] }
 
-    const { words, selected, clearHref } = panel({ filters, words: 'claim rules' })
+    const { kept, selected, clearHref } = panel({ filters, words: 'claim rules' })
 
-    expect(words).toBe('claim rules')
+    expect(kept).toEqual({ q: 'claim rules' })
     expect(selected).toEqual([{ text: 'Checker', href: '/hub?q=claim+rules' }])
     expect(clearHref).toBe('/hub?q=claim+rules')
+  })
+
+  test('shows the case the list is narrowed to as its first tag, which takes it away; the form and the other tags keep it, and clearing drops it', () => {
+    const filters = { ...NONE, audience: ['Checker'] }
+
+    const { kept, selected, clearHref } = panel({ path: '/hub/bookmarked-guides', filters, narrowedTo: { key: 'key-1', text: 'Case: W1234567' } })
+
+    expect(kept).toEqual({ case: 'key-1' })
+    expect(selected).toEqual([
+      { text: 'Case: W1234567', href: '/hub/bookmarked-guides?audience=Checker' },
+      { text: 'Checker', href: '/hub/bookmarked-guides?case=key-1' }
+    ])
+    expect(clearHref).toBe('/hub/bookmarked-guides')
   })
 
   test('sends the form to the list it is on', () => {

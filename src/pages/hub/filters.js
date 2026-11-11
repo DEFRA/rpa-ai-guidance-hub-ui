@@ -73,22 +73,29 @@ function wordsFrom (query = {}) {
 }
 
 /**
- * The address of a list with these filters and sort: the words searched for
- * first, then each value a repeated parameter, and the sort only when it is
- * not the default.
+ * @private
+ * @param {Record<string, string|null|undefined>} kept
+ * @returns {Record<string, string>} Those that are not empty
+ */
+function _given (kept) {
+  return Object.fromEntries(Object.entries(kept).filter(([, value]) => value))
+}
+
+/**
+ * The address of a list with these filters and sort: the list's own
+ * parameters first, then each value a repeated parameter, and the sort only
+ * when it is not the default.
  *
  * @param {string} path
  * @param {import('../../services/guides.js').Filters} filters
  * @param {string} [sort]
- * @param {string} [words] - Searched for, kept as the filters change
+ * @param {Record<string, string|null|undefined>} [kept] - The list's own
+ *   parameters, kept as the filters change: the words searched for (`q`), or
+ *   the case the list is narrowed to (`case`); an empty one is left out
  * @returns {string}
  */
-function listHref (path, filters, sort = DEFAULT_SORT, words = '') {
-  const params = new URLSearchParams()
-
-  if (words) {
-    params.append('q', words)
-  }
+function listHref (path, filters, sort = DEFAULT_SORT, kept = {}) {
+  const params = new URLSearchParams(_given(kept))
 
   FILTER_NAMES.forEach((name) => filters[name].forEach((value) => params.append(name, value)))
 
@@ -154,7 +161,8 @@ function _group (name, counted, filters) {
  * The filter panel for a list: each filter with the values the guides have
  * and their counts (scheme only when there is more than one, or one is chosen), the fixed scheme
  * year, the chosen values as tags that each take one away, and the sort where
- * the list can be sorted.
+ * the list can be sorted. A case the list is narrowed to is the first tag:
+ * the form and the other tags keep it, and clearing the filters drops it.
  *
  * @param {Object} panel
  * @param {string} panel.path - The list's address, without its query
@@ -165,9 +173,12 @@ function _group (name, counted, filters) {
  * @param {boolean} panel.withSort - Whether the list can be sorted
  * @param {string} [panel.words] - Searched for, which the form and every
  *   address it makes keep
+ * @param {{key: string, text: string}|null} [panel.narrowedTo] - The case the
+ *   list is narrowed to: its key, for addresses, and its tag's words
  * @returns {Object}
  */
-function filterPanel ({ path, filters, counts, sort, total, withSort, words = '' }) {
+function filterPanel ({ path, filters, counts, sort, total, withSort, words = '', narrowedTo = null }) {
+  const kept = { q: words, case: narrowedTo?.key }
   const counted = (name) => counts[name] ?? []
   const groups = [
     _group('audience', counted('audience'), filters),
@@ -187,20 +198,21 @@ function filterPanel ({ path, filters, counts, sort, total, withSort, words = ''
   ]
 
   const selected = [
+    ...(narrowedTo ? [{ text: narrowedTo.text, href: listHref(path, filters, sort, { q: words }) }] : []),
     ...FILTER_NAMES.flatMap((name) => filters[name].map((value) => {
       const option = counted(name).find((known) => known.label === value) ?? { label: value }
 
-      return { text: displayLabel(option), href: listHref(path, _without(filters, name, value), sort, words) }
+      return { text: displayLabel(option), href: listHref(path, _without(filters, name, value), sort, kept) }
     })),
-    ...(filters.noScheme ? [{ text: NOT_SCHEME_SPECIFIC, href: listHref(path, { ...filters, noScheme: false }, sort, words) }] : [])
+    ...(filters.noScheme ? [{ text: NOT_SCHEME_SPECIFIC, href: listHref(path, { ...filters, noScheme: false }, sort, kept) }] : [])
   ]
 
   return {
     action: path,
-    words,
+    kept: _given(kept),
     groups,
     selected,
-    clearHref: listHref(path, filtersFrom(), sort, words),
+    clearHref: listHref(path, filtersFrom(), sort, { q: words }),
     sort: withSort
       ? { options: SORTS.map((option) => ({ ...option, selected: option.value === sort, disabled: Boolean(option.disabled) })) }
       : null

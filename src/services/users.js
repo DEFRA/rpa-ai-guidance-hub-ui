@@ -250,6 +250,25 @@ async function listRecentlyOpened (request, filters) {
 }
 
 /**
+ * The guides bookmarked to the signed-in user's cases, each once, in the
+ * order of the cases and, in each, the user's order, that the filters let
+ * through; or those of one case alone. And each filter's counts among them.
+ *
+ * @param {import('@hapi/hapi').Request} request - Signed in
+ * @param {import('./guides.js').Filters} [filters]
+ * @param {string} [caseKey] - The one case's key
+ * @returns {Promise<{guides: import('./guides.js').GuideSummary[], counts: import('./guides.js').FilterCounts}>}
+ */
+async function listBookmarked (request, filters, caseKey) {
+  const res = await usersApi.getBookmarkedGuides(await userIdOf(request), filters, caseKey)
+
+  return {
+    guides: res.data.items.map(item => toGuideSummary(item)),
+    counts: res.data.counts ?? {}
+  }
+}
+
+/**
  * Record that the signed-in user has opened a guide. A failure is logged,
  * never shown: the guide opens all the same.
  *
@@ -285,6 +304,7 @@ async function _patchPins (request, operations) {
 
 export {
   idsOfPinKey,
+  listBookmarked,
   listPinned,
   listRecentlyOpened,
   movePin,

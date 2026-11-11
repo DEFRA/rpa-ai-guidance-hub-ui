@@ -8,6 +8,14 @@ const PROCESSING_URL = '/create-guidance/upload-guide/processing'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
 
 /**
+ * What the upload page says, named once, so that one test holds the words and
+ * the rest name them.
+ */
+const UPLOAD_MESSAGES = Object.freeze({
+  alreadyUploaded: 'You have already uploaded a document for this guide'
+})
+
+/**
  * Render the upload form for a guide migration, initiating one if none has
  * been started yet (or the last file failed parsing). An upload still being
  * scanned, or one cdp-uploader reports as failed, sends the user back to the
@@ -33,7 +41,7 @@ async function getUploadForm (request, h) {
       return h.redirect(PROCESSING_URL)
     }
 
-    request.yar.flash('uploadNotification', 'You have already uploaded a document for this guide')
+    request.yar.flash('uploadNotification', UPLOAD_MESSAGES.alreadyUploaded)
 
     return h.redirect(METADATA_URL)
   }
@@ -51,5 +59,6 @@ async function getUploadForm (request, h) {
 }
 
 export {
-  getUploadForm
+  getUploadForm,
+  UPLOAD_MESSAGES
 }

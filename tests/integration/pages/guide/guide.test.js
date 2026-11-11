@@ -1,5 +1,6 @@
 import { constants as statusCodes } from 'node:http2'
 
+import { within } from '@testing-library/dom'
 import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
@@ -7,6 +8,7 @@ import { createServer } from '../../../../src/server/server.js'
 import { guideResponse, pinResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
+import { pageOf, sideNavOf } from '../../helpers/page.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const GUIDE_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
@@ -43,6 +45,25 @@ function mockGuide ({ guide = guideResponse({ id: GUIDE_ID }), markdown = MARKDO
     .get(`/guides/${GUIDE_ID}/content`).reply(statusCodes.HTTP_STATUS_OK, markdown, { 'Content-Type': 'text/plain' })
 }
 
+/**
+ * Each page of the guide, as the server draws it: every section is there, for
+ * the browser's find-in-page, and those not being read are hidden until it
+ * finds a match in one.
+ */
+function pagesOf (page) {
+  return [...page.document.querySelectorAll('[data-guide-page]')]
+}
+
+/** The section being read, as drawn without the viewer, for a browser without JavaScript. */
+function fallbackOf (page) {
+  return pagesOf(page).find((guidePage) => !guidePage.hidden).querySelector('.app-guide-markdown__fallback')
+}
+
+/** The guide's About this guide panel, found as a screen reader finds it. */
+function panelOf (page) {
+  return page.getByRole('complementary', { name: 'About this guide' })
+}
+
 describe('#guideController', () => {
   let server, cookie
 
@@ -70,11 +91,18 @@ describe('#guideController', () => {
     return server.inject({ method: 'GET', url, headers: { cookie } })
   }
 
+  /** The guide's page at `url`. */
+  async function guideAt (url = GUIDE_URL, headers = { cookie }) {
+    const { payload } = await server.inject({ method: 'GET', url, headers })
+
+    return pageOf(payload)
+  }
+
   // A guide opens whole; these show it a section at a time.
-  async function getInStepper (url) {
+  async function guideInStepperAt (url = GUIDE_URL) {
     const chosen = await server.inject({ method: 'POST', url: '/guides/format', headers: { cookie }, payload: { format: 'stepper', returnTo: url } })
 
-    return server.inject({ method: 'GET', url, headers: { cookie: mergeCookies(cookie, chosen.headers['set-cookie']) } })
+    return guideAt(url, { cookie: mergeCookies(cookie, chosen.headers['set-cookie']) })
   }
 
   describe('GET /guides/{guideId}', () => {
@@ -83,192 +111,195 @@ describe('#guideController', () => {
 
       const { statusCode, payload } = await get(GUIDE_URL)
 
+      const page = pageOf(payload)
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(payload.match(/<h1[ >]/g)).toHaveLength(1)
-      expect(payload).toMatch(/<h1[^>]*>\s*Claiming the SFI payment\s*<\/h1>/)
-      expect(payload).toMatch(/govuk-tag--green">\s*Version 1\.0\s*</)
-      expect(payload).toContain('Live')
-      expect(payload).toContain('Updated 6 October 2026')
+      expect(within(page.document.body).getAllByRole('heading', { level: 1 })).toEqual([page.getByRole('heading', { level: 1, name: 'Claiming the SFI payment' })])
+      expect(page.getByText('Version 1.0')).toHaveClass('govuk-tag--green')
+      expect(page.getByText('Live')).toBeInTheDocument()
+      expect(page.getByText('Updated 6 October 2026')).toBeInTheDocument()
     })
 
     test('shows no version for a guide whose latest version has no number', async () => {
       mockGuide({ guide: guideResponse({ id: GUIDE_ID, versions: [versionResponse({ versionNumber: null })] }) })
 
-      const { payload } = await get(GUIDE_URL)
+      const page = await guideAt()
 
-      const byline = payload.slice(payload.indexOf('class="app-guide-byline"'), payload.indexOf('app-guide-byline__updated'))
-
-      expect(payload).not.toMatch(/>\s*Version /)
-      expect(byline.match(/class="govuk-tag/g)).toHaveLength(1)
-      expect(byline).toContain('Live')
+      expect(page.queryByText(/^Version /)).not.toBeInTheDocument()
+      expect(page.getByText('Live').parentElement.querySelectorAll('.govuk-tag')).toHaveLength(1)
     })
 
     test('shows how far through each page of the guide the reader is, without an inline style', async () => {
       mockGuide()
 
-      const { payload } = await getInStepper(GUIDE_URL)
+      const page = await guideInStepperAt()
+      const widths = page.document.querySelector('style[data-progress-style]')
 
-      expect(payload).toContain('app-progress__track app-guide-progress')
-      expect(payload).toMatch(/#guide-progress-bar-1 \{\s*--progress-width: 33%;/)
-      expect(payload).toMatch(/#guide-progress-bar-3 \{\s*--progress-width: 100%;/)
-      expect(payload).not.toMatch(/style="[^"]*width/)
+      expect(pagesOf(page)[0].querySelector('[role="presentation"]')).toHaveClass('app-progress__track', 'app-guide-progress')
+      expect(widths).toHaveTextContent('#guide-progress-bar-1 { --progress-width: 33%; }')
+      expect(widths).toHaveTextContent('#guide-progress-bar-3 { --progress-width: 100%; }')
+      expect(page.document.querySelector('[style*="width"]')).toBeNull()
     })
 
     test('shows the section being read, and where the reader is', async () => {
       mockGuide()
 
-      const { payload } = await getInStepper(`${GUIDE_URL}?section=assign-case`)
+      const page = await guideInStepperAt(`${GUIDE_URL}?section=assign-case`)
+      const shown = pagesOf(page).filter((guidePage) => !guidePage.hidden)
 
-      expect(payload).toContain('Page 2 of 3')
-      expect(payload).toMatch(/<div class="app-guide-page" data-guide-page="2" data-guide-page-href=/)
+      expect(shown).toHaveLength(1)
+      expect(shown[0]).toHaveAttribute('data-guide-page', '2')
+      expect(shown[0]).toHaveTextContent('Page 2 of 3')
     })
 
     test('keeps the other sections for find-in-page, hidden until it finds a match', async () => {
       mockGuide()
 
-      const { payload } = await getInStepper(GUIDE_URL)
+      const [first, second, third] = pagesOf(await guideInStepperAt())
 
-      expect(payload).toMatch(/<div class="app-guide-page" data-guide-page="1" data-guide-page-href=/)
-      expect(payload).toContain('data-guide-page="2" hidden="until-found"')
-      expect(payload).toContain('data-guide-page="3" hidden="until-found"')
-      expect(payload).toContain('Assign it.')
-      expect(payload).toContain('Close it.')
+      expect(first).not.toHaveAttribute('hidden')
+      expect(second).toHaveAttribute('hidden', 'until-found')
+      expect(third).toHaveAttribute('hidden', 'until-found')
+      expect(second).toHaveTextContent('Assign it.')
+      expect(third).toHaveTextContent('Close it.')
     })
 
     test('gives only the section being read to the viewer', async () => {
       mockGuide()
 
-      const { payload } = await getInStepper(GUIDE_URL)
+      const page = await guideInStepperAt()
+      const markdown = page.document.querySelectorAll('script[type="application/json"]')
 
-      expect(payload.match(/data-tiptap-markdown/g)).toHaveLength(1)
-      expect(payload.match(/<script type="application\/json">/g)).toHaveLength(1)
-      expect(payload).not.toContain('"Assign it."')
+      expect(page.document.querySelectorAll('[data-tiptap-markdown]')).toHaveLength(1)
+      expect(markdown).toHaveLength(1)
+      expect(JSON.parse(markdown[0].textContent)).not.toContain('Assign it.')
     })
 
     test('lists every section in the contents, linking to each', async () => {
       mockGuide()
 
-      const { payload } = await getInStepper(GUIDE_URL)
+      const contents = within((await guideInStepperAt()).getByRole('navigation', { name: 'Contents' }))
+      const assign = contents.getByRole('link', { name: 'Assign case' })
 
-      expect(payload).toContain('aria-labelledby="guide-contents-heading"')
-      expect(payload).toContain(`href="${GUIDE_URL}?section=introduction" aria-current="page">Introduction`)
-      expect(payload).toContain(`href="${GUIDE_URL}?section=assign-case">Assign case`)
-      expect(payload).toContain(`href="${GUIDE_URL}?section=close-case">Close case`)
-      expect(payload).toContain('data-guide-contents-page="2"')
+      expect(contents.getByRole('link', { name: 'Introduction', current: 'page' })).toHaveAttribute('href', `${GUIDE_URL}?section=introduction`)
+      expect(assign).toHaveAttribute('href', `${GUIDE_URL}?section=assign-case`)
+      expect(assign).not.toHaveAttribute('aria-current')
+      expect(contents.getByRole('link', { name: 'Close case' })).toHaveAttribute('href', `${GUIDE_URL}?section=close-case`)
+      expect(assign.parentElement).toHaveAttribute('data-guide-contents-page', '2')
     })
 
     test.each([
       ['a section', 'assign-case', '2'],
       ['a heading inside a section', 'before-you-begin', '1']
-    ])('shows the page with %s an address names, without sending the reader on', async (_case, section, page) => {
+    ])('shows the page with %s an address names, without sending the reader on', async (_case, section, pageNumber) => {
       mockGuide()
 
-      const { statusCode, payload } = await getInStepper(`${GUIDE_URL}?section=${section}`)
+      const shown = pagesOf(await guideInStepperAt(`${GUIDE_URL}?section=${section}`)).filter((guidePage) => !guidePage.hidden)
 
-      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(payload).toMatch(new RegExp(`<div class="app-guide-page" data-guide-page="${page}" data-guide-page-href=`))
+      expect(shown).toHaveLength(1)
+      expect(shown[0]).toHaveAttribute('data-guide-page', pageNumber)
     })
 
     test('opens at the first page when the address names a section the guide has not', async () => {
       mockGuide()
 
-      const { payload } = await getInStepper(`${GUIDE_URL}?section=never`)
+      const contents = within((await guideInStepperAt(`${GUIDE_URL}?section=never`)).getByRole('navigation', { name: 'Contents' }))
 
-      expect(payload).toMatch(/aria-current="page">Introduction</)
+      expect(contents.getByRole('link', { current: 'page' })).toHaveTextContent('Introduction')
     })
 
     test('names the section a Next or Previous link goes to', async () => {
       mockGuide()
 
-      const { payload } = await getInStepper(`${GUIDE_URL}?section=assign-case`)
+      const page = await guideInStepperAt(`${GUIDE_URL}?section=assign-case`)
+      const pagination = within(page.getByRole('navigation', { name: 'Pagination' }))
 
-      expect(payload).toContain('Page 2 of 3')
-      expect(payload).toMatch(/govuk-pagination__link-label[^>]*>Introduction</)
-      expect(payload).toMatch(/govuk-pagination__link-label[^>]*>Close case</)
+      expect(page.getByText('Page 2 of 3')).toBeInTheDocument()
+      expect(pagination.getByRole('link', { name: /Introduction$/ })).toHaveAttribute('rel', 'prev')
+      expect(pagination.getByRole('link', { name: /Close case$/ })).toHaveAttribute('rel', 'next')
     })
 
     test('has no Previous link on the first page and no Next link on the last', async () => {
       mockGuide()
 
-      const { payload } = await getInStepper(GUIDE_URL)
-      const [first, , last] = payload.split('data-guide-page=').slice(1)
+      const [first, , last] = pagesOf(await guideInStepperAt()).map((guidePage) => within(guidePage))
 
-      expect(first).not.toContain('govuk-pagination__prev')
-      expect(first).toContain('govuk-pagination__next')
-      expect(last).toContain('govuk-pagination__prev')
-      expect(last).not.toContain('govuk-pagination__next')
+      expect(first.queryByRole('link', { name: /^Previous/, hidden: true })).not.toBeInTheDocument()
+      expect(first.getByRole('link', { name: /^Next/, hidden: true })).toBeInTheDocument()
+      expect(last.getByRole('link', { name: /^Previous/, hidden: true })).toBeInTheDocument()
+      expect(last.queryByRole('link', { name: /^Next/, hidden: true })).not.toBeInTheDocument()
     })
 
     test('renders the section as a fallback and for the viewer, its images served by the app', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const page = await guideAt()
+      const fallback = fallbackOf(page)
 
-      expect(payload).toContain('data-tiptap-markdown')
-      expect(payload).toContain('<script type="application/json">')
-      expect(payload).toContain('<h3 id="before-you-begin">Before you begin</h3>')
-      expect(payload).toContain(`<img src="${GUIDE_URL}/assets/abc123.png"`)
+      expect(fallback.closest('[data-tiptap-markdown]').querySelector('script[type="application/json"]')).toBeInTheDocument()
+      expect(within(fallback).getByRole('heading', { level: 3, name: 'Before you begin' })).toHaveAttribute('id', 'before-you-begin')
+      expect(fallback.querySelector('img')).toHaveAttribute('src', `${GUIDE_URL}/assets/abc123.png`)
     })
 
     test('colours the parts of a note to fill in without the viewer, by class and not by style', async () => {
       mockGuide({ markdown: '## Section\n\nComplete the parts in [red]{.red}.\n\n> Version used:[&lt;version&gt;]{.red}' })
 
-      const { payload } = await get(GUIDE_URL)
-      const fallback = payload.slice(payload.indexOf('app-guide-markdown__fallback'))
+      const fallback = fallbackOf(await guideAt())
 
-      expect(fallback).toContain('<span class="markdown-preview__text--red">red</span>')
-      expect(fallback).toContain('<span class="markdown-preview__text--red">&lt;version&gt;</span>')
-      expect(fallback).not.toContain('{.red}')
-      expect(fallback).not.toMatch(/<span[^>]*style=/)
+      expect(within(fallback).getByText('red')).toHaveClass('markdown-preview__text--red')
+      expect(within(fallback).getByText('<version>')).toHaveClass('markdown-preview__text--red')
+      expect(fallback).not.toHaveTextContent('{.red}')
+      expect(fallback.querySelector('span[style]')).toBeNull()
     })
 
     test('takes a link to another section to the page that has it, and leave one to this page', async () => {
       mockGuide()
 
-      const { payload } = await getInStepper(GUIDE_URL)
+      const page = await guideInStepperAt()
+      const fallback = within(fallbackOf(page))
 
-      expect(payload).toContain(`<a href="${GUIDE_URL}?section=assign-case#assign-case">2 Assign case</a>`)
-      expect(payload).toContain('<a href="#before-you-begin">Before you begin</a>')
-      expect(payload).toMatch(/<h2[^>]*id="introduction"/)
-      expect(payload).toContain('data-heading-ids="[&quot;before-you-begin&quot;]"')
+      expect(fallback.getByRole('link', { name: '2 Assign case' })).toHaveAttribute('href', `${GUIDE_URL}?section=assign-case#assign-case`)
+      expect(fallback.getByRole('link', { name: 'Before you begin' })).toHaveAttribute('href', '#before-you-begin')
+      expect(page.getByRole('heading', { level: 2, name: 'Introduction' })).toHaveAttribute('id', 'introduction')
+      expect(page.document.querySelector('[data-tiptap-markdown]')).toHaveAttribute('data-heading-ids', '["before-you-begin"]')
     })
 
     test('keeps the id of a section heading that cannot be bookmarked, so links to it still arrive', async () => {
       mockGuide({ markdown: '# Claims\n\nOverview\n--------\n\nSee [Overview](#overview).\n\n## Assign case\n\nAssign it.' })
 
-      const { payload } = await get(GUIDE_URL)
+      const page = await guideAt()
 
-      expect(payload).toMatch(/<h2[^>]*id="overview"/)
+      expect(page.getByRole('heading', { level: 2, name: 'Overview' })).toHaveAttribute('id', 'overview')
     })
 
     test('describes the guide, with its owner as a link', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const panel = panelOf(await guideAt())
 
-      expect(payload).toContain('About this guide')
-      expect(payload).toContain('Sustainable Farming Incentive (SFI)')
-      expect(payload).toContain('Processor')
-      expect(payload).toContain('CRM')
-      expect(payload).toContain('href="mailto:owner%40example.com"')
+      expect(within(panel).getByRole('heading', { name: 'About this guide' })).toBeInTheDocument()
+      expect(panel).toHaveTextContent('Sustainable Farming Incentive (SFI)')
+      expect(panel).toHaveTextContent('Processor')
+      expect(panel).toHaveTextContent('CRM')
+      expect(within(panel).getByRole('link')).toHaveAttribute('href', 'mailto:owner%40example.com')
     })
 
     test('does not offer to change the guide', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const page = await guideAt()
 
-      expect(payload).not.toContain('<textarea')
-      expect(payload).not.toContain('contenteditable="true"')
-      expect(payload).not.toContain('data-tiptap-editable')
+      expect(page.queryByRole('textbox')).not.toBeInTheDocument()
+      expect(page.document.querySelector('[contenteditable="true"]')).toBeNull()
+      expect(page.document.querySelector('[data-tiptap-editable]')).toBeNull()
     })
 
     test('goes back to the hub', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const back = (await guideAt()).getByRole('link', { name: 'Back' })
 
-      expect(payload).toMatch(/<a[^>]*href="\/hub"[^>]*govuk-back-link|<a[^>]*govuk-back-link[^>]*href="\/hub"/)
+      expect(back).toHaveAttribute('href', '/hub')
+      expect(back).toHaveClass('govuk-back-link')
     })
 
     test('escapes a hostile title, owner and Markdown', async () => {
@@ -282,20 +313,23 @@ describe('#guideController', () => {
         markdown: '## Section\n\n<script>alert("body")</script>\n\n[x](javascript:alert(1))'
       })
 
-      const { payload } = await get(GUIDE_URL)
+      const page = await guideAt()
+      const scripts = [...page.document.querySelectorAll('script')].map((script) => script.textContent)
 
-      expect(payload).not.toContain('<script>alert')
-      expect(payload).not.toContain('<img src=x')
-      expect(payload).not.toMatch(/href="javascript:/)
-      expect(payload).toContain('&lt;script&gt;alert(&quot;title&quot;)&lt;/script&gt;')
+      expect(scripts.filter((script) => script.startsWith('alert'))).toEqual([])
+      expect(page.document.querySelector('img[src="x"]')).toBeNull()
+      expect(page.document.querySelector('a[href^="javascript:"]')).toBeNull()
+      expect(page.getByRole('heading', { level: 1, name: '<script>alert("title")</script>' })).toBeInTheDocument()
     })
 
     test('does not let Markdown close the script element carrying it', async () => {
       mockGuide({ markdown: '## Section\n\n</script><script>alert(1)</script>' })
 
-      const { payload } = await get(GUIDE_URL)
+      const page = await guideAt()
+      const [markdown] = page.document.querySelectorAll('script[type="application/json"]')
 
-      expect(payload).not.toContain('</script><script>alert(1)')
+      expect(JSON.parse(markdown.textContent)).toContain('</script><script>alert(1)</script>')
+      expect([...page.document.querySelectorAll('script')].map((script) => script.textContent)).not.toContain('alert(1)')
     })
 
     test('says the guide is not found when the API has none', async () => {
@@ -306,7 +340,7 @@ describe('#guideController', () => {
       const { statusCode, payload } = await get(GUIDE_URL)
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_NOT_FOUND)
-      expect(payload).toContain('Page not found')
+      expect(pageOf(payload).getByText('Page not found')).toBeInTheDocument()
     })
 
     test('says the guide is not found for an address that cannot be a guide', async () => {
@@ -328,21 +362,20 @@ describe('#guideController', () => {
         .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
         .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ pinned }))
 
-      const { payload } = await get(GUIDE_URL)
-      const form = payload.slice(payload.indexOf('<form class="app-pin-form"'), payload.indexOf('</form>', payload.indexOf('<form class="app-pin-form"')))
+      const page = await guideAt()
+      const button = page.getByRole('button', { name: label })
 
-      expect(form).toContain('action="/pin-toggle"')
-      expect(form).toContain(`<input type="hidden" name="pin" value="${pin}">`)
-      expect(form).toContain(`<input type="hidden" name="returnTo" value="${GUIDE_URL}">`)
-      expect(form).toMatch(new RegExp(`</svg>\\s*${label}\\s*</button>`))
+      expect(button.form).toHaveAttribute('action', '/pin-toggle')
+      expect(button.form).toHaveFormValues({ pin, returnTo: GUIDE_URL })
+      expect(button.form.parentElement).toContainElement(page.getByText('Live'))
     })
 
     test('is not offered when the user\'s pins cannot be had', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const page = await guideAt()
 
-      expect(payload).not.toContain('app-pin-form')
+      expect(page.queryByRole('button', { name: /^(Pin|Unpin) guide$/ })).not.toBeInTheDocument()
     })
   })
 
@@ -358,13 +391,6 @@ describe('#guideController', () => {
         .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ pinned }))
     }
 
-    // The star of the heading at `anchor`, as the page the server draws has it.
-    function starOf (payload, anchor) {
-      const at = payload.indexOf(`<input type="hidden" name="section" value="${anchor}">`)
-
-      return at === -1 ? '' : payload.slice(payload.lastIndexOf('<form class="app-guide-section-pin"', at), payload.indexOf('</form>', at))
-    }
-
     function post (payload) {
       return server.inject({ method: 'POST', url: '/pin-toggle', headers: { cookie, ...FORM }, payload })
     }
@@ -373,50 +399,44 @@ describe('#guideController', () => {
       mockGuide()
       signedInWith([])
 
-      const { payload } = await get(GUIDE_URL)
-      const star = starOf(payload, 'introduction')
+      const page = await guideAt()
+      const star = page.getByRole('button', { name: 'Pin section: Introduction' })
+      const bookmark = page.getByRole('link', { name: 'Bookmark to a case: Introduction' })
 
-      expect(star).toContain(`<input type="hidden" name="guideId" value="${GUIDE_ID}">`)
-      expect(star).toContain('<input type="hidden" name="pin" value="true">')
-      expect(star).toContain(`<input type="hidden" name="returnTo" value="${GUIDE_URL}">`)
-      expect(star).toContain('Pin section: Introduction')
-      expect(starOf(payload, 'before-you-begin')).toContain('Pin section: Before you begin')
-      expect(payload.indexOf('Bookmark to a case: Introduction')).toBeGreaterThan(payload.indexOf('Pin section: Introduction'))
+      expect(star.form).toHaveFormValues({ guideId: GUIDE_ID, pin: 'true', returnTo: GUIDE_URL })
+      expect(page.getByRole('button', { name: 'Pin section: Before you begin' })).toBeInTheDocument()
+      expect([...star.closest('.app-guide-heading-row').querySelectorAll('button, a')]).toEqual([star, bookmark])
     })
 
     test('shows a pinned section by a filled star, which unpins it from where the user\'s pins have it', async () => {
       mockGuide()
       signedInWith([pinResponse({ id: OTHER_GUIDE }), pinResponse({ id: GUIDE_ID, sectionId: SECTION_ID, section: 'before-you-begin', heading: 'Before you begin' })])
 
-      const { payload } = await get(GUIDE_URL)
-      const star = starOf(payload, 'before-you-begin')
+      const page = await guideAt()
+      const star = page.getByRole('button', { name: 'Unpin section: Before you begin' })
 
-      expect(star).toContain(`data-reorder-follows="${GUIDE_ID}/${SECTION_ID}"`)
-      expect(star).toContain('<input type="hidden" name="pin" value="false">')
-      expect(star).toContain('<input type="hidden" name="position" value="1">')
-      expect(star).toContain(`<input type="hidden" name="sectionId" value="${SECTION_ID}">`)
-      expect(star).toContain('Unpin section: Before you begin')
-      expect(starOf(payload, 'introduction')).toContain('Pin section: Introduction')
+      expect(star.form).toHaveAttribute('data-reorder-follows', `${GUIDE_ID}/${SECTION_ID}`)
+      expect(star.form).toHaveFormValues({ pin: 'false', position: '1', sectionId: SECTION_ID })
+      expect(page.getByRole('button', { name: 'Pin section: Introduction' })).toBeInTheDocument()
     })
 
     test('does not pin the whole guide', async () => {
       mockGuide()
       signedInWith([pinResponse({ id: GUIDE_ID, sectionId: SECTION_ID, section: 'before-you-begin', heading: 'Before you begin' })])
 
-      const { payload } = await get(GUIDE_URL)
-      const form = payload.slice(payload.indexOf('<form class="app-pin-form"'), payload.indexOf('</form>', payload.indexOf('<form class="app-pin-form"')))
+      const { form } = (await guideAt()).getByRole('button', { name: 'Pin guide' })
 
-      expect(form).toContain('<input type="hidden" name="pin" value="true">')
-      expect(form).not.toContain('data-reorder-follows')
+      expect(form).toHaveFormValues({ pin: 'true' })
+      expect(form).not.toHaveAttribute('data-reorder-follows')
     })
 
     test('is not offered when the user\'s pins cannot be had, though bookmarking is', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const page = await guideAt()
 
-      expect(payload).not.toContain('app-guide-section-pin')
-      expect(payload).toContain('Bookmark to a case: Introduction')
+      expect(page.queryByRole('button', { name: /^(Pin|Unpin) section/ })).not.toBeInTheDocument()
+      expect(page.getByRole('link', { name: 'Bookmark to a case: Introduction' })).toBeInTheDocument()
     })
 
     test('pins it by its anchor, with its heading as the guide has it, then goes back to the heading', async () => {
@@ -518,7 +538,7 @@ describe('#guideController', () => {
       const { statusCode, payload } = await get(GUIDE_URL)
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(payload).toContain('Claiming the SFI payment')
+      expect(pageOf(payload).getByRole('heading', { level: 1, name: 'Claiming the SFI payment' })).toBeInTheDocument()
     })
   })
 
@@ -526,17 +546,17 @@ describe('#guideController', () => {
     test('lists each section\'s subheadings beneath it', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const contents = within((await guideAt()).getByRole('navigation', { name: 'Contents' }))
 
-      expect(payload).toMatch(/app-guide-contents__list[\s\S]*href="#before-you-begin">Before you begin/)
+      expect(within(contents.getByRole('list')).getByRole('link', { name: 'Before you begin' })).toHaveAttribute('href', '#before-you-begin')
     })
 
     test('links a subheading on another page to that page', async () => {
       mockGuide({ markdown: '## One\n\ntext\n\n## Two\n\n### 2.1 Deep\n\ntext' })
 
-      const { payload } = await getInStepper(GUIDE_URL)
+      const contents = within((await guideInStepperAt()).getByRole('navigation', { name: 'Contents' }))
 
-      expect(payload).toContain(`href="${GUIDE_URL}?section=two#21-deep">2.1 Deep`)
+      expect(contents.getByRole('link', { name: '2.1 Deep' })).toHaveAttribute('href', `${GUIDE_URL}?section=two#21-deep`)
     })
   })
 
@@ -544,28 +564,31 @@ describe('#guideController', () => {
     test('runs the full width, with the panel as a column of the shell beside the reading column', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const page = await guideAt()
+      const shell = panelOf(page).parentElement
 
-      expect(payload).toContain('app-width-container--bleed')
-      expect(payload).toContain('app-main-wrapper--bleed')
-      expect(payload).toMatch(/class="app-shell">[\s\S]*class="app-shell__main">[\s\S]*class="app-guide-panel"/)
+      expect(within(page.document.body).getByRole('contentinfo').firstElementChild).toHaveClass('app-width-container--bleed')
+      expect(page.document.querySelector('main')).toHaveClass('app-main-wrapper--bleed')
+      expect(shell).toHaveClass('app-shell')
+      expect(shell.querySelector('.app-shell__main')).toContainElement(page.getByRole('heading', { level: 1 }))
     })
 
     test('keeps the contents a direct child of the reading column, where it can stick', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const contents = (await guideAt()).getByRole('navigation', { name: 'Contents' })
 
-      expect(payload).toMatch(/<div class="app-guide-reading app-guide-reading--standard">[\s\S]*?<\/h1>\s*<div class="app-guide-contents"/)
+      expect(contents.closest('.app-guide-contents').parentElement).toHaveClass('app-guide-reading', 'app-guide-reading--standard')
     })
 
     test('lists the guide\'s answers in the panel as the prototype\'s metadata list', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const panel = within(panelOf(await guideAt()))
 
-      expect(payload).toContain('app-guide-metadata-list__row')
-      expect(payload).toContain('class="app-side-nav__icon-button"')
+      expect(panel.getAllByRole('term').map((term) => term.parentElement)).toEqual(panel.getAllByRole('definition').map((definition) => definition.parentElement))
+      expect(panel.getAllByRole('term')[0].parentElement).toHaveClass('app-guide-metadata-list__row')
+      expect(panel.getByRole('button', { name: 'Hide guide details' })).toHaveClass('app-side-nav__icon-button')
     })
 
     test('shows the collapsed panel as the prototype\'s rail, its button named and with a tooltip', async () => {
@@ -577,13 +600,13 @@ describe('#guideController', () => {
       }).then(response => ({ cookie: mergeCookies(cookie, response.headers['set-cookie']) }))
       mockGuide()
 
-      const { payload } = await server.inject({ method: 'GET', url: GUIDE_URL, headers: { cookie: collapsedCookie } })
+      const panel = within(panelOf(await guideAt(GUIDE_URL, { cookie: collapsedCookie })))
+      const show = panel.getByRole('button', { name: 'Show guide details' })
 
-      expect(payload).toContain('app-side-nav app-side-nav--rail')
-      expect(payload).toContain('app-side-nav__rail-item')
-      expect(payload).toContain('data-side-nav-tooltip')
-      expect(payload).toContain('<span class="app-side-nav__rail-label">Show guide details</span>')
-      expect(payload).toContain('<span class="app-side-nav__tooltip" aria-hidden="true">Show guide details</span>')
+      expect(panel.getByRole('navigation', { name: 'About this guide' })).toHaveClass('app-side-nav', 'app-side-nav--rail')
+      expect(show).toHaveClass('app-side-nav__rail-item')
+      expect(show).toHaveAttribute('data-side-nav-tooltip')
+      expect(within(show).getByText('Show guide details', { selector: '.app-side-nav__tooltip' })).toHaveAttribute('aria-hidden', 'true')
     })
   })
 
@@ -591,10 +614,10 @@ describe('#guideController', () => {
     test('is the side navigation, in place of the header', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const page = await guideAt()
 
-      expect(payload).toContain('<nav class="app-side-nav" aria-label="Guidance hub">')
-      expect(payload).not.toContain('class="defra-header')
+      expect(sideNavOf(page).getByRole('button', { name: 'Collapse navigation' })).toBeInTheDocument()
+      expect(within(page.document.body).queryByRole('banner')).not.toBeInTheDocument()
     })
   })
 
@@ -613,12 +636,14 @@ describe('#guideController', () => {
     test('is open, offering to hide the details', async () => {
       mockGuide()
 
-      const { payload } = await get(GUIDE_URL)
+      const page = await guideAt()
+      const panel = panelOf(page)
+      const hide = within(panel).getByRole('button', { name: 'Hide guide details' })
 
-      expect(payload).toContain('id="guide-panel-body"')
-      expect(payload).toContain('Hide guide details')
-      expect(payload).toMatch(/aria-expanded="true"/)
-      expect(payload).not.toContain('app-guide-panel--collapsed')
+      expect(page.document.getElementById('guide-panel-body')).toBeInTheDocument()
+      expect(hide).toHaveAttribute('aria-expanded', 'true')
+      expect(hide).toHaveAttribute('aria-controls', 'guide-panel-body')
+      expect(panel).not.toHaveClass('app-guide-panel--collapsed')
     })
 
     test('folds away to a rail that offers to show the details, and open again', async () => {
@@ -628,19 +653,19 @@ describe('#guideController', () => {
       expect(response.headers.location).toBe(`${GUIDE_URL}?section=assign-case`)
 
       mockGuide()
-      const rail = await server.inject({ method: 'GET', url: GUIDE_URL, headers: { cookie: collapsed } })
+      const rail = await guideAt(GUIDE_URL, { cookie: collapsed })
 
-      expect(rail.payload).toContain('app-guide-panel--collapsed')
-      expect(rail.payload).toContain('Show guide details')
-      expect(rail.payload).toMatch(/aria-expanded="false"/)
-      expect(rail.payload).not.toContain('id="guide-panel-body"')
-      expect(rail.payload).not.toContain('example.com')
+      expect(panelOf(rail)).toHaveClass('app-guide-panel--collapsed')
+      expect(within(panelOf(rail)).getByRole('button', { name: 'Show guide details' })).toHaveAttribute('aria-expanded', 'false')
+      expect(rail.document.getElementById('guide-panel-body')).toBeNull()
+      expect(rail.document.body).not.toHaveTextContent('example.com')
+      expect(rail.document.querySelector('a[href*="example.com"]')).toBeNull()
 
       const reopened = await togglePanel('false')
       mockGuide()
-      const open = await server.inject({ method: 'GET', url: GUIDE_URL, headers: { cookie: reopened.cookie } })
+      const open = await guideAt(GUIDE_URL, { cookie: reopened.cookie })
 
-      expect(open.payload).toContain('id="guide-panel-body"')
+      expect(open.document.getElementById('guide-panel-body')).toBeInTheDocument()
     })
 
     test('does not go to another site', async () => {
@@ -680,11 +705,12 @@ describe('#guideController', () => {
       expect(response.headers.location).toBe(`${GUIDE_URL}?section=assign-case`)
 
       mockGuide()
-      const { payload } = await server.inject({ method: 'GET', url: GUIDE_URL, headers: { cookie: updated } })
+      const page = await guideAt(GUIDE_URL, { cookie: updated })
+      const widths = within(page.getByRole('group', { name: 'Page width' }))
 
-      expect(payload).toContain('app-guide-reading--wide')
-      expect(payload).toMatch(/aria-pressed="true">Wide</)
-      expect(payload).toMatch(/aria-pressed="false">Standard</)
+      expect(page.getByRole('heading', { level: 1 }).parentElement).toHaveClass('app-guide-reading--wide')
+      expect(widths.getByRole('button', { name: 'Wide' })).toHaveAttribute('aria-pressed', 'true')
+      expect(widths.getByRole('button', { name: 'Standard' })).toHaveAttribute('aria-pressed', 'false')
     })
 
     test('does not go to another site', async () => {
