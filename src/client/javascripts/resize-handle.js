@@ -22,6 +22,7 @@
  *   property is set on
  * @property {string} property - The custom property, `--…`
  * @property {string} resizingClass - On the scope while dragging
+ * @property {string} preference - The user's preference that keeps the width
  */
 
 // How far one press of an arrow key moves the edge, in pixels.
@@ -60,8 +61,8 @@ function keyedWidth (key, width, limits) {
 
 // The things that can be resized, each by its handle.
 const RESIZABLES = Object.freeze([
-  { handle: '[data-guide-contents-resize]', scope: '.app-guide-reading', property: '--app-guide-toc-width', resizingClass: 'app-guide-reading--resizing' },
-  { handle: '[data-side-nav-resize]', scope: '.app-layout', property: '--app-side-nav-width', resizingClass: 'app-layout--resizing' }
+  { handle: '[data-guide-contents-resize]', scope: '.app-guide-reading', property: '--app-guide-toc-width', resizingClass: 'app-guide-reading--resizing', preference: 'contentsWidth' },
+  { handle: '[data-side-nav-resize]', scope: '.app-layout', property: '--app-side-nav-width', resizingClass: 'app-layout--resizing', preference: 'sideNavWidth' }
 ])
 
 class ResizeHandle {
@@ -70,6 +71,7 @@ class ResizeHandle {
   #scope
   #limits
   #dragStart = null
+  #kept
 
   /**
    * @param {HTMLElement} handle
@@ -83,6 +85,7 @@ class ResizeHandle {
       min: Number(handle.getAttribute('aria-valuemin')),
       max: Number(handle.getAttribute('aria-valuemax'))
     }
+    this.#kept = this.#width()
   }
 
   attach () {
@@ -93,7 +96,11 @@ class ResizeHandle {
     handle.addEventListener('pointerup', () => this.#endDrag())
     handle.addEventListener('pointercancel', () => this.#endDrag())
     handle.addEventListener('keydown', event => this.#onKey(event))
-    handle.addEventListener('dblclick', () => this.#setWidth(Number(handle.dataset.defaultWidth)))
+    handle.addEventListener('keyup', () => this.#keep())
+    handle.addEventListener('dblclick', () => {
+      this.#setWidth(Number(handle.dataset.defaultWidth))
+      this.#keep()
+    })
     handle.hidden = false
   }
 
@@ -126,6 +133,18 @@ class ResizeHandle {
   #endDrag () {
     this.#dragStart = null
     this.#scope.classList.remove(this.#resizable.resizingClass)
+    this.#keep()
+  }
+
+  // Sends the width the user left it at, as their preference, so that their
+  // next page is drawn at it. One that is not kept is not shown.
+  #keep () {
+    const width = this.#width()
+
+    if (width !== this.#kept) {
+      this.#kept = width
+      window.fetch('/preferences', { method: 'post', body: new URLSearchParams({ [this.#resizable.preference]: width }) }).catch(() => {})
+    }
   }
 
   #onKey (event) {

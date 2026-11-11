@@ -7,6 +7,7 @@ import * as guidesService from '../../services/guides.js'
 import * as usersService from '../../services/users.js'
 import { guideAssetHref } from './asset-href.js'
 import { BOOKMARKED } from './bookmark/controller.js'
+import { getContentsWidth } from './contents-width.js'
 import { getGuideFormat, setGuideFormat } from './format.js'
 import { isInformationShown, setInformationShown } from './information.js'
 import { getReadingWidth, setReadingWidth } from './reading-width.js'
@@ -108,13 +109,14 @@ function _pinnedSectionsOf (pinned, guideId) {
 async function getGuidePage (request, h) {
   const { guideId } = request.params
 
-  const [guide, content, pinned, cases, format, readingWidth, informationShown] = await Promise.all([
+  const [guide, content, pinned, cases, format, readingWidth, contentsWidth, informationShown] = await Promise.all([
     guidesService.getGuideById(guideId),
     guidesService.getGuideContent(guideId),
     usersService.pinnedOf(request),
     usersService.casesOf(request),
     getGuideFormat(request),
     getReadingWidth(request),
+    getContentsWidth(request),
     isInformationShown(request)
   ])
 
@@ -140,6 +142,7 @@ async function getGuidePage (request, h) {
     sections,
     pageNumber: _pageNamed(sections, request.query.section),
     readingWidth,
+    contentsWidth,
     returnTo: _currentUrl(request),
     pin: _pinOf(pinned, guide.id),
     pinnedSections: _pinnedSectionsOf(pinned, guide.id),

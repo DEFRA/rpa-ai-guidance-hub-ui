@@ -8,6 +8,7 @@ import { createServer } from '../../../../src/server/server.js'
 import { guideResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 import { pageOf } from '../../helpers/page.js'
+import { keepPreferencesInTheApi } from '../../helpers/preferences-api.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const GUIDE_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
@@ -59,5 +60,15 @@ describe('Resizing a guide\'s contents pane', () => {
     expect(handle).toHaveAttribute('data-default-width', '340')
     expect(handle).toHaveAttribute('tabindex', '0')
     expect(handle).not.toBeVisible()
+  })
+
+  test('is drawn at the width the user left it, before any script runs', async () => {
+    keepPreferencesInTheApi({ contentsWidth: 412 })
+    const cookie = await loginAsDevUser(server)
+
+    const page = pageOf((await server.inject({ method: 'GET', url: `/guides/${GUIDE_ID}`, headers: { cookie } })).payload)
+
+    expect(page.getByLabelText(RESIZE_HANDLE)).toHaveAttribute('aria-valuenow', '412')
+    expect(page.document.querySelector('style[data-contents-width]')).toHaveTextContent('.app-guide-reading { --app-guide-toc-width: 412px; }')
   })
 })

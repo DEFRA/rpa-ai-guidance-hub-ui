@@ -63,6 +63,15 @@ describe('Resizing the side navigation', () => {
     expect(handle).not.toBeVisible()
   })
 
+  test('is drawn at the width the user left it, before any script runs', async () => {
+    keepPreferencesInTheApi({ sideNavWidth: 360 })
+
+    const page = await hubFor(await loginAsDevUser(server))
+
+    expect(within(page.document.body).getByLabelText(RESIZE_HANDLE)).toHaveAttribute('aria-valuenow', '360')
+    expect(page.document.querySelector('style[data-side-nav-width]')).toHaveTextContent('.app-layout { --app-side-nav-width: 360px; }')
+  })
+
   test('has no handle when the navigation is folded away', async () => {
     keepPreferencesInTheApi({ sideNavCollapsed: true })
 

@@ -132,6 +132,26 @@ describe('the side navigation\'s resize handle', () => {
     expect(navWidthOf(layout)).toBe('280px')
     expect(handle).toHaveAttribute('aria-valuenow', '280')
   })
+
+  test('keeps the width the user leaves it at, once a key press, a drag or a double-click ends', () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 204 }))
+    const { handle } = render()
+    handle.setPointerCapture = vi.fn()
+
+    fireEvent.keyDown(handle, { key: 'ArrowRight' })
+    fireEvent.keyUp(handle, { key: 'ArrowRight' })
+    fireEvent.pointerDown(handle, { clientX: 300 })
+    fireEvent.pointerMove(handle, { clientX: 350 })
+    fireEvent.pointerUp(handle)
+    fireEvent.dblClick(handle)
+
+    expect(window.fetch.mock.calls.map(([url, { method, body }]) => [url, method, String(body)])).toEqual([
+      ['/preferences', 'post', 'sideNavWidth=300'],
+      ['/preferences', 'post', 'sideNavWidth=350'],
+      ['/preferences', 'post', 'sideNavWidth=280']
+    ])
+    vi.unstubAllGlobals()
+  })
 })
 
 describe('the contents pane\'s resize handle', () => {

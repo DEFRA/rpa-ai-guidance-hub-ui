@@ -7,6 +7,11 @@
 
 {% block head %}
   <link href="{{ getAssetPath('src/client/stylesheets/application.scss') }}" rel="stylesheet">
+  {# The width the user left the side navigation at; the CSP does not allow a
+     style attribute. #}
+  <style nonce="{{ cspNonce.style }}" data-side-nav-width>
+    .app-layout { --app-side-nav-width: {{ sideNavWidth }}px; }
+  </style>
 {% endblock %}
 
 {% block header %}
