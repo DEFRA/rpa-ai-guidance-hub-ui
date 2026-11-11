@@ -64,9 +64,21 @@ function summaryValueOf (page, key) {
   return page.getByText(key, { selector: '.govuk-summary-list__key' }).nextElementSibling
 }
 
+/**
+ * The text a reader gets from a piece of the hub's own HTML, such as a message
+ * that bolds the name of a control: to find it on a page by its words.
+ *
+ * @param {string} html
+ * @returns {string}
+ */
+function textOf (html) {
+  return JSDOM.fragment(html).textContent
+}
+
 export {
   errorSummaryOf,
   pageOf,
   sideNavOf,
-  summaryValueOf
+  summaryValueOf,
+  textOf
 }

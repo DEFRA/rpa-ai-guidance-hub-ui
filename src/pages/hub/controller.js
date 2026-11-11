@@ -1,5 +1,6 @@
 import Boom from '@hapi/boom'
 
+import { CASE_TYPES } from '../../constants/case-types.js'
 import { statusCodes } from '../../constants/status-codes.js'
 import * as guidesService from '../../services/guides.js'
 import * as usersService from '../../services/users.js'
@@ -65,7 +66,7 @@ function _toPinItem (pinned) {
 
 /**
  * Each of the side navigation's lists, by the last part of its address
- * (`/hub/pinned`), and the HubViewModel table that it shows.
+ * (`/hub/pinned`), and the HubViewModel list that it shows.
  */
 const LISTS = {
   'recently-opened': 'recentlyOpened',
@@ -144,12 +145,54 @@ async function getHubPage (request, h) {
 }
 
 /**
- * The side navigation's lists that have a source of guides, by the
- * HubViewModel list each shows: each answers the guides the filters let
- * through, each filter's counts among them, and how it shows each as a row,
- * with where it is among the user's pins, so its star and the list agree.
+ * @private
+ * A list's guides, each shown as the hub shows it, with its star.
  *
- * @type {Record<string, (request: import('@hapi/hapi').Request, filters: import('../../services/guides.js').Filters) => Promise<{guides: Array<object>, counts: object, rowOf: (guide: object) => object}>>}
+ * @param {Promise<{guides: Array<object>, counts: object}>} listing
+ * @param {import('@hapi/hapi').Request} request
+ * @returns {Promise<{guides: Array<object>, counts: object, rowOf: (guide: object) => object}>}
+ */
+async function _starred (listing, request) {
+  const [{ guides, counts }, pinned] = await Promise.all([listing, usersService.pinnedOf(request)])
+  const pinPositions = _pinPositions(pinned)
+
+  return { guides, counts, rowOf: (guide) => _toGuideItem(guide, pinPositions) }
+}
+
+/**
+ * @private
+ * The case the address narrows the bookmarked guides to (`case`), by its key:
+ * its key and how its tag names it, as the prototype does (`Case: W1234567`).
+ *
+ * @param {import('@hapi/hapi').Request} request
+ * @returns {Promise<{key: string, text: string}|null>} Null when the address
+ *   names none
+ * @throws {Boom.Boom} 404 for a case the user has not got
+ */
+async function _narrowedTo (request) {
+  const key = request.query.case
+
+  if (key === undefined) {
+    return null
+  }
+
+  const found = (await usersService.casesOf(request) ?? []).find((each) => each.key === key)
+
+  if (!found) {
+    throw Boom.notFound()
+  }
+
+  return { key, text: `${CASE_TYPES[found.type].short}: ${found.ref}` }
+}
+
+/**
+ * The side navigation's lists, by the HubViewModel list each shows: each
+ * answers the guides the filters let through, each filter's counts among
+ * them, and how it shows each as a row, with where it is among the user's
+ * pins, so its star and the list agree; and the case the list is narrowed
+ * to, for the bookmarked guides.
+ *
+ * @type {Record<string, (request: import('@hapi/hapi').Request, filters: import('../../services/guides.js').Filters) => Promise<{guides: Array<object>, counts: object, rowOf: (guide: object) => object, narrowedTo?: {key: string, text: string}|null}>>}
  */
 const LIST_SOURCES = {
   async pinned (request, filters) {
@@ -158,14 +201,13 @@ const LIST_SOURCES = {
     return { guides, counts, rowOf: _toPinItem }
   },
 
-  async recentlyOpened (request, filters) {
-    const [{ guides, counts }, pinned] = await Promise.all([
-      usersService.listRecentlyOpened(request, filters),
-      usersService.pinnedOf(request)
-    ])
-    const pinPositions = _pinPositions(pinned)
+  recentlyOpened: (request, filters) => _starred(usersService.listRecentlyOpened(request, filters), request),
 
-    return { guides, counts, rowOf: (guide) => _toGuideItem(guide, pinPositions) }
+  async bookmarkedGuides (request, filters) {
+    const narrowedTo = await _narrowedTo(request)
+    const listed = await _starred(usersService.listBookmarked(request, filters, narrowedTo?.key), request)
+
+    return { ...listed, narrowedTo }
   }
 }
 
@@ -206,23 +248,17 @@ function _guideCount (guides) {
 
 /**
  * One of the side navigation's lists on its own, in its own order (the
- * user's, for the pinned guides; newest first, for the recently opened
- * ones), beside the filters, which narrow it; there is no sort. A list with
- * no source of guides yet shows its empty message.
+ * user's, for the pinned guides; newest first, for the recently opened ones;
+ * by the user's cases, for the bookmarked ones), beside the filters, which
+ * narrow it; there is no sort. The bookmarked guides can be narrowed to one
+ * case, which the filters show as a tag of their own.
  */
 async function getHubListPage (request, h) {
   const shown = LISTS[request.params.list]
   const source = LIST_SOURCES[shown]
-
-  if (!source) {
-    return h
-      .view(HUB_VIEW, new HubViewModel({ shown }))
-      .code(statusCodes.HTTP_STATUS_OK)
-  }
-
   const filters = filtersFrom(request.query)
-  const { guides, counts, rowOf } = await _refusingUnknownFilters(source(request, filters))
-  const panel = filterPanel({ path: `/hub/${request.params.list}`, filters, counts, sort: sortFrom(), total: _guideCount(guides), withSort: false })
+  const { guides, counts, rowOf, narrowedTo } = await _refusingUnknownFilters(source(request, filters))
+  const panel = filterPanel({ path: `/hub/${request.params.list}`, filters, counts, sort: sortFrom(), total: _guideCount(guides), withSort: false, narrowedTo })
 
   const viewModel = new HubViewModel({
     shown,

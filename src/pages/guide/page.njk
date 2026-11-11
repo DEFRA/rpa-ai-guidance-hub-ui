@@ -7,20 +7,27 @@
 
 {% set pageTitle = title %}
 {% set page = 'guide' %}
-{# The page is a shell that runs the full width, banner to panel. #}
+{# The page is a shell that runs the full width. #}
 {% set containerClasses = 'app-width-container--bleed' %}
 {% set mainClasses = 'app-main-wrapper app-main-wrapper--bleed' %}
 
 {% block head %}
   {{ super() }}
-  {# The CSP does not allow a style attribute, so the width is set here. #}
-  <style nonce="{{ cspNonce.style }}" data-progress-style>
-    {% for item in pages %}
-    #guide-progress-bar-{{ item.pageNumber }} {
-      --progress-width: {{ item.progressPercentage }}%;
-    }
-    {% endfor %}
+  {# The width the user left the contents pane at; the CSP does not allow a
+     style attribute. #}
+  <style nonce="{{ cspNonce.style }}" data-contents-width>
+    .app-guide-reading { --app-guide-toc-width: {{ contentsWidth }}px; }
   </style>
+  {% if format == 'stepper' %}
+    {# The CSP does not allow a style attribute, so the width is set here. #}
+    <style nonce="{{ cspNonce.style }}" data-progress-style>
+      {% for item in pages %}
+      #guide-progress-bar-{{ item.pageNumber }} {
+        --progress-width: {{ item.progressPercentage }}%;
+      }
+      {% endfor %}
+    </style>
+  {% endif %}
 {% endblock %}
 
 {% block beforeContent %}{% endblock %}
@@ -29,12 +36,13 @@
   <div class="app-shell">
     <div class="app-shell__main">
       <div class="app-guide-gutter">
-        {{ govukBackLink({ text: "Back", href: "/hub" }) }}
-
         <div class="app-guide-reading app-guide-reading--{{ readingWidth }}">
           {% if bookmarkAdded %}
             {% call govukNotificationBanner({ type: "success" }) %}
               <h3 class="govuk-notification-banner__heading">{{ bookmarkAdded.text }}</h3>
+              {% if bookmarkAdded.caseHref %}
+                <p class="govuk-body"><a class="govuk-notification-banner__link" href="{{ bookmarkAdded.caseHref }}">View all guides for this case</a></p>
+              {% endif %}
             {% endcall %}
           {% endif %}
           <div class="app-guide-byline">
@@ -59,14 +67,11 @@
                 </button>
               </form>
             {% endif %}
-          </div>
-
-          <h1 class="app-guide-title">{{ title }}</h1>
-
-          <div class="app-guide-tools">
+            {# The page width, at the right of the row; named for screen readers
+               only, as the guide format is. #}
             <form class="app-guide-reading-width" method="post" action="/guides/reading-width">
               <input type="hidden" name="returnTo" value="{{ returnTo }}">
-              <span class="app-guide-reading-width__label" id="guide-reading-width-label">Page width</span>
+              <span class="govuk-visually-hidden" id="guide-reading-width-label">Page width</span>
               <div class="app-guide-format-toggle app-guide-reading-width__options" role="group" aria-labelledby="guide-reading-width-label">
                 {% for option in readingWidths %}
                   <button type="submit" name="width" value="{{ option.value }}"
@@ -77,32 +82,95 @@
             </form>
           </div>
 
-          <nav class="app-guide-contents" aria-labelledby="guide-contents-heading">
-            <h2 class="govuk-heading-s" id="guide-contents-heading">Contents</h2>
-            {% for item in contents %}
-              <p class="app-guide-contents__section{{ ' app-guide-contents__section--current' if item.isCurrent }}" data-guide-contents-page="{{ loop.index }}">
-                <a class="govuk-link app-guide-contents__section-link" href="{{ item.href }}"{% if item.isCurrent %} aria-current="page"{% endif %}>{{ item.title }}</a>
-              </p>
-              {% if item.subheadings.length %}
-                <ol class="govuk-list app-guide-contents__list">
-                  {% for subheading in item.subheadings %}
-                    <li><a class="govuk-link app-guide-contents__link" href="{{ subheading.href }}">{{ subheading.title }}</a></li>
-                  {% endfor %}
-                </ol>
-              {% endif %}
-            {% endfor %}
-          </nav>
+          {# The title, with the information button beside it. The button sends
+             the choice to show or hide the guide's information in a form, so
+             it works without JavaScript; with it, guide-info.js shows or hides
+             the information at once and sends the choice behind the scenes. #}
+          <div class="app-guide-title-row">
+            <h1 class="app-guide-title">{{ title }}</h1>
+            <form class="app-guide-info-form" method="post" action="/guides/information">
+              <input type="hidden" name="shown" value="{{ 'false' if informationShown else 'true' }}">
+              <input type="hidden" name="returnTo" value="{{ returnTo }}">
+              <button type="submit" class="app-guide-info-toggle" aria-expanded="{{ 'true' if informationShown else 'false' }}" aria-controls="guide-info" data-guide-info-toggle>
+                {{ icon("info") }}
+                <span class="govuk-visually-hidden">Guide information</span>
+                <span class="app-side-nav__tooltip app-side-nav__tooltip--left app-guide-info-toggle__tooltip" aria-hidden="true" data-guide-info-tooltip>{{ "Hide guide information" if informationShown else "Show guide information" }}</span>
+              </button>
+            </form>
+          </div>
 
-          {# Every section is here so the browser's find-in-page can search them
-             all; the ones not being read are hidden until it finds a match in
-             one. Only the current one is handed to the viewer: swapping the
-             others' HTML would lose the match. #}
-          {% for item in pages %}
-            <div class="app-guide-page" data-guide-page="{{ item.pageNumber }}"{% if not item.isCurrent %} hidden="until-found"{% endif %}>
-              <p class="app-guide-section__eyebrow">Page {{ item.pageNumber }} of {{ totalPages }}</p>
-              <div class="app-progress__track app-guide-progress" role="presentation">
-                <div class="app-progress__bar" id="guide-progress-bar-{{ item.pageNumber }}"></div>
+          <div class="app-guide-info" id="guide-info" data-guide-info{% if not informationShown %} hidden{% endif %}>
+            <dl class="govuk-summary-list govuk-summary-list--no-border app-guide-info__list">
+              {% for row in infoRows %}
+                <div class="govuk-summary-list__row">
+                  <dt class="govuk-summary-list__key">{{ row.label }}</dt>
+                  <dd class="govuk-summary-list__value">{% if row.href %}<a class="govuk-link" href="{{ row.href }}">{{ row.text }}</a>{% else %}{{ row.text }}{% endif %}</dd>
+                </div>
+              {% endfor %}
+            </dl>
+          </div>
+
+
+          {# The contents pane: Back, the whole guide or a section at a time,
+             then the contents list. The format's return address names both the page
+             and the heading the reader is at, so either format can take them
+             back there; guide-place.js moves it to where they have scrolled.
+             With JavaScript, the contents mark where the reader is, and the
+             address follows them (guide-contents.js). #}
+          <div class="app-guide-contents" id="guide-contents" data-guide-format="{{ format }}">
+            {{ govukBackLink({ text: "Back", href: "/hub" }) }}
+
+            <form class="app-guide-format" method="post" action="/guides/format">
+              <input type="hidden" name="returnTo" value="{{ place }}" data-guide-place>
+              <div class="app-guide-format-toggle app-guide-format__options" role="group" aria-label="Guide format">
+                {% for option in formats %}
+                  <button type="submit" name="format" value="{{ option.value }}"
+                    class="app-guide-format-toggle__option{{ ' app-guide-format-toggle__option--active' if option.isChosen }}"
+                    aria-pressed="{{ 'true' if option.isChosen else 'false' }}">{{ option.text }}</button>
+                {% endfor %}
               </div>
+            </form>
+
+            <nav aria-labelledby="guide-contents-heading">
+              <h2 class="govuk-heading-s" id="guide-contents-heading">Contents</h2>
+              {% for item in contents %}
+                <p class="app-guide-contents__section{{ ' app-guide-contents__section--current' if item.isCurrent }}" data-guide-contents-page="{{ loop.index }}">
+                  <a class="govuk-link app-guide-contents__section-link" data-guide-contents-target="{{ item.anchor }}" href="{{ item.href }}"{% if item.isCurrent %} aria-current="page"{% endif %}>{{ item.title }}</a>
+                </p>
+                {% if item.subheadings.length %}
+                  <ol class="govuk-list app-guide-contents__list">
+                    {% for subheading in item.subheadings %}
+                      <li><a class="govuk-link app-guide-contents__link" data-guide-contents-target="{{ subheading.anchor }}" href="{{ subheading.href }}">{{ subheading.title }}</a></li>
+                    {% endfor %}
+                  </ol>
+                {% endif %}
+              {% endfor %}
+            </nav>
+          </div>
+
+          {# The contents pane's edge, dragged or arrow-keyed to resize it
+             (resize-handle.js), hidden until that script attaches. Wide
+             screens only: narrower, the contents pane sits above the guide
+             pane. #}
+          <div class="app-guide-contents-resize" role="separator" aria-orientation="vertical"
+            aria-label="Resize contents" aria-controls="guide-contents"
+            aria-valuemin="{{ contentsWidthLimits.min }}" aria-valuemax="{{ contentsWidthLimits.max }}"
+            aria-valuenow="{{ contentsWidth }}" aria-valuetext="{{ contentsWidth }} pixels wide"
+            data-guide-contents-resize data-default-width="{{ contentsWidthLimits.default }}" tabindex="0" hidden></div>
+
+          {# Every section is here. In the stepper that is so the browser's
+             find-in-page can search them all; the ones not being read are
+             hidden until it finds a match in one. Only the sections shown are
+             handed to the viewer: swapping a hidden one's HTML would lose the
+             match. #}
+          {% for item in pages %}
+            <div class="app-guide-page" data-guide-page="{{ item.pageNumber }}"{% if not item.isShown %} hidden="until-found"{% endif %} data-guide-page-href="{{ item.href }}">
+              {% if format == 'stepper' %}
+                <p class="app-guide-section__eyebrow">Page {{ item.pageNumber }} of {{ totalPages }}</p>
+                <div class="app-progress__track app-guide-progress" role="presentation">
+                  <div class="app-progress__bar" id="guide-progress-bar-{{ item.pageNumber }}"></div>
+                </div>
+              {% endif %}
 
               {% if item.bookmark %}
                 <div class="app-guide-heading">
@@ -118,7 +186,7 @@
                 </div>
               {% endif %}
 
-              {% if item.isCurrent %}
+              {% if item.isShown %}
                 <div class="app-guide-markdown app-guide-body-text" data-tiptap-markdown data-heading-ids="{{ item.section.headingIds | dump }}" data-heading-bookmarks="{{ item.headingBookmarks | dump }}">
                   <script type="application/json">{{ item.section.markdown | jsonScript }}</script>
                   <div class="app-guide-markdown__fallback">{{ item.section.markdown | markdownFallback(item.section.headingIds, item.headingBookmarks) }}</div>
@@ -129,10 +197,12 @@
                 </div>
               {% endif %}
 
-              {% if item.previous or item.next %}
+              {% if format == 'stepper' and (item.previous or item.next) %}
+                {# "Previous page" and "Next page" in full, where GOV.UK's own
+                   wording hides "page" from sight. #}
                 {{ govukPagination({
-                  previous: { href: item.previous.href, labelText: item.previous.labelText } if item.previous else undefined,
-                  next: { href: item.next.href, labelText: item.next.labelText } if item.next else undefined
+                  previous: { text: "Previous page", href: item.previous.href, labelText: item.previous.labelText } if item.previous else undefined,
+                  next: { text: "Next page", href: item.next.href, labelText: item.next.labelText } if item.next else undefined
                 }) }}
               {% endif %}
             </div>
@@ -141,38 +211,6 @@
       </div>
     </div>
 
-    <form id="guide-panel-toggle-form" method="post" action="/guides/panel-toggle" hidden>
-      <input type="hidden" name="collapsed" value="{{ 'false' if panelCollapsed else 'true' }}">
-      <input type="hidden" name="returnTo" value="{{ returnTo }}">
-    </form>
-
-    <aside class="app-guide-panel{{ ' app-guide-panel--collapsed' if panelCollapsed }}" aria-label="About this guide">
-      {% if panelCollapsed %}
-        <nav class="app-side-nav app-side-nav--rail" aria-label="About this guide">
-          <ul class="app-side-nav__rail-list">
-            <li>
-              <button type="submit" form="guide-panel-toggle-form" class="app-side-nav__rail-item" aria-expanded="false" data-side-nav-tooltip>
-                {{ icon("collapse") }}
-                <span class="app-side-nav__rail-label">Show guide details</span>
-                <span class="app-side-nav__tooltip" aria-hidden="true">Show guide details</span>
-              </button>
-            </li>
-          </ul>
-        </nav>
-      {% else %}
-        <div class="app-guide-panel__header">
-          <h2 class="govuk-heading-s govuk-!-margin-bottom-0">About this guide</h2>
-          <button type="submit" form="guide-panel-toggle-form" class="app-side-nav__icon-button" aria-controls="guide-panel-body" aria-expanded="true">
-            {{ icon("expand") }}
-            <span class="govuk-visually-hidden">Hide guide details</span>
-          </button>
-        </div>
-
-        <div class="app-guide-panel__body" id="guide-panel-body">
-          {% include "guide/partials/metadata-list.njk" %}
-        </div>
-      {% endif %}
-    </aside>
   </div>
 {% endblock %}
 

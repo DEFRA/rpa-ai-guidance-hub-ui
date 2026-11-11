@@ -1,6 +1,7 @@
 import { statusCodes } from '../../../../src/constants/status-codes.js'
 import * as controller from '../../../../src/pages/guide/controller.js'
 import * as guidesService from '../../../../src/services/guides.js'
+import * as preferencesService from '../../../../src/services/preferences.js'
 import * as usersService from '../../../../src/services/users.js'
 
 const guide = {
@@ -13,15 +14,15 @@ const guide = {
 
 const markdown = '## One\n\nFirst.\n\n## Two\n\nSecond.\n\n## Three\n\nThird.'
 
-function createRequest ({ query = {}, payload, stored } = {}) {
-  const session = new Map(stored ? [['guide-reading-width', stored]] : [])
-
+function createRequest ({ query = {}, payload, stored, format, informationShown } = {}) {
   return {
     params: { guideId: 'guide-1', name: 'abc.png' },
     query,
     payload,
-    url: { pathname: '/guides/guide-1', search: '?page=2' },
-    yar: { get: key => session.get(key), set: (key, value) => session.set(key, value), flash: () => [], session }
+    url: { pathname: '/guides/guide-1', search: '?section=two' },
+    yar: { flash: () => [] },
+    // The user's preferences, as the preferences service answers them.
+    preferences: { readingWidth: stored, guideFormat: format, guideInformationShown: informationShown }
   }
 }
 
@@ -43,6 +44,8 @@ describe('guide controller', () => {
     vi.spyOn(usersService, 'pinnedOf').mockResolvedValue([])
     vi.spyOn(usersService, 'casesOf').mockResolvedValue([])
     vi.spyOn(usersService, 'recordOpened').mockResolvedValue()
+    vi.spyOn(preferencesService, 'preferencesOf').mockImplementation(async request => request.preferences)
+    vi.spyOn(preferencesService, 'keepPreferences').mockResolvedValue()
   })
 
   describe('getGuidePage', () => {
@@ -76,8 +79,8 @@ describe('guide controller', () => {
       expect(usersService.recordOpened).toHaveBeenCalledWith(request, 'guide-1')
     })
 
-    test('records the guide as opened when a direct link names a page', async () => {
-      const request = createRequest({ query: { page: '2' } })
+    test('records the guide as opened when a link names one of its sections', async () => {
+      const request = createRequest({ query: { section: 'two' } })
 
       await controller.getGuidePage(request, h)
 
@@ -92,29 +95,58 @@ describe('guide controller', () => {
     })
 
     test('renders the section asked for, and the chosen width', async () => {
-      const request = createRequest({ query: { page: '2' }, stored: 'full' })
+      const request = createRequest({ query: { section: 'two' }, stored: 'full' })
 
       await controller.getGuidePage(request, h)
 
       expect(h.view.mock.calls[0][1]).toMatchObject({
-        panelCollapsed: false,
         pageNumber: 2,
         readingWidth: 'full',
-        returnTo: '/guides/guide-1?page=2'
+        returnTo: '/guides/guide-1?section=two'
       })
     })
 
     test.each([
-      ['0', 1],
-      ['-4', 1],
-      ['99', 3],
-      ['abc', 1],
-      [undefined, 1],
-      ['2.9', 2]
-    ])('shows page %j as page %i', async (page, expected) => {
-      await controller.getGuidePage(createRequest({ query: { page } }), h)
+      [undefined, 'traditional'],
+      ['stepper', 'stepper']
+    ])('shows the guide in the format chosen, whole until one is (%j)', async (format, shown) => {
+      await controller.getGuidePage(createRequest({ format }), h)
+
+      expect(h.view.mock.calls[0][1].format).toBe(shown)
+    })
+
+    test.each([
+      ['two', 2],
+      ['never', 1],
+      [undefined, 1]
+    ])('shows the page with section %j as page %i, without sending the reader on', async (section, expected) => {
+      await controller.getGuidePage(createRequest({ query: { section } }), h)
 
       expect(h.view.mock.calls[0][1].pageNumber).toBe(expected)
+      expect(h.redirect).not.toHaveBeenCalled()
+    })
+
+    test('shows the page that has a heading inside one of its sections', async () => {
+      guidesService.getGuideContent.mockResolvedValue({ markdown: '## One\n\nFirst.\n\n## Two\n\n### 2.1 Deep\n\nSecond.' })
+
+      await controller.getGuidePage(createRequest({ query: { section: '21-deep' } }), h)
+
+      expect(h.view.mock.calls[0][1].pageNumber).toBe(2)
+    })
+
+    test.each([
+      [undefined, false],
+      [true, true]
+    ])('shows the guide\'s information as the user chose (%j)', async (informationShown, shown) => {
+      await controller.getGuidePage(createRequest({ informationShown }), h)
+
+      expect(h.view.mock.calls[0][1].informationShown).toBe(shown)
+    })
+
+    test('ignores a page number in the address', async () => {
+      await controller.getGuidePage(createRequest({ query: { page: '2' } }), h)
+
+      expect(h.view.mock.calls[0][1].pageNumber).toBe(1)
     })
 
     test.each([
@@ -132,38 +164,52 @@ describe('guide controller', () => {
   })
 
   describe('postReadingWidth', () => {
-    test('remembers the width and goes back to the page', () => {
+    test('keeps the width as the user\'s preference and goes back to the page', async () => {
       const request = createRequest({ payload: { width: 'wide', returnTo: '/guides/guide-1?page=2' } })
 
-      controller.postReadingWidth(request, h)
+      await controller.postReadingWidth(request, h)
 
-      expect(request.yar.session.get('guide-reading-width')).toBe('wide')
+      expect(preferencesService.keepPreferences).toHaveBeenCalledWith(request, { readingWidth: 'wide' })
       expect(h.redirect).toHaveBeenCalledWith('/guides/guide-1?page=2')
     })
 
-    test.each([[''], ['https://evil.example'], ['//evil.example']])('goes to the hub instead of %j', (returnTo) => {
-      controller.postReadingWidth(createRequest({ payload: { width: 'full', returnTo } }), h)
+    test.each([[''], ['https://evil.example'], ['//evil.example']])('goes to the hub instead of %j', async (returnTo) => {
+      await controller.postReadingWidth(createRequest({ payload: { width: 'full', returnTo } }), h)
 
       expect(h.redirect).toHaveBeenCalledWith('/hub')
     })
   })
 
-  describe('postPanelToggle', () => {
-    test('remembers the panel as collapsed, and goes back to the page', () => {
-      const request = createRequest({ payload: { collapsed: true, returnTo: '/guides/guide-1?page=2' } })
+  describe('postInformation', () => {
+    test.each([[true], [false]])('keeps the information as shown %s, and goes back to the page', async (shown) => {
+      const request = createRequest({ payload: { shown, returnTo: '/guides/guide-1?section=two' } })
 
-      controller.postPanelToggle(request, h)
+      await controller.postInformation(request, h)
 
-      expect(request.yar.session.get('guide-panel-collapsed')).toBe(true)
-      expect(h.redirect).toHaveBeenCalledWith('/guides/guide-1?page=2')
+      expect(preferencesService.keepPreferences).toHaveBeenCalledWith(request, { guideInformationShown: shown })
+      expect(h.redirect).toHaveBeenCalledWith('/guides/guide-1?section=two')
     })
 
-    test('remembers the panel as open', () => {
-      const request = createRequest({ payload: { collapsed: false, returnTo: '' } })
+    test.each([[''], ['https://evil.example']])('goes to the hub instead of %j', async (returnTo) => {
+      await controller.postInformation(createRequest({ payload: { shown: true, returnTo } }), h)
 
-      controller.postPanelToggle(request, h)
+      expect(h.redirect).toHaveBeenCalledWith('/hub')
+    })
+  })
 
-      expect(request.yar.session.get('guide-panel-collapsed')).toBe(false)
+  describe('postFormat', () => {
+    test('keeps the format as the user\'s preference and goes back to the reader\'s place', async () => {
+      const request = createRequest({ payload: { format: 'stepper', returnTo: '/guides/guide-1?page=2#two' } })
+
+      await controller.postFormat(request, h)
+
+      expect(preferencesService.keepPreferences).toHaveBeenCalledWith(request, { guideFormat: 'stepper' })
+      expect(h.redirect).toHaveBeenCalledWith('/guides/guide-1?page=2#two')
+    })
+
+    test.each([[''], ['https://evil.example'], ['//evil.example']])('goes to the hub instead of %j', async (returnTo) => {
+      await controller.postFormat(createRequest({ payload: { format: 'traditional', returnTo } }), h)
+
       expect(h.redirect).toHaveBeenCalledWith('/hub')
     })
   })

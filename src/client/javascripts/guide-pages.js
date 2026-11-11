@@ -21,9 +21,10 @@ function initGuidePages () {
 
     const number = page.dataset.guidePage
 
-    // Replace rather than push so each find hop is not a Back step
+    // Replace rather than push so each find hop is not a Back step. The
+    // address names the page by its section, as its links do.
     const url = new URL(window.location.href)
-    url.searchParams.set('page', number)
+    url.search = new URL(page.dataset.guidePageHref, url).search
     window.history.replaceState(window.history.state, '', url)
 
     // Every form on the page comes back to it, the side navigation's too

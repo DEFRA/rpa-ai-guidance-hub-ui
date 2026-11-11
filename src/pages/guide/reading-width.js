@@ -1,4 +1,4 @@
-const SESSION_KEY = 'guide-reading-width'
+import { keepPreferences, preferencesOf } from '../../services/preferences.js'
 
 const READING_WIDTHS = Object.freeze([
   { value: 'standard', text: 'Standard' },
@@ -20,20 +20,21 @@ function isReadingWidth (width) {
  * The page width the user chose, for every guide they read.
  *
  * @param {import('@hapi/hapi').Request} request
- * @returns {string} One of `READING_WIDTHS`' values
+ * @returns {Promise<string>} One of `READING_WIDTHS`' values
  */
-function getReadingWidth (request) {
-  const width = request.yar.get(SESSION_KEY)
+async function getReadingWidth (request) {
+  const { readingWidth } = await preferencesOf(request)
 
-  return isReadingWidth(width) ? width : DEFAULT_READING_WIDTH
+  return isReadingWidth(readingWidth) ? readingWidth : DEFAULT_READING_WIDTH
 }
 
 /**
  * @param {import('@hapi/hapi').Request} request
  * @param {string} width - One of `READING_WIDTHS`' values
+ * @returns {Promise<void>}
  */
-function setReadingWidth (request, width) {
-  request.yar.set(SESSION_KEY, width)
+async function setReadingWidth (request, width) {
+  await keepPreferences(request, { readingWidth: width })
 }
 
 export {

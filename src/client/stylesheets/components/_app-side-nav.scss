@@ -1,8 +1,7 @@
 // The pieces of the prototype's side navigation
 // (rpa-ai-guidance-hub-prototype: app/assets/sass/components/_app-side-nav.scss)
-// that the guide page's "About this guide" panel is built from: its tokens,
-// focus style, the shell it sits in, the icon button, and the collapsed icon
-// rail with its tooltip. Copied as they are, so the side navigation ticket
+// that the guide page is built from: its tokens, focus style, the shell it
+// sits in, the icon button, and the collapsed icon rail with its tooltip. Copied as they are, so the side navigation ticket
 // can add the rest of the file without anything here changing.
 
 // Kept as the prototype has it, so a change there can be copied across as it
@@ -12,8 +11,8 @@
 @use 'govuk-frontend' as *;
 @use '../variables/colours' as *;
 
+// Match SIDE_NAV_WIDTH in src/pages/side-nav/width.js.
 $app-side-nav-width: 280px;
-// Match NAV_WIDTH in app/data/side-nav.js.
 $app-side-nav-min-width: 220px;
 $app-side-nav-max-width: 440px;
 $app-side-nav-rail-width: 64px;
@@ -271,7 +270,10 @@ $app-side-nav-muted: #505a5f;
   top: 0;
   flex: 0 0 auto;
   box-sizing: border-box;
-  width: $app-side-nav-width;
+  // The width the user resized it to (resize-handle.js), or the default.
+  width: var(--app-side-nav-width, $app-side-nav-width);
+  min-width: $app-side-nav-min-width;
+  max-width: $app-side-nav-max-width;
   height: 100vh;
   overflow-y: auto;
   border-right: 1px solid $app-side-nav-divider;
@@ -287,7 +289,50 @@ $app-side-nav-muted: #505a5f;
 // and does not clip, so each icon's tooltip can show beside it.
 .app-layout--collapsed .app-layout__nav {
   width: $app-side-nav-rail-width;
+  min-width: 0;
   overflow: visible;
+}
+
+// The open navigation's resize handle (resize-handle.js), as the prototype's:
+// full height, overlapping the edge it resizes so it takes no layout space.
+.app-layout__resize {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  flex: 0 0 8px;
+  width: 8px;
+  height: 100vh;
+  margin-left: -8px;
+  cursor: col-resize;
+  touch-action: none;
+
+  &:hover {
+    background-color: $govuk-yellow;
+  }
+
+  // Yellow alone is too close to the grey panel for a focus indicator, so
+  // focus adds a black inset outline.
+  &:focus {
+    outline: none;
+    background-color: $govuk-yellow;
+    box-shadow: inset 0 0 0 2px $govuk-black;
+  }
+}
+
+.app-layout--resizing {
+  cursor: col-resize;
+  user-select: none;
+
+  .app-layout__resize {
+    background-color: $govuk-yellow;
+  }
+}
+
+// Resizing is a desktop affordance.
+@include govuk-media-query($until: desktop) {
+  .app-layout__resize {
+    display: none;
+  }
 }
 
 // Beside the nav the page runs the full width of its column, and everything in
@@ -708,18 +753,6 @@ details:not([open]) > summary .app-side-nav__chevron {
 
 // The case bookmarks: each case's guides under it, and each guide's
 // bookmarked sections under that.
-.app-side-nav__case-name {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  min-height: 40px;
-  box-sizing: border-box;
-  padding: 6px 10px 6px 12px;
-  line-height: 1.25;
-}
-
 .app-side-nav__meta {
   flex: none;
   color: $app-side-nav-muted;

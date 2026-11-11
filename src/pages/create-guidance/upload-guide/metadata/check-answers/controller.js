@@ -13,12 +13,14 @@ const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
 const CONVERTED_URL = '/create-guidance/upload-guide/converted'
 const CONVERTING_URL = '/create-guidance/upload-guide/converting'
 
-// Why the API would not convert the upload, as the user is told it.
-const REFUSAL_MESSAGES = {
+// Why the API would not convert the upload, as the user is told it: named
+// once, by the API's answer, so that one test holds the words and the rest
+// name them.
+const REFUSAL_MESSAGES = Object.freeze({
   [GUIDE_RESULTS.UPLOAD_EXPIRED]: 'The uploaded document has expired. Start again and upload it again',
   [GUIDE_RESULTS.PARSE_PENDING]: 'The uploaded document is still being processed. Wait a few seconds, then select Convert document again',
   [GUIDE_RESULTS.PARSE_FAILED]: 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team'
-}
+})
 
 // Which screen owns each field, so an incomplete/invalid answer sends the
 // user back to the screen that can fix it rather than a generic error.
@@ -171,5 +173,6 @@ async function convertDocument (request, h) {
 
 export {
   convertDocument,
-  getCheckAnswers
+  getCheckAnswers,
+  REFUSAL_MESSAGES
 }

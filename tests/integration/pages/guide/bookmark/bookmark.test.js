@@ -1,5 +1,6 @@
 import { constants as statusCodes } from 'node:http2'
 
+import { within } from '@testing-library/dom'
 import nock from 'nock'
 
 import { config } from '../../../../../src/config/config.js'
@@ -7,6 +8,10 @@ import { createServer } from '../../../../../src/server/server.js'
 import { caseResponse, guideResponse, refusalResponse, userResponse } from '../../../../fixtures/guidance-api.js'
 import { mergeCookies } from '../../../helpers/cookies.js'
 import { loginAsDevUser } from '../../../helpers/login.js'
+import { errorSummaryOf, pageOf } from '../../../helpers/page.js'
+import { CASE_TYPES } from '../../../../../src/constants/case-types.js'
+import { HEADING_BOOKMARK_MESSAGES } from '../../../../../src/constants/heading-bookmarks.js'
+import { BOOKMARK_MESSAGES } from '../../../../../src/pages/guide/bookmark/view-model.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const GUIDE_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
@@ -44,6 +49,22 @@ function mockGuideAndUser (cases = [], markdown = MARKDOWN) {
     .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ cases }))
 }
 
+/**
+ * The controls after a heading on a guide's page, in their order: its star,
+ * which pins the section, then its bookmark, which bookmarks it to a case.
+ * Sections not being read are hidden until find-in-page finds them, so their
+ * controls are found hidden as well.
+ */
+function controlsAfter (heading) {
+  const row = within(heading.closest('.app-guide-heading-row'))
+
+  return {
+    all: [...heading.closest('.app-guide-heading-row').querySelectorAll('button, a')],
+    star: row.getByRole('button', { name: /^(Pin|Unpin) section/, hidden: true }),
+    bookmark: row.getByRole('link', { name: /^Bookmark/, hidden: true })
+  }
+}
+
 describe('bookmarking a section of a guide to a case', () => {
   let server, cookie
 
@@ -75,9 +96,14 @@ describe('bookmarking a section of a guide to a case', () => {
     return server.inject({ method: 'POST', url: BOOKMARK_PAGE, headers: { cookie }, payload })
   }
 
-  function radios (payload) {
-    return [...payload.matchAll(/<input class="govuk-radios__input"[^>]*value="([^"]+)"([^>]*)>/g)]
-      .map(([, value, rest]) => [value, rest.includes('disabled')])
+  /** Each of the question's choices, by its value, and whether it can be chosen. */
+  function choicesOf (page) {
+    return page.getAllByRole('radio').map((radio) => [radio.value, radio.disabled])
+  }
+
+  /** The form that asks the question, found by its button. */
+  function formOf (page) {
+    return page.getByRole('button', { name: 'Bookmark section' }).form
   }
 
   describe('the question', () => {
@@ -86,11 +112,11 @@ describe('bookmarking a section of a guide to a case', () => {
 
       const { statusCode, payload } = await get(`${BOOKMARK_PAGE}?section=11-before-you-begin`)
 
+      const page = pageOf(payload)
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(payload).toContain('Bookmark this section to a case')
-      expect(payload).toContain('‘1.1 Before you begin’ in Claiming the SFI payment will show under that case in the side navigation.')
-      expect(payload).toContain('<input type="hidden" name="section" value="11-before-you-begin">')
-      expect(payload).toContain('Bookmark section')
+      expect(page.getByRole('heading', { level: 1, name: 'Bookmark this section to a case' })).toBeInTheDocument()
+      expect(page.getByText('‘1.1 Before you begin’ in Claiming the SFI payment will show under that case in the side navigation.')).toBeInTheDocument()
+      expect(formOf(page)).toHaveFormValues({ section: '11-before-you-begin' })
     })
 
     test('goes back, or cancels, to the guide at the section, changing nothing', async () => {
@@ -98,9 +124,9 @@ describe('bookmarking a section of a guide to a case', () => {
 
       const { payload } = await get(`${BOOKMARK_PAGE}?section=2-assign-case`)
 
-      expect(payload.match(/href="\/guides\/[^"]*\?page=2#2-assign-case"/g)).toHaveLength(2)
-      expect(payload).toContain('>Back</a>')
-      expect(payload).toContain('>Cancel</a>')
+      const page = pageOf(payload)
+      expect(within(page.document.body).getByRole('link', { name: 'Back' })).toHaveAttribute('href', `${GUIDE_PAGE}?section=2-assign-case#2-assign-case`)
+      expect(page.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', `${GUIDE_PAGE}?section=2-assign-case#2-assign-case`)
     })
 
     test.each([
@@ -119,13 +145,14 @@ describe('bookmarking a section of a guide to a case', () => {
 
       const { payload } = await get(`${BOOKMARK_PAGE}?section=11-before-you-begin`)
 
-      expect(radios(payload)).toEqual([
+      const page = pageOf(payload)
+      expect(choicesOf(page)).toEqual([
         ['existing-case', true],
         ['new-case', false],
         ['existing-sbi', true],
         ['new-sbi', true]
       ])
-      expect(payload).toContain('A letter followed by 7 numbers, for example W1234567')
+      expect(page.getByLabelText('Case ID')).toHaveAccessibleDescription('A letter followed by 7 numbers, for example W1234567')
     })
 
     test('offers the cases there are, and the SBI choices when switched on', async () => {
@@ -134,14 +161,15 @@ describe('bookmarking a section of a guide to a case', () => {
 
       const { payload } = await get(`${BOOKMARK_PAGE}?section=11-before-you-begin`)
 
-      expect(radios(payload)).toEqual([
+      const page = pageOf(payload)
+      expect(choicesOf(page)).toEqual([
         ['existing-case', false],
         ['new-case', false],
         ['existing-sbi', false],
         ['new-sbi', false]
       ])
-      expect(payload).toContain('<option value="W1234567">W1234567</option>')
-      expect(payload).toContain('<option value="123456789">123456789</option>')
+      expect(page.getByRole('option', { name: 'W1234567' })).toHaveAttribute('value', 'W1234567')
+      expect(page.getByRole('option', { name: '123456789' })).toHaveAttribute('value', '123456789')
     })
 
     test('sends the cases it offered, in their order, so that saving can tell whether they changed', async () => {
@@ -149,27 +177,27 @@ describe('bookmarking a section of a guide to a case', () => {
       mockGuideAndUser([caseResponse(), second])
 
       const { payload } = await get(`${BOOKMARK_PAGE}?section=11-before-you-begin`)
-      const shown = [...payload.matchAll(/<input type="hidden" name="shown" value="([^"]+)">/g)].map(([, key]) => key)
 
-      expect(shown).toEqual([caseResponse().key, second.key])
+      expect(formOf(pageOf(payload))).toSendInOrder('shown', [caseResponse().key, second.key])
     })
   })
 
   describe('the answer', () => {
     test.each([
-      [{}, 'Select if you are bookmarking to an existing or new case ID or SBI application number'],
-      [{ choice: 'new-case', newCase: '' }, 'Enter a case ID'],
+      [{}, BOOKMARK_MESSAGES.noChoice],
+      [{ choice: 'new-case', newCase: '' }, BOOKMARK_MESSAGES.enter(CASE_TYPES.case)],
       [{ choice: 'new-case', newCase: 'W12345' }, 'Case ID must be a letter followed by 7 numbers'],
-      [{ choice: 'new-sbi', newSbi: '123456789' }, 'Select if you are bookmarking to an existing or new case ID or SBI application number'],
-      [{ choice: 'existing-case', existingCase: 'W7654321' }, 'Select an existing case ID']
+      [{ choice: 'new-sbi', newSbi: '123456789' }, BOOKMARK_MESSAGES.noChoice],
+      [{ choice: 'existing-case', existingCase: 'W7654321' }, BOOKMARK_MESSAGES.selectExisting(CASE_TYPES.case)]
     ])('is checked: %j says "%s"', async (answer, message) => {
       mockGuideAndUser([caseResponse()])
 
       const { statusCode, payload } = await post({ section: '11-before-you-begin', ...answer })
 
+      const errors = errorSummaryOf(pageOf(payload))
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
-      expect(payload).toContain('There is a problem')
-      expect(payload).toContain(message)
+      expect(errors.getByRole('heading', { name: 'There is a problem' })).toBeInTheDocument()
+      expect(errors.getByRole('link', { name: message })).toBeInTheDocument()
     })
 
     test.each([
@@ -180,7 +208,7 @@ describe('bookmarking a section of a guide to a case', () => {
 
       const { payload } = await post({ section: '11-before-you-begin' })
 
-      expect(payload).toMatch(new RegExp(`<a href="${href}">Select if you are bookmarking`))
+      expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: BOOKMARK_MESSAGES.noChoice })).toHaveAttribute('href', href)
     })
 
     test('saves nothing, saying the service cannot do it now, when the user\'s cases cannot be read', async () => {
@@ -193,7 +221,7 @@ describe('bookmarking a section of a guide to a case', () => {
       const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: 'W7654321' })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_GATEWAY)
-      expect(payload).toContain('The case bookmarks cannot be read')
+      expect(pageOf(payload).getByText(BOOKMARK_MESSAGES.casesUnreadable)).toBeInTheDocument()
     })
 
     test('asks again with the cases as they are now, which the next save checks', async () => {
@@ -201,7 +229,7 @@ describe('bookmarking a section of a guide to a case', () => {
 
       const { payload } = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: '' })
 
-      expect(payload).toContain(`<input type="hidden" name="shown" value="${caseResponse().key}">`)
+      expect(formOf(pageOf(payload))).toSendInOrder('shown', [caseResponse().key])
     })
 
     test('takes only SBIs from 105000000 to 999999999 once they are switched on', async () => {
@@ -211,7 +239,7 @@ describe('bookmarking a section of a guide to a case', () => {
       const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'new-sbi', newSbi: '104999999' })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
-      expect(payload).toContain('SBI application number must be 9 numbers, from 105000000 to 999999999')
+      expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: 'SBI application number must be 9 numbers, from 105000000 to 999999999' })).toBeInTheDocument()
     })
 
     test('bookmarks the section to a new case, which goes first, then shows the guide at the section', async () => {
@@ -227,7 +255,7 @@ describe('bookmarking a section of a guide to a case', () => {
 
       expect(patching.isDone()).toBe(true)
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(headers.location).toBe(`${GUIDE_PAGE}?page=2#2-assign-case`)
+      expect(headers.location).toBe(`${GUIDE_PAGE}?section=2-assign-case#2-assign-case`)
     })
 
     test('bookmarks the section to an existing case, if the cases are still those the page offered', async () => {
@@ -245,7 +273,7 @@ describe('bookmarking a section of a guide to a case', () => {
       const { headers } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [other.key, existing.key] })
 
       expect(patching.isDone()).toBe(true)
-      expect(headers.location).toBe(`${GUIDE_PAGE}?page=1#11-before-you-begin`)
+      expect(headers.location).toBe(`${GUIDE_PAGE}?section=11-before-you-begin#11-before-you-begin`)
     })
 
     test('does not bookmark a section to a case twice', async () => {
@@ -254,7 +282,7 @@ describe('bookmarking a section of a guide to a case', () => {
       const { statusCode, headers } = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: 'W1234567', shown: [caseResponse().key] })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(headers.location).toBe(`${GUIDE_PAGE}?page=1#11-before-you-begin`)
+      expect(headers.location).toBe(`${GUIDE_PAGE}?section=11-before-you-begin#11-before-you-begin`)
     })
 
     test('asks again, saving nothing, when the cases changed while the page was open', async () => {
@@ -264,7 +292,7 @@ describe('bookmarking a section of a guide to a case', () => {
       const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [caseResponse().key] })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_CONFLICT)
-      expect(payload).toContain('Your case bookmarks changed while this page was open. Choose again.')
+      expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: BOOKMARK_MESSAGES.changedSince })).toBeInTheDocument()
     })
 
     test('asks again, saving nothing, when the cases are not those the page offered, as when one was removed and made again', async () => {
@@ -273,7 +301,7 @@ describe('bookmarking a section of a guide to a case', () => {
       const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [caseResponse().key] })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_CONFLICT)
-      expect(payload).toContain('Your case bookmarks changed while this page was open. Choose again.')
+      expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: BOOKMARK_MESSAGES.changedSince })).toBeInTheDocument()
     })
 
     test('asks again, saving nothing, when the hub finds the section bookmarked to the case already, as by another page', async () => {
@@ -283,7 +311,7 @@ describe('bookmarking a section of a guide to a case', () => {
       const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [caseResponse().key] })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_CONFLICT)
-      expect(payload).toContain('Your case bookmarks changed while this page was open. Choose again.')
+      expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: BOOKMARK_MESSAGES.changedSince })).toBeInTheDocument()
     })
 
     test('is shown once on the guide', async () => {
@@ -294,14 +322,29 @@ describe('bookmarking a section of a guide to a case', () => {
 
       mockGuideAndUser()
       nock(GUIDANCE_API_BASE_URL).post(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
-      const { payload } = await get(GUIDE_PAGE)
+      const first = pageOf((await get(GUIDE_PAGE)).payload)
       mockGuideAndUser()
       nock(GUIDANCE_API_BASE_URL).post(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
-      const again = await get(GUIDE_PAGE)
+      const again = pageOf((await get(GUIDE_PAGE)).payload)
 
-      expect(payload).toContain('govuk-notification-banner--success')
-      expect(payload).toContain('‘1.1 Before you begin’ bookmarked to case ID W7654321')
-      expect(again.payload).not.toContain('govuk-notification-banner--success')
+      const banner = first.getByRole('alert')
+      expect(banner).toHaveClass('govuk-notification-banner--success')
+      expect(within(banner).getByRole('heading', { name: '‘1.1 Before you begin’ bookmarked to case ID W7654321' })).toBeInTheDocument()
+      expect(again.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    test('links to the case\'s guides on the Bookmarked guides page, by the case\'s key, not its reference', async () => {
+      const saved = caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', ref: 'W7654321' })
+      mockGuideAndUser([caseResponse()])
+      nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+      const posted = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: 'W7654321', shown: [caseResponse().key] })
+      cookie = mergeCookies(cookie, posted.headers['set-cookie'])
+
+      mockGuideAndUser([saved, caseResponse()])
+      nock(GUIDANCE_API_BASE_URL).post(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+      const page = pageOf((await get(GUIDE_PAGE)).payload)
+
+      expect(within(page.getByRole('alert')).getByRole('link', { name: 'View all guides for this case' })).toHaveAttribute('href', `/hub/bookmarked-guides?case=${saved.key}`)
     })
   })
 })
@@ -332,45 +375,52 @@ describe('a guide\'s headings', () => {
     mockGuideAndUser(cases, markdown)
     nock(GUIDANCE_API_BASE_URL).post(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
 
-    return (await server.inject({ method: 'GET', url: GUIDE_PAGE, headers: { cookie } })).payload
+    return pageOf((await server.inject({ method: 'GET', url: GUIDE_PAGE, headers: { cookie } })).payload)
+  }
+
+  /** The section each heading's bookmark is for, as its address names it, in the page's order. */
+  function bookmarkedSections (page) {
+    return page.getAllByRole('link', { name: /^Bookmark/, hidden: true })
+      .map((link) => new URL(link.getAttribute('href'), 'https://hub.example').searchParams.get('section'))
   }
 
   test('each have a control after them, after the star, to bookmark their section to a case', async () => {
-    const payload = await guidePage([])
+    const page = await guidePage([])
+    const { all, star, bookmark } = controlsAfter(page.getByRole('heading', { level: 2, name: '1 Introduction' }))
 
-    expect(payload).toMatch(/<h2[^>]*id="1-introduction"[^>]*>.*?<\/h2>\s*<form class="app-guide-section-pin"[^]*?<\/form><a class="app-guide-section-bookmark" href="\/guides\/[^"]*\/bookmark\?section=1-introduction"/)
-    expect(payload).toContain(`href="${BOOKMARK_PAGE}?section=11-before-you-begin"`)
-    expect(payload).toContain('<span class="govuk-visually-hidden">Bookmark to a case: 1.1 Before you begin</span>')
-    expect(payload).toContain('data-heading-bookmarks="[{&quot;href&quot;:&quot;')
+    expect(all).toEqual([star, bookmark])
+    expect(bookmark).toHaveAttribute('href', `${BOOKMARK_PAGE}?section=1-introduction`)
+    expect(page.getByRole('link', { name: 'Bookmark to a case: 1.1 Before you begin' })).toHaveAttribute('href', `${BOOKMARK_PAGE}?section=11-before-you-begin`)
+    expect(JSON.parse(page.document.querySelector('[data-tiptap-markdown]').dataset.headingBookmarks)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ href: `${BOOKMARK_PAGE}?section=11-before-you-begin` })])
+    )
   })
 
   test('have one only where the hub keeps a section ID for them, so not inside a quote or a list', async () => {
-    const payload = await guidePage([], [MARKDOWN, '', '> ### A quoted note', '', '- ### A listed note'].join('\n'))
+    const page = await guidePage([], [MARKDOWN, '', '> ### A quoted note', '', '- ### A listed note'].join('\n'))
 
-    expect(payload).toContain(`href="${BOOKMARK_PAGE}?section=2-assign-case"`)
-    expect(payload).toContain('id="a-quoted-note"')
-    expect(payload).not.toContain('section=a-quoted-note')
-    expect(payload).not.toContain('section=a-listed-note')
+    expect(bookmarkedSections(page)).toEqual(['1-introduction', '11-before-you-begin', '2-assign-case'])
+    expect(page.document.getElementById('a-quoted-note')).toBeInTheDocument()
   })
 
   test('say under them which cases they are bookmarked to, offering another', async () => {
-    const payload = await guidePage([
+    const page = await guidePage([
       caseResponse({ guides: [{ id: GUIDE_ID, title: 'Claiming the SFI payment', bookmarks: [SECTION] }] }),
       caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', type: 'sbi', ref: '123456789', guides: [{ id: GUIDE_ID, title: 'Claiming the SFI payment', bookmarks: [SECTION] }] })
     ])
 
-    expect(payload).toContain('<p class="app-guide-section-bookmarked">Bookmarked to Case W1234567, SBI 123456789</p>')
-    expect(payload).toContain('Bookmarked – add another case: 1.1 Before you begin')
-    expect(payload).toContain('Bookmark to a case: 1 Introduction')
+    expect(page.getByText(HEADING_BOOKMARK_MESSAGES.bookmarkedTo('Case W1234567, SBI 123456789'))).toHaveClass('app-guide-section-bookmarked')
+    expect(page.getByRole('link', { name: 'Bookmarked – add another case: 1.1 Before you begin' })).toBeInTheDocument()
+    expect(page.getByRole('link', { name: 'Bookmark to a case: 1 Introduction' })).toBeInTheDocument()
   })
 
   test('are not marked by a bookmark on another guide\'s section with the same anchor', async () => {
-    const payload = await guidePage([
+    const page = await guidePage([
       caseResponse({ guides: [{ id: OTHER_GUIDE_ID, title: 'Another guide', bookmarks: [SECTION] }] })
     ])
 
-    expect(payload).not.toContain('Bookmarked to Case W1234567')
-    expect(payload).toContain('Bookmark to a case: 1.1 Before you begin')
+    expect(page.queryByText(HEADING_BOOKMARK_MESSAGES.bookmarkedTo('Case W1234567'))).not.toBeInTheDocument()
+    expect(page.getByRole('link', { name: 'Bookmark to a case: 1.1 Before you begin' })).toBeInTheDocument()
   })
 })
 
@@ -412,16 +462,22 @@ describe('a guide that repeats a heading', () => {
     mockGuideAndUser([caseResponse({ guides: [{ id: GUIDE_ID, title: 'Help', bookmarks: [SECOND] }] })], REPEATED)
     nock(GUIDANCE_API_BASE_URL).post(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
 
-    const { payload } = await get(GUIDE_PAGE)
+    const page = pageOf((await get(GUIDE_PAGE)).payload)
+    const first = controlsAfter(page.document.getElementById('help-1'))
+    const second = controlsAfter(page.document.getElementById('help-3'))
 
-    expect(payload).toMatch(/<h2[^>]*id="help-1"[^>]*>.*?<\/h2>\s*<form class="app-guide-section-pin"[^]*?<\/form><a class="app-guide-section-bookmark" href="[^"]*\/bookmark\?section=help"/)
-    expect(payload).toMatch(/<h2[^>]*id="help-3"[^>]*>.*?<\/h2>\s*<form class="app-guide-section-pin"[^]*?<\/form><a class="app-guide-section-bookmark app-guide-section-bookmark--active" href="[^"]*\/bookmark\?section=help-1"/)
-    expect(payload).toContain('id="help-2"')
+    expect(first.all).toEqual([first.star, first.bookmark])
+    expect(first.bookmark).toHaveAttribute('href', `${BOOKMARK_PAGE}?section=help`)
+    expect(first.bookmark).not.toHaveClass('app-guide-section-bookmark--active')
+    expect(second.all).toEqual([second.star, second.bookmark])
+    expect(second.bookmark).toHaveAttribute('href', `${BOOKMARK_PAGE}?section=help-1`)
+    expect(second.bookmark).toHaveClass('app-guide-section-bookmark--active')
+    expect(page.document.getElementById('help-2')).toBeInTheDocument()
   })
 
   test.each([
-    ['first', 'help', '?page=1#help-1'],
-    ['second', 'help-1', '?page=2#help-3']
+    ['first', 'help', '?section=help#help-1'],
+    ['second', 'help-1', '?section=help-1#help-3']
   ])('bookmarks the %s section by the hub\'s anchor, then shows the guide at its heading', async (_which, section, at) => {
     mockGuideAndUser([], REPEATED)
     const patching = nock(GUIDANCE_API_BASE_URL)
@@ -442,13 +498,10 @@ describe('a guide that repeats a heading', () => {
     mockGuideAndUser([], REPEATED)
     nock(GUIDANCE_API_BASE_URL).post(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
 
-    const { payload } = await get(GUIDE_PAGE)
-    const starAfter = id => payload.slice(payload.indexOf(`id="${id}"`), payload.indexOf('</form>', payload.indexOf(`id="${id}"`)))
+    const page = pageOf((await get(GUIDE_PAGE)).payload)
 
-    expect(starAfter('help-1')).toContain('<input type="hidden" name="section" value="help">')
-    expect(starAfter('help-1')).toContain('<input type="hidden" name="anchor" value="help-1">')
-    expect(starAfter('help-3')).toContain('<input type="hidden" name="section" value="help-1">')
-    expect(starAfter('help-3')).toContain('<input type="hidden" name="anchor" value="help-3">')
+    expect(controlsAfter(page.document.getElementById('help-1')).star.form).toHaveFormValues({ section: 'help', anchor: 'help-1' })
+    expect(controlsAfter(page.document.getElementById('help-3')).star.form).toHaveFormValues({ section: 'help-1', anchor: 'help-3' })
   })
 
   test('pins the second section by the hub\'s anchor, then goes back to its heading', async () => {
@@ -470,12 +523,13 @@ describe('a guide that repeats a heading', () => {
     expect(headers.location).toBe(`${GUIDE_PAGE}#help-3`)
   })
 
-  test('opens at the heading of the section a link names by the hub\'s anchor, as the side navigation links to it', async () => {
+  test('shows the guide for a link naming a section by the hub\'s anchor, as the side navigation does, without sending the reader on', async () => {
     mockGuideAndUser([], REPEATED)
+    nock(GUIDANCE_API_BASE_URL).post(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
 
     const { statusCode, headers } = await get(`${GUIDE_PAGE}?section=help-1`)
 
-    expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-    expect(headers.location).toBe(`${GUIDE_PAGE}?page=2#help-3`)
+    expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+    expect(headers.location).toBeUndefined()
   })
 })

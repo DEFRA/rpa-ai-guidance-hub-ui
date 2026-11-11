@@ -1,4 +1,4 @@
-import { bookmarkedToHtml, headingBookmarkHtml, headingControlsHtml, headingPinHtml } from '../../../src/constants/heading-bookmarks.js'
+import { bookmarkedToHtml, HEADING_BOOKMARK_MESSAGES, headingBookmarkHtml, headingControlsHtml, headingPinHtml } from '../../../src/constants/heading-bookmarks.js'
 
 describe('headingBookmarkHtml', () => {
   test('names the control for its heading, escaping both', () => {
@@ -65,9 +65,15 @@ describe('headingControlsHtml', () => {
   })
 })
 
+describe('HEADING_BOOKMARK_MESSAGES', () => {
+  test('says which cases a heading is bookmarked to in these words', () => {
+    expect(HEADING_BOOKMARK_MESSAGES.bookmarkedTo('Case W1234567, SBI 123456789')).toBe('Bookmarked to Case W1234567, SBI 123456789')
+  })
+})
+
 describe('bookmarkedToHtml', () => {
   test('says which cases the heading is bookmarked to, or nothing', () => {
-    expect(bookmarkedToHtml({ bookmarkedTo: 'Case W1234567' })).toBe('<p class="app-guide-section-bookmarked">Bookmarked to Case W1234567</p>')
+    expect(bookmarkedToHtml({ bookmarkedTo: 'Case W1234567' })).toBe(`<p class="app-guide-section-bookmarked">${HEADING_BOOKMARK_MESSAGES.bookmarkedTo('Case W1234567')}</p>`)
     expect(bookmarkedToHtml({ bookmarkedTo: null })).toBe('')
   })
 })
