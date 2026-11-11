@@ -10,7 +10,6 @@ import { roleEnforcementEnabled } from '../access-control/hub-access.js'
 import { bookmarkedToHtml, headingControlsHtml } from '../../constants/heading-bookmarks.js'
 import { jsonScript, renderMarkdownFallback } from '../../pages/guide/markdown.js'
 import { filtersFrom, listHref } from '../../pages/hub/filters.js'
-import { isNavCollapsed } from '../../pages/side-nav/collapsed.js'
 import { SIDE_NAV_WIDTH } from '../../pages/side-nav/width.js'
 
 const nunjucksEnvironment = nunjucks.configure(
@@ -130,9 +129,6 @@ const viewPlugin = {
         isEditor: !roleEnforcementEnabled() || roles.includes(ROLES.EDITOR),
         roles,
         userRolesCaption: _formatRolesCaption(roles),
-        // Read only when signed in, when the nav shows: a page no route matches
-        // has no session to read.
-        sideNavCollapsed: request?.auth?.isAuthenticated ? isNavCollapsed(request) : false,
         // The open navigation's width, which its handle can change, and the
         // limits it changes within.
         sideNavWidth: SIDE_NAV_WIDTH.default,
