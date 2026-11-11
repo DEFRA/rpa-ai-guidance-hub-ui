@@ -77,7 +77,7 @@
             </form>
           </div>
 
-          <nav class="app-guide-contents" aria-labelledby="guide-contents-heading">
+          <nav class="app-guide-contents" id="guide-contents" aria-labelledby="guide-contents-heading">
             <h2 class="govuk-heading-s" id="guide-contents-heading">Contents</h2>
             {% for item in contents %}
               <p class="app-guide-contents__section{{ ' app-guide-contents__section--current' if item.isCurrent }}" data-guide-contents-page="{{ loop.index }}">
@@ -92,6 +92,15 @@
               {% endif %}
             {% endfor %}
           </nav>
+
+          {# The contents column's edge, dragged or arrow-keyed to resize it
+             (resize-handle.js), hidden until that script attaches. Wide
+             screens only: narrower, the contents sit above the guide. #}
+          <div class="app-guide-contents-resize" role="separator" aria-orientation="vertical"
+            aria-label="Resize contents" aria-controls="guide-contents"
+            aria-valuemin="{{ contentsWidthLimits.min }}" aria-valuemax="{{ contentsWidthLimits.max }}"
+            aria-valuenow="{{ contentsWidth }}" aria-valuetext="{{ contentsWidth }} pixels wide"
+            data-guide-contents-resize data-default-width="{{ contentsWidthLimits.default }}" tabindex="0" hidden></div>
 
           {# Every section is here so the browser's find-in-page can search them
              all; the ones not being read are hidden until it finds a match in

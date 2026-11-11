@@ -12,6 +12,7 @@ import { jsonScript, renderMarkdownFallback } from '../../pages/guide/markdown.j
 import { filtersFrom, listHref } from '../../pages/hub/filters.js'
 import { isNavCollapsed } from '../../pages/side-nav/collapsed.js'
 import { SIDE_NAV_MESSAGES } from '../../pages/common/side-nav-messages.js'
+import { SIDE_NAV_WIDTH } from '../../pages/side-nav/width.js'
 
 const nunjucksEnvironment = nunjucks.configure(
   [
@@ -133,6 +134,10 @@ const viewPlugin = {
         // Read only when signed in, when the nav shows: a page no route matches
         // has no session to read.
         sideNavCollapsed: request?.auth?.isAuthenticated ? isNavCollapsed(request) : false,
+        // The open navigation's width, which its handle can change, and the
+        // limits it changes within.
+        sideNavWidth: SIDE_NAV_WIDTH.default,
+        sideNavWidthLimits: SIDE_NAV_WIDTH,
         // The hub's filters chosen on this page, which the side navigation's
         // links to the hub and its lists carry on: '' or '?audience=…'.
         listQuery: listHref('', filtersFrom(request?.query)),
