@@ -167,7 +167,8 @@ async function _starred (listing, request) {
  * @param {import('@hapi/hapi').Request} request
  * @returns {Promise<{key: string, text: string}|null>} Null when the address
  *   names none
- * @throws {Boom.Boom} 404 for a case the user has not got
+ * @throws {Boom.Boom} 404 for a case the user has not got; 502 when the
+ *   user's cases cannot be had from the API, as it cannot tell
  */
 async function _narrowedTo (request) {
   const key = request.query.case
@@ -176,7 +177,13 @@ async function _narrowedTo (request) {
     return null
   }
 
-  const found = (await usersService.casesOf(request) ?? []).find((each) => each.key === key)
+  const cases = await usersService.casesOf(request)
+
+  if (!cases) {
+    throw Boom.badGateway('The case bookmarks cannot be read')
+  }
+
+  const found = cases.find((each) => each.key === key)
 
   if (!found) {
     throw Boom.notFound()

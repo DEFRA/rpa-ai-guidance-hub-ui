@@ -787,6 +787,21 @@ describe('#hubController', () => {
         expect(page.getByText('Page not found')).toBeInTheDocument()
         expect(listing.isDone()).toBe(false)
       })
+
+      test('say the case bookmarks cannot be read, not that the page is not found, when the user\'s record cannot be had', async () => {
+        nock.cleanAll()
+        nock(GUIDANCE_API_BASE_URL)
+          .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+          .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_SERVICE_UNAVAILABLE)
+        const cookie = await loginAsDevUser(server)
+        const listing = nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/bookmarked-guides`).query(true).reply(statusCodes.HTTP_STATUS_OK, bookmarkedGuidesResponse())
+
+        const { statusCode, payload } = await server.inject({ method: 'GET', url: NARROWED, headers: { cookie } })
+
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_GATEWAY)
+        expect(pageOf(payload).getByText('The case bookmarks cannot be read')).toBeInTheDocument()
+        expect(listing.isDone()).toBe(false)
+      })
     })
 
     test('mark "Bookmarked" as the current page in the side navigation', async () => {
