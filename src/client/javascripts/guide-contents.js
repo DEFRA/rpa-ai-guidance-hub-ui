@@ -17,6 +17,9 @@
 
 import { readerPlace, readingLine } from './guide-place.js'
 
+// The attribute that marks an entry as where the reader is, as LOCATION, or
+// as the stepper's own page.
+const CURRENT = 'aria-current'
 const LOCATION = 'location'
 
 // The heading each entry goes to (page.njk); empty for a section without one.
@@ -51,8 +54,9 @@ function followedAddress ({ pathname, search, hash }, { anchor, page }, isSteppe
   }
 
   const rest = query.toString()
+  const queryString = rest ? `?${rest}` : ''
   const fragment = !isStepper && anchor ? `#${encodeURIComponent(anchor)}` : ''
-  const address = `${pathname}${rest ? `?${rest}` : ''}${fragment}`
+  const address = `${pathname}${queryString}${fragment}`
 
   return address === `${pathname}${search}${hash}` ? null : address
 }
@@ -103,7 +107,7 @@ function scrollShowing (entry, inSight) {
 function _placeOf (link) {
   const anchor = link.dataset.guideContentsTarget
 
-  if (anchor && link.getAttribute('aria-current') !== 'page') {
+  if (anchor && link.getAttribute(CURRENT) !== 'page') {
     return { element: document.getElementById(anchor), anchor }
   }
 
@@ -178,10 +182,10 @@ function initGuideContents () {
 
   // The stepper's own page is marked already, as the page.
   const mark = (link) => {
-    contents.querySelector(`[aria-current="${LOCATION}"]`)?.removeAttribute('aria-current')
+    contents.querySelector(`[${CURRENT}="${LOCATION}"]`)?.removeAttribute(CURRENT)
 
-    if (link.getAttribute('aria-current') !== 'page') {
-      link.setAttribute('aria-current', LOCATION)
+    if (link.getAttribute(CURRENT) !== 'page') {
+      link.setAttribute(CURRENT, LOCATION)
     }
 
     const box = contents.getBoundingClientRect()

@@ -12,7 +12,9 @@
  *   on this page, and an unsent choice only means the next page shows it as
  *   it was
  */
-function _keepThePageAsItIs () {}
+function _keepThePageAsItIs () {
+  // Nothing to undo: the page already shows the user's choice.
+}
 
 /**
  * @param {HTMLButtonElement} button
