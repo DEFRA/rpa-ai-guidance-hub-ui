@@ -165,14 +165,13 @@ async function _starred (listing, request) {
  * its key and how its tag names it, as the prototype does (`Case: W1234567`).
  *
  * @param {import('@hapi/hapi').Request} request
+ * @param {string} [key] - The case's, from the address
  * @returns {Promise<{key: string, text: string}|null>} Null when the address
  *   names none
  * @throws {Boom.Boom} 404 for a case the user has not got; 502 when the
  *   user's cases cannot be had from the API, as it cannot tell
  */
-async function _narrowedTo (request) {
-  const key = request.query.case
-
+async function _narrowedTo (request, key) {
   if (key === undefined) {
     return null
   }
@@ -197,9 +196,10 @@ async function _narrowedTo (request) {
  * answers the guides the filters let through, each filter's counts among
  * them, and how it shows each as a row, with where it is among the user's
  * pins, so its star and the list agree; and the case the list is narrowed
- * to, for the bookmarked guides.
+ * to, for the bookmarked guides, from the address's `case` unless `query`
+ * says otherwise.
  *
- * @type {Record<string, (request: import('@hapi/hapi').Request, filters: import('../../services/guides.js').Filters) => Promise<{guides: Array<object>, counts: object, rowOf: (guide: object) => object, narrowedTo?: {key: string, text: string}|null}>>}
+ * @type {Record<string, (request: import('@hapi/hapi').Request, filters: import('../../services/guides.js').Filters, query?: {case?: string}) => Promise<{guides: Array<object>, counts: object, rowOf: (guide: object) => object, narrowedTo?: {key: string, text: string}|null}>>}
  */
 const LIST_SOURCES = {
   async pinned (request, filters) {
@@ -210,8 +210,8 @@ const LIST_SOURCES = {
 
   recentlyOpened: (request, filters) => _starred(usersService.listRecentlyOpened(request, filters), request),
 
-  async bookmarkedGuides (request, filters) {
-    const narrowedTo = await _narrowedTo(request)
+  async bookmarkedGuides (request, filters, query = request.query) {
+    const narrowedTo = await _narrowedTo(request, query.case)
     const listed = await _starred(usersService.listBookmarked(request, filters, narrowedTo?.key), request)
 
     return { ...listed, narrowedTo }
@@ -222,7 +222,8 @@ const LIST_SOURCES = {
  * @private
  * Whether chosen filters had nothing to narrow: the list has no guides at all,
  * so the filters are not why it is empty. It takes asking again without them,
- * which only an empty list with filters chosen needs.
+ * the case the bookmarked guides are narrowed to among them, which only an
+ * empty list with filters chosen needs.
  *
  * @param {(request: import('@hapi/hapi').Request, filters: import('../../services/guides.js').Filters) => Promise<{guides: Array<object>}>} source - The list's, from `LIST_SOURCES`
  * @param {import('@hapi/hapi').Request} request
@@ -235,7 +236,7 @@ async function _nothingToFilter (source, request, guides, panel) {
     return false
   }
 
-  const { guides: everyGuide } = await source(request, filtersFrom())
+  const { guides: everyGuide } = await source(request, filtersFrom(), {})
 
   return everyGuide.length === 0
 }

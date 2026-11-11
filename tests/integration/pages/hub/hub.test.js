@@ -802,6 +802,20 @@ describe('#hubController', () => {
         expect(pageOf(payload).getByText('The case bookmarks cannot be read')).toBeInTheDocument()
         expect(listing.isDone()).toBe(false)
       })
+
+      test('say that no guides match, not that none is bookmarked, when the case lists none but another case does', async () => {
+        nock.cleanAll()
+        const cookie = await signedIn({ cases: [caseResponse(), caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', ref: 'W7654321' })] })
+        nock(GUIDANCE_API_BASE_URL)
+          .get(`/users/${USER_ID}/bookmarked-guides`).query({ case: KEY }).reply(statusCodes.HTTP_STATUS_OK, bookmarkedGuidesResponse({ items: [] }))
+          .get(`/users/${USER_ID}/bookmarked-guides`).reply(statusCodes.HTTP_STATUS_OK, bookmarkedGuidesResponse())
+
+        const { payload } = await server.inject({ method: 'GET', url: NARROWED, headers: { cookie } })
+        const page = pageOf(payload)
+
+        expect(page.getByText(/^No guides match your search or filters\./)).toBeInTheDocument()
+        expect(page.queryByText(/^You haven't bookmarked/)).not.toBeInTheDocument()
+      })
     })
 
     test('mark "Bookmarked" as the current page in the side navigation', async () => {
