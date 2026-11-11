@@ -122,7 +122,7 @@ describe('Access control (Hub.Editor)', () => {
       const shown = pageOf(page.payload)
       expect(page.statusCode).toBe(statusCodes.HTTP_STATUS_FORBIDDEN)
       expect(shown.getByRole('heading', { level: 1, name: 'You do not have permission to do this' })).toBeInTheDocument()
-      expect(shown.getByText('Designer', { selector: 'strong' }).parentElement).toHaveTextContent('You need the Designer role to upload a new guide.')
+      expect(shown.getByText('Maintainer', { selector: 'strong' }).parentElement).toHaveTextContent('You need the Maintainer role to upload a new guide.')
       expect(within(shown.document.body).getByRole('navigation', { name: 'Guidance hub' })).toBeInTheDocument()
       expect(shown.getByRole('link', { name: 'sign out' })).toHaveAttribute('href', '/logout')
     })
@@ -146,7 +146,7 @@ describe('Access control (Hub.Editor)', () => {
         path: '/test/refused-for-two-roles',
         options: { auth: { strategy: 'session', access: { scope: false } } },
         handler: (request, h) => {
-          request.yar.flash(MISSING_ROLES_FLASH_KEY, { missingRoles: ['Designer', 'Administrator'], reason: 'do both' }, true)
+          request.yar.flash(MISSING_ROLES_FLASH_KEY, { missingRoles: ['Maintainer', 'Administrator'], reason: 'do both' }, true)
           return h.redirect('/access-denied/role-required')
         }
       })
@@ -157,7 +157,7 @@ describe('Access control (Hub.Editor)', () => {
       const page = await followRedirect(cookie, refused)
 
       expect(page.statusCode).toBe(statusCodes.HTTP_STATUS_FORBIDDEN)
-      expect(pageOf(page.payload).getByText('Designer and Administrator', { selector: 'strong' }).parentElement).toHaveTextContent('You need the Designer and Administrator roles to do both.')
+      expect(pageOf(page.payload).getByText('Maintainer and Administrator', { selector: 'strong' }).parentElement).toHaveTextContent('You need the Maintainer and Administrator roles to do both.')
     })
 
     test('sends a direct visit with nothing refused to the hub', async () => {
@@ -176,7 +176,7 @@ describe('Access control (Hub.Editor)', () => {
       const { payload } = await inject('Hub.Viewer', 'GET', '/hub')
 
       const everywhere = within(pageOf(payload).document.body)
-      expect(everywhere.queryByRole('heading', { name: 'Designing' })).not.toBeInTheDocument()
+      expect(everywhere.queryByRole('heading', { name: 'Maintenance' })).not.toBeInTheDocument()
       expect(everywhere.queryByRole('link', { name: 'Upload guidance' })).not.toBeInTheDocument()
       expect(pageOf(payload).document.querySelector('a[href="/create-guidance/upload-guide"]')).not.toBeInTheDocument()
     })
@@ -186,7 +186,7 @@ describe('Access control (Hub.Editor)', () => {
 
       const nav = sideNavOf(pageOf(payload))
       expect(nav.getByRole('link', { name: 'Upload guidance' })).toHaveAttribute('href', '/create-guidance/upload-guide')
-      expect(nav.getByRole('heading', { level: 2, name: 'Designing' })).toBeInTheDocument()
+      expect(nav.getByRole('heading', { level: 2, name: 'Maintenance' })).toBeInTheDocument()
     })
   })
 

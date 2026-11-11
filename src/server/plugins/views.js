@@ -10,6 +10,7 @@ import { roleEnforcementEnabled } from '../access-control/hub-access.js'
 import { bookmarkedToHtml, headingControlsHtml } from '../../constants/heading-bookmarks.js'
 import { jsonScript, renderMarkdownFallback } from '../../pages/guide/markdown.js'
 import { filtersFrom, listHref } from '../../pages/hub/filters.js'
+import { SIDE_NAV_MESSAGES } from '../../pages/common/side-nav-messages.js'
 import { SIDE_NAV_WIDTH } from '../../pages/side-nav/width.js'
 
 const nunjucksEnvironment = nunjucks.configure(
@@ -138,7 +139,9 @@ const viewPlugin = {
         listQuery: listHref('', filtersFrom(request?.query)),
         // Where a form on the page sends the user back to: this page.
         currentUrl: request?.url ? `${request.url.pathname}${request.url.search}` : null,
-        userDisplayName: _userDisplayName(request)
+        userDisplayName: _userDisplayName(request),
+        // What the side navigation says when a list of the user's is empty.
+        sideNavMessages: SIDE_NAV_MESSAGES
       }
     }
   }

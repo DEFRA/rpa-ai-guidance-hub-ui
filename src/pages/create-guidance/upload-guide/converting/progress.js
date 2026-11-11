@@ -2,15 +2,21 @@ import { getStagedDocumentById } from '../../../../services/staged-documents.js'
 
 const PERCENT = 100
 
-const FAILED = {
-  message: 'The document could not be converted',
-  detail: 'Go back to check your answers and select Convert document again. If this keeps happening, contact the support team'
-}
+/**
+ * What the converting page says when saving the document cannot go on, named
+ * once, so that one test holds their words and the rest name them. Each
+ * `…Detail` says what to do about the one before it.
+ */
+const CONVERSION_MESSAGES = Object.freeze({
+  failed: 'The document could not be converted',
+  failedDetail: 'Go back to check your answers and select Convert document again. If this keeps happening, contact the support team',
+  expired: 'The uploaded document has expired',
+  expiredDetail: 'Start over and upload it again'
+})
 
-const EXPIRED = {
-  message: 'The uploaded document has expired',
-  detail: 'Start over and upload it again'
-}
+const FAILED = { message: CONVERSION_MESSAGES.failed, detail: CONVERSION_MESSAGES.failedDetail }
+
+const EXPIRED = { message: CONVERSION_MESSAGES.expired, detail: CONVERSION_MESSAGES.expiredDetail }
 
 /**
  * How far saving the converted document has got, as the converting page
@@ -67,5 +73,6 @@ function _progress ({ percentage, label, isComplete = false, isError = false, me
 }
 
 export {
+  CONVERSION_MESSAGES,
   getConversionProgress
 }

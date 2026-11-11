@@ -338,6 +338,27 @@ function preferencesResponse (overrides = {}) {
 }
 
 /**
+ * Body of `GET /users/{id}/bookmarked-guides` on 200: the guides bookmarked to
+ * the user's cases, each once, in the order of the cases, each as `GET /guides`
+ * lists it, and each filter's counts among them. By default one guide, and no
+ * counts.
+ *
+ * Verified on 2026-11-10 by validating this body, with UUIDs for its ids,
+ * against the guidance API's `BookmarkedGuides` schema: items as
+ * `DocumentSummary`, and counts of `OptionCount` by filter.
+ *
+ * @param {Object} [overrides]
+ * @returns {{items: Array<Object>, counts: Object<string, Array<Object>>}}
+ */
+function bookmarkedGuidesResponse (overrides = {}) {
+  return {
+    items: [guideSummaryResponse()],
+    counts: { audience: [], system: [], scheme: [] },
+    ...overrides
+  }
+}
+
+/**
  * Body of a request the guidance API refuses itself: why, in words.
  *
  * Verified against the running API on 2026-11-05: `detail` as a string, unlike
@@ -351,6 +372,7 @@ function refusalResponse (overrides = {}) {
 }
 
 export {
+  bookmarkedGuidesResponse,
   caseResponse,
   guidePageResponse,
   guideResponse,

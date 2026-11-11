@@ -269,7 +269,7 @@ describe('dragging a case, or a guide within a case', () => {
       </form>`).join('')
     const cases = CASES.map(([key, name, guides], position) => `
       <li class="app-side-nav__case" data-reorder-id="${key}" data-reorder-label="${name}">
-        <div class="app-side-nav__case-name" data-reorder-handle>${name}</div>
+        <a class="app-side-nav__link" href="/hub/bookmarked-guides?case=${key}" draggable="false" data-reorder-handle>${name}</a>
         ${moves('/case-bookmarks/order', position, CASES.length, CASES.map(([shown]) => `<input type="hidden" name="order" value="${shown}">`).join(''))}
         <ul class="app-side-nav__sublist" data-reorder-list="/case-bookmarks/guide-order" data-reorder-fields='{"key":"${key}"}'>
           ${guides.map((guide, at) => `

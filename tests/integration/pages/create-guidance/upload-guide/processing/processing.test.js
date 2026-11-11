@@ -14,6 +14,7 @@ import { loginAsDevUser } from '../../../../helpers/login.js'
 import { mergeCookies } from '../../../../helpers/cookies.js'
 import { errorSummaryOf, pageOf } from '../../../../helpers/page.js'
 import { config } from '../../../../../../src/config/config.js'
+import { UPLOAD_STEP_MESSAGES } from '../../../../../../src/pages/create-guidance/upload-guide/steps.js'
 
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
 const GUIDANCE_API_URL = config.get('guidanceApi.baseUrl')
@@ -181,8 +182,8 @@ describe('upload guide processing page', () => {
 
       const failed = pageOf(second.payload)
       expect(second.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(failed.getByRole('alert')).toHaveTextContent('This file cannot be opened')
-      expect(failed.getByRole('alert')).toHaveTextContent('Check you selected the correct file and that it has not been corrupted')
+      expect(failed.getByRole('alert')).toHaveTextContent(UPLOAD_STEP_MESSAGES.cannotOpen)
+      expect(failed.getByRole('alert')).toHaveTextContent(UPLOAD_STEP_MESSAGES.cannotOpenDetail)
       expect(failed.getByRole('link', { name: 'Start over' })).toBeInTheDocument()
 
       // cdp-uploader still reports this file as scanned clean - only the
@@ -213,7 +214,7 @@ describe('upload guide processing page', () => {
       const fresh = pageOf(retry.payload)
       expect(retry.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(fresh.getByLabelText('Upload a file').form).toHaveAttribute('action', '/upload-and-scan/u-fresh')
-      expect(fresh.document.body).not.toHaveTextContent('This file cannot be opened')
+      expect(fresh.document.body).not.toHaveTextContent(UPLOAD_STEP_MESSAGES.cannotOpen)
       expect(nock.pendingMocks()).toEqual([])
     })
 
@@ -225,7 +226,7 @@ describe('upload guide processing page', () => {
       const res = await server.inject({ method: 'GET', url: PROCESSING_URL, headers: { cookie } })
 
       expect(res.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(pageOf(res.payload).getByRole('alert')).toHaveTextContent('Select a Word document to upload.')
+      expect(pageOf(res.payload).getByRole('alert')).toHaveTextContent(UPLOAD_STEP_MESSAGES.noFile)
     })
 
     test('explains when cdp-uploader no longer knows the upload', async () => {
@@ -238,7 +239,7 @@ describe('upload guide processing page', () => {
       const page = pageOf(res.payload)
       expect(res.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(page.getByRole('progressbar', { name: 'Upload not found' })).toBeInTheDocument()
-      expect(page.getByRole('alert')).toHaveTextContent('Your upload could not be found. Upload the document again.')
+      expect(page.getByRole('alert')).toHaveTextContent(UPLOAD_STEP_MESSAGES.notFound)
     })
   })
 

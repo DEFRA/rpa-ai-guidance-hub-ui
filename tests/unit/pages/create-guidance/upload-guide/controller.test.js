@@ -17,11 +17,15 @@ vi.mock('../../../../../src/pages/create-guidance/session.js', () => ({
 
 import { RESULTS, startMigration, getGuideUploadProgress } from '../../../../../src/pages/create-guidance/service.js'
 import { getGuideUpload, createGuideUpload, addGuideUpload } from '../../../../../src/pages/create-guidance/session.js'
-import { getUploadForm } from '../../../../../src/pages/create-guidance/upload-guide/controller.js'
+import { getUploadForm, UPLOAD_MESSAGES } from '../../../../../src/pages/create-guidance/upload-guide/controller.js'
 
 const UPLOAD_GUIDANCE_VIEW = 'create-guidance/upload-guide/page.njk'
 
 describe('uploadGuideController', () => {
+  test('says the upload is done already in these words', () => {
+    expect(UPLOAD_MESSAGES).toEqual({ alreadyUploaded: 'You have already uploaded a document for this guide' })
+  })
+
   let request, h, code
 
   beforeEach(() => {
@@ -81,7 +85,7 @@ describe('uploadGuideController', () => {
       test('flashes a notification explaining why', async () => {
         await getUploadForm(request, h)
 
-        expect(request.yar.flash).toHaveBeenCalledWith('uploadNotification', 'You have already uploaded a document for this guide')
+        expect(request.yar.flash).toHaveBeenCalledWith('uploadNotification', UPLOAD_MESSAGES.alreadyUploaded)
       })
 
       test('redirects to metadata', async () => {
