@@ -21,7 +21,9 @@ const routes = [
       validate: {
         payload: Joi.object({
           contentsWidth: width(CONTENTS_WIDTH),
-          sideNavWidth: width(SIDE_NAV_WIDTH)
+          sideNavWidth: width(SIDE_NAV_WIDTH),
+          sideNavPinnedCollapsed: Joi.boolean(),
+          sideNavBookmarksCollapsed: Joi.boolean()
         }).min(1),
         failAction: () => { throw Boom.badRequest() }
       }

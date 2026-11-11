@@ -8,6 +8,7 @@ import { initiateUploadResponse } from '../../../fixtures/cdp-uploader.js'
 import { caseResponse, guidePageResponse, pinResponse, preferencesResponse, schemesResponse, userResponse } from '../../../fixtures/guidance-api.js'
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
+import { pageOf as parsed } from '../../helpers/page.js'
 import { keepPreferencesInTheApi } from '../../helpers/preferences-api.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -552,6 +553,18 @@ describe('Side navigation', () => {
       const marked = [...nav.matchAll(/<a [^>]*aria-current="page"[^>]*>[^]*?app-side-nav__text">([^<]+)</g)].map(([, text]) => text)
       expect(marked).toEqual([current])
     })
+  })
+
+  test('draws each of its lists open or closed, as the user left it', async () => {
+    keepPreferencesInTheApi({ sideNavPinnedCollapsed: true })
+
+    const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie: await loginAsDevUser(server) } })
+    const { document } = parsed(payload)
+
+    expect(document.getElementById('side-nav-pinned')).not.toHaveAttribute('open')
+    expect(document.getElementById('side-nav-pinned')).toHaveAttribute('data-preference', 'sideNavPinnedCollapsed')
+    expect(document.getElementById('side-nav-bookmarks')).toHaveAttribute('open')
+    expect(document.getElementById('side-nav-bookmarks')).toHaveAttribute('data-preference', 'sideNavBookmarksCollapsed')
   })
 
   describe('folding away', () => {

@@ -40,7 +40,15 @@ describe('POST /preferences, which a page\'s script sends a change to', () => {
     expect(kept).toEqual({ contentsWidth: 412, sideNavWidth: 360 })
   })
 
+  test('keeps whether each of the side navigation\'s lists is closed', async () => {
+    const response = await send({ sideNavPinnedCollapsed: 'true', sideNavBookmarksCollapsed: 'false' })
+
+    expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_NO_CONTENT)
+    expect(kept).toEqual({ sideNavPinnedCollapsed: true, sideNavBookmarksCollapsed: false })
+  })
+
   test.each([
+    [{ sideNavPinnedCollapsed: 'shut' }],
     [{ contentsWidth: '239' }],
     [{ contentsWidth: '561' }],
     [{ sideNavWidth: '441' }],

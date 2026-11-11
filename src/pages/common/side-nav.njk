@@ -139,7 +139,7 @@
     positions up to date.
   #}
   {% set pins = pins or [] %}
-  <details class="app-side-nav__section" id="side-nav-pinned" open>
+  <details class="app-side-nav__section" id="side-nav-pinned" data-preference="sideNavPinnedCollapsed"{% if not sideNavPinnedCollapsed %} open{% endif %}>
     <summary class="app-side-nav__section-summary">
       <span class="app-side-nav__label">Pinned guidance</span>
       <span class="app-side-nav__section-count">{{ pins.length }}<span class="govuk-visually-hidden"> pinned</span></span>
@@ -197,7 +197,7 @@
     {% endif %}
   </details>
 
-  <details class="app-side-nav__section" id="side-nav-bookmarks" open>
+  <details class="app-side-nav__section" id="side-nav-bookmarks" data-preference="sideNavBookmarksCollapsed"{% if not sideNavBookmarksCollapsed %} open{% endif %}>
     <summary class="app-side-nav__section-summary">
       <span class="app-side-nav__label">Case bookmarks</span>
       <span class="app-side-nav__section-count">{{ caseBookmarks.cases.length }}<span class="govuk-visually-hidden"> cases</span></span>
