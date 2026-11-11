@@ -3,30 +3,39 @@ import {
   isReadingWidth,
   setReadingWidth
 } from '../../../../src/pages/guide/reading-width.js'
+import { keepPreferences, preferencesOf } from '../../../../src/services/preferences.js'
 
-function requestWith (stored) {
-  const store = new Map(stored === undefined ? [] : [['guide-reading-width', stored]])
+vi.mock('../../../../src/services/preferences.js')
 
-  return {
-    yar: { get: key => store.get(key), set: (key, value) => store.set(key, value) }
-  }
-}
+const request = {}
 
 describe('reading width', () => {
-  test('is standard until one is chosen', () => {
-    expect(getReadingWidth(requestWith())).toBe('standard')
+  beforeEach(() => {
+    vi.resetAllMocks()
   })
 
-  test.each([['standard'], ['wide'], ['full']])('remembers %s', (width) => {
-    const request = requestWith()
+  test('is standard until one is chosen', async () => {
+    preferencesOf.mockResolvedValue({})
 
-    setReadingWidth(request, width)
-
-    expect(getReadingWidth(request)).toBe(width)
+    expect(await getReadingWidth(request)).toBe('standard')
   })
 
-  test('ignores a stored value that is not an offered width', () => {
-    expect(getReadingWidth(requestWith('huge'))).toBe('standard')
+  test.each([['standard'], ['wide'], ['full']])('is %s once the user chooses it', async (width) => {
+    preferencesOf.mockResolvedValue({ readingWidth: width })
+
+    expect(await getReadingWidth(request)).toBe(width)
+  })
+
+  test('is kept as the user\'s preference', async () => {
+    await setReadingWidth(request, 'wide')
+
+    expect(keepPreferences).toHaveBeenCalledWith(request, { readingWidth: 'wide' })
+  })
+
+  test('ignores a kept value that is not an offered width', async () => {
+    preferencesOf.mockResolvedValue({ readingWidth: 'huge' })
+
+    expect(await getReadingWidth(request)).toBe('standard')
   })
 
   test.each([['wide', true], ['huge', false], [undefined, false]])('isReadingWidth(%j) is %s', (width, expected) => {

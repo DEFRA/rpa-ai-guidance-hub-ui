@@ -1,4 +1,4 @@
-const SESSION_KEY = 'guide-format'
+import { keepPreferences, preferencesOf } from '../../services/preferences.js'
 
 // The whole guide on one page, or a section at a time, as the prototype
 // names them.
@@ -14,20 +14,21 @@ const DEFAULT_GUIDE_FORMAT = GUIDE_FORMATS[0].value
  * How the user chose to read guides: every guide the same way.
  *
  * @param {import('@hapi/hapi').Request} request
- * @returns {string} One of `GUIDE_FORMATS`' values
+ * @returns {Promise<string>} One of `GUIDE_FORMATS`' values
  */
-function getGuideFormat (request) {
-  const format = request.yar.get(SESSION_KEY)
+async function getGuideFormat (request) {
+  const { guideFormat } = await preferencesOf(request)
 
-  return GUIDE_FORMATS.some(option => option.value === format) ? format : DEFAULT_GUIDE_FORMAT
+  return GUIDE_FORMATS.some(option => option.value === guideFormat) ? guideFormat : DEFAULT_GUIDE_FORMAT
 }
 
 /**
  * @param {import('@hapi/hapi').Request} request
  * @param {string} format - One of `GUIDE_FORMATS`' values
+ * @returns {Promise<void>}
  */
-function setGuideFormat (request, format) {
-  request.yar.set(SESSION_KEY, format)
+async function setGuideFormat (request, format) {
+  await keepPreferences(request, { guideFormat: format })
 }
 
 export {

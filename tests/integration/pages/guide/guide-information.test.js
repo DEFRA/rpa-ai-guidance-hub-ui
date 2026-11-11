@@ -9,6 +9,7 @@ import { guideResponse } from '../../../fixtures/guidance-api.js'
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 import { pageOf } from '../../helpers/page.js'
+import { keepPreferencesInTheApi } from '../../helpers/preferences-api.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const GUIDE_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
@@ -16,7 +17,7 @@ const GUIDE_URL = `/guides/${GUIDE_ID}`
 const MARKDOWN = '# Claiming the SFI payment\n\n## Introduction\n\nStart here.\n\n## Close case\n\nClose it.'
 
 describe('A guide\'s information', () => {
-  let server, cookie
+  let server, cookie, kept
 
   beforeAll(async () => {
     server = await createServer()
@@ -25,6 +26,7 @@ describe('A guide\'s information', () => {
   })
 
   beforeEach(async () => {
+    kept = keepPreferencesInTheApi()
     cookie = await loginAsDevUser(server)
   })
 
@@ -102,6 +104,14 @@ describe('A guide\'s information', () => {
 
   test('is hidden again once the user hides it', async () => {
     expect(informationOf(await guidePageAfter(true, false))).not.toBeVisible()
+  })
+
+  test('is kept as the user\'s preference, so it follows them to their next sign-in', async () => {
+    await choose(true)
+    const page = await guidePage(await loginAsDevUser(server))
+
+    expect(kept).toEqual({ guideInformationShown: true })
+    expect(informationOf(page)).toBeVisible()
   })
 
   describe('a choice to show or hide it', () => {

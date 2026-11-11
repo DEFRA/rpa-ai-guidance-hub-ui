@@ -1,14 +1,15 @@
 import { getGuideFormat, GUIDE_FORMATS, setGuideFormat } from '../../../../src/pages/guide/format.js'
+import { keepPreferences, preferencesOf } from '../../../../src/services/preferences.js'
 
-function requestWith (stored) {
-  const store = new Map(stored === undefined ? [] : [['guide-format', stored]])
+vi.mock('../../../../src/services/preferences.js')
 
-  return {
-    yar: { get: key => store.get(key), set: (key, value) => store.set(key, value) }
-  }
-}
+const request = {}
 
 describe('guide format', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
   test('offers the whole guide, Traditional, and a section at a time, Stepper', () => {
     expect(GUIDE_FORMATS).toEqual([
       { value: 'traditional', text: 'Traditional' },
@@ -16,19 +17,27 @@ describe('guide format', () => {
     ])
   })
 
-  test('is traditional until one is chosen', () => {
-    expect(getGuideFormat(requestWith())).toBe('traditional')
+  test('is traditional until one is chosen', async () => {
+    preferencesOf.mockResolvedValue({})
+
+    expect(await getGuideFormat(request)).toBe('traditional')
   })
 
-  test.each([['stepper'], ['traditional']])('remembers %s', (format) => {
-    const request = requestWith()
+  test.each([['stepper'], ['traditional']])('is %s once the user chooses it', async (format) => {
+    preferencesOf.mockResolvedValue({ guideFormat: format })
 
-    setGuideFormat(request, format)
-
-    expect(getGuideFormat(request)).toBe(format)
+    expect(await getGuideFormat(request)).toBe(format)
   })
 
-  test('ignores a stored value that is not an offered format', () => {
-    expect(getGuideFormat(requestWith('scroll'))).toBe('traditional')
+  test('is kept as the user\'s preference', async () => {
+    await setGuideFormat(request, 'stepper')
+
+    expect(keepPreferences).toHaveBeenCalledWith(request, { guideFormat: 'stepper' })
+  })
+
+  test('ignores a kept value that is not an offered format', async () => {
+    preferencesOf.mockResolvedValue({ guideFormat: 'scroll' })
+
+    expect(await getGuideFormat(request)).toBe('traditional')
   })
 })

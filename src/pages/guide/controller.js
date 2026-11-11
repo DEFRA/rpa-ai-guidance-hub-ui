@@ -108,11 +108,14 @@ function _pinnedSectionsOf (pinned, guideId) {
 async function getGuidePage (request, h) {
   const { guideId } = request.params
 
-  const [guide, content, pinned, cases] = await Promise.all([
+  const [guide, content, pinned, cases, format, readingWidth, informationShown] = await Promise.all([
     guidesService.getGuideById(guideId),
     guidesService.getGuideContent(guideId),
     usersService.pinnedOf(request),
-    usersService.casesOf(request)
+    usersService.casesOf(request),
+    getGuideFormat(request),
+    getReadingWidth(request),
+    isInformationShown(request)
   ])
 
   const split = content ? splitIntoSections(content.markdown) : []
@@ -125,7 +128,6 @@ async function getGuidePage (request, h) {
   // so its address doesn't tell an opening from moving between its parts.
   await usersService.recordOpened(request, guide.id)
 
-  const format = getGuideFormat(request)
   // In the traditional view every heading is on the page, so the guide's
   // links to them work as they are.
   const linked = format === 'stepper'
@@ -137,7 +139,7 @@ async function getGuidePage (request, h) {
     guide,
     sections,
     pageNumber: _pageNamed(sections, request.query.section),
-    readingWidth: getReadingWidth(request),
+    readingWidth,
     returnTo: _currentUrl(request),
     pin: _pinOf(pinned, guide.id),
     pinnedSections: _pinnedSectionsOf(pinned, guide.id),
@@ -145,7 +147,7 @@ async function getGuidePage (request, h) {
     bookmarked: request.yar.flash(BOOKMARKED)[0],
     format,
     infoRows: buildInfoRows(guide),
-    informationShown: isInformationShown(request)
+    informationShown
   })
 
   return h
@@ -159,12 +161,12 @@ async function getGuidePage (request, h) {
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
- * @returns {import('@hapi/hapi').ResponseObject}
+ * @returns {Promise<import('@hapi/hapi').ResponseObject>}
  */
-function postReadingWidth (request, h) {
+async function postReadingWidth (request, h) {
   const { width, returnTo } = request.payload
 
-  setReadingWidth(request, width)
+  await setReadingWidth(request, width)
 
   return h.redirect(relativeHref(returnTo, FALLBACK_RETURN_URL))
 }
@@ -175,12 +177,12 @@ function postReadingWidth (request, h) {
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
- * @returns {import('@hapi/hapi').ResponseObject}
+ * @returns {Promise<import('@hapi/hapi').ResponseObject>}
  */
-function postFormat (request, h) {
+async function postFormat (request, h) {
   const { format, returnTo } = request.payload
 
-  setGuideFormat(request, format)
+  await setGuideFormat(request, format)
 
   return h.redirect(relativeHref(returnTo, FALLBACK_RETURN_URL))
 }
@@ -192,12 +194,12 @@ function postFormat (request, h) {
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
- * @returns {import('@hapi/hapi').ResponseObject}
+ * @returns {Promise<import('@hapi/hapi').ResponseObject>}
  */
-function postInformation (request, h) {
+async function postInformation (request, h) {
   const { shown, returnTo } = request.payload
 
-  setInformationShown(request, shown)
+  await setInformationShown(request, shown)
 
   return h.redirect(relativeHref(returnTo, FALLBACK_RETURN_URL))
 }

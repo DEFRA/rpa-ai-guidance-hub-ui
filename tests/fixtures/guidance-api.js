@@ -313,6 +313,31 @@ function recentlyOpenedResponse (overrides = {}) {
 }
 
 /**
+ * Body of `GET /preferences/{userId}` and `PATCH /preferences/{userId}` on 200:
+ * every one of the user's preferences, null for one they have not set. By
+ * default none is set.
+ *
+ * Verified on 2026-11-11 by validating this body, with and without values set,
+ * against the guidance API's `Preferences` schema.
+ *
+ * @param {Object} [overrides] - The preferences set, by name
+ * @returns {{guideFormat: string|null, readingWidth: string|null, contentsWidth: number|null, guideInformationShown: boolean|null, sideNavCollapsed: boolean|null, sideNavWidth: number|null, sideNavPinnedCollapsed: boolean|null, sideNavBookmarksCollapsed: boolean|null}}
+ */
+function preferencesResponse (overrides = {}) {
+  return {
+    guideFormat: null,
+    readingWidth: null,
+    contentsWidth: null,
+    guideInformationShown: null,
+    sideNavCollapsed: null,
+    sideNavWidth: null,
+    sideNavPinnedCollapsed: null,
+    sideNavBookmarksCollapsed: null,
+    ...overrides
+  }
+}
+
+/**
  * Body of a request the guidance API refuses itself: why, in words.
  *
  * Verified against the running API on 2026-11-05: `detail` as a string, unlike
@@ -333,6 +358,7 @@ export {
   pinnedGuidesResponse,
   pinnedSummaryResponse,
   pinResponse,
+  preferencesResponse,
   recentlyOpenedResponse,
   refusalResponse,
   versionResponse,

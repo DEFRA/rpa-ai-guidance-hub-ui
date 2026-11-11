@@ -1,22 +1,23 @@
-const SESSION_KEY = 'guide-information-shown'
+import { keepPreferences, preferencesOf } from '../../services/preferences.js'
 
 /**
  * Whether the user chose to show a guide's information under its title, for
  * every guide they read. Hidden until they do.
  *
  * @param {import('@hapi/hapi').Request} request
- * @returns {boolean}
+ * @returns {Promise<boolean>}
  */
-function isInformationShown (request) {
-  return request.yar.get(SESSION_KEY) === true
+async function isInformationShown (request) {
+  return (await preferencesOf(request)).guideInformationShown === true
 }
 
 /**
  * @param {import('@hapi/hapi').Request} request
  * @param {boolean} shown
+ * @returns {Promise<void>}
  */
-function setInformationShown (request, shown) {
-  request.yar.set(SESSION_KEY, shown)
+async function setInformationShown (request, shown) {
+  await keepPreferences(request, { guideInformationShown: shown })
 }
 
 export {

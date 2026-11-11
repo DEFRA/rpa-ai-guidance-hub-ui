@@ -5,10 +5,11 @@ import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
-import { guideResponse } from '../../../fixtures/guidance-api.js'
+import { guideResponse, userResponse } from '../../../fixtures/guidance-api.js'
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 import { pageOf } from '../../helpers/page.js'
+import { keepPreferencesInTheApi } from '../../helpers/preferences-api.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const GUIDE_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
@@ -31,7 +32,7 @@ const MARKDOWN = [
 ].join('\n')
 
 describe('A guide\'s format', () => {
-  let server, cookie
+  let server, cookie, kept
 
   beforeAll(async () => {
     server = await createServer()
@@ -40,6 +41,7 @@ describe('A guide\'s format', () => {
   })
 
   beforeEach(async () => {
+    kept = keepPreferencesInTheApi()
     cookie = await loginAsDevUser(server)
   })
 
@@ -159,6 +161,27 @@ describe('A guide\'s format', () => {
       expect(page.getByRole('heading', { level: 2, name: 'Assign case' })).toBeVisible()
       expect(page.getByRole('heading', { level: 2, name: 'Close case', hidden: true })).not.toBeVisible()
       expect(formatsOf(page).getByRole('button', { name: 'Stepper', pressed: true })).toBeInTheDocument()
+    })
+
+    test('keeps it as the user\'s preference, so it follows them to their next sign-in', async () => {
+      await chooseFormat('stepper', GUIDE_URL)
+      const page = await guidePage(GUIDE_URL, await loginAsDevUser(server))
+
+      expect(kept).toEqual({ guideFormat: 'stepper' })
+      expect(formatsOf(page).getByRole('button', { name: 'Stepper', pressed: true })).toBeInTheDocument()
+    })
+
+    test('is an error when the hub cannot keep it', async () => {
+      nock.cleanAll()
+      nock(GUIDANCE_API_BASE_URL)
+        .persist()
+        .post('/users').reply(statusCodes.HTTP_STATUS_OK, userResponse())
+        .patch(/^\/preferences\//).reply(statusCodes.HTTP_STATUS_SERVICE_UNAVAILABLE)
+
+      const response = await chooseFormat('stepper', GUIDE_URL)
+
+      expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+      expect(pageOf(response.payload).getByText('Something went wrong')).toBeInTheDocument()
     })
   })
 
