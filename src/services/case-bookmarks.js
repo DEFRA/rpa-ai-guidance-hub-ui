@@ -179,8 +179,8 @@ function _removeCaseAt (request, { position, found }) {
  *
  * @param {import('@hapi/hapi').Request} request - Signed in
  * @param {string} key - The case's
- * @returns {Promise<boolean>} Whether it changed anything: not when the case
- *   has gone, or changed, since
+ * @returns {Promise<boolean>} Whether the case went: not when it has gone, or
+ *   changed, since
  */
 async function removeCase (request, key) {
   const now = await _caseNow(request, key)
@@ -215,8 +215,8 @@ function _takingOut ({ position, found }, removals, emptied) {
  *
  * @param {import('@hapi/hapi').Request} request - Signed in
  * @param {{key: string, guideId: string}} place
- * @returns {Promise<boolean>} Whether it changed anything: not when the case,
- *   or the guide in it, has gone since
+ * @returns {Promise<boolean>} Whether the case went with it: not while it has
+ *   other guides, nor when the case, or the guide in it, has gone since
  */
 async function removeGuide (request, { key, guideId }) {
   const now = await _caseNow(request, key)
@@ -227,11 +227,13 @@ async function removeGuide (request, { key, guideId }) {
   }
 
   const positions = guide.bookmarks.map(each => each.position).sort((a, b) => b - a)
-
-  return _patchCases(request, _takingOut(now, [
+  const emptied = now.found.guides.length === 1
+  const removed = await _patchCases(request, _takingOut(now, [
     ...positions.map(at => ({ op: 'test', path: `/${now.position}/bookmarks/${at}/guideId`, value: guideId })),
     ...positions.map(at => ({ op: 'remove', path: `/${now.position}/bookmarks/${at}` }))
-  ], now.found.guides.length === 1))
+  ], emptied))
+
+  return removed && emptied
 }
 
 /**
@@ -240,7 +242,8 @@ async function removeGuide (request, { key, guideId }) {
  *
  * @param {import('@hapi/hapi').Request} request - Signed in
  * @param {{key: string, guideId: string, sectionId: string}} place
- * @returns {Promise<boolean>} Whether it changed anything
+ * @returns {Promise<boolean>} Whether the case went with it: not while it has
+ *   other bookmarks, nor when it has changed since
  */
 async function removeSection (request, { key, guideId, sectionId }) {
   const now = await _caseNow(request, key)
@@ -252,11 +255,13 @@ async function removeSection (request, { key, guideId, sectionId }) {
   }
 
   const path = `/${now.position}/bookmarks/${placed.position}`
-
-  return _patchCases(request, _takingOut(now, [
+  const emptied = now.found.guides.flatMap(each => each.bookmarks).length === 1
+  const removed = await _patchCases(request, _takingOut(now, [
     { op: 'test', path: `${path}/sectionId`, value: sectionId },
     { op: 'remove', path }
-  ], now.found.guides.flatMap(each => each.bookmarks).length === 1))
+  ], emptied))
+
+  return removed && emptied
 }
 
 /**
