@@ -54,8 +54,9 @@ function followedAddress ({ pathname, search, hash }, { anchor, page }, isSteppe
   }
 
   const rest = query.toString()
+  const queryString = rest ? `?${rest}` : ''
   const fragment = !isStepper && anchor ? `#${encodeURIComponent(anchor)}` : ''
-  const address = `${pathname}${rest ? `?${rest}` : ''}${fragment}`
+  const address = `${pathname}${queryString}${fragment}`
 
   return address === `${pathname}${search}${hash}` ? null : address
 }
