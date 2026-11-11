@@ -332,6 +332,20 @@ describe('bookmarking a section of a guide to a case', () => {
       expect(within(banner).getByRole('heading', { name: '‘1.1 Before you begin’ bookmarked to case ID W7654321' })).toBeInTheDocument()
       expect(again.queryByRole('alert')).not.toBeInTheDocument()
     })
+
+    test('links to the case\'s guides on the Bookmarked guides page, by the case\'s key, not its reference', async () => {
+      const saved = caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', ref: 'W7654321' })
+      mockGuideAndUser([caseResponse()])
+      nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+      const posted = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: 'W7654321', shown: [caseResponse().key] })
+      cookie = mergeCookies(cookie, posted.headers['set-cookie'])
+
+      mockGuideAndUser([saved, caseResponse()])
+      nock(GUIDANCE_API_BASE_URL).post(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+      const page = pageOf((await get(GUIDE_PAGE)).payload)
+
+      expect(within(page.getByRole('alert')).getByRole('link', { name: 'View all guides for this case' })).toHaveAttribute('href', `/hub/bookmarked-guides?case=${saved.key}`)
+    })
   })
 })
 

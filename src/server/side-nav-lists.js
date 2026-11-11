@@ -1,4 +1,5 @@
 import { CASE_TYPES } from '../constants/case-types.js'
+import { caseGuidesHref } from '../pages/common/case-guides-href.js'
 import { guideSectionHref } from '../pages/common/guide-section-href.js'
 import * as usersService from '../services/users.js'
 
@@ -45,9 +46,10 @@ function _pins (pinned) {
 /**
  * @private
  * The user's cases as the side navigation lists them: each named by its type
- * and reference, and kept by its key, with its guides, each linking to the
- * guide, and each guide's bookmarked sections, each linking to its place in
- * the guide. Each list carries the ids it shows, which its moves send back.
+ * and reference, kept by its key, and linking to the Bookmarked guides page
+ * narrowed to it, with its guides, each linking to the guide, and each guide's
+ * bookmarked sections, each linking to its place in the guide. Each list
+ * carries the ids it shows, which its moves send back.
  *
  * @param {Array<{key: string, type: string, ref: string, guides: Array<{id: string, title: string|null, bookmarks: Array<{sectionId: string, section: string, heading: string|null}>}>}>} cases
  *   - In the user's order
@@ -61,6 +63,7 @@ function _caseBookmarks (cases) {
       typeLabel: CASE_TYPES[type].short,
       ref,
       name: `${CASE_TYPES[type].short} ${ref}`,
+      href: caseGuidesHref(key),
       ..._placed(position, cases.length),
       guideOrder: guides.map(({ id }) => id),
       guides: guides.map((guide, at) => {
@@ -85,9 +88,9 @@ function _caseBookmarks (cases) {
 /**
  * Gives a signed-in page what its side navigation shows of the user's own
  * lists - the guides and sections they pinned, and how many, and their cases
- * with the sections of guides bookmarked to them - from one call to the hub
- * for the user. Without them, the side navigation lists no pins or cases and
- * counts none.
+ * with the sections of guides bookmarked to them, and how many - from one call
+ * to the hub for the user. Without them, the side navigation lists no pins or
+ * cases and counts none.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -106,7 +109,8 @@ async function addSideNavLists (request, h) {
     ...response.source.context,
     pins: _pins(pinned ?? []),
     pinnedCount: pinned?.length,
-    caseBookmarks: _caseBookmarks(cases ?? [])
+    caseBookmarks: _caseBookmarks(cases ?? []),
+    caseCount: cases?.length
   }
 
   return h.continue

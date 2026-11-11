@@ -18,7 +18,7 @@
   { text: "Hub", href: "/hub" + listQuery, icon: "home", current: currentPath == "/hub" },
   { text: "Recently opened", href: "/hub/recently-opened" + listQuery, icon: "clock", current: currentPath == "/hub/recently-opened" },
   { text: "Pinned", href: "/hub/pinned" + listQuery, icon: "star", current: currentPath == "/hub/pinned", badge: pinnedCount, badgeUnit: "pins" },
-  { text: "Bookmarked guides", href: "/hub/bookmarked-guides" + listQuery, icon: "bookmark", current: currentPath == "/hub/bookmarked-guides" }
+  { text: "Bookmarked", href: "/hub/bookmarked-guides" + listQuery, icon: "bookmark", current: currentPath == "/hub/bookmarked-guides", badge: caseCount, badgeUnit: "cases" }
 ] %}
 {% set editorItems = [
   { text: "Upload guidance", href: "/create-guidance/upload-guide", icon: "upload", current: onUpload }
@@ -61,7 +61,7 @@
 
   {# An editor's work in a list of its own: the strip draws a line above it. #}
   {% if isEditor %}
-    <ul class="app-side-nav__rail-list" aria-label="Designing">
+    <ul class="app-side-nav__rail-list" aria-label="Maintenance">
       {% for item in editorItems %}
         <li>{{ railItem(item.text, item.icon, item.href, item.current) }}</li>
       {% endfor %}
@@ -116,8 +116,8 @@
   </ul>
 
   {% if isEditor %}
-    <h2 class="app-side-nav__label" id="side-nav-designing">Designing</h2>
-    <ul class="app-side-nav__list" aria-labelledby="side-nav-designing">
+    <h2 class="app-side-nav__label" id="side-nav-maintenance">Maintenance</h2>
+    <ul class="app-side-nav__list" aria-labelledby="side-nav-maintenance">
       {% for item in editorItems %}
         <li>
           <a class="app-side-nav__link{% if item.current %} app-side-nav__link--current{% endif %}" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>
@@ -208,13 +208,13 @@
         {% for case in caseBookmarks.cases %}
           <li class="app-side-nav__case" data-reorder-id="{{ case.key }}" data-reorder-label="{{ case.name }}">
             <div class="app-side-nav__row">
-              <div class="app-side-nav__case-name" data-reorder-handle>
+              <a class="app-side-nav__link" href="{{ case.href }}" draggable="false" data-reorder-handle>
                 {{ icon("bookmark") }}
                 <span class="app-side-nav__text">
                   <span class="app-side-nav__ref-type">{{ case.typeLabel }}</span>
                   <span class="govuk-visually-hidden">: </span>{{ case.ref }}</span>
                 <span class="app-side-nav__meta">{{ case.guides.length }} guide{{ "s" if case.guides.length != 1 }}</span>
-              </div>
+              </a>
               <details class="app-side-nav__more">
                 <summary class="app-side-nav__icon-button app-side-nav__more-button">
                   {{ icon("more") }}
