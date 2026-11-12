@@ -14,6 +14,7 @@ import { catchAll } from './catch-all.js'
 import { addSideNavLists } from './side-nav-lists.js'
 import { options as loggerOptions } from '../infra/logging/options.js'
 
+import { cookieConsent } from './cookie-consent.js'
 import { auth } from './plugins/auth/auth.js'
 import { contentSecurityPolicy } from './plugins/content-security-policy.js'
 import { requestTracing } from './plugins/request-tracing.js'
@@ -87,6 +88,7 @@ async function createServer () {
     Scooter,
     HapiInert,
     serveStaticFiles,
+    cookieConsent,
     viewPlugin,
     auth,
     router

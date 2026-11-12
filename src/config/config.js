@@ -314,6 +314,18 @@ const config = convict({
       env: 'FEATURE_SBI_BOOKMARKS'
     }
   },
+  googleTagManager: {
+    containerId: {
+      doc: 'Google Tag Manager container ID (e.g. "GTM-XXXXXXX"). When set, the service loads Google Analytics through Tag Manager and shows a cookie consent banner. When null, no analytics is injected at all.',
+      format: (value) => {
+        if (value && !/^GTM-[A-Z0-9]+$/.test(value)) {
+          throw new TypeError('must be a Google Tag Manager container ID like GTM-XXXXXXX')
+        }
+      },
+      default: null,
+      env: 'GTM_CONTAINER_ID'
+    }
+  },
   auth: {
     provider: {
       doc: 'Authentication provider to use',
