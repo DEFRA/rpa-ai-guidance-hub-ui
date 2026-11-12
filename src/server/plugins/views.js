@@ -7,11 +7,7 @@ import nunjucks from 'nunjucks'
 import { config } from '../../config/config.js'
 import { ROLES, roleDisplayNames } from '../../constants/roles.js'
 import { roleEnforcementEnabled } from '../access-control/hub-access.js'
-import {
-  CONSENT_COOKIE,
-  CONSENT_SET_COOKIE,
-  parseConsent
-} from '../cookie-consent.js'
+import { getConsent, isConsentSet } from '../cookie-consent.js'
 import { bookmarkedToHtml, headingControlsHtml } from '../../constants/heading-bookmarks.js'
 import { jsonScript, renderMarkdownFallback } from '../../pages/guide/markdown.js'
 import { filtersFrom, listHref } from '../../pages/hub/filters.js'
@@ -150,8 +146,8 @@ const viewPlugin = {
         // Cookie consent, read from the cookies set by /cookies/accept and
         // /cookies/reject. The banner uses these to know whether to be shown or
         // hidden, and the client JS uses this to load analytics once accepted.
-        cookieConsent: parseConsent(request?.state?.[CONSENT_COOKIE]),
-        cookieConsentSet: Boolean(request?.state?.[CONSENT_SET_COOKIE]),
+        cookieConsent: getConsent(request),
+        cookieConsentSet: isConsentSet(request),
         // Set by the accept/reject redirect, e.g. 'accept' or 'reject'.
         cookieAction: request?.query?.cookieAction || null
       }

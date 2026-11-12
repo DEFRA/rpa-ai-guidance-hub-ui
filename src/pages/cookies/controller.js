@@ -1,36 +1,5 @@
 import { config } from '../../config/config.js'
-import {
-  CONSENT_COOKIE,
-  CONSENT_SET_COOKIE,
-  parseConsent,
-  safeReturnPath,
-  serializeConsent
-} from '../../server/cookie-consent.js'
-
-/**
- * Stores the user's choice on a response. A rejection also drops any Google
- * Analytics cookies the request carried.
- *
- * @param {import('@hapi/hapi').Request} request
- * @param {import('@hapi/hapi').ResponseObject} response
- * @param {boolean} analytics - Whether analytics cookies are accepted
- * @returns {import('@hapi/hapi').ResponseObject} The same response
- */
-function withConsent (request, response, analytics) {
-  response
-    .state(CONSENT_COOKIE, serializeConsent(analytics))
-    .state(CONSENT_SET_COOKIE, 'true')
-
-  if (!analytics) {
-    for (const name of Object.keys(request.state ?? {})) {
-      if (name.startsWith('_ga')) {
-        response.unstate(name, { path: '/' })
-      }
-    }
-  }
-
-  return response
-}
+import { safeReturnPath } from '../../server/cookie-consent.js'
 
 /**
  * Shows /cookies, where a user can change their analytics choice. Public: the
@@ -42,7 +11,7 @@ function cookiesGetController (request, h) {
   return h.view('cookies/page', {
     pageTitle: 'Cookies',
     saved: request.query.saved === 'true',
-    currentAnalytics: parseConsent(request.state?.[CONSENT_COOKIE]),
+    currentAnalytics: request.getConsent(),
     gtmContainerId: config.get('googleTagManager.containerId'),
     breadcrumbs: [
       { text: 'Home', href: '/' },
@@ -59,7 +28,7 @@ function cookiesGetController (request, h) {
 function cookiesPostController (request, h) {
   const analytics = request.payload?.analytics === 'yes'
 
-  return withConsent(request, h.redirect('/cookies?saved=true'), analytics)
+  return request.setConsent(h.redirect('/cookies?saved=true'), analytics)
 }
 
 /**
@@ -76,7 +45,7 @@ function bannerController (analytics) {
     url.searchParams.set('cookieAction', analytics ? 'accept' : 'reject')
     const location = `${url.pathname}${url.search}${url.hash}`
 
-    return withConsent(request, h.redirect(location), analytics)
+    return request.setConsent(h.redirect(location), analytics)
   }
 }
 

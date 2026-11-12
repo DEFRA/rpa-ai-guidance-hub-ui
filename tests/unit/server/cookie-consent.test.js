@@ -1,23 +1,67 @@
 import {
-  parseConsent,
+  getConsent,
+  isConsentSet,
   safeReturnPath,
-  serializeConsent
+  setConsent
 } from '../../../src/server/cookie-consent.js'
 
-test('parseConsent reads an accepted choice back', () => {
-  expect(parseConsent(serializeConsent(true))).toBe(true)
+function fakeResponse () {
+  const response = {
+    state: vi.fn(() => response),
+    unstate: vi.fn(() => response)
+  }
+  return response
+}
+
+test('getConsent reads an accepted choice back', () => {
+  const response = fakeResponse()
+  setConsent({}, response, true)
+  const [, value] = response.state.mock.calls[0]
+
+  expect(getConsent({ state: { defra_cookies_policy: value } })).toBe(true)
 })
 
-test('parseConsent reads a rejected choice back', () => {
-  expect(parseConsent(serializeConsent(false))).toBe(false)
+test('getConsent reads a rejected choice back', () => {
+  const response = fakeResponse()
+  setConsent({}, response, false)
+  const [, value] = response.state.mock.calls[0]
+
+  expect(getConsent({ state: { defra_cookies_policy: value } })).toBe(false)
 })
 
 test.each([
-  ['no cookie', undefined],
-  ['a malformed escape', '%E0%A4%A'],
-  ['a value that is not JSON', 'not json']
-])('parseConsent does not accept analytics for %s', (_name, value) => {
-  expect(parseConsent(value)).toBe(false)
+  ['no request', undefined],
+  ['no cookie', { state: {} }],
+  ['a malformed escape', { state: { defra_cookies_policy: '%E0%A4%A' } }],
+  ['a value that is not JSON', { state: { defra_cookies_policy: 'not json' } }]
+])('getConsent does not accept analytics for %s', (_name, request) => {
+  expect(getConsent(request)).toBe(false)
+})
+
+test('isConsentSet is true only once the choice has been recorded', () => {
+  expect(isConsentSet({ state: { defra_cookies_policy_set: 'true' } })).toBe(true)
+  expect(isConsentSet({ state: {} })).toBe(false)
+  expect(isConsentSet(undefined)).toBe(false)
+})
+
+test('setConsent records the choice and that one was made', () => {
+  const response = fakeResponse()
+
+  expect(setConsent({}, response, true)).toBe(response)
+  expect(response.state).toHaveBeenCalledWith(
+    'defra_cookies_policy', '%7B%22analytics%22%3Atrue%7D')
+  expect(response.state).toHaveBeenCalledWith('defra_cookies_policy_set', 'true')
+  expect(response.unstate).not.toHaveBeenCalled()
+})
+
+test('setConsent rejecting drops Google Analytics cookies and no others', () => {
+  const response = fakeResponse()
+
+  setConsent({ state: { _ga: '1', _ga_ABC: '2', other: '3' } }, response, false)
+
+  expect(response.unstate).toHaveBeenCalledTimes(2)
+  expect(response.unstate).toHaveBeenCalledWith('_ga', { path: '/' })
+  expect(response.unstate).toHaveBeenCalledWith('_ga_ABC', { path: '/' })
 })
 
 test('safeReturnPath keeps a local path with its query', () => {

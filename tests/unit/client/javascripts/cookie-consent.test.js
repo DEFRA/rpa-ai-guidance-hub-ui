@@ -1,4 +1,8 @@
 // @vitest-environment jsdom
+import path from 'node:path'
+
+import nunjucks from 'nunjucks'
+
 import {
   getCookieConsent,
   hasConsentBeenSet,
@@ -17,20 +21,21 @@ function clearCookies () {
   }
 }
 
-function bannerHtml ({ hidden = '', accepted = ' hidden' } = {}) {
-  return `
-    <div class="govuk-cookie-banner" data-gtm-container-id="GTM-TEST123"${hidden}>
-      <div class="govuk-cookie-banner__message">
-        <form><button value="accept">Accept</button></form>
-        <form><button value="reject">Reject</button></form>
-      </div>
-      <div class="govuk-cookie-banner__message" role="alert"${accepted}>
-        <button type="button">Hide</button>
-      </div>
-      <div class="govuk-cookie-banner__message" role="alert" hidden>
-        <button type="button">Hide</button>
-      </div>
-    </div>`
+// The real banner template, so these tests cannot drift from the markup the
+// server sends.
+const nunjucksEnvironment = nunjucks.configure(
+  ['node_modules/govuk-frontend/dist', path.join(process.cwd(), 'src/pages')],
+  { autoescape: true, trimBlocks: true, lstripBlocks: true }
+)
+
+function bannerHtml ({ hidden = false, accepted = false } = {}) {
+  return nunjucksEnvironment.render('common/cookie-banner.njk', {
+    gtmContainerId: 'GTM-TEST123',
+    serviceName: 'Test service',
+    currentUrl: '/',
+    cookieConsentSet: hidden,
+    cookieAction: accepted ? 'accept' : null
+  })
 }
 
 function messagesOf () {
@@ -147,7 +152,7 @@ describe('initCookieBanner', () => {
   describe('when analytics was accepted earlier', () => {
     test('hides the banner and loads analytics', () => {
       setCookieConsent({ analytics: true })
-      document.body.innerHTML = bannerHtml({ hidden: ' hidden' })
+      document.body.innerHTML = bannerHtml({ hidden: true })
 
       initCookieBanner()
 
@@ -160,7 +165,7 @@ describe('initCookieBanner', () => {
   describe('when analytics was rejected earlier', () => {
     test('hides the banner and loads nothing', () => {
       setCookieConsent({ analytics: false })
-      document.body.innerHTML = bannerHtml({ hidden: ' hidden' })
+      document.body.innerHTML = bannerHtml({ hidden: true })
 
       initCookieBanner()
 
@@ -171,7 +176,7 @@ describe('initCookieBanner', () => {
   describe('when the server has just accepted without JavaScript', () => {
     test('loads analytics and keeps the accepted message', () => {
       setCookieConsent({ analytics: true })
-      document.body.innerHTML = bannerHtml({ accepted: '' })
+      document.body.innerHTML = bannerHtml({ accepted: true })
 
       initCookieBanner()
 
