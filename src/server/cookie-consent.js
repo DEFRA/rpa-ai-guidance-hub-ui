@@ -2,7 +2,10 @@ import { config } from '../config/config.js'
 
 const CONSENT_COOKIE = 'defra_cookies_policy'
 const CONSENT_SET_COOKIE = 'defra_cookies_policy_set'
-const ONE_YEAR_MS = 31536000 * 1000
+const SECONDS_PER_DAY = 24 * 60 * 60
+const DAYS_PER_YEAR = 365
+const MS_PER_SECOND = 1000
+const ONE_YEAR_MS = DAYS_PER_YEAR * SECONDS_PER_DAY * MS_PER_SECOND
 
 /**
  * @private

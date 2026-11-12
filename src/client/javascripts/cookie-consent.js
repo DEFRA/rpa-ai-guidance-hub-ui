@@ -61,7 +61,7 @@ function loadGoogleTagManager (containerId) {
 
   globalThis.dataLayer = globalThis.dataLayer || []
   globalThis.dataLayer.push({
-    'gtm.start': new Date().getTime(),
+    'gtm.start': Date.now(),
     event: 'gtm.js'
   })
 
