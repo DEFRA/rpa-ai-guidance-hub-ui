@@ -7,6 +7,7 @@ import { errorSummaryOf, pageOf, summaryValueOf } from '../../../../helpers/page
 import { config } from '../../../../../../src/config/config.js'
 import { schemesResponse, stagedDocumentResponse } from '../../../../../fixtures/guidance-api.js'
 import { initiateUploadResponse, uploadStatusResponse } from '../../../../../fixtures/cdp-uploader.js'
+import { METADATA_MESSAGES } from '../../../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
@@ -121,7 +122,7 @@ describe('#metadataController Integration', () => {
       const errors = errorSummaryOf(pageOf(response.payload))
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
       expect(errors.getByRole('heading', { name: 'There is a problem' })).toBeInTheDocument()
-      expect(errors.getByRole('link', { name: 'Enter the guidance title' })).toBeInTheDocument()
+      expect(errors.getByRole('link', { name: METADATA_MESSAGES.titleRequired })).toBeInTheDocument()
     })
 
     test('POST /create-guidance/upload-guide/metadata normalizes "none" out and redirects when submitted alongside another scheme', async () => {
@@ -169,8 +170,8 @@ describe('#metadataController Integration', () => {
     })
 
     test.each([
-      ['', 'Enter the version number'],
-      ['1', 'Enter the version number as 2 whole numbers with a full stop between them, for example 1.0']
+      ['', METADATA_MESSAGES.versionNumberRequired],
+      ['1', METADATA_MESSAGES.versionNumberFormat]
     ])('POST /create-guidance/upload-guide/metadata re-renders 400 for the version number %j, keeping what was entered', async (versionNumber, message) => {
       const cookie = await loginAsDevUser(server)
 

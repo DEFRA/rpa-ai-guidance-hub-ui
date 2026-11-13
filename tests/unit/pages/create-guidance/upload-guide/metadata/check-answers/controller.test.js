@@ -7,6 +7,7 @@ import {
   convertDocument,
   getCheckAnswers
 } from '../../../../../../../src/pages/create-guidance/upload-guide/metadata/check-answers/controller.js'
+import { METADATA_MESSAGES, REFUSAL_MESSAGES } from '../../../../../../fixtures/messages.js'
 
 vi.mock('../../../../../../../src/services/guides.js')
 vi.mock('../../../../../../../src/services/reference-data.js')
@@ -139,7 +140,7 @@ describe('upload-guide metadata check-answers controller', () => {
       await convertDocument(request, h)
 
       expect(h.view).toHaveBeenCalledWith(CHECK_ANSWERS_VIEW, expect.objectContaining({
-        errorList: [{ text: 'Enter the version number', href: '/create-guidance/upload-guide/metadata?from=check' }]
+        errorList: [{ text: METADATA_MESSAGES.versionNumberRequired, href: '/create-guidance/upload-guide/metadata?from=check' }]
       }))
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_BAD_REQUEST)
     })
@@ -236,10 +237,11 @@ describe('upload-guide metadata check-answers controller', () => {
     })
 
     test.each([
-      ['its upload has expired', 'UPLOAD_EXPIRED', 'The uploaded document has expired. Start again and upload it again'],
-      ['its parse is unfinished', 'PARSE_PENDING', 'The uploaded document is still being processed. Wait a few seconds, then select Convert document again'],
-      ['its parse failed', 'PARSE_FAILED', 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team']
-    ])('explains why the document cannot be converted when %s', async (_, result, message) => {
+      ['its upload has expired', 'UPLOAD_EXPIRED'],
+      ['its parse is unfinished', 'PARSE_PENDING'],
+      ['its parse failed', 'PARSE_FAILED']
+    ])('explains why the document cannot be converted when %s', async (_, result) => {
+      const message = REFUSAL_MESSAGES[guidesService.RESULTS[result]]
       mockUpload(validMetadata())
       mockReferenceData()
       stagedDocumentsService.getStagedDocumentById.mockResolvedValue(null)
@@ -276,7 +278,7 @@ describe('upload-guide metadata check-answers controller', () => {
       expect(h.view).toHaveBeenCalledWith(CHECK_ANSWERS_VIEW, expect.objectContaining({
         errorList: expect.arrayContaining([
           expect.objectContaining({
-            text: 'Select at least one scheme this guidance relates to',
+            text: METADATA_MESSAGES.schemeRequired,
             href: '/create-guidance/upload-guide/metadata?from=check'
           })
         ])

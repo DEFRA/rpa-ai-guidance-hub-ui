@@ -10,6 +10,7 @@ import { mergeCookies } from '../../../helpers/cookies.js'
 import { pageOf } from '../../../helpers/page.js'
 import { config } from '../../../../../src/config/config.js'
 import * as referenceDataService from '../../../../../src/services/reference-data.js'
+import { UPLOAD_MESSAGES } from '../../../../fixtures/messages.js'
 
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
 const GUIDANCE_API_URL = config.get('guidanceApi.baseUrl')
@@ -204,7 +205,7 @@ describe('#uploadGuideController', () => {
       })
 
       expect(first.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(pageOf(first.payload).getByRole('region', { name: 'Important' })).toHaveTextContent('You have already uploaded a document for this guide')
+      expect(pageOf(first.payload).getByRole('region', { name: 'Important' })).toHaveTextContent(UPLOAD_MESSAGES.alreadyUploaded)
 
       const second = await server.inject({
         method: 'GET',

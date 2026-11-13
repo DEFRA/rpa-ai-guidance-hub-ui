@@ -1,5 +1,6 @@
 import * as stagedDocumentsService from '../../../../../../src/services/staged-documents.js'
 import { getConversionProgress } from '../../../../../../src/pages/create-guidance/upload-guide/converting/progress.js'
+import { CONVERSION_MESSAGES } from '../../../../../fixtures/messages.js'
 
 function stagedDocument (fields = {}) {
   return {
@@ -70,8 +71,8 @@ describe('conversion progress', () => {
       percentage: 4,
       isComplete: false,
       isError: true,
-      message: 'The document could not be converted',
-      detail: 'Go back to check your answers and select Convert document again. If this keeps happening, contact the support team'
+      message: CONVERSION_MESSAGES.failed,
+      detail: CONVERSION_MESSAGES.failedDetail
     }))
   })
 
@@ -82,8 +83,8 @@ describe('conversion progress', () => {
 
     expect(progress).toEqual(expect.objectContaining({
       isError: true,
-      message: 'The uploaded document has expired',
-      detail: 'Start over and upload it again'
+      message: CONVERSION_MESSAGES.expired,
+      detail: CONVERSION_MESSAGES.expiredDetail
     }))
   })
 })

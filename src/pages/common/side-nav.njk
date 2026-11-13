@@ -196,7 +196,7 @@
       </ul>
       <p class="govuk-visually-hidden" role="status" data-reorder-status></p>
     {% else %}
-      <p class="app-side-nav__empty">You haven't pinned any guidance yet.</p>
+      <p class="app-side-nav__empty">{{ sideNavMessages.nonePinned }}</p>
     {% endif %}
   </details>
 
@@ -309,7 +309,7 @@
       </ul>
       <p class="govuk-visually-hidden" role="status" data-reorder-status></p>
     {% else %}
-      <p class="app-side-nav__empty">You haven't bookmarked any guidance to a case yet.</p>
+      <p class="app-side-nav__empty">{{ sideNavMessages.noCaseBookmarks }}</p>
     {% endif %}
   </details>
 

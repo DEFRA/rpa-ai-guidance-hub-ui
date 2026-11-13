@@ -2,6 +2,19 @@ import { relativeHref } from '../common/relative-href.js'
 import { versionTag } from '../common/version-tag.js'
 
 /**
+ * What the hub's lists say when they are empty, named once, so that one test
+ * holds their words and the rest name them. `nonePinned` is HTML, so the
+ * control it tells the user to select can be bold.
+ */
+const HUB_MESSAGES = Object.freeze({
+  noneMatch: 'No guides match your search or filters. Try removing some filters or using different search terms.',
+  noneOpened: "You haven't opened any guidance yet. Any guidance you open will appear here.",
+  nonePinned: 'You have not pinned any guidance yet. Select <strong>Pin guide</strong> on a guide, or the star next to a section heading, to add it here.',
+  noneBookmarked: "You haven't bookmarked any guidance yet. Bookmark a section of a guide to add it here.",
+  noGuides: 'There are no guides yet.'
+})
+
+/**
  * One guide as the hub's rows show it: its version's tag, and its link made
  * safe.
  *
@@ -89,32 +102,32 @@ class HubViewModel {
     // Chosen filters that leave nothing say so, rather than that there are no
     // guides at all, unless they had nothing to narrow.
     const nothingMatches = filters?.selected?.length > 0 && !nothingToFilter
-      ? 'No guides match your search or filters. Try removing some filters or using different search terms.'
+      ? HUB_MESSAGES.noneMatch
       : null
 
     this.recentlyOpened = _buildGuideList({
       items: recentlyOpened,
       noun: 'recently opened guide',
-      emptyHtml: nothingMatches ?? "You haven't opened any guidance yet. Any guidance you open will appear here."
+      emptyHtml: nothingMatches ?? HUB_MESSAGES.noneOpened
     })
 
     this.pinned = _buildGuideList({
       items: pinned,
       noun: 'pin',
       onlyPins: true,
-      emptyHtml: nothingMatches ?? 'You have not pinned any guidance yet. Select <strong>Pin guide</strong> on a guide, or the star next to a section heading, to add it here.'
+      emptyHtml: nothingMatches ?? HUB_MESSAGES.nonePinned
     })
 
     this.bookmarkedGuides = _buildGuideList({
       items: bookmarkedGuides,
       noun: 'bookmarked guide',
       narrowedTo: narrowedTo?.text,
-      emptyHtml: nothingMatches ?? "You haven't bookmarked any guidance yet. Bookmark a section of a guide to add it here."
+      emptyHtml: nothingMatches ?? HUB_MESSAGES.noneBookmarked
     })
 
     this.allGuides = _buildGuideList({
       items: allGuides,
-      emptyHtml: nothingMatches ?? 'There are no guides yet.'
+      emptyHtml: nothingMatches ?? HUB_MESSAGES.noGuides
     })
 
     this.shown = this[shown]
@@ -124,5 +137,6 @@ class HubViewModel {
 }
 
 export {
+  HUB_MESSAGES,
   HubViewModel
 }

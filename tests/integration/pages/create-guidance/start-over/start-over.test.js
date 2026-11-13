@@ -135,6 +135,7 @@ describe('start-over', () => {
       const page = pageOf(res.payload)
       expect(res.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(page.getByRole('heading', { level: 1, name: 'Are you sure you want to start over?' })).toBeInTheDocument()
+      expect(page.getByText("This will delete everything you've entered for this guide, including the uploaded file. This cannot be undone.")).toBeInTheDocument()
       // The version number is the user's to enter, and none was yet: not the
       // document's own.
       expect(summaryValueOf(page, 'Version number')).toHaveTextContent('Not provided')

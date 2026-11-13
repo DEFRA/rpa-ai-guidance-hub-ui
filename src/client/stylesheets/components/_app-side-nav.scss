@@ -271,7 +271,8 @@ $app-side-nav-muted: #505a5f;
   top: 0;
   flex: 0 0 auto;
   box-sizing: border-box;
-  width: $app-side-nav-width;
+  // The width the user resized it to (resize-handle.js), or the default.
+  width: var(--app-side-nav-width, $app-side-nav-width);
   min-width: $app-side-nav-min-width;
   max-width: $app-side-nav-max-width;
   height: 100vh;

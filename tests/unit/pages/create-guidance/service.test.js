@@ -22,6 +22,7 @@ import {
   RESULTS,
   startMigration
 } from '../../../../src/pages/create-guidance/service.js'
+import { UPLOAD_STEP_MESSAGES } from '../../../fixtures/messages.js'
 
 const initiated = { uploadStatus: 'initiated', isReady: false, files: [], hasRejectedFiles: false }
 const pending = { uploadStatus: 'pending', isReady: false, files: [{ fileStatus: 'pending' }], hasRejectedFiles: false }
@@ -296,10 +297,8 @@ describe('create-guidance service', () => {
         expect(progress.isComplete).toBe(false)
         expect(progress.isError).toBe(true)
         expect(progress.statusId).toBe('parse:failed')
-        expect(progress.message).toBe('This file cannot be opened')
-        expect(progress.detail).toBe(
-          'Check you selected the correct file and that it has not been corrupted, then upload it again. If this keeps happening, contact the support team.'
-        )
+        expect(progress.message).toBe(UPLOAD_STEP_MESSAGES.cannotOpen)
+        expect(progress.detail).toBe(UPLOAD_STEP_MESSAGES.cannotOpenDetail)
       })
 
       test('does not report complete or error while no staged document has been claimed yet (404)', async () => {
@@ -329,7 +328,7 @@ describe('create-guidance service', () => {
       const progress = await getGuideUploadProgress(request)
 
       expect(progress.statusId).toBe('uploader:no-file')
-      expect(progress.message).toBe('Select a Word document to upload.')
+      expect(progress.message).toBe(UPLOAD_STEP_MESSAGES.noFile)
     })
 
     test('reports a generic failure when cdp-uploader cannot be reached', async () => {
@@ -339,7 +338,7 @@ describe('create-guidance service', () => {
 
       expect(progress.statusId).toBe('uploader:failed')
       expect(progress.isError).toBe(true)
-      expect(progress.message).toBe('The selected file could not be checked. Upload it again.')
+      expect(progress.message).toBe(UPLOAD_STEP_MESSAGES.notChecked)
     })
 
     test('uses an already-fetched status instead of calling cdp-uploader again', async () => {

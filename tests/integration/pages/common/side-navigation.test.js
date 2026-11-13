@@ -10,6 +10,7 @@ import { caseResponse, guidePageResponse, pinResponse, schemesResponse, userResp
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 import { pageOf, sideNavOf } from '../../helpers/page.js'
+import { SIDE_NAV_MESSAGES } from '../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
@@ -250,7 +251,7 @@ describe('Side navigation', () => {
       const section = await pinnedSection([])
 
       expect(section.querySelector('summary')).toHaveTextContent('Pinned guidance 0 pinned')
-      expect(within(section).getByText("You haven't pinned any guidance yet.")).toBeInTheDocument()
+      expect(within(section).getByText(SIDE_NAV_MESSAGES.nonePinned)).toBeInTheDocument()
     })
 
     test('move from where the page showed them, then go back to the page\'s pinned guides', async () => {
@@ -576,7 +577,7 @@ describe('Side navigation', () => {
       const section = await bookmarksSection([])
 
       expect(section.querySelector('summary')).toHaveTextContent('Case bookmarks 0 cases')
-      expect(within(section).getByText('You haven\'t bookmarked any guidance to a case yet.')).toBeInTheDocument()
+      expect(within(section).getByText(SIDE_NAV_MESSAGES.noCaseBookmarks)).toBeInTheDocument()
     })
   })
 
@@ -640,8 +641,8 @@ describe('Side navigation', () => {
     test('has sections for pinned guidance and case bookmarks, empty for now', async () => {
       const nav = await navOf('/hub')
 
-      expect(sectionOf(nav, 'Pinned guidance')).toHaveTextContent("You haven't pinned any guidance yet.")
-      expect(sectionOf(nav, 'Case bookmarks')).toHaveTextContent("You haven't bookmarked any guidance to a case yet.")
+      expect(sectionOf(nav, 'Pinned guidance')).toHaveTextContent(SIDE_NAV_MESSAGES.nonePinned)
+      expect(sectionOf(nav, 'Case bookmarks')).toHaveTextContent(SIDE_NAV_MESSAGES.noCaseBookmarks)
     })
 
     test.each([

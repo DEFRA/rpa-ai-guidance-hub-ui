@@ -6,14 +6,12 @@ import * as caseBookmarks from '../../../services/case-bookmarks.js'
 import { findHeading, splitIntoSections } from '../../../services/guide-sections.js'
 import * as guidesService from '../../../services/guides.js'
 import * as usersService from '../../../services/users.js'
-import { BookmarkViewModel, chosenCase, sectionHref } from './view-model.js'
+import { BOOKMARK_MESSAGES, BookmarkViewModel, chosenCase, sectionHref } from './view-model.js'
 
 const BOOKMARK_VIEW = 'guide/bookmark/page.njk'
 
 // Where the guide's page finds what was just bookmarked, to say so once.
 const BOOKMARKED = 'guideBookmarked'
-
-const CHANGED_SINCE = 'Your case bookmarks changed while this page was open. Choose again.'
 
 /**
  * @private
@@ -71,7 +69,7 @@ async function postBookmark (request, h) {
   const cases = await usersService.casesOf(request)
 
   if (!cases) {
-    throw Boom.badGateway('The case bookmarks cannot be read')
+    throw Boom.badGateway(BOOKMARK_MESSAGES.casesUnreadable)
   }
 
   const sbiBookmarks = config.get('featureFlags.sbiBookmarks')
@@ -93,7 +91,7 @@ async function postBookmark (request, h) {
   })
 
   if (!saved) {
-    return askAgain({ choice: CHANGED_SINCE }, statusCodes.HTTP_STATUS_CONFLICT)
+    return askAgain({ choice: BOOKMARK_MESSAGES.changedSince }, statusCodes.HTTP_STATUS_CONFLICT)
   }
 
   request.yar.flash(BOOKMARKED, { guideId: guide.id, type: chosen.type, ref: chosen.ref, heading: heading.title })

@@ -12,6 +12,7 @@ import {
   audiencesResponse
 } from '../../../../../../fixtures/guidance-api.js'
 import { initiateUploadResponse } from '../../../../../../fixtures/cdp-uploader.js'
+import { PURPOSE_MESSAGES } from '../../../../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
@@ -153,11 +154,11 @@ describe('#purposeController Integration', () => {
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
       expect(errors.getByRole('heading', { name: 'There is a problem' })).toBeInTheDocument()
       expect(errors.getAllByRole('link').map((link) => link.textContent.trim())).toEqual([
-        'Enter an email address',
-        'Enter what this guidance aims to achieve',
-        'Enter what users need to perform or understand',
-        'Select the systems this guidance uses',
-        'Select who this guidance is for'
+        PURPOSE_MESSAGES.ownerRequired,
+        PURPOSE_MESSAGES.goalRequired,
+        PURPOSE_MESSAGES.requirementsRequired,
+        PURPOSE_MESSAGES.systemsRequired,
+        PURPOSE_MESSAGES.audienceRequired
       ])
     })
 
@@ -174,7 +175,7 @@ describe('#purposeController Integration', () => {
 
       const page = pageOf(response.payload)
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
-      expect(errorSummaryOf(page).getByRole('link', { name: 'Enter an email address in the correct format' })).toBeInTheDocument()
+      expect(errorSummaryOf(page).getByRole('link', { name: PURPOSE_MESSAGES.ownerFormat })).toBeInTheDocument()
       expect(page.getByLabelText('Owner email')).toHaveValue('not-an-email')
       expect(page.getByLabelText('What is the purpose of this guidance?')).toHaveValue('Explains how to process a claim')
       expect(page.getByRole('checkbox', { name: 'SITI Agri' })).toBeChecked()
