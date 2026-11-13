@@ -1,5 +1,6 @@
 import { constants as statusCodes } from 'node:http2'
 
+import { within } from '@testing-library/dom'
 import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
@@ -7,13 +8,31 @@ import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
 import { guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
+import { pageOf, sideNavOf } from '../../helpers/page.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
-const LIST_HEADING = '<h2 class="govuk-heading-m">'
 
-/** The headings of the lists that the page's main area shows. */
-function listHeadings (main) {
-  return main.split(LIST_HEADING).slice(1).map((rest) => rest.slice(0, rest.indexOf('</h2>')))
+/** The text of each element, its spacing collapsed, as a reader sees it. */
+function textsOf (elements) {
+  return elements.map((element) => element.textContent.replaceAll(/\s+/g, ' ').trim())
+}
+
+/** Each guide the list shows, as its row: an item with the guide's title as its heading. */
+function rowsOf (page) {
+  return page.getAllByRole('heading', { level: 3 })
+    .map((heading) => heading.closest('li'))
+    .filter(Boolean)
+    .map((row) => within(row))
+}
+
+/** The form that a row's star sends, to pin or unpin its guide or section. */
+function starFormOf (row, options = {}) {
+  return row.getByRole('button', { name: /^Pin /, ...options }).form
+}
+
+/** The filter panel beside a list, found as a screen reader finds it. */
+function filtersOf (page) {
+  return within(page.getByRole('complementary', { name: 'Filter results' }))
 }
 
 describe('#hubController', () => {
@@ -48,12 +67,13 @@ describe('#hubController', () => {
         headers: { cookie }
       })
 
+      const page = pageOf(payload)
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(payload).toContain('RPA Guidance hub')
-      expect(payload).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">1 guide</h2>')
-      expect(payload).not.toContain('Editing')
-      expect(payload).not.toContain('Saved guidance')
-      expect(payload).not.toContain('defra-service-navigation')
+      expect(page.getByRole('heading', { level: 1, name: 'RPA Guidance hub' })).toBeInTheDocument()
+      expect(page.getByRole('heading', { level: 2, name: '1 guide' })).toBeInTheDocument()
+      expect(page.document.body).not.toHaveTextContent('Editing')
+      expect(page.document.body).not.toHaveTextContent('Saved guidance')
+      expect(within(page.document.body).getAllByRole('navigation').map((nav) => nav.getAttribute('aria-label'))).toEqual(['Guidance hub'])
     })
 
     test('shows one list at a time, not tabs', async () => {
@@ -61,10 +81,9 @@ describe('#hubController', () => {
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
-      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
-      expect(main).not.toContain('govuk-tabs')
-      expect(main.match(/<h2 class="govuk-heading-l/g)).toHaveLength(1)
-      expect(listHeadings(main)).toEqual([])
+      const page = pageOf(payload)
+      expect(page.queryByRole('tablist')).not.toBeInTheDocument()
+      expect(textsOf(page.getAllByRole('heading', { level: 2 }))).toEqual(['Filter results', '1 guide'])
     })
 
     test('leaves a designer\'s work to the side navigation', async () => {
@@ -72,10 +91,10 @@ describe('#hubController', () => {
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
-      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
-      expect(main).not.toContain('Designing')
-      expect(main).not.toContain('Upload guidance')
-      expect(main).not.toContain('Awaiting my review')
+      const main = pageOf(payload).document.querySelector('main')
+      expect(main).not.toHaveTextContent('Designing')
+      expect(main).not.toHaveTextContent('Upload guidance')
+      expect(main).not.toHaveTextContent('Awaiting my review')
     })
 
     test('Should escape HTML in guidance items to prevent XSS vulnerabilities', async () => {
@@ -92,9 +111,10 @@ describe('#hubController', () => {
 
       const renderedHtml = await server.render('hub/page.njk', new HubViewModel({ bookmarkedGuides: items, shown: 'bookmarkedGuides' }))
 
-      expect(renderedHtml).toContain('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;')
-      expect(renderedHtml).not.toContain(xssTitle)
-      expect(renderedHtml).toContain('class="govuk-table"')
+      const page = pageOf(renderedHtml)
+      expect(page.getByRole('link', { name: xssTitle })).toHaveAttribute('href', '/guidance/xss')
+      expect(page.document.querySelector('main script')).toBeNull()
+      expect(page.getByRole('table')).toBeInTheDocument()
     })
 
     test('Should not render a javascript: href from a guidance item', async () => {
@@ -110,25 +130,25 @@ describe('#hubController', () => {
 
       const renderedHtml = await server.render('hub/page.njk', new HubViewModel({ bookmarkedGuides: items, shown: 'bookmarkedGuides' }))
 
-      expect(renderedHtml).not.toContain('javascript:alert')
-      expect(renderedHtml).not.toContain('evil.example.com')
-      expect(renderedHtml).toContain('href="#"')
+      const page = pageOf(renderedHtml)
+      expect(page.getByRole('link', { name: 'Untrusted href' })).toHaveAttribute('href', '#')
+      expect(page.getByText('Remove', { selector: 'a' })).toHaveAttribute('href', '#')
     })
   })
 
   describe('a list of guides', () => {
     test.each([
-      ['/hub/bookmarked-guides', 'Bookmarked guides', 'You haven&#39;t bookmarked any guidance yet.']
+      ['/hub/bookmarked-guides', 'Bookmarked guides', "You haven't bookmarked any guidance yet. Bookmark a section of a guide to add it here."]
     ])('%s shows only the %s list', async (url, heading, emptyMessage) => {
       const cookie = await loginAsDevUser(server)
 
       const { statusCode, payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
 
-      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      const page = pageOf(payload)
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(listHeadings(main)).toEqual([heading])
-      expect(main).toContain(emptyMessage)
-      expect(main).not.toContain('govuk-tabs')
+      expect(textsOf(page.getAllByRole('heading', { level: 2 }))).toEqual([heading])
+      expect(page.getByText(emptyMessage)).toBeInTheDocument()
+      expect(page.queryByRole('tablist')).not.toBeInTheDocument()
     })
 
     test.each([
@@ -158,7 +178,7 @@ describe('#hubController', () => {
   })
 
   describe('the All guides list', () => {
-    /** The hub's main area, listing `items` as the API's one page. */
+    /** The hub's page, listing `items` as the API's one page. */
     async function hubListing (items) {
       nock.cleanAll()
       nock(GUIDANCE_API_BASE_URL).get('/guides').query(true).reply(statusCodes.HTTP_STATUS_OK, guidePageResponse({ items }))
@@ -166,38 +186,38 @@ describe('#hubController', () => {
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
-      return payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      return pageOf(payload)
     }
 
     test('lists each guide as a row: its version and Live tags, its title linking to it, its purpose, and when it was last updated and published', async () => {
       const id = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
 
-      const main = await hubListing([guideSummaryResponse({ id, metadata: { goal: 'Explain the claim.' } })])
-      const row = main.slice(main.indexOf('<li class="app-search-results__item"'), main.indexOf('</li>'))
+      const page = await hubListing([guideSummaryResponse({ id, metadata: { goal: 'Explain the claim.' } })])
+      const [row] = rowsOf(page)
 
-      expect(row).toMatch(/govuk-tag--green">\s*Version 1\.0\s*</)
-      expect(row).toMatch(/govuk-tag--turquoise">\s*Live\s*</)
-      expect(row).toContain(`<a class="govuk-link" href="/guides/${id}">Claiming the SFI payment</a>`)
-      expect(row).toContain('Explain the claim.')
-      expect(row).toContain('Last updated: 6 October 2026 &middot; Published: 1 October 2026')
-      expect(main).not.toContain('govuk-table')
+      expect(row.getByText('Version 1.0')).toHaveClass('govuk-tag--green')
+      expect(row.getByText('Live')).toHaveClass('govuk-tag--turquoise')
+      expect(row.getByRole('link', { name: 'Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${id}`)
+      expect(row.getByText('Explain the claim.')).toBeInTheDocument()
+      expect(row.getByText('Last updated: 6 October 2026 · Published: 1 October 2026')).toBeInTheDocument()
+      expect(page.queryByRole('table')).not.toBeInTheDocument()
     })
 
     test('tags no version for a guide whose version has no number', async () => {
-      const main = await hubListing([guideSummaryResponse({ latestVersion: versionResponse({ versionNumber: null }) })])
+      const page = await hubListing([guideSummaryResponse({ latestVersion: versionResponse({ versionNumber: null }) })])
 
-      expect(main).not.toMatch(/>\s*Version /)
-      expect(main).toMatch(/govuk-tag--turquoise">\s*Live\s*</)
+      expect(page.queryByText(/^Version /)).not.toBeInTheDocument()
+      expect(page.getByText('Live')).toHaveClass('govuk-tag--turquoise')
     })
 
     test('escapes a guide\'s title and purpose', async () => {
       const metadata = { goal: '<img src=x onerror=alert(1)>' }
 
-      const main = await hubListing([guideSummaryResponse({ metadata, latestVersion: versionResponse({ title: '<script>alert("xss")</script>' }) })])
+      const page = await hubListing([guideSummaryResponse({ metadata, latestVersion: versionResponse({ title: '<script>alert("xss")</script>' }) })])
 
-      expect(main).not.toContain('<script>alert')
-      expect(main).not.toContain('<img src=x')
-      expect(main).toContain('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;')
+      expect(page.getByRole('link', { name: '<script>alert("xss")</script>' })).toBeInTheDocument()
+      expect(page.getByText('<img src=x onerror=alert(1)>')).toBeInTheDocument()
+      expect(page.document.querySelector('main script, main img')).toBeNull()
     })
 
     test('lists every guide, following the API\'s pages to the last, in its order', async () => {
@@ -213,58 +233,63 @@ describe('#hubController', () => {
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
+      const links = rowsOf(pageOf(payload)).map((row) => row.getByRole('link', { name: 'Claiming the SFI payment' }).getAttribute('href'))
       expect(guides.isDone()).toBe(true)
-      expect(payload.indexOf(`href="/guides/${SECOND}"`)).toBeGreaterThan(-1)
-      expect(payload.indexOf(`href="/guides/${FIRST}"`)).toBeGreaterThan(payload.indexOf(`href="/guides/${SECOND}"`))
+      expect(links).toEqual([`/guides/${SECOND}`, `/guides/${FIRST}`])
     })
 
     test('heads the list with how many guides there are, and says which it is showing', async () => {
-      const main = await hubListing([guideSummaryResponse({ id: 'guide-1' }), guideSummaryResponse({ id: 'guide-2' })])
+      const page = await hubListing([guideSummaryResponse({ id: 'guide-1' }), guideSummaryResponse({ id: 'guide-2' })])
 
-      expect(main).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">2 guides</h2>')
-      expect(main).toMatch(/<p class="govuk-body govuk-!-margin-bottom-1 app-hub-results__showing">\s*Showing 1 to 2\s*<\/p>/)
+      expect(page.getByRole('heading', { level: 2, name: '2 guides' })).toBeInTheDocument()
+      expect(page.getByText('Showing 1 to 2')).toBeInTheDocument()
     })
 
     test('Should say there are no guides when there are none, showing none', async () => {
-      const main = await hubListing([])
+      const page = await hubListing([])
 
-      expect(main).toContain('0 guides')
-      expect(main).toContain('There are no guides yet.')
-      expect(main).not.toContain('Showing')
+      expect(page.getByRole('heading', { level: 2, name: '0 guides' })).toBeInTheDocument()
+      expect(page.getByText('There are no guides yet.')).toBeInTheDocument()
+      expect(page.queryByText(/^Showing/)).not.toBeInTheDocument()
     })
   })
 
   describe('the search box', () => {
-    /** The hub's green hero, at `url`. */
-    async function hero (url) {
+    /** The hub's page at `url`, and its search box, in the hero with its heading. */
+    async function hubAt (url) {
       const cookie = await loginAsDevUser(server)
       const { payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
+      const page = pageOf(payload)
 
-      return { payload, hero: payload.slice(payload.indexOf('<div class="defra-hero defra-hero--hub'), payload.indexOf('id="hub-filters"')) }
+      return { page, search: within(page.getByRole('search')) }
     }
 
     test('sits in the hero beside the side navigation, asking for words or a question', async () => {
-      const { hero: area, payload } = await hero('/hub')
+      const { page, search } = await hubAt('/hub')
 
-      expect(area).toMatch(/<form class="defra-hero__search" action="\/hub" method="get" role="search">/)
-      expect(area).toMatch(/<label class="govuk-visually-hidden" for="hub-search">\s*Search or ask question\s*<\/label>/)
-      expect(area).toMatch(/<input class="govuk-input defra-search-bar__input" id="hub-search" name="q" type="search"[^>]*placeholder="Search or ask a question about all guidance"/)
-      expect(area).toMatch(/<button class="defra-search-bar__button defra-search-bar__button--on-green" type="submit">\s*<span class="govuk-visually-hidden">Search<\/span>/)
-      expect(payload).not.toContain('Search guidance')
+      const form = page.getByRole('search')
+      const box = search.getByRole('searchbox', { name: 'Search or ask question' })
+      expect(page.getByRole('heading', { level: 1, name: 'RPA Guidance hub' }).parentElement).toContainElement(form)
+      expect(form).toHaveAttribute('action', '/hub')
+      expect(form).toHaveAttribute('method', 'get')
+      expect(box).toHaveAttribute('name', 'q')
+      expect(box).toHaveAttribute('placeholder', 'Search or ask a question about all guidance')
+      expect(search.getByRole('button', { name: 'Search' })).toHaveAttribute('type', 'submit')
+      expect(page.document.body).not.toHaveTextContent('Search guidance')
     })
 
     test('keeps the words searched for, in the box and in the filters', async () => {
-      const { hero: area, payload } = await hero('/hub?q=claim+rules')
+      const { page, search } = await hubAt('/hub?q=claim+rules')
 
-      expect(area).toMatch(/id="hub-search" name="q" type="search"[^>]*value="claim rules"/)
-      expect(payload).toContain('<input type="hidden" name="q" value="claim rules">')
+      expect(search.getByRole('searchbox', { name: 'Search or ask question' })).toHaveValue('claim rules')
+      expect(filtersOf(page).getByRole('button', { name: 'Apply filters' }).form).toHaveFormValues({ q: 'claim rules' })
     })
 
     test('escapes the words searched for', async () => {
-      const { payload } = await hero('/hub?q=%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E')
+      const { page, search } = await hubAt('/hub?q=%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E')
 
-      expect(payload).not.toContain('<script>alert(1)')
-      expect(payload).toContain('value="&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;"')
+      expect(search.getByRole('searchbox', { name: 'Search or ask question' })).toHaveValue('"><script>alert(1)</script>')
+      expect(page.document.querySelector('main script')).toBeNull()
     })
   })
 
@@ -284,68 +309,78 @@ describe('#hubController', () => {
       const url = `/hub?${new URLSearchParams(params)}`
       const { statusCode, payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
 
-      return { statusCode, payload, listing, main: payload.slice(payload.indexOf('<main'), payload.indexOf('</main>')) }
+      return { statusCode, listing, page: pageOf(payload) }
     }
 
     test('offer the guides specific to no scheme as a scheme of their own, chosen by no_scheme', async () => {
       const withNone = { ...COUNTS, scheme: [...COUNTS.scheme, { label: null, shortLabel: null, count: 2 }] }
 
-      const { listing, main } = await hubWith({ no_scheme: 'true' }, guidePageResponse({ counts: withNone }))
-      const filters = main.slice(main.indexOf('<aside class="app-hub-filters"'), main.indexOf('</aside>'))
+      const { listing, page } = await hubWith({ no_scheme: 'true' }, guidePageResponse({ counts: withNone }))
+      const scheme = within(filtersOf(page).getByRole('group', { name: 'Scheme' }))
+      const notSchemeSpecific = scheme.getByRole('checkbox', { name: 'Not scheme-specific (2)' })
 
       expect(listing.isDone()).toBe(true)
-      expect(filters).toMatch(/<legend[^>]*>\s*Scheme\s*<\/legend>/)
-      expect(filters).toMatch(/name="no_scheme" type="checkbox" value="true" checked>\s*<label[^>]*>\s*Not scheme-specific <span class="app-hub-filters__count">\(2\)<\/span>/)
+      expect(notSchemeSpecific).toBeChecked()
+      expect(notSchemeSpecific).toHaveAttribute('name', 'no_scheme')
+      expect(notSchemeSpecific).toHaveAttribute('value', 'true')
     })
 
     test('offer who it\'s for, the system used and the scheme year beside the guides, each value with its count', async () => {
-      const { main } = await hubWith({})
-      const filters = main.slice(main.indexOf('<aside class="app-hub-filters"'), main.indexOf('</aside>'))
+      const { page } = await hubWith({})
+      const filters = filtersOf(page)
+      const year = within(filters.getByRole('group', { name: 'Scheme year' })).getByRole('checkbox', { name: '2026 (1)' })
+      const apply = filters.getByRole('button', { name: 'Apply filters' })
 
-      expect(filters).toContain('Filter results')
-      expect(filters).toMatch(/<legend[^>]*>\s*Who it&#39;s for\s*<\/legend>/)
-      expect(filters).toMatch(/value="Processor"[^>]*>\s*<label[^>]*>\s*Processor <span class="app-hub-filters__count">\(3\)<\/span>/)
-      expect(filters).toMatch(/<legend[^>]*>\s*System used\s*<\/legend>/)
-      expect(filters).toMatch(/name="year" type="checkbox" value="2026" checked disabled/)
-      expect(filters).not.toMatch(/<legend[^>]*>\s*Scheme\s*<\/legend>/)
-      expect(filters).toContain('action="/hub#guide-results"')
-      expect(filters).toContain('Apply filters')
+      expect(filters.getByRole('heading', { name: 'Filter results' })).toBeInTheDocument()
+      expect(within(filters.getByRole('group', { name: 'Who it\'s for' })).getByRole('checkbox', { name: 'Processor (3)' })).toBeInTheDocument()
+      expect(filters.getByRole('group', { name: 'System used' })).toBeInTheDocument()
+      expect(year).toHaveAttribute('name', 'year')
+      expect(year).toHaveAttribute('value', '2026')
+      expect(year).toBeChecked()
+      expect(year).toBeDisabled()
+      expect(filters.queryByRole('group', { name: 'Scheme' })).not.toBeInTheDocument()
+      expect(apply.form).toHaveAttribute('action', '/hub#guide-results')
     })
 
     test('pass the chosen values to the API, check them, and show each as a tag that takes it away', async () => {
-      const { listing, main } = await hubWith({ audience: 'Checker', system: 'CRM' })
+      const { listing, page } = await hubWith({ audience: 'Checker', system: 'CRM' })
+      const filters = filtersOf(page)
 
       expect(listing.isDone()).toBe(true)
-      expect(main).toMatch(/value="Checker" checked/)
-      expect(main).toContain('<a class="app-filter__tag" href="/hub?system=CRM">')
-      expect(main).toContain('<a class="app-filter__tag" href="/hub?audience=Checker">')
-      expect(main).toContain('<a class="govuk-link app-hub-filters__clear" href="/hub">Clear filters</a>')
+      expect(filters.getByRole('checkbox', { name: 'Checker (1)' })).toBeChecked()
+      expect(filters.getByRole('link', { name: 'Remove filter Checker' })).toHaveAttribute('href', '/hub?system=CRM')
+      expect(filters.getByRole('link', { name: 'Remove filter CRM' })).toHaveAttribute('href', '/hub?audience=Checker')
+      expect(filters.getByRole('link', { name: 'Clear filters' })).toHaveAttribute('href', '/hub')
     })
 
     test('sort the list as chosen, with Most relevant offered only once search exists', async () => {
-      const { listing, main } = await hubWith({ sort: 'updated-oldest' })
+      const { listing, page } = await hubWith({ sort: 'updated-oldest' })
+      const sort = page.getByRole('combobox', { name: 'Sort by:' })
 
       expect(listing.isDone()).toBe(true)
-      expect(main).toMatch(/<select class="govuk-select app-hub-results__sort-select" id="sort" name="sort" form="hub-filters" data-sort-select="true">/)
-      expect(main).toMatch(/<option value="updated-oldest" selected>Oldest updated<\/option>/)
-      expect(main).toMatch(/<option value="most-relevant" disabled>Most relevant<\/option>/)
-      expect(main).toContain('(Most relevant once you search)')
+      expect(sort).toHaveAttribute('name', 'sort')
+      expect(sort.form).toBe(filtersOf(page).getByRole('button', { name: 'Apply filters' }).form)
+      expect(sort).toHaveAttribute('data-sort-select', 'true')
+      expect(sort).toHaveDisplayValue('Oldest updated')
+      expect(within(sort).getByRole('option', { name: 'Most relevant' })).toBeDisabled()
+      expect(page.getByText('(Most relevant once you search)')).toBeInTheDocument()
     })
 
     test('show a value the hub no longer has as a box that cannot be ticked, as choosing it would be refused', async () => {
       const retired = { ...COUNTS, system: [...COUNTS.system, { label: 'Old system', shortLabel: null, count: 2, retired: true }] }
 
-      const { main } = await hubWith({}, guidePageResponse({ counts: retired }))
+      const { page } = await hubWith({}, guidePageResponse({ counts: retired }))
+      const filters = filtersOf(page)
 
-      expect(main).toMatch(/value="Old system" disabled>\s*<label[^>]*>\s*Old system <span class="app-hub-filters__count">\(2\)<\/span>/)
-      expect(main).toMatch(/value="CRM">\s*<label/)
+      expect(filters.getByRole('checkbox', { name: 'Old system (2)' })).toBeDisabled()
+      expect(filters.getByRole('checkbox', { name: 'CRM (3)' })).toBeEnabled()
     })
 
     test('say that no guides match when the chosen values leave none', async () => {
-      const { main } = await hubWith({ system: 'CRM' }, guidePageResponse({ items: [], counts: COUNTS }))
+      const { page } = await hubWith({ system: 'CRM' }, guidePageResponse({ items: [], counts: COUNTS }))
 
-      expect(main).toContain('No guides match your search or filters. Try removing some filters or using different search terms.')
-      expect(main).not.toContain('There are no guides yet.')
+      expect(page.getByText('No guides match your search or filters. Try removing some filters or using different search terms.')).toBeInTheDocument()
+      expect(page.queryByText('There are no guides yet.')).not.toBeInTheDocument()
     })
 
     test('answer a value the hub does not have as a bad request', async () => {
@@ -359,11 +394,12 @@ describe('#hubController', () => {
     })
 
     test('carry on to the side navigation\'s links to the hub and its lists', async () => {
-      const { payload } = await hubWith({ system: 'CRM' })
+      const { page } = await hubWith({ system: 'CRM' })
+      const sideNav = sideNavOf(page)
 
-      expect(payload).toContain('href="/hub/recently-opened?system=CRM"')
-      expect(payload).toContain('href="/hub/pinned?system=CRM"')
-      expect(payload).toMatch(/class="app-side-nav__link[^"]*" href="\/hub\?system=CRM"/)
+      expect(sideNav.getByRole('link', { name: 'Recently opened' })).toHaveAttribute('href', '/hub/recently-opened?system=CRM')
+      expect(sideNav.getByRole('link', { name: /^Pinned/ })).toHaveAttribute('href', '/hub/pinned?system=CRM')
+      expect(sideNav.getByRole('link', { name: 'Hub' })).toHaveAttribute('href', '/hub?system=CRM')
     })
   })
 
@@ -388,20 +424,15 @@ describe('#hubController', () => {
       const cookie = await signedIn({ pinned: [pinResponse({ id: PINNED, title: 'Claiming the SFI payment' })] })
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub?system=CRM', headers: { cookie } })
-      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
-      const [first, second] = main.split('<li class="app-search-results__item').slice(1)
+      const [first, second] = rowsOf(pageOf(payload))
 
-      expect(first).toContain(`/guides/${PINNED}`)
-      expect(first).toMatch(/app-search-results__pinned-tag">Pinned</)
-      expect(first).toContain('<input type="hidden" name="pin" value="false">')
-      expect(first).toContain('<input type="hidden" name="position" value="0">')
-      expect(first).toContain(`<input type="hidden" name="anchor" value="pin-${PINNED}">`)
-      expect(first).toMatch(/aria-pressed="true"/)
-      expect(second).toContain(`/guides/${OTHER}`)
-      expect(second).not.toContain('Pinned<')
-      expect(second).toContain('<input type="hidden" name="pin" value="true">')
-      expect(second).toContain('<input type="hidden" name="returnTo" value="/hub?system=CRM">')
-      expect(second).toContain(`id="pin-${OTHER}"`)
+      expect(first.getByRole('link', { name: 'Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${PINNED}`)
+      expect(first.getByText('Pinned')).toBeInTheDocument()
+      expect(starFormOf(first, { pressed: true })).toHaveFormValues({ pin: 'false', position: '0', anchor: `pin-${PINNED}` })
+      expect(second.getByRole('link', { name: 'Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${OTHER}`)
+      expect(second.queryByText('Pinned')).not.toBeInTheDocument()
+      expect(starFormOf(second, { pressed: false })).toHaveFormValues({ pin: 'true', returnTo: '/hub?system=CRM' })
+      expect(second.getByRole('button', { name: /^Pin / })).toHaveAttribute('id', `pin-${OTHER}`)
     })
 
     test('count a guide as pinned only when it is pinned whole, at its own place among the pins', async () => {
@@ -413,15 +444,16 @@ describe('#hubController', () => {
       const cookie = await signedIn({ pinned: [pinResponse({ id: OTHER, ...section }), pinResponse({ id: PINNED }), pinResponse({ id: PINNED, ...section })] })
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
-      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
-      const [first, second] = main.split('<li class="app-search-results__item').slice(1)
+      const [first, second] = rowsOf(pageOf(payload))
+      const firstStar = starFormOf(first)
+      const secondStar = starFormOf(second)
 
-      expect(first).toContain(`/guides/${PINNED}`)
-      expect(first).toContain('<input type="hidden" name="position" value="1">')
-      expect(first).toContain(`data-reorder-follows="${PINNED}"`)
-      expect(second).toContain(`/guides/${OTHER}`)
-      expect(second).toContain('<input type="hidden" name="pin" value="true">')
-      expect(second).not.toContain('data-reorder-follows')
+      expect(first.getByRole('link', { name: 'Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${PINNED}`)
+      expect(firstStar).toHaveFormValues({ position: '1' })
+      expect(firstStar).toHaveAttribute('data-reorder-follows', PINNED)
+      expect(second.getByRole('link', { name: 'Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${OTHER}`)
+      expect(secondStar).toHaveFormValues({ pin: 'true' })
+      expect(secondStar).not.toHaveAttribute('data-reorder-follows')
     })
 
     test.each([
@@ -458,15 +490,16 @@ describe('#hubController', () => {
       }))
 
       const { statusCode, payload } = await server.inject({ method: 'GET', url: '/hub/pinned?system=CRM', headers: { cookie } })
-      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      const page = pageOf(payload)
+      const [row] = rowsOf(page)
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(main).toContain('1 pin<')
-      expect(main).toContain(`/guides/${PINNED}`)
-      expect(main).toMatch(/app-search-results__pinned-tag">Pinned</)
-      expect(main).toContain('<input type="hidden" name="position" value="1">')
-      expect(main).toContain('action="/hub/pinned#guide-results"')
-      expect(main).not.toContain('name="sort"')
+      expect(page.getByRole('heading', { level: 2, name: '1 pin' })).toBeInTheDocument()
+      expect(row.getByRole('link', { name: 'Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${PINNED}`)
+      expect(row.getByText('Pinned')).toBeInTheDocument()
+      expect(starFormOf(row)).toHaveFormValues({ position: '1' })
+      expect(filtersOf(page).getByRole('button', { name: 'Apply filters' }).form).toHaveAttribute('action', '/hub/pinned#guide-results')
+      expect(page.queryByRole('combobox', { name: 'Sort by:' })).not.toBeInTheDocument()
     })
 
     test('list a pinned section on their own page as a row of its own, by its heading, linking to the section, with its guide\'s title', async () => {
@@ -481,24 +514,22 @@ describe('#hubController', () => {
       }))
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned', headers: { cookie } })
-      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
-      const [section, guide] = main.split('<li class="app-search-results__item').slice(1)
+      const page = pageOf(payload)
+      const [section, guide] = rowsOf(page)
+      const sectionStar = section.getByRole('button', { name: 'Pin 1 Pay, in Claiming the SFI payment' })
+      const guideStar = guide.getByRole('button', { name: 'Pin Claiming the SFI payment' })
 
-      expect(main).toContain('2 pins<')
-      expect(section).toContain(`<a class="govuk-link" href="/guides/${PINNED}?section=1-pay">1 Pay<span class="govuk-visually-hidden">, in Claiming the SFI payment</span></a>`)
-      expect(section).toContain('<span class="govuk-visually-hidden">Pin 1 Pay, in Claiming the SFI payment</span>')
-      expect(section).toContain('In Claiming the SFI payment')
-      expect(section).toContain(`data-reorder-follows="${PINNED}/${SECTION}"`)
-      expect(section).toContain('<input type="hidden" name="position" value="0">')
-      expect(section).toContain(`<input type="hidden" name="sectionId" value="${SECTION}">`)
-      expect(section).toContain('<input type="hidden" name="anchor" value="guide-results">')
-      expect(section).toContain(`id="pin-${SECTION}"`)
-      expect(guide).toContain(`<a class="govuk-link" href="/guides/${PINNED}">Claiming the SFI payment</a>`)
-      expect(guide).toContain('<input type="hidden" name="position" value="1">')
-      expect(guide).not.toContain('name="sectionId"')
-      expect(guide).toContain('<input type="hidden" name="anchor" value="guide-results">')
-      expect(guide).toContain(`id="pin-${PINNED}"`)
-      expect(main).toContain('id="guide-results"')
+      expect(page.getByRole('heading', { level: 2, name: '2 pins' })).toBeInTheDocument()
+      expect(section.getByRole('link', { name: '1 Pay, in Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${PINNED}?section=1-pay`)
+      expect(section.getByText('In Claiming the SFI payment')).toBeInTheDocument()
+      expect(sectionStar.form).toHaveAttribute('data-reorder-follows', `${PINNED}/${SECTION}`)
+      expect(sectionStar.form).toHaveFormValues({ position: '0', sectionId: SECTION, anchor: 'guide-results' })
+      expect(sectionStar).toHaveAttribute('id', `pin-${SECTION}`)
+      expect(guide.getByRole('link', { name: 'Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${PINNED}`)
+      expect(guideStar.form).toHaveFormValues({ position: '1', anchor: 'guide-results' })
+      expect(guideStar.form.elements.namedItem('sectionId')).toBeNull()
+      expect(guideStar).toHaveAttribute('id', `pin-${PINNED}`)
+      expect(page.document.getElementById('guide-results')).toContainElement(sectionStar)
     })
 
     test('count a guide once in their own page\'s filters, as the API counts it, however many of its pins the page lists', async () => {
@@ -513,12 +544,14 @@ describe('#hubController', () => {
       }))
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned', headers: { cookie } })
-      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
-      const filters = main.slice(main.indexOf('<aside class="app-hub-filters"'), main.indexOf('</aside>'))
+      const page = pageOf(payload)
+      const filters = filtersOf(page)
+      const year = filters.getByRole('checkbox', { name: '2026 (1)' })
 
-      expect(main).toContain('2 pins<')
-      expect(filters).toMatch(/value="Processor"[^>]*>\s*<label[^>]*>\s*Processor <span class="app-hub-filters__count">\(1\)<\/span>/)
-      expect(filters).toMatch(/value="2026" checked disabled>\s*<label[^>]*>\s*2026 <span class="app-hub-filters__count">\(1\)<\/span>/)
+      expect(page.getByRole('heading', { level: 2, name: '2 pins' })).toBeInTheDocument()
+      expect(filters.getByRole('checkbox', { name: 'Processor (1)' })).toBeInTheDocument()
+      expect(year).toBeChecked()
+      expect(year).toBeDisabled()
     })
 
     test('say on their own page when nothing is pinned yet', async () => {
@@ -527,9 +560,10 @@ describe('#hubController', () => {
       nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/pins`).reply(statusCodes.HTTP_STATUS_OK, pinnedGuidesResponse({ items: [] }))
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned', headers: { cookie } })
-      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      const page = pageOf(payload)
 
-      expect(main).toContain('You have not pinned any guidance yet. Select <strong>Pin guide</strong> on a guide, or the star next to a section heading, to add it here.')
+      expect(page.getByText('Pin guide').closest('p')).toHaveTextContent('You have not pinned any guidance yet. Select Pin guide on a guide, or the star next to a section heading, to add it here.')
+      expect(page.getByText('Pin guide').tagName).toBe('STRONG')
     })
 
     test('say on their own page when nothing is pinned yet, even with filters chosen', async () => {
@@ -540,10 +574,10 @@ describe('#hubController', () => {
         .get(`/users/${USER_ID}/pins`).reply(statusCodes.HTTP_STATUS_OK, pinnedGuidesResponse({ items: [] }))
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned?system=CRM', headers: { cookie } })
-      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      const page = pageOf(payload)
 
-      expect(main).toContain('You have not pinned any guidance yet. Select <strong>Pin guide</strong> on a guide, or the star next to a section heading, to add it here.')
-      expect(main).not.toContain('No guides match')
+      expect(page.getByText('Pin guide').closest('p')).toHaveTextContent('You have not pinned any guidance yet. Select Pin guide on a guide, or the star next to a section heading, to add it here.')
+      expect(page.queryByText(/^No guides match/)).not.toBeInTheDocument()
     })
 
     test('say when the chosen filters leave none of them', async () => {
@@ -554,10 +588,10 @@ describe('#hubController', () => {
         .get(`/users/${USER_ID}/pins`).reply(statusCodes.HTTP_STATUS_OK, pinnedGuidesResponse())
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub/pinned?system=CRM', headers: { cookie } })
-      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      const page = pageOf(payload)
 
-      expect(main).toContain('No guides match your search or filters.')
-      expect(main).not.toContain('You have not pinned')
+      expect(page.getByText(/^No guides match your search or filters\./)).toBeInTheDocument()
+      expect(page.queryByText(/^You have not pinned/)).not.toBeInTheDocument()
     })
 
     test('an unpin without the position the page showed is refused', async () => {
@@ -608,18 +642,18 @@ describe('#hubController', () => {
       }))
 
       const { statusCode, payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened?system=CRM', headers: { cookie } })
-      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
-      const [newer, older] = main.split('<li class="app-search-results__item').slice(1)
+      const page = pageOf(payload)
+      const [newer, older] = rowsOf(page)
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(main).toContain('2 recently opened guides<')
-      expect(newer).toContain(`/guides/${NEWER}`)
-      expect(newer).toContain('<input type="hidden" name="pin" value="true">')
-      expect(older).toContain(`/guides/${OLDER}`)
-      expect(older).toMatch(/app-search-results__pinned-tag">Pinned</)
-      expect(older).toContain('<input type="hidden" name="position" value="0">')
-      expect(main).toContain('action="/hub/recently-opened#guide-results"')
-      expect(main).not.toContain('name="sort"')
+      expect(page.getByRole('heading', { level: 2, name: '2 recently opened guides' })).toBeInTheDocument()
+      expect(newer.getByRole('link', { name: 'Closing a case' })).toHaveAttribute('href', `/guides/${NEWER}`)
+      expect(starFormOf(newer)).toHaveFormValues({ pin: 'true' })
+      expect(older.getByRole('link', { name: 'Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${OLDER}`)
+      expect(older.getByText('Pinned')).toBeInTheDocument()
+      expect(starFormOf(older)).toHaveFormValues({ position: '0' })
+      expect(filtersOf(page).getByRole('button', { name: 'Apply filters' }).form).toHaveAttribute('action', '/hub/recently-opened#guide-results')
+      expect(page.queryByRole('combobox', { name: 'Sort by:' })).not.toBeInTheDocument()
     })
 
     test('say on their own page when none has been opened yet', async () => {
@@ -628,9 +662,8 @@ describe('#hubController', () => {
       nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_OK, recentlyOpenedResponse({ items: [] }))
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened', headers: { cookie } })
-      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
 
-      expect(main).toContain("You haven't opened any guidance yet. Any guidance you open will appear here.")
+      expect(pageOf(payload).getByText("You haven't opened any guidance yet. Any guidance you open will appear here.")).toBeInTheDocument()
     })
 
     test('say on their own page when none has been opened yet, even with filters chosen', async () => {
@@ -641,10 +674,10 @@ describe('#hubController', () => {
         .get(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_OK, recentlyOpenedResponse({ items: [] }))
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened?system=CRM', headers: { cookie } })
-      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      const page = pageOf(payload)
 
-      expect(main).toContain("You haven't opened any guidance yet. Any guidance you open will appear here.")
-      expect(main).not.toContain('No guides match')
+      expect(page.getByText("You haven't opened any guidance yet. Any guidance you open will appear here.")).toBeInTheDocument()
+      expect(page.queryByText(/^No guides match/)).not.toBeInTheDocument()
     })
 
     test('say when the chosen filters leave none of them', async () => {
@@ -655,10 +688,10 @@ describe('#hubController', () => {
         .get(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_OK, recentlyOpenedResponse())
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub/recently-opened?system=CRM', headers: { cookie } })
-      const main = payload.slice(payload.indexOf('<main'), payload.indexOf('</main>'))
+      const page = pageOf(payload)
 
-      expect(main).toContain('No guides match your search or filters.')
-      expect(main).not.toContain("You haven't opened")
+      expect(page.getByText(/^No guides match your search or filters\./)).toBeInTheDocument()
+      expect(page.queryByText(/^You haven't opened/)).not.toBeInTheDocument()
     })
   })
 })
