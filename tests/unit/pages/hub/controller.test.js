@@ -132,7 +132,7 @@ describe('#hubController', () => {
         sort: 'updated-newest'
       })
       expect(viewModel.words).toBe('claim rules')
-      expect(viewModel.filters.words).toBe('claim rules')
+      expect(viewModel.filters.kept).toEqual({ q: 'claim rules' })
     })
 
     test('Should put the pinned guides first, in the user\'s order, then the rest as sorted', async () => {
@@ -226,17 +226,55 @@ describe('#hubController', () => {
       })
     })
 
-    test('Should show another list\'s empty message, without asking for the user\'s guides', async () => {
-      vi.spyOn(usersService, 'listPinned')
-      vi.spyOn(usersService, 'listRecentlyOpened')
+    test('Should list the bookmarked guides in the API\'s order, each with its star, beside the filters, without a sort', async () => {
+      vi.spyOn(usersService, 'listBookmarked').mockResolvedValue({ guides: [listedGuide, { ...listedGuide, id: 'guide-2' }], counts: COUNTS })
+      vi.spyOn(usersService, 'pinnedOf').mockResolvedValue([{ id: 'guide-2', sectionId: null }])
+      const request = { params: { list: 'bookmarked-guides' }, query: { system: 'CRM' } }
 
-      await getHubListPage({ params: { list: 'bookmarked-guides' }, query: {} }, h)
+      await getHubListPage(request, h)
 
       const [, viewModel] = h.view.mock.calls[0]
-      expect(usersService.listPinned).not.toHaveBeenCalled()
-      expect(usersService.listRecentlyOpened).not.toHaveBeenCalled()
-      expect(viewModel.shown.heading).toBe('Bookmarked guides')
-      expect(viewModel.filters).toBeNull()
+      expect(usersService.listBookmarked).toHaveBeenCalledWith(request, { audience: [], system: ['CRM'], scheme: [], noScheme: false }, undefined)
+      expect(viewModel.shown).toBe(viewModel.bookmarkedGuides)
+      expect(viewModel.shown.guides.map((row) => [row.id, row.pin.pinned])).toEqual([['guide-1', false], ['guide-2', true]])
+      expect(viewModel.filters.action).toBe('/hub/bookmarked-guides')
+      expect(viewModel.filters.sort).toBeNull()
+    })
+
+    test('Should narrow the bookmarked guides to one of the user\'s cases, by its key, shown as a selected filter', async () => {
+      vi.spyOn(usersService, 'casesOf').mockResolvedValue([{ key: 'key-1', type: 'case', ref: 'W1234567', guides: [] }])
+      vi.spyOn(usersService, 'listBookmarked').mockResolvedValue({ guides: [listedGuide], counts: COUNTS })
+      const request = { params: { list: 'bookmarked-guides' }, query: { case: 'key-1' } }
+
+      await getHubListPage(request, h)
+
+      const [, viewModel] = h.view.mock.calls[0]
+      expect(usersService.listBookmarked).toHaveBeenCalledWith(request, { audience: [], system: [], scheme: [], noScheme: false }, 'key-1')
+      expect(viewModel.filters.selected).toEqual([{ text: 'Case: W1234567', href: '/hub/bookmarked-guides' }])
+      expect(viewModel.filters.kept).toEqual({ case: 'key-1' })
+    })
+
+    test('Should answer bad gateway when the user\'s cases cannot be read', async () => {
+      vi.spyOn(usersService, 'casesOf').mockResolvedValue(null)
+      vi.spyOn(usersService, 'listBookmarked')
+
+      await expect(getHubListPage({ params: { list: 'bookmarked-guides' }, query: { case: 'key-1' } }, h)).rejects.toMatchObject({
+        isBoom: true,
+        message: 'The case bookmarks cannot be read',
+        output: { statusCode: statusCodes.HTTP_STATUS_BAD_GATEWAY }
+      })
+      expect(usersService.listBookmarked).not.toHaveBeenCalled()
+    })
+
+    test('Should answer a case the user has not got as not found, without listing anything', async () => {
+      vi.spyOn(usersService, 'casesOf').mockResolvedValue([{ key: 'key-1', type: 'case', ref: 'W1234567', guides: [] }])
+      vi.spyOn(usersService, 'listBookmarked')
+
+      await expect(getHubListPage({ params: { list: 'bookmarked-guides' }, query: { case: 'key-9' } }, h)).rejects.toMatchObject({
+        isBoom: true,
+        output: { statusCode: statusCodes.HTTP_STATUS_NOT_FOUND }
+      })
+      expect(usersService.listBookmarked).not.toHaveBeenCalled()
     })
   })
 })

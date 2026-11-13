@@ -1,7 +1,6 @@
 {% extends "common/layout.njk" %}
 
 {% from "govuk/components/phase-banner/macro.njk" import govukPhaseBanner %}
-{% from "common/guidance-table.njk" import guidanceTablePanel %}
 {% from "common/guide-list.njk" import guideList %}
 
 {% set pageTitle = 'RPA Guidance Hub' %}
@@ -39,20 +38,16 @@
   <div class="govuk-width-container">
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-full">
-        {% if filters %}
-          {# The filters beside the list, as the prototype's hub has them. #}
-          <div class="app-hub-columns">
-            {% include "hub/partials/filters.njk" %}
+        {# The filters beside the list, as the prototype's hub has them. #}
+        <div class="app-hub-columns">
+          {% if filters %}{% include "hub/partials/filters.njk" %}{% endif %}
 
-            <div class="app-hub-results" id="guide-results">
-              {% call guideList(shown, currentUrl) %}
-                {% if filters.sort %}{% include "hub/partials/sort.njk" %}{% endif %}
-              {% endcall %}
-            </div>
+          <div class="app-hub-results" id="guide-results">
+            {% call guideList(shown, currentUrl) %}
+              {% if filters.sort %}{% include "hub/partials/sort.njk" %}{% endif %}
+            {% endcall %}
           </div>
-        {% else %}
-          {{ guidanceTablePanel(shown) }}
-        {% endif %}
+        </div>
       </div>
     </div>
 
