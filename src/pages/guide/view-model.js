@@ -4,6 +4,7 @@ import { NOT_SCHEME_SPECIFIC } from '../../services/reference-data.js'
 import { caseGuidesHref } from '../common/case-guides-href.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { versionTag } from '../common/version-tag.js'
+import { CONTENTS_WIDTH } from './contents-width.js'
 import { READING_WIDTHS } from './reading-width.js'
 
 const UNTITLED = 'Untitled guide'
@@ -199,6 +200,10 @@ class GuideViewModel {
     this.metadataRows = metadataRows
     this.readingWidth = readingWidth
     this.readingWidths = READING_WIDTHS
+    // The contents column's width, which its handle can change, and the
+    // limits it changes within.
+    this.contentsWidth = CONTENTS_WIDTH.default
+    this.contentsWidthLimits = CONTENTS_WIDTH
     this.returnTo = returnTo
     this.pin = pin
     this.bookmarkAdded = bookmarked?.guideId === guide.id ? _bookmarkAdded(bookmarked, cases ?? []) : null
