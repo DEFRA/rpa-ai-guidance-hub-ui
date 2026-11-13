@@ -4,6 +4,7 @@ import { initGuideImages, initPanelHeight, initRailTooltips } from './guide.js'
 import { initGuidePages } from './guide-pages.js'
 import { initSortSelect } from './hub-sort.js'
 import { initReorder } from './side-nav-reorder.js'
+import { initResizeHandles } from './resize-handle.js'
 import { initPolling } from './status-poll.js'
 import { initCookieBanner, initCookiesPage } from './cookie-consent.js'
 
@@ -16,5 +17,6 @@ initGuideImages()
 initGuidePages()
 initSortSelect()
 initReorder()
+initResizeHandles()
 initCookieBanner()
 initCookiesPage()
