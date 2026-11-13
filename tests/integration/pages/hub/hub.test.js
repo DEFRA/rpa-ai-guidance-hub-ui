@@ -5,10 +5,11 @@ import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
-import { HUB_MESSAGES, HubViewModel } from '../../../../src/pages/hub/view-models.js'
+import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
 import { bookmarkedGuidesResponse, caseResponse, guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 import { pageOf, sideNavOf, textOf } from '../../helpers/page.js'
+import { HUB_MESSAGES } from '../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 

@@ -22,7 +22,7 @@ import {
   RESULTS,
   startMigration
 } from '../../../../src/pages/create-guidance/service.js'
-import { UPLOAD_STEP_MESSAGES } from '../../../../src/pages/create-guidance/upload-guide/steps.js'
+import { UPLOAD_STEP_MESSAGES } from '../../../fixtures/messages.js'
 
 const initiated = { uploadStatus: 'initiated', isReady: false, files: [], hasRejectedFiles: false }
 const pending = { uploadStatus: 'pending', isReady: false, files: [{ fileStatus: 'pending' }], hasRejectedFiles: false }

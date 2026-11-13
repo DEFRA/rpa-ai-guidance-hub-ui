@@ -10,7 +10,7 @@ import { caseResponse, guidePageResponse, pinResponse, schemesResponse, userResp
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 import { pageOf, sideNavOf } from '../../helpers/page.js'
-import { SIDE_NAV_MESSAGES } from '../../../../src/pages/common/side-nav-messages.js'
+import { SIDE_NAV_MESSAGES } from '../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')

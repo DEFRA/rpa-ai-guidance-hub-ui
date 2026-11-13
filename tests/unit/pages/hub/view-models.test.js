@@ -1,16 +1,7 @@
-import { HUB_MESSAGES, HubViewModel } from '../../../../src/pages/hub/view-models.js'
+import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
+import { HUB_MESSAGES } from '../../../fixtures/messages.js'
 
 describe('#HubViewModel', () => {
-  test('says a list is empty in these words', () => {
-    expect(HUB_MESSAGES).toEqual({
-      noneMatch: 'No guides match your search or filters. Try removing some filters or using different search terms.',
-      noneOpened: "You haven't opened any guidance yet. Any guidance you open will appear here.",
-      nonePinned: 'You have not pinned any guidance yet. Select <strong>Pin guide</strong> on a guide, or the star next to a section heading, to add it here.',
-      noneBookmarked: "You haven't bookmarked any guidance yet. Bookmark a section of a guide to add it here.",
-      noGuides: 'There are no guides yet.'
-    })
-  })
-
   describe('when no guidance is provided', () => {
     const viewModel = new HubViewModel()
 

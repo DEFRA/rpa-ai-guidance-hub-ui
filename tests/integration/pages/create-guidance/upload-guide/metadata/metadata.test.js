@@ -7,7 +7,7 @@ import { errorSummaryOf, pageOf, summaryValueOf } from '../../../../helpers/page
 import { config } from '../../../../../../src/config/config.js'
 import { schemesResponse, stagedDocumentResponse } from '../../../../../fixtures/guidance-api.js'
 import { initiateUploadResponse, uploadStatusResponse } from '../../../../../fixtures/cdp-uploader.js'
-import { METADATA_MESSAGES } from '../../../../../../src/pages/create-guidance/upload-guide/metadata/schemas/metadata-schema.js'
+import { METADATA_MESSAGES } from '../../../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')

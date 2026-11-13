@@ -9,9 +9,7 @@ import { caseResponse, guideResponse, refusalResponse, userResponse } from '../.
 import { mergeCookies } from '../../../helpers/cookies.js'
 import { loginAsDevUser } from '../../../helpers/login.js'
 import { errorSummaryOf, pageOf } from '../../../helpers/page.js'
-import { CASE_TYPES } from '../../../../../src/constants/case-types.js'
-import { HEADING_BOOKMARK_MESSAGES } from '../../../../../src/constants/heading-bookmarks.js'
-import { BOOKMARK_MESSAGES } from '../../../../../src/pages/guide/bookmark/view-model.js'
+import { BOOKMARK_MESSAGES, HEADING_BOOKMARK_MESSAGES } from '../../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const GUIDE_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
@@ -185,10 +183,10 @@ describe('bookmarking a section of a guide to a case', () => {
   describe('the answer', () => {
     test.each([
       [{}, BOOKMARK_MESSAGES.noChoice],
-      [{ choice: 'new-case', newCase: '' }, BOOKMARK_MESSAGES.enter(CASE_TYPES.case)],
+      [{ choice: 'new-case', newCase: '' }, BOOKMARK_MESSAGES.enterCase],
       [{ choice: 'new-case', newCase: 'W12345' }, 'Case ID must be a letter followed by 7 numbers'],
       [{ choice: 'new-sbi', newSbi: '123456789' }, BOOKMARK_MESSAGES.noChoice],
-      [{ choice: 'existing-case', existingCase: 'W7654321' }, BOOKMARK_MESSAGES.selectExisting(CASE_TYPES.case)]
+      [{ choice: 'existing-case', existingCase: 'W7654321' }, BOOKMARK_MESSAGES.selectExistingCase]
     ])('is checked: %j says "%s"', async (answer, message) => {
       mockGuideAndUser([caseResponse()])
 
@@ -409,7 +407,7 @@ describe('a guide\'s headings', () => {
       caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', type: 'sbi', ref: '123456789', guides: [{ id: GUIDE_ID, title: 'Claiming the SFI payment', bookmarks: [SECTION] }] })
     ])
 
-    expect(page.getByText(HEADING_BOOKMARK_MESSAGES.bookmarkedTo('Case W1234567, SBI 123456789'))).toHaveClass('app-guide-section-bookmarked')
+    expect(page.getByText(HEADING_BOOKMARK_MESSAGES.bookmarkedToCaseAndSbi)).toHaveClass('app-guide-section-bookmarked')
     expect(page.getByRole('link', { name: 'Bookmarked – add another case: 1.1 Before you begin' })).toBeInTheDocument()
     expect(page.getByRole('link', { name: 'Bookmark to a case: 1 Introduction' })).toBeInTheDocument()
   })
@@ -419,7 +417,7 @@ describe('a guide\'s headings', () => {
       caseResponse({ guides: [{ id: OTHER_GUIDE_ID, title: 'Another guide', bookmarks: [SECTION] }] })
     ])
 
-    expect(page.queryByText(HEADING_BOOKMARK_MESSAGES.bookmarkedTo('Case W1234567'))).not.toBeInTheDocument()
+    expect(page.queryByText(HEADING_BOOKMARK_MESSAGES.bookmarkedToCase)).not.toBeInTheDocument()
     expect(page.getByRole('link', { name: 'Bookmark to a case: 1.1 Before you begin' })).toBeInTheDocument()
   })
 })

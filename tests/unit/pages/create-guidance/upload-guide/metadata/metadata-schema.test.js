@@ -1,4 +1,5 @@
-import { buildMetadataSchema, METADATA_MESSAGES } from '../../../../../../src/pages/create-guidance/upload-guide/metadata/schemas/metadata-schema.js'
+import { buildMetadataSchema } from '../../../../../../src/pages/create-guidance/upload-guide/metadata/schemas/metadata-schema.js'
+import { METADATA_MESSAGES } from '../../../../../fixtures/messages.js'
 
 const schemeOptions = [{ label: 'Sustainable Farming Incentive' }, { label: 'Not scheme-specific' }]
 
@@ -12,16 +13,6 @@ function validPayload (overrides = {}) {
 }
 
 describe('#buildMetadataSchema', () => {
-  test('says what is wrong with an answer in these words', () => {
-    expect(METADATA_MESSAGES).toEqual({
-      titleRequired: 'Enter the guidance title',
-      titleTooLong: 'Guidance title must be 200 characters or fewer',
-      versionNumberRequired: 'Enter the version number',
-      versionNumberFormat: 'Enter the version number as 2 whole numbers with a full stop between them, for example 1.0',
-      schemeRequired: 'Select at least one scheme this guidance relates to'
-    })
-  })
-
   const metadataSchema = buildMetadataSchema(schemeOptions)
 
   test('accepts valid payload with valid scheme and title', () => {

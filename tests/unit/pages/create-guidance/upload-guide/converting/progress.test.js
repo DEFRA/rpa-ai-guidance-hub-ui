@@ -1,5 +1,6 @@
 import * as stagedDocumentsService from '../../../../../../src/services/staged-documents.js'
-import { CONVERSION_MESSAGES, getConversionProgress } from '../../../../../../src/pages/create-guidance/upload-guide/converting/progress.js'
+import { getConversionProgress } from '../../../../../../src/pages/create-guidance/upload-guide/converting/progress.js'
+import { CONVERSION_MESSAGES } from '../../../../../fixtures/messages.js'
 
 function stagedDocument (fields = {}) {
   return {
@@ -15,15 +16,6 @@ function stagedDocument (fields = {}) {
 }
 
 describe('conversion progress', () => {
-  test('says why the document cannot be converted, and what to do, in these words', () => {
-    expect(CONVERSION_MESSAGES).toEqual({
-      failed: 'The document could not be converted',
-      failedDetail: 'Go back to check your answers and select Convert document again. If this keeps happening, contact the support team',
-      expired: 'The uploaded document has expired',
-      expiredDetail: 'Start over and upload it again'
-    })
-  })
-
   beforeEach(() => {
     vi.restoreAllMocks()
   })

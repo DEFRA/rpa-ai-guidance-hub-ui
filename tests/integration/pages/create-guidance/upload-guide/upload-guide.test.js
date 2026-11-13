@@ -10,7 +10,7 @@ import { mergeCookies } from '../../../helpers/cookies.js'
 import { pageOf } from '../../../helpers/page.js'
 import { config } from '../../../../../src/config/config.js'
 import * as referenceDataService from '../../../../../src/services/reference-data.js'
-import { UPLOAD_MESSAGES } from '../../../../../src/pages/create-guidance/upload-guide/controller.js'
+import { UPLOAD_MESSAGES } from '../../../../fixtures/messages.js'
 
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
 const GUIDANCE_API_URL = config.get('guidanceApi.baseUrl')
