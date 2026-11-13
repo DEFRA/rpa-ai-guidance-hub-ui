@@ -9,6 +9,13 @@
   <link href="{{ getAssetPath('src/client/stylesheets/application.scss') }}" rel="stylesheet">
 {% endblock %}
 
+{# Cookie consent banner. Only rendered when a Google Tag Manager container
+   ID is configured, so analytics-enabled environments get it and others do
+   not. Loaded in bodyStart, where the service manual puts it. #}
+{% block bodyStart %}
+  {% include "common/cookie-banner.njk" %}
+{% endblock %}
+
 {% block header %}
   {# Signed in, the side navigation takes the header's place. #}
   {% if not isAuthenticated or hideSideNav %}
@@ -36,9 +43,18 @@
       <input type="hidden" name="returnTo" value="{{ currentUrl }}">
     </form>
     <div class="app-layout{% if sideNavCollapsed %} app-layout--collapsed{% endif %}">
-      <div class="app-layout__nav">
+      <div class="app-layout__nav" id="app:layout:nav">
         {% include "common/side-nav.njk" %}
       </div>
+      {% if not sideNavCollapsed %}
+        {# The open navigation's edge, dragged or arrow-keyed to resize it
+           (resize-handle.js), hidden until that script attaches. #}
+        <div class="app-layout__resize" role="separator" aria-orientation="vertical"
+          aria-label="Resize navigation" aria-controls="app:layout:nav"
+          aria-valuemin="{{ sideNavWidthLimits.min }}" aria-valuemax="{{ sideNavWidthLimits.max }}"
+          aria-valuenow="{{ sideNavWidth }}" aria-valuetext="{{ sideNavWidth }} pixels wide"
+          data-side-nav-resize data-default-width="{{ sideNavWidthLimits.default }}" tabindex="0" hidden></div>
+      {% endif %}
       <div class="app-layout__main">{{ super() }}</div>
     </div>
   {% else %}

@@ -589,8 +589,8 @@ describe('Side navigation', () => {
 
   test.each([
     ['Hub.Viewer', 'Viewer'],
-    ['Hub.Editor,Hub.Viewer', 'Viewer, Designer'],
-    ['Hub.Admin,Hub.Editor,Hub.Viewer', 'Viewer, Designer, Administrator'],
+    ['Hub.Editor,Hub.Viewer', 'Viewer, Maintainer'],
+    ['Hub.Admin,Hub.Editor,Hub.Viewer', 'Viewer, Maintainer, Administrator'],
     ['Hub.Viewer,toString', 'Viewer']
   ])('displays the user name and role caption for DEV_USER_ROLES=%s', async (roles, caption) => {
     vi.stubEnv('DEV_USER_ROLES', roles)
@@ -620,11 +620,11 @@ describe('Side navigation', () => {
       expect(nav.queryByRole('search')).not.toBeInTheDocument()
     })
 
-    test('links to the hub and each list of guides, then a designer\'s work, in order', async () => {
+    test('links to the hub and each list of guides, then a maintainer\'s work, in order', async () => {
       const nav = await navOf('/hub')
       const links = [
         ...within(nav.getAllByRole('list')[0]).getAllByRole('link'),
-        ...within(nav.getByRole('list', { name: 'Designing' })).getAllByRole('link')
+        ...within(nav.getByRole('list', { name: 'Maintenance' })).getAllByRole('link')
       ]
 
       expect(textsOf(links).map((text, index) => [text, links[index].getAttribute('href')])).toEqual([
@@ -634,7 +634,7 @@ describe('Side navigation', () => {
         ['Bookmarked', '/hub/bookmarked-guides'],
         ['Upload guidance', '/create-guidance/upload-guide']
       ])
-      expect(nav.getByRole('heading', { name: 'Designing' })).toBeInTheDocument()
+      expect(nav.getByRole('heading', { name: 'Maintenance' })).toBeInTheDocument()
     })
 
     test('has sections for pinned guidance and case bookmarks, empty for now', async () => {
@@ -701,16 +701,16 @@ describe('Side navigation', () => {
       expect(nav.queryByRole('search')).not.toBeInTheDocument()
     })
 
-    test('keeps a designer\'s work in a list of its own, after the lists of guides', async () => {
+    test('keeps a maintainer\'s work in a list of its own, after the lists of guides', async () => {
       const signedIn = await loginAsDevUser(server)
 
       const { cookie } = await fold(signedIn, true, '/hub')
       const nav = sideNavOf(await pageAt('/hub', cookie))
 
       const lists = nav.getAllByRole('list')
-      const designing = nav.getByRole('list', { name: 'Designing' })
-      expect(lists.indexOf(designing)).toBe(lists.indexOf(nav.getByRole('link', { name: 'Bookmarked' }).closest('ul')) + 1)
-      expect(designing).toContainElement(nav.getByRole('link', { name: 'Upload guidance' }))
+      const maintenance = nav.getByRole('list', { name: 'Maintenance' })
+      expect(lists.indexOf(maintenance)).toBe(lists.indexOf(nav.getByRole('link', { name: 'Bookmarked' }).closest('ul')) + 1)
+      expect(maintenance).toContainElement(nav.getByRole('link', { name: 'Upload guidance' }))
     })
 
     test('stays folded on the next page, for the session', async () => {

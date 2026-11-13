@@ -7,10 +7,12 @@ import nunjucks from 'nunjucks'
 import { config } from '../../config/config.js'
 import { ROLES, roleDisplayNames } from '../../constants/roles.js'
 import { roleEnforcementEnabled } from '../access-control/hub-access.js'
+import { getConsent, isConsentSet } from '../cookie-consent.js'
 import { bookmarkedToHtml, headingControlsHtml } from '../../constants/heading-bookmarks.js'
 import { jsonScript, renderMarkdownFallback } from '../../pages/guide/markdown.js'
 import { filtersFrom, listHref } from '../../pages/hub/filters.js'
 import { isNavCollapsed } from '../../pages/side-nav/collapsed.js'
+import { SIDE_NAV_WIDTH } from '../../pages/side-nav/width.js'
 
 const nunjucksEnvironment = nunjucks.configure(
   [
@@ -82,6 +84,7 @@ function _userDisplayName (request) {
 const assetPath = config.get('assetPath')
 const serviceName = config.get('serviceName')
 const accessRequestEmail = config.get('accessRequestEmail')
+const gtmContainerId = config.get('googleTagManager.containerId')
 
 const viteManifest = loadManifest()
 
@@ -132,12 +135,26 @@ const viewPlugin = {
         // Read only when signed in, when the nav shows: a page no route matches
         // has no session to read.
         sideNavCollapsed: request?.auth?.isAuthenticated ? isNavCollapsed(request) : false,
+        // The open navigation's width, which its handle can change, and the
+        // limits it changes within.
+        sideNavWidth: SIDE_NAV_WIDTH.default,
+        sideNavWidthLimits: SIDE_NAV_WIDTH,
         // The hub's filters chosen on this page, which the side navigation's
         // links to the hub and its lists carry on: '' or '?audience=…'.
         listQuery: listHref('', filtersFrom(request?.query)),
         // Where a form on the page sends the user back to: this page.
         currentUrl: request?.url ? `${request.url.pathname}${request.url.search}` : null,
-        userDisplayName: _userDisplayName(request)
+        userDisplayName: _userDisplayName(request),
+        // Google Tag Manager. Only set when a container ID is configured, so the
+        // layout can decide whether to show the cookie banner at all.
+        gtmContainerId,
+        // Cookie consent, read from the cookies set by /cookies/accept and
+        // /cookies/reject. The banner uses these to know whether to be shown or
+        // hidden, and the client JS uses this to load analytics once accepted.
+        cookieConsent: getConsent(request),
+        cookieConsentSet: isConsentSet(request),
+        // Set by the accept/reject redirect, e.g. 'accept' or 'reject'.
+        cookieAction: request?.query?.cookieAction || null
       }
     }
   }

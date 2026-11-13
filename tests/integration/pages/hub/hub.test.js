@@ -86,13 +86,13 @@ describe('#hubController', () => {
       expect(textsOf(page.getAllByRole('heading', { level: 2 }))).toEqual(['Filter results', '1 guide'])
     })
 
-    test('leaves a designer\'s work to the side navigation', async () => {
+    test('leaves a maintainer\'s work to the side navigation', async () => {
       const cookie = await loginAsDevUser(server)
 
       const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
       const main = pageOf(payload).document.querySelector('main')
-      expect(main).not.toHaveTextContent('Designing')
+      expect(main).not.toHaveTextContent('Maintenance')
       expect(main).not.toHaveTextContent('Upload guidance')
       expect(main).not.toHaveTextContent('Awaiting my review')
     })
