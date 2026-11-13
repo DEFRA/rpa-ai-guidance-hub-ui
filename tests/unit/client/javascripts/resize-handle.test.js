@@ -41,9 +41,9 @@ describe('the side navigation\'s resize handle', () => {
   function render () {
     document.body.innerHTML = `
       <div class="app-layout">
-        <div class="app-layout__nav" id="app-layout-nav"></div>
+        <div class="app-layout__nav" id="app:layout:nav"></div>
         <div class="app-layout__resize" role="separator" aria-orientation="vertical"
-          aria-label="Resize navigation" aria-controls="app-layout-nav"
+          aria-label="Resize navigation" aria-controls="app:layout:nav"
           aria-valuemin="220" aria-valuemax="440" aria-valuenow="280" aria-valuetext="280 pixels wide"
           data-side-nav-resize data-default-width="280" tabindex="0" hidden></div>
         <div class="app-layout__main"></div>
@@ -139,9 +139,9 @@ describe('the contents column\'s resize handle', () => {
   function render () {
     document.body.innerHTML = `
       <div class="app-guide-reading app-guide-reading--standard">
-        <nav class="app-guide-contents" id="guide-contents" aria-label="Contents"></nav>
+        <nav class="app-guide-contents" id="guide:contents" aria-label="Contents"></nav>
         <div class="app-guide-contents-resize" role="separator" aria-orientation="vertical"
-          aria-label="Resize contents" aria-controls="guide-contents"
+          aria-label="Resize contents" aria-controls="guide:contents"
           aria-valuemin="240" aria-valuemax="560" aria-valuenow="340" aria-valuetext="340 pixels wide"
           data-guide-contents-resize data-default-width="340" tabindex="0" hidden></div>
       </div>`

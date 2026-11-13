@@ -52,8 +52,8 @@ describe('Resizing the side navigation', () => {
 
     expect(handle).toHaveRole('separator')
     expect(handle).toHaveAttribute('aria-orientation', 'vertical')
-    expect(handle).toHaveAttribute('aria-controls', 'app-layout-nav')
-    expect(page.document.getElementById('app-layout-nav')).toContainElement(navigation)
+    expect(handle).toHaveAttribute('aria-controls', 'app:layout:nav')
+    expect(page.document.getElementById('app:layout:nav')).toContainElement(navigation)
     expect(handle).toHaveAttribute('aria-valuemin', '220')
     expect(handle).toHaveAttribute('aria-valuemax', '440')
     expect(handle).toHaveAttribute('aria-valuenow', '280')
