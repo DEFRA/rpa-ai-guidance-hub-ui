@@ -27,6 +27,29 @@ function _answer (h, returnTo, moved) {
 }
 
 /**
+ * @private
+ * Remove what the form targets: its section if it names one, else its guide
+ * if it names one, else the whole case.
+ *
+ * @param {import('@hapi/hapi').Request} request
+ * @param {{ key: string, guideId?: string, sectionId?: string }} removal
+ * @returns {Promise<boolean>} Whether the case went
+ */
+function _removeTarget (request, removal) {
+  const { key, guideId, sectionId } = removal
+
+  if (sectionId) {
+    return caseBookmarks.removeSection(request, { key, guideId, sectionId })
+  }
+
+  if (guideId) {
+    return caseBookmarks.removeGuide(request, { key, guideId })
+  }
+
+  return caseBookmarks.removeCase(request, key)
+}
+
+/**
  * Remove a case, with every guide bookmarked to it; or one guide of it, with
  * its sections; or one section; then go back to the page's case bookmarks,
  * no longer narrowed to the case if it went. A case that has changed since
@@ -37,17 +60,8 @@ function _answer (h, returnTo, moved) {
  * @returns {Promise<import('@hapi/hapi').ResponseObject>}
  */
 async function postRemove (request, h) {
-  const { key, guideId, sectionId, returnTo } = request.payload
-  let caseWent
-
-  if (sectionId) {
-    caseWent = await caseBookmarks.removeSection(request, { key, guideId, sectionId })
-  } else if (guideId) {
-    caseWent = await caseBookmarks.removeGuide(request, { key, guideId })
-  } else {
-    caseWent = await caseBookmarks.removeCase(request, key)
-  }
-
+  const { key, returnTo } = request.payload
+  const caseWent = await _removeTarget(request, request.payload)
   const back = backTo(returnTo, CASES_SECTION)
 
   return h.redirect(caseWent ? withoutCase(back, key) : back)
