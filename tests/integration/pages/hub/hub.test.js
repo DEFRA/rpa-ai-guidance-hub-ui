@@ -777,6 +777,21 @@ describe('#hubController', () => {
         expect(sideNavOf(page).getByRole('link', { name: /^Bookmarked\b/, current: 'page' })).toBeInTheDocument()
       })
 
+      test('answer bad gateway when the user\'s cases cannot be read, listing nothing', async () => {
+        nock.cleanAll()
+        nock(GUIDANCE_API_BASE_URL)
+          .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+          .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_SERVICE_UNAVAILABLE)
+        const cookie = await loginAsDevUser(server)
+        const listing = nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/bookmarked-guides`).query(true).reply(statusCodes.HTTP_STATUS_OK, bookmarkedGuidesResponse())
+
+        const { statusCode, payload } = await server.inject({ method: 'GET', url: NARROWED, headers: { cookie } })
+
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_GATEWAY)
+        expect(pageOf(payload).getByText('The case bookmarks cannot be read')).toBeInTheDocument()
+        expect(listing.isDone()).toBe(false)
+      })
+
       test.each([
         ['a key the user does not have', '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c'],
         ['the case\'s ID', 'W1234567']
