@@ -173,11 +173,13 @@ describe('Side navigation', () => {
       expect(unpin).toHaveAttribute('action', '/pin-toggle')
       expect(unpin).toHaveFormValues({ pin: 'false', position: '0' })
       expect(within(unpin).getByRole('button')).toHaveTextContent('Unpin Claiming a payment')
+      expect(firstDown).toHaveAttribute('action', '/pin-order')
       expect(firstDown).toHaveAttribute('data-reorder-move', '1')
       expect(firstDown).toHaveFormValues({ from: '0', to: '1' })
       expect(firstDown).toSendInOrder('order', [FIRST, SECOND])
       expect(firstDown.elements.namedItem('guideId')).toBeNull()
       expect(firstDown).not.toHaveAttribute('hidden')
+      expect(secondUp).toHaveAttribute('action', '/pin-order')
       expect(secondUp).toHaveAttribute('data-reorder-move', '-1')
       expect(secondUp).toHaveFormValues({ from: '1', to: '0' })
       expect(secondUp).not.toHaveAttribute('hidden')
@@ -502,6 +504,26 @@ describe('Side navigation', () => {
         expect(removing.isDone()).toBe(true)
         expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
         expect(headers.location).toBe('/hub#side-nav-bookmarks')
+      })
+
+      test.each([
+        ['the case', {}],
+        ['the only guide of the case', { guideId: GUIDE }],
+        ['the last section of the case', { guideId: GUIDE, sectionId: INTRO.sectionId }]
+      ])('removing %s the list is narrowed to, go back to every bookmarked guide, keeping the other filters', async (_what, form) => {
+        nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+
+        const { headers } = await postAs('/case-bookmarks/remove', { key: K2, returnTo: `/hub/bookmarked-guides?case=${K2}&system=CRM`, ...form })
+
+        expect(headers.location).toBe('/hub/bookmarked-guides?system=CRM#side-nav-bookmarks')
+      })
+
+      test('go back to the list narrowed to a case that still has guides', async () => {
+        nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+
+        const { headers } = await postAs('/case-bookmarks/remove', { key: K1, guideId: GUIDE, returnTo: `/hub/bookmarked-guides?case=${K1}` })
+
+        expect(headers.location).toBe(`/hub/bookmarked-guides?case=${K1}#side-nav-bookmarks`)
       })
 
       test('move a case, answering a script that dragged it with nothing to show', async () => {

@@ -41,12 +41,16 @@ function _guideRow ({ versionNumber, ...item }) {
  * @param {string} list.emptyHtml - What it says when it has none: HTML, so a
  *   control it tells the user to select can be bold; always the hub's own
  *   words, never anything a user typed
+ * @param {string|null} [list.narrowedTo=null] - The case it is narrowed to,
+ *   which its heading names, so a screen reader user who jumps to the heading
+ *   is told
  */
-function _buildGuideList ({ items, noun = 'guide', onlyPins = false, emptyHtml }) {
+function _buildGuideList ({ items, noun = 'guide', onlyPins = false, emptyHtml, narrowedTo = null }) {
   const count = items.length
+  const counted = `${count} ${noun}${count === 1 ? '' : 's'}`
 
   return {
-    heading: `${count} ${noun}${count === 1 ? '' : 's'}`,
+    heading: narrowedTo ? `${counted} for ${narrowedTo}` : counted,
     showing: count > 0 ? `Showing 1 to ${count}` : null,
     emptyHtml,
     onlyPins,
@@ -79,6 +83,8 @@ class HubViewModel {
    * @param {boolean} [data.nothingToFilter=false] - The list has no guides for
    *   the chosen filters to narrow, so they don't explain why it is empty
    * @param {string} [data.words=''] - Searched for, shown in the search box
+   * @param {{key: string, text: string}|null} [data.narrowedTo=null] - The case
+   *   the bookmarked guides are narrowed to, which their heading names
    */
   constructor (data = {}) {
     const {
@@ -89,7 +95,8 @@ class HubViewModel {
       shown = 'allGuides',
       filters = null,
       nothingToFilter = false,
-      words = ''
+      words = '',
+      narrowedTo = null
     } = data
 
     // Chosen filters that leave nothing say so, rather than that there are no
@@ -114,6 +121,7 @@ class HubViewModel {
     this.bookmarkedGuides = _buildGuideList({
       items: bookmarkedGuides,
       noun: 'bookmarked guide',
+      narrowedTo: narrowedTo?.text,
       emptyHtml: nothingMatches ?? HUB_MESSAGES.noneBookmarked
     })
 

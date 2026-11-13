@@ -254,6 +254,18 @@ describe('#hubController', () => {
       expect(viewModel.filters.kept).toEqual({ case: 'key-1' })
     })
 
+    test('Should answer bad gateway when the user\'s cases cannot be read', async () => {
+      vi.spyOn(usersService, 'casesOf').mockResolvedValue(null)
+      vi.spyOn(usersService, 'listBookmarked')
+
+      await expect(getHubListPage({ params: { list: 'bookmarked-guides' }, query: { case: 'key-1' } }, h)).rejects.toMatchObject({
+        isBoom: true,
+        message: 'The case bookmarks cannot be read',
+        output: { statusCode: statusCodes.HTTP_STATUS_BAD_GATEWAY }
+      })
+      expect(usersService.listBookmarked).not.toHaveBeenCalled()
+    })
+
     test('Should answer a case the user has not got as not found, without listing anything', async () => {
       vi.spyOn(usersService, 'casesOf').mockResolvedValue([{ key: 'key-1', type: 'case', ref: 'W1234567', guides: [] }])
       vi.spyOn(usersService, 'listBookmarked')

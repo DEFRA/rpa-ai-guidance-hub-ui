@@ -1,5 +1,6 @@
 import { statusCodes } from '../../constants/status-codes.js'
 import * as caseBookmarks from '../../services/case-bookmarks.js'
+import { withoutCase } from '../common/case-guides-href.js'
 import { backTo } from '../common/relative-href.js'
 
 // Where the side navigation lists the case bookmarks.
@@ -26,26 +27,44 @@ function _answer (h, returnTo, moved) {
 }
 
 /**
+ * @private
+ * Remove what the form targets: its section if it names one, else its guide
+ * if it names one, else the whole case.
+ *
+ * @param {import('@hapi/hapi').Request} request
+ * @param {{ key: string, guideId?: string, sectionId?: string }} removal
+ * @returns {Promise<boolean>} Whether the case went
+ */
+function _removeTarget (request, removal) {
+  const { key, guideId, sectionId } = removal
+
+  if (sectionId) {
+    return caseBookmarks.removeSection(request, { key, guideId, sectionId })
+  }
+
+  if (guideId) {
+    return caseBookmarks.removeGuide(request, { key, guideId })
+  }
+
+  return caseBookmarks.removeCase(request, key)
+}
+
+/**
  * Remove a case, with every guide bookmarked to it; or one guide of it, with
- * its sections; or one section; then go back to the page's case bookmarks. A
- * case that has changed since the page showed it changes nothing.
+ * its sections; or one section; then go back to the page's case bookmarks,
+ * no longer narrowed to the case if it went. A case that has changed since
+ * the page showed it changes nothing.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
  * @returns {Promise<import('@hapi/hapi').ResponseObject>}
  */
 async function postRemove (request, h) {
-  const { key, guideId, sectionId, returnTo } = request.payload
+  const { key, returnTo } = request.payload
+  const caseWent = await _removeTarget(request, request.payload)
+  const back = backTo(returnTo, CASES_SECTION)
 
-  if (sectionId) {
-    await caseBookmarks.removeSection(request, { key, guideId, sectionId })
-  } else if (guideId) {
-    await caseBookmarks.removeGuide(request, { key, guideId })
-  } else {
-    await caseBookmarks.removeCase(request, key)
-  }
-
-  return h.redirect(backTo(returnTo, CASES_SECTION))
+  return h.redirect(caseWent ? withoutCase(back, key) : back)
 }
 
 /**

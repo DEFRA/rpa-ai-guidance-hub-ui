@@ -60,4 +60,22 @@ describe('Resizing a guide\'s contents column', () => {
     expect(handle).toHaveAttribute('tabindex', '0')
     expect(handle).not.toBeVisible()
   })
+
+  test('is not confused with a heading called "Guide contents" or "App layout nav"', async () => {
+    nock.cleanAll()
+    nock(GUIDANCE_API_BASE_URL)
+      .get(`/guides/${GUIDE_ID}`).reply(statusCodes.HTTP_STATUS_OK, guideResponse({ id: GUIDE_ID }))
+      .get(`/guides/${GUIDE_ID}/content`).reply(statusCodes.HTTP_STATUS_OK, '# Claiming\n\n## Guide contents\n\nHere.\n\n## App layout nav\n\nThere.', { 'Content-Type': 'text/plain' })
+    const cookie = await loginAsDevUser(server)
+    const { payload } = await server.inject({ method: 'GET', url: `/guides/${GUIDE_ID}`, headers: { cookie } })
+    const page = pageOf(payload)
+
+    const controlled = page.getByLabelText(RESIZE_HANDLE).getAttribute('aria-controls')
+
+    expect(page.getByRole('navigation', { name: 'Contents' })).toHaveAttribute('id', controlled)
+    expect(page.document.querySelector('[id="guide-contents"]').textContent).toBe('Guide contents')
+    expect(page.document.querySelector('[id="app-layout-nav"]').textContent).toBe('App layout nav')
+    expect(page.document.querySelectorAll('[id="app-layout-nav"]')).toHaveLength(1)
+    expect(page.document.querySelectorAll('[id="guide-contents"]')).toHaveLength(1)
+  })
 })

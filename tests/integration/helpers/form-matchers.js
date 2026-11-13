@@ -12,7 +12,7 @@ import { expect } from 'vitest'
  * @returns {{pass: boolean, message: () => string}}
  */
 function toSendInOrder (form, name, expected) {
-  const received = [...form.elements].filter((element) => element.name === name).map((element) => element.value)
+  const received = new form.ownerDocument.defaultView.FormData(form).getAll(name)
 
   return {
     pass: this.equals(received, expected),
