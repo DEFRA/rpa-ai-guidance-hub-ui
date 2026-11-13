@@ -32,6 +32,11 @@
     <div class="app-shell__main">
       <div class="app-guide-gutter">
         <div class="app-guide-reading app-guide-reading--{{ readingWidth }}">
+          {# First on the page, as the Design System has it, so it is the first
+             thing a keyboard or a screen reader reaches, whichever side of the
+             page the contents pane is laid out on. #}
+          {{ govukBackLink({ text: "Back", href: "/hub" }) }}
+
           {% if bookmarkAdded %}
             {% call govukNotificationBanner({ type: "success" }) %}
               <h3 class="govuk-notification-banner__heading">{{ bookmarkAdded.text }}</h3>
@@ -62,11 +67,11 @@
                 </button>
               </form>
             {% endif %}
-            {# The page width, at the right of the row; named for screen readers
-               only, as the guide format is. #}
+            {# The page width, at the right of the row, with its label in sight,
+               as the guide format has. #}
             <form class="app-guide-reading-width" method="post" action="/guides/reading-width">
               <input type="hidden" name="returnTo" value="{{ returnTo }}">
-              <span class="govuk-visually-hidden" id="guide-reading-width-label">Page width</span>
+              <span class="app-guide-reading-width__label" id="guide-reading-width-label">Page width</span>
               <div class="app-guide-format-toggle app-guide-reading-width__options" role="group" aria-labelledby="guide-reading-width-label">
                 {% for option in readingWidths %}
                   <button type="submit" name="width" value="{{ option.value }}"
@@ -80,18 +85,17 @@
           <h1 class="app-guide-title">{{ title }}</h1>
 
 
-          {# The contents pane: Back, the whole guide or a section at a time,
-             then the contents list. The format's return address names both the page
+          {# The contents pane: the whole guide or a section at a time, then
+             the contents list. The format's return address names both the page
              and the heading the reader is at, so either format can take them
              back there; guide-place.js moves it to where they have scrolled.
              With JavaScript, the contents mark where the reader is, and the
              address follows them (guide-contents.js). #}
           <div class="app-guide-contents" id="guide-contents" data-guide-format="{{ format }}">
-            {{ govukBackLink({ text: "Back", href: "/hub" }) }}
-
             <form class="app-guide-format" method="post" action="/guides/format">
               <input type="hidden" name="returnTo" value="{{ place }}" data-guide-place>
-              <div class="app-guide-format-toggle app-guide-format__options" role="group" aria-label="Guide format">
+              <span class="app-guide-reading-width__label" id="guide-format-label">Guide format</span>
+              <div class="app-guide-format-toggle app-guide-format__options" role="group" aria-labelledby="guide-format-label">
                 {% for option in formats %}
                   <button type="submit" name="format" value="{{ option.value }}"
                     class="app-guide-format-toggle__option{{ ' app-guide-format-toggle__option--active' if option.isChosen }}"
@@ -104,12 +108,12 @@
               <h2 class="govuk-heading-s" id="guide-contents-heading">Contents</h2>
               {% for item in contents %}
                 <p class="app-guide-contents__section{{ ' app-guide-contents__section--current' if item.isCurrent }}" data-guide-contents-page="{{ loop.index }}">
-                  <a class="govuk-link app-guide-contents__section-link" data-guide-contents-target="{{ item.anchor }}" href="{{ item.href }}"{% if item.isCurrent %} aria-current="page"{% endif %}>{{ item.title }}</a>
+                  <a class="govuk-link app-guide-contents__section-link" data-guide-contents-target="{{ item.anchor }}" data-guide-contents-section="{{ item.section }}" href="{{ item.href }}"{% if item.isCurrent %} aria-current="page"{% endif %}>{{ item.title }}</a>
                 </p>
                 {% if item.subheadings.length %}
                   <ol class="govuk-list app-guide-contents__list">
                     {% for subheading in item.subheadings %}
-                      <li><a class="govuk-link app-guide-contents__link" data-guide-contents-target="{{ subheading.anchor }}" href="{{ subheading.href }}">{{ subheading.title }}</a></li>
+                      <li><a class="govuk-link app-guide-contents__link" data-guide-contents-target="{{ subheading.anchor }}" data-guide-contents-section="{{ subheading.section }}" href="{{ subheading.href }}">{{ subheading.title }}</a></li>
                     {% endfor %}
                   </ol>
                 {% endif %}

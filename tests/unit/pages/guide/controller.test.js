@@ -135,6 +135,17 @@ describe('guide controller', () => {
       expect(h.view.mock.calls[0][1].pageNumber).toBe(2)
     })
 
+    test('takes a repeated heading by the hub\'s anchor, which the page numbers differently, as the contents name it', async () => {
+      // The title is counted by the page and not by the hub, so the first
+      // `### Help` is `help-1` on the page and `help` to the hub.
+      guidesService.getGuideContent.mockResolvedValue({ markdown: '# Help\n\n## One\n\n### Help\n\n## Two\n\n### Help' })
+
+      await controller.getGuidePage(createRequest({ query: { section: 'help' } }), h)
+      await controller.getGuidePage(createRequest({ query: { section: 'help-1' } }), h)
+
+      expect(h.view.mock.calls.map(([, viewModel]) => viewModel.pageNumber)).toEqual([1, 2])
+    })
+
     test('ignores a page number in the address', async () => {
       await controller.getGuidePage(createRequest({ query: { page: '2' } }), h)
 

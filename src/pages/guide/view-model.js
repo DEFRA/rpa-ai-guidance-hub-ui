@@ -108,10 +108,12 @@ function _ownerRow (owner) {
  * @param {number} pageNumber
  * @param {boolean} isTraditional
  * @param {(page: number) => string} href - The address of a page
- * @returns {Array<{title: string, href: string, anchor: string, isCurrent: boolean, subheadings: Array<{title: string, href: string, anchor: string}>}>}
- *   Each entry with the anchor of the heading it goes to on the page, for the
- *   script that follows the reader (guide-contents.js); none for a section
- *   without a heading
+ * @returns {Array<{title: string, href: string, anchor: string, section: string, isCurrent: boolean, subheadings: Array<{title: string, href: string, anchor: string, section: string}>}>}
+ *   Each entry with the anchor of the heading it goes to on the page, and the
+ *   anchor the stepper's `section` names it by, for the scripts that follow
+ *   the reader and take them to a copied address (guide-contents.js). The two
+ *   can differ, as the hub numbers repeated headings differently from the
+ *   page. None for a section without a heading
  */
 function _contents (sections, pageNumber, isTraditional, href) {
   return sections.map((section, index) => {
@@ -122,12 +124,14 @@ function _contents (sections, pageNumber, isTraditional, href) {
       title: section.title,
       href: isTraditional ? _headingHref(section.slug) : href(index + 1),
       anchor: section.slug ?? '',
+      section: section.sectionAnchor ?? section.slug ?? '',
       isCurrent,
       // On the page already, a heading's link need only scroll to it.
       subheadings: (section.subheadings ?? []).map(subheading => ({
         title: subheading.title,
         href: `${isOnThePage ? '' : href(index + 1)}#${subheading.slug}`,
-        anchor: subheading.slug
+        anchor: subheading.slug,
+        section: section.headingSectionAnchors[section.headingIds.indexOf(subheading.slug)] ?? subheading.slug
       }))
     }
   })

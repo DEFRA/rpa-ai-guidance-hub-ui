@@ -74,11 +74,24 @@ describe('GuideViewModel', () => {
 
     expect(contents[0].subheadings).toEqual([])
     expect(contents[1].subheadings).toEqual([
-      { title: '2.1 Check', href: '#21-check', anchor: '21-check' },
-      { title: '2.2 Assign', href: '#22-assign', anchor: '22-assign' }
+      { title: '2.1 Check', href: '#21-check', anchor: '21-check', section: '21-check' },
+      { title: '2.2 Assign', href: '#22-assign', anchor: '22-assign', section: '22-assign' }
     ])
     expect(contents[2].subheadings).toEqual([
-      { title: '3.1 Close', href: '/guides/guide-1?section=close-case#31-close', anchor: '31-close' }
+      { title: '3.1 Close', href: '/guides/guide-1?section=close-case#31-close', anchor: '31-close', section: '31-close' }
+    ])
+  })
+
+  test('names a subheading by the hub\'s anchor as well as its own on the page, which can differ for a repeated heading', () => {
+    const repeated = [
+      { id: 'section-1', title: 'One', slug: 'one', sectionAnchor: 'one', markdown: '', headingIds: ['help-1'], headingSectionAnchors: ['help'], subheadings: [{ title: 'Help', slug: 'help-1' }] },
+      { id: 'section-2', title: 'Two', slug: 'two', sectionAnchor: 'two', markdown: '', headingIds: ['help-2'], headingSectionAnchors: ['help-1'], subheadings: [{ title: 'Help', slug: 'help-2' }] }
+    ]
+    const { contents } = build({ sections: repeated, pageNumber: 1 })
+
+    expect(contents.map(entry => entry.subheadings[0])).toEqual([
+      expect.objectContaining({ anchor: 'help-1', section: 'help' }),
+      expect.objectContaining({ anchor: 'help-2', section: 'help-1' })
     ])
   })
 
@@ -178,7 +191,7 @@ describe('GuideViewModel in the traditional view', () => {
   })
 
   test('scrolls to every subheading, all of them being on the page', () => {
-    expect(traditional().contents[2].subheadings).toEqual([{ title: '3.1 Close', href: '#31-close', anchor: '31-close' }])
+    expect(traditional().contents[2].subheadings).toEqual([{ title: '3.1 Close', href: '#31-close', anchor: '31-close', section: '31-close' }])
   })
 
   test('gives each entry the heading it goes to on the page, for the script that follows the reader; none for a section without one', () => {
