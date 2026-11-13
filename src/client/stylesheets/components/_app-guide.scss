@@ -354,7 +354,7 @@ $app-guide-toc-width: 340px;
   // As for the navigation: Chrome shows the cursor of what is under the
   // pointer, so every element shows it while dragging.
   * {
-    cursor: col-resize !important;
+    cursor: col-resize;
   }
 
   .app-guide-contents-resize {

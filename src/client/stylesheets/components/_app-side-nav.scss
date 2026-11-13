@@ -342,7 +342,7 @@ $app-side-nav-muted: #505a5f;
   // Chrome takes the cursor from whatever is under the pointer, not from the
   // handle that captured it, so every element shows it while dragging.
   * {
-    cursor: col-resize !important; // stylelint-disable-line declaration-no-important
+    cursor: col-resize;
   }
 
   .app-layout__resize {
