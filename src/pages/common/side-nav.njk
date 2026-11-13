@@ -18,16 +18,19 @@
   { text: "Hub", href: "/hub" + listQuery, icon: "home", current: currentPath == "/hub" },
   { text: "Recently opened", href: "/hub/recently-opened" + listQuery, icon: "clock", current: currentPath == "/hub/recently-opened" },
   { text: "Pinned", href: "/hub/pinned" + listQuery, icon: "star", current: currentPath == "/hub/pinned", badge: pinnedCount, badgeUnit: "pins" },
-  { text: "Bookmarked", href: "/hub/bookmarked-guides" + listQuery, icon: "bookmark", current: currentPath == "/hub/bookmarked-guides", badge: caseCount, badgeUnit: "cases" }
+  { text: "Bookmarked", href: "/hub/bookmarked-guides" + listQuery, icon: "bookmark", current: currentPath == "/hub/bookmarked-guides", ariaCurrent: "true" if currentCaseKey else "page", badge: caseCount, badgeUnit: "cases" }
 ] %}
 {% set editorItems = [
   { text: "Upload guidance", href: "/create-guidance/upload-guide", icon: "upload", current: onUpload }
 ] %}
 
+{# On a case's own list, "Bookmarked" is the list it belongs to
+   (aria-current="true") and the case's link is the page (ariaCurrent
+   defaults to "page"). #}
 {# A list's count, as on the open navigation, is a dot on its icon, and part
    of its name for a screen reader, as the prototype's rail has it. #}
-{% macro railItem(text, iconName, href, current, badge, badgeUnit) %}
-  <a class="app-side-nav__rail-item{% if current %} app-side-nav__rail-item--current{% endif %}" href="{{ href }}"{% if current %} aria-current="page"{% endif %} data-side-nav-tooltip>
+{% macro railItem(text, iconName, href, current, badge, badgeUnit, ariaCurrent) %}
+  <a class="app-side-nav__rail-item{% if current %} app-side-nav__rail-item--current{% endif %}" href="{{ href }}"{% if current %} aria-current="{{ ariaCurrent or 'page' }}"{% endif %} data-side-nav-tooltip>
     {{ icon(iconName) }}
     {% if badge is number %}
       <span class="app-side-nav__rail-label">{{ text }} ({{ badge }}<span class="govuk-visually-hidden"> {{ badgeUnit }}</span>)</span>
@@ -55,7 +58,7 @@
 
   <ul class="app-side-nav__rail-list">
     {% for item in listItems %}
-      <li>{{ railItem(item.text, item.icon, item.href, item.current, item.badge, item.badgeUnit) }}</li>
+      <li>{{ railItem(item.text, item.icon, item.href, item.current, item.badge, item.badgeUnit, item.ariaCurrent) }}</li>
     {% endfor %}
   </ul>
 
@@ -103,7 +106,7 @@
   <ul class="app-side-nav__list">
     {% for item in listItems %}
       <li>
-        <a class="app-side-nav__link{% if item.current %} app-side-nav__link--current{% endif %}" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>
+        <a class="app-side-nav__link{% if item.current %} app-side-nav__link--current{% endif %}" href="{{ item.href }}"{% if item.current %} aria-current="{{ item.ariaCurrent or 'page' }}"{% endif %}>
           {{ icon(item.icon) }}
           <span class="app-side-nav__text">{{ item.text }}</span>
           {# A count the hub has for the list, as the prototype shows one. #}
@@ -208,7 +211,8 @@
         {% for case in caseBookmarks.cases %}
           <li class="app-side-nav__case" data-reorder-id="{{ case.key }}" data-reorder-label="{{ case.name }}">
             <div class="app-side-nav__row">
-              <a class="app-side-nav__link" href="{{ case.href }}" draggable="false" data-reorder-handle>
+              {% set caseIsCurrent = case.key == currentCaseKey %}
+              <a class="app-side-nav__link{% if caseIsCurrent %} app-side-nav__link--current{% endif %}" href="{{ case.href }}"{% if caseIsCurrent %} aria-current="page"{% endif %} draggable="false" data-reorder-handle>
                 {{ icon("bookmark") }}
                 <span class="app-side-nav__text">
                   <span class="app-side-nav__ref-type">{{ case.typeLabel }}</span>

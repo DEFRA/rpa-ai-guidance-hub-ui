@@ -36,7 +36,7 @@
             {% call govukNotificationBanner({ type: "success" }) %}
               <h3 class="govuk-notification-banner__heading">{{ bookmarkAdded.text }}</h3>
               {% if bookmarkAdded.caseHref %}
-                <p class="govuk-body"><a class="govuk-notification-banner__link" href="{{ bookmarkAdded.caseHref }}">View all guides for this case</a></p>
+                <p class="govuk-body"><a class="govuk-notification-banner__link" href="{{ bookmarkAdded.caseHref }}">View all guides for this case <span class="govuk-visually-hidden">({{ bookmarkAdded.caseName }})</span></a></p>
               {% endif %}
             {% endcall %}
           {% endif %}

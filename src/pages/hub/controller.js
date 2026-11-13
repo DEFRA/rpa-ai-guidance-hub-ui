@@ -272,7 +272,8 @@ async function getHubListPage (request, h) {
     shown,
     [shown]: guides.map(rowOf),
     filters: panel,
-    nothingToFilter: await _nothingToFilter(source, request, guides, panel)
+    nothingToFilter: await _nothingToFilter(source, request, guides, panel),
+    narrowedTo
   })
 
   return h

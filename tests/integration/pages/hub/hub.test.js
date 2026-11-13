@@ -754,6 +754,12 @@ describe('#hubController', () => {
         expect(filtersOf(page).getByRole('link', { name: 'Remove filter Case: W1234567' })).toHaveAttribute('href', '/hub/bookmarked-guides')
       })
 
+      test('name the case in the heading of the results, as well as in the filters', async () => {
+        const { page } = await narrowedPage(NARROWED)
+
+        expect(page.getByRole('heading', { name: '1 bookmarked guide for Case: W1234567' })).toBeInTheDocument()
+      })
+
       test('keep the case as the other filters change, until they are cleared', async () => {
         const { page } = await narrowedPage(`${NARROWED}&system=CRM`, { case: KEY, system: 'CRM' })
         const filters = filtersOf(page)
@@ -771,10 +777,24 @@ describe('#hubController', () => {
         expect(page.document.title).not.toMatch(/W1234567|case|sbi/i)
       })
 
-      test('still mark "Bookmarked" as the current page in the side navigation', async () => {
+      test('mark the case as the current page in the side navigation, and "Bookmarked" only as the list it belongs to', async () => {
         const { page } = await narrowedPage(NARROWED)
+        const nav = sideNavOf(page)
 
-        expect(sideNavOf(page).getByRole('link', { name: /^Bookmarked\b/, current: 'page' })).toBeInTheDocument()
+        expect(nav.getByRole('link', { name: /W1234567/, current: 'page' })).toHaveAttribute('href', NARROWED)
+        expect(nav.getByRole('link', { name: /^Bookmarked\b/ })).toHaveAttribute('aria-current', 'true')
+      })
+
+      test('mark "Bookmarked" as the current page when no case is chosen', async () => {
+        nock.cleanAll()
+        const cookie = await signedIn({ cases: [caseResponse()] })
+        nock(GUIDANCE_API_BASE_URL).get(`/users/${USER_ID}/bookmarked-guides`).query(true).reply(statusCodes.HTTP_STATUS_OK, bookmarkedGuidesResponse())
+
+        const { payload } = await server.inject({ method: 'GET', url: '/hub/bookmarked-guides', headers: { cookie } })
+        const nav = sideNavOf(pageOf(payload))
+
+        expect(nav.getByRole('link', { name: /^Bookmarked\b/, current: 'page' })).toBeInTheDocument()
+        expect(nav.getByRole('link', { name: /W1234567/ })).not.toHaveAttribute('aria-current')
       })
 
       test.each([

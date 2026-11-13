@@ -99,7 +99,7 @@ function _ownerRow (owner) {
  *
  * @param {{type: string, ref: string, heading: string}} bookmarked
  * @param {Array<{key: string, type: string, ref: string}>} cases - The user's
- * @returns {{text: string, caseHref: string|null}} `caseHref` null when the
+ * @returns {{text: string, caseHref: string|null, caseName: string}} `caseHref` null when the
  *   case is not among them, as when it was removed since
  */
 function _bookmarkAdded (bookmarked, cases) {
@@ -107,7 +107,8 @@ function _bookmarkAdded (bookmarked, cases) {
 
   return {
     text: `‘${bookmarked.heading}’ bookmarked to ${CASE_TYPES[bookmarked.type].lower} ${bookmarked.ref}`,
-    caseHref: found ? caseGuidesHref(found.key) : null
+    caseHref: found ? caseGuidesHref(found.key) : null,
+    caseName: `${CASE_TYPES[bookmarked.type].short} ${bookmarked.ref}`
   }
 }
 
