@@ -341,7 +341,7 @@ describe('bookmarking a section of a guide to a case', () => {
       nock(GUIDANCE_API_BASE_URL).post(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
       const page = pageOf((await get(GUIDE_PAGE)).payload)
 
-      expect(within(page.getByRole('alert')).getByRole('link', { name: 'View all guides for this case' })).toHaveAttribute('href', `/hub/bookmarked-guides?case=${saved.key}`)
+      expect(within(page.getByRole('alert')).getByRole('link', { name: 'View all guides for this case (Case W7654321)' })).toHaveAttribute('href', `/hub/bookmarked-guides?case=${saved.key}`)
     })
   })
 })

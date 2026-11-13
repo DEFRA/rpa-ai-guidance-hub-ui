@@ -76,6 +76,18 @@ describe('#HubViewModel', () => {
       expect(bookmarkedGuides.guides.map(row => row.id)).toEqual(['guide-1', 'guide-2'])
     })
 
+    test('Should name the case in the heading of bookmarked guides narrowed to one', () => {
+      const { bookmarkedGuides } = new HubViewModel({ bookmarkedGuides: [guide], narrowedTo: { key: 'key-1', text: 'Case: W1234567' } })
+
+      expect(bookmarkedGuides.heading).toBe('1 bookmarked guide for Case: W1234567')
+    })
+
+    test('Should not name the case in the heading of any other list', () => {
+      const { pinned } = new HubViewModel({ pinned: [guide], narrowedTo: { key: 'key-1', text: 'Case: W1234567' } })
+
+      expect(pinned.heading).toBe('1 pin')
+    })
+
     test('Should say one bookmarked guide in the singular', () => {
       expect(new HubViewModel({ bookmarkedGuides: [guide] }).bookmarkedGuides.heading).toBe('1 bookmarked guide')
     })
