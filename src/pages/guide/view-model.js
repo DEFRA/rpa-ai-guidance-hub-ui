@@ -9,6 +9,7 @@ import { GUIDE_FORMATS } from './format.js'
 import { READING_WIDTHS } from './reading-width.js'
 
 const UNTITLED = 'Untitled guide'
+const NOT_PROVIDED = 'Not provided'
 const TRADITIONAL = 'traditional'
 
 // The top of the page's own content (the GOV.UK template's `main`), where a
@@ -16,86 +17,75 @@ const TRADITIONAL = 'traditional'
 const TOP_OF_GUIDE = '#main-content'
 
 /**
- * @typedef {Object} MetadataRow
+ * @typedef {Object} InfoRow
  * @property {string} label
  * @property {string} text
- * @property {string} href - Always a `mailto:` link for the owner's email address
+ * @property {string} [href] - Only the owner's: a `mailto:` link
  */
 
 /**
- * @private
- * @param {string[]} values
- * @returns {string}
- */
-function _list (values) {
-  return values.join(', ')
-}
-
-/**
- * The "About this guide" rows: only the ones the guide has answers for.
+ * The guide's information, under its title: every row, named and in the
+ * order of the upload journey's check answers page, as the milestone spike
+ * has them.
  *
- * @param {Object} metadata - What the guide's author said about it. The
- *   API sends the scheme, audience and system fields as display labels.
- * @returns {MetadataRow[]}
+ * @param {Object} [guide]
+ * @param {string|null} [guide.lastUpdated]
+ * @param {Object} [guide.metadata] - What the guide's author said about it.
+ *   The API sends the scheme, audience and system fields as display labels,
+ *   and the scheme year as a number.
+ * @returns {InfoRow[]} "Not provided" in each row the guide says nothing for
  */
-function buildMetadataRows (metadata = {}) {
+function buildInfoRows ({ lastUpdated, metadata = {} } = {}) {
   return [
-    _schemesRow(metadata.schemes),
-    _listRow("Who it's for", metadata.audience),
-    _listRow('Systems used', metadata.systems),
-    _textRow('Purpose', metadata.goal),
-    _textRow('Required knowledge', metadata.requirements),
-    _ownerRow(metadata.owner)
-  ].filter(Boolean)
+    _infoRow('Last modified date', formatIsoDate(lastUpdated)),
+    _infoRow('Scheme', _schemesText(metadata.schemes)),
+    _infoRow('Scheme year', metadata.schemeYear?.toString()),
+    _ownerRow(metadata.owner),
+    _infoRow('Purpose of guidance', metadata.goal),
+    _infoRow('Required knowledge and training', metadata.requirements),
+    _infoRow('Systems', _listText(metadata.systems)),
+    _infoRow('Who is this guidance for?', _listText(metadata.audience))
+  ]
 }
 
 /**
  * @private
  * @param {string} label
- * @param {string[]} [values]
- * @returns {MetadataRow|null} Null when there are no values
+ * @param {string|null} [text]
+ * @returns {InfoRow}
  */
-function _listRow (label, values) {
-  return values?.length > 0 ? { label, text: _list(values) } : null
+function _infoRow (label, text) {
+  return { label, text: text || NOT_PROVIDED }
+}
+
+/**
+ * @private
+ * @param {string[]} [values]
+ * @returns {string|null} Null when there are no values
+ */
+function _listText (values) {
+  return values?.length > 0 ? values.join(', ') : null
 }
 
 /**
  * @private
  * @param {string[]} [schemes]
- * @returns {MetadataRow|null} "Not scheme-specific" for a guide with none,
- *   which is what it was uploaded as; null when it does not say
+ * @returns {string|null} "Not scheme-specific" for a guide with none, which
+ *   is what it was uploaded as; null when it does not say
  */
-function _schemesRow (schemes) {
-  return schemes?.length === 0
-    ? { label: 'Scheme', text: NOT_SCHEME_SPECIFIC }
-    : _listRow('Scheme', schemes)
-}
-
-/**
- * @private
- * @param {string} label
- * @param {string} [text]
- * @returns {MetadataRow|null} Null when there is no text
- */
-function _textRow (label, text) {
-  return text ? { label, text } : null
+function _schemesText (schemes) {
+  return schemes?.length === 0 ? NOT_SCHEME_SPECIFIC : _listText(schemes)
 }
 
 /**
  * @private
  * @param {string} [owner]
- * @returns {MetadataRow|null} Null when there is no owner
+ * @returns {InfoRow} A link to email the owner, when the guide names one
  */
 function _ownerRow (owner) {
-  if (!owner) {
-    return null
-  }
-
-  return {
-    label: 'Owner',
-    text: owner,
-    href: `mailto:${encodeURIComponent(owner)}`
-  }
+  return owner
+    ? { label: 'Owner email', text: owner, href: `mailto:${encodeURIComponent(owner)}` }
+    : _infoRow('Owner email', null)
 }
 
 /**
@@ -171,7 +161,7 @@ function _bookmarkAdded (bookmarked, cases) {
 /**
  * GuideViewModel - A guide, whole or a section at a time, with the page
  * furniture around it: byline, contents, the format and width controls,
- * previous and next links, and the "About this guide" rows.
+ * previous and next links, and the guide's information.
  */
 class GuideViewModel {
   /**
@@ -181,9 +171,6 @@ class GuideViewModel {
    * @param {number} data.pageNumber - Already within 1..sections.length
    * @param {string} data.readingWidth
    * @param {string} data.returnTo - Where the width form sends the user back to
-   * @param {MetadataRow[]} data.metadataRows
-   * @param {boolean} [data.panelCollapsed] - Whether the "About this guide"
-   *   panel is folded away to its rail
    * @param {{pinned: boolean, position: number|null}|null} [data.pin] - The
    *   guide among the user's pins, for its Pin guide button; null when not known
    * @param {Map<string, {position: number, sectionId: string, key: string}>|null} [data.pinnedSections]
@@ -194,8 +181,12 @@ class GuideViewModel {
    * @param {{guideId: string, type: string, ref: string, heading: string}} [data.bookmarked]
    *   - A section just bookmarked, to say so once
    * @param {string} data.format - One of `GUIDE_FORMATS`' values
+   * @param {InfoRow[]} [data.infoRows] - The guide's information, under
+   *   its title
+   * @param {boolean} [data.informationShown] - Whether the user chose to show
+   *   it
    */
-  constructor ({ guide, sections, pageNumber, readingWidth, returnTo, metadataRows, panelCollapsed = false, pin = null, pinnedSections = null, cases = null, bookmarked, format }) {
+  constructor ({ guide, sections, pageNumber, readingWidth, returnTo, pin = null, pinnedSections = null, cases = null, bookmarked, format, infoRows = [], informationShown = false }) {
     const href = page => GuideViewModel.pageHref(guide.id, sections[page - 1])
     const isTraditional = format === TRADITIONAL
     const adjacent = (page) => {
@@ -244,7 +235,6 @@ class GuideViewModel {
     }))
     this.previous = adjacent(pageNumber - 1)
     this.next = adjacent(pageNumber + 1)
-    this.metadataRows = metadataRows
     this.readingWidth = readingWidth
     this.readingWidths = READING_WIDTHS
     // The contents column's width, which its handle can change, and the
@@ -254,7 +244,8 @@ class GuideViewModel {
     this.returnTo = returnTo
     this.pin = pin
     this.bookmarkAdded = bookmarked?.guideId === guide.id ? _bookmarkAdded(bookmarked, cases ?? []) : null
-    this.panelCollapsed = panelCollapsed
+    this.infoRows = infoRows
+    this.informationShown = informationShown
     this.format = format
     this.formats = GUIDE_FORMATS.map(option => ({ ...option, isChosen: option.value === format }))
     // Where changing the format takes the reader: the page the address names,
@@ -283,6 +274,6 @@ class GuideViewModel {
 }
 
 export {
-  buildMetadataRows,
+  buildInfoRows,
   GuideViewModel
 }

@@ -54,17 +54,17 @@ const routes = [
   },
   {
     method: 'POST',
-    path: '/guides/panel-toggle',
+    path: '/guides/information',
     options: {
       validate: {
         payload: Joi.object({
-          collapsed: Joi.boolean().required(),
+          shown: Joi.boolean().required(),
           returnTo: Joi.string().allow('').default('')
         }),
         failAction: () => { throw Boom.badRequest() }
       }
     },
-    handler: guideController.postPanelToggle
+    handler: guideController.postInformation
   },
   {
     method: 'GET',

@@ -7,7 +7,7 @@
 
 {% set pageTitle = title %}
 {% set page = 'guide' %}
-{# The page is a shell that runs the full width, banner to panel. #}
+{# The page is a shell that runs the full width. #}
 {% set containerClasses = 'app-width-container--bleed' %}
 {% set mainClasses = 'app-main-wrapper app-main-wrapper--bleed' %}
 
@@ -82,7 +82,33 @@
             </form>
           </div>
 
-          <h1 class="app-guide-title">{{ title }}</h1>
+          {# The title, with the information button beside it. The button sends
+             the choice to show or hide the guide's information in a form, so
+             it works without JavaScript; with it, guide-info.js shows or hides
+             the information at once and sends the choice behind the scenes. #}
+          <div class="app-guide-title-row">
+            <h1 class="app-guide-title">{{ title }}</h1>
+            <form class="app-guide-info-form" method="post" action="/guides/information">
+              <input type="hidden" name="shown" value="{{ 'false' if informationShown else 'true' }}">
+              <input type="hidden" name="returnTo" value="{{ returnTo }}">
+              <button type="submit" class="app-guide-info-toggle" aria-expanded="{{ 'true' if informationShown else 'false' }}" aria-controls="guide-info" data-guide-info-toggle data-side-nav-tooltip>
+                {{ icon("info") }}
+                <span class="govuk-visually-hidden">Guide information</span>
+                <span class="app-side-nav__tooltip app-side-nav__tooltip--left app-guide-info-toggle__tooltip" aria-hidden="true">Guide information</span>
+              </button>
+            </form>
+          </div>
+
+          <div class="app-guide-info" id="guide-info" data-guide-info{% if not informationShown %} hidden{% endif %}>
+            <dl class="govuk-summary-list govuk-summary-list--no-border app-guide-info__list">
+              {% for row in infoRows %}
+                <div class="govuk-summary-list__row">
+                  <dt class="govuk-summary-list__key">{{ row.label }}</dt>
+                  <dd class="govuk-summary-list__value">{% if row.href %}<a class="govuk-link" href="{{ row.href }}">{{ row.text }}</a>{% else %}{{ row.text }}{% endif %}</dd>
+                </div>
+              {% endfor %}
+            </dl>
+          </div>
 
 
           {# The contents pane: the whole guide or a section at a time, then
@@ -184,38 +210,6 @@
       </div>
     </div>
 
-    <form id="guide-panel-toggle-form" method="post" action="/guides/panel-toggle" hidden>
-      <input type="hidden" name="collapsed" value="{{ 'false' if panelCollapsed else 'true' }}">
-      <input type="hidden" name="returnTo" value="{{ returnTo }}">
-    </form>
-
-    <aside class="app-guide-panel{{ ' app-guide-panel--collapsed' if panelCollapsed }}" aria-label="About this guide">
-      {% if panelCollapsed %}
-        <nav class="app-side-nav app-side-nav--rail" aria-label="About this guide">
-          <ul class="app-side-nav__rail-list">
-            <li>
-              <button type="submit" form="guide-panel-toggle-form" class="app-side-nav__rail-item" aria-expanded="false" data-side-nav-tooltip>
-                {{ icon("collapse") }}
-                <span class="app-side-nav__rail-label">Show guide details</span>
-                <span class="app-side-nav__tooltip" aria-hidden="true">Show guide details</span>
-              </button>
-            </li>
-          </ul>
-        </nav>
-      {% else %}
-        <div class="app-guide-panel__header">
-          <h2 class="govuk-heading-s govuk-!-margin-bottom-0">About this guide</h2>
-          <button type="submit" form="guide-panel-toggle-form" class="app-side-nav__icon-button" aria-controls="guide-panel-body" aria-expanded="true">
-            {{ icon("expand") }}
-            <span class="govuk-visually-hidden">Hide guide details</span>
-          </button>
-        </div>
-
-        <div class="app-guide-panel__body" id="guide-panel-body">
-          {% include "guide/partials/metadata-list.njk" %}
-        </div>
-      {% endif %}
-    </aside>
   </div>
 {% endblock %}
 

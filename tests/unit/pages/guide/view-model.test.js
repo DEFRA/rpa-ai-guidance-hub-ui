@@ -1,5 +1,5 @@
 import {
-  buildMetadataRows,
+  buildInfoRows,
   GuideViewModel
 } from '../../../../src/pages/guide/view-model.js'
 
@@ -45,7 +45,6 @@ function build (overrides = {}) {
     pageNumber: 2,
     readingWidth: 'wide',
     returnTo: '/guides/guide-1?section=assign-case',
-    metadataRows: [],
     // A section at a time, which most of what follows is about.
     format: 'stepper',
     ...overrides
@@ -101,11 +100,6 @@ describe('GuideViewModel', () => {
 
   test('is not through a guide with no sections', () => {
     expect(build({ sections: [], pageNumber: 1 }).progressPercentage).toBe(0)
-  })
-
-  test('has the panel open unless it is collapsed', () => {
-    expect(build().panelCollapsed).toBe(false)
-    expect(build({ panelCollapsed: true }).panelCollapsed).toBe(true)
   })
 
   test('names the sections either side in the previous and next links', () => {
@@ -225,38 +219,48 @@ describe('GuideViewModel\'s choice of format', () => {
   })
 })
 
-describe('buildMetadataRows', () => {
-  const metadata = {
-    schemes: ['Sustainable Farming Incentive (SFI)'],
-    audience: ['Processor', 'unknown-audience'],
-    systems: ['CRM'],
-    goal: 'Explain the claim.',
-    requirements: 'Know the rules.',
-    owner: 'owner@example.com'
+describe('buildInfoRows', () => {
+  const guide = {
+    lastUpdated: '2026-10-06T08:00:00Z',
+    metadata: {
+      schemes: ['Sustainable Farming Incentive (SFI)', 'Countryside Stewardship'],
+      schemeYear: 2026,
+      owner: 'owner@example.com',
+      goal: 'Explain the claim.',
+      requirements: 'Know the rules.',
+      systems: ['CRM', 'SITI Agri'],
+      audience: ['Processor']
+    }
   }
 
-  test('describes the guide, showing the labels the API sends', () => {
-    expect(buildMetadataRows(metadata)).toEqual([
-      { label: 'Scheme', text: 'Sustainable Farming Incentive (SFI)' },
-      { label: "Who it's for", text: 'Processor, unknown-audience' },
-      { label: 'Systems used', text: 'CRM' },
-      { label: 'Purpose', text: 'Explain the claim.' },
-      { label: 'Required knowledge', text: 'Know the rules.' },
-      { label: 'Owner', text: 'owner@example.com', href: 'mailto:owner%40example.com' }
+  test('describes the guide in the upload\'s order, showing the labels the API sends', () => {
+    expect(buildInfoRows(guide)).toEqual([
+      { label: 'Last modified date', text: '6 October 2026' },
+      { label: 'Scheme', text: 'Sustainable Farming Incentive (SFI), Countryside Stewardship' },
+      { label: 'Scheme year', text: '2026' },
+      { label: 'Owner email', text: 'owner@example.com', href: 'mailto:owner%40example.com' },
+      { label: 'Purpose of guidance', text: 'Explain the claim.' },
+      { label: 'Required knowledge and training', text: 'Know the rules.' },
+      { label: 'Systems', text: 'CRM, SITI Agri' },
+      { label: 'Who is this guidance for?', text: 'Processor' }
     ])
+  })
+
+  test('says what the guide does not say is not provided, with no link for a missing owner', () => {
+    expect(buildInfoRows({ lastUpdated: null, metadata: {} })).toEqual([
+      'Last modified date', 'Scheme', 'Scheme year', 'Owner email', 'Purpose of guidance',
+      'Required knowledge and training', 'Systems', 'Who is this guidance for?'
+    ].map(label => ({ label, text: 'Not provided' })))
   })
 
   test('says a guide with no scheme is not scheme-specific', () => {
-    expect(buildMetadataRows({ schemes: [] })).toEqual([
-      { label: 'Scheme', text: 'Not scheme-specific' }
-    ])
+    expect(buildInfoRows({ metadata: { schemes: [] } })[1]).toEqual({ label: 'Scheme', text: 'Not scheme-specific' })
   })
+})
 
-  test('leaves out what the guide does not say', () => {
-    expect(buildMetadataRows({ goal: 'Only this.', owner: 'a@example.com' })).toEqual([
-      { label: 'Purpose', text: 'Only this.' },
-      { label: 'Owner', text: 'a@example.com', href: 'mailto:a%40example.com' }
-    ])
-    expect(buildMetadataRows(undefined)).toEqual([])
+describe('GuideViewModel\'s information', () => {
+  test('is hidden unless the user chose to show it', () => {
+    expect(build().informationShown).toBe(false)
+    expect(build({ informationShown: true }).informationShown).toBe(true)
   })
 })

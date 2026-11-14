@@ -35,36 +35,6 @@ function _tooltipOf (target) {
 }
 
 /**
- * Keeps the guide panel within the window by setting `--app-side-nav-top` to
- * the part of the page above it that is still on screen.
- * @returns {void}
- */
-function initPanelHeight () {
-  const shell = document.querySelector('.app-shell')
-  const panel = shell?.querySelector('.app-guide-panel')
-
-  if (!panel) {
-    return
-  }
-
-  let frame = null
-
-  const sync = () => {
-    frame = null
-    const top = Math.max(0, panel.getBoundingClientRect().top)
-
-    shell.style.setProperty('--app-side-nav-top', `${top}px`)
-  }
-  const requestSync = () => {
-    frame ??= window.requestAnimationFrame(sync)
-  }
-
-  window.addEventListener('scroll', requestSync, { passive: true })
-  window.addEventListener('resize', requestSync)
-  sync()
-}
-
-/**
  * Marks guide images as `is-loaded` so the styles can reserve space for the
  * ones still loading.
  * @returns {void}
@@ -96,4 +66,4 @@ function initGuideImages () {
   })
 }
 
-export { initGuideImages, initPanelHeight, initRailTooltips }
+export { initGuideImages, initRailTooltips }

@@ -59,9 +59,9 @@ function fallbackOf (page) {
   return pagesOf(page).find((guidePage) => !guidePage.hidden).querySelector('.app-guide-markdown__fallback')
 }
 
-/** The guide's About this guide panel, found as a screen reader finds it. */
-function panelOf (page) {
-  return page.getByRole('complementary', { name: 'About this guide' })
+/** The guide's information, which its button beside the title shows and hides. */
+function informationOf (page) {
+  return page.document.getElementById(page.getByRole('button', { name: 'Guide information' }).getAttribute('aria-controls'))
 }
 
 describe('#guideController', () => {
@@ -274,13 +274,12 @@ describe('#guideController', () => {
     test('describes the guide, with its owner as a link', async () => {
       mockGuide()
 
-      const panel = panelOf(await guideAt())
+      const information = informationOf(await guideAt())
 
-      expect(within(panel).getByRole('heading', { name: 'About this guide' })).toBeInTheDocument()
-      expect(panel).toHaveTextContent('Sustainable Farming Incentive (SFI)')
-      expect(panel).toHaveTextContent('Processor')
-      expect(panel).toHaveTextContent('CRM')
-      expect(within(panel).getByRole('link')).toHaveAttribute('href', 'mailto:owner%40example.com')
+      expect(information).toHaveTextContent('Sustainable Farming Incentive (SFI)')
+      expect(information).toHaveTextContent('Processor')
+      expect(information).toHaveTextContent('CRM')
+      expect(within(information).getByRole('link', { hidden: true })).toHaveAttribute('href', 'mailto:owner%40example.com')
     })
 
     test('does not offer to change the guide', async () => {
@@ -561,11 +560,11 @@ describe('#guideController', () => {
   })
 
   describe('the page shell', () => {
-    test('runs the full width, with the panel as a column of the shell beside the reading column', async () => {
+    test('runs the full width, the shell holding the reading column', async () => {
       mockGuide()
 
       const page = await guideAt()
-      const shell = panelOf(page).parentElement
+      const shell = page.document.querySelector('main .app-shell')
 
       expect(within(page.document.body).getByRole('contentinfo').firstElementChild).toHaveClass('app-width-container--bleed')
       expect(page.document.querySelector('main')).toHaveClass('app-main-wrapper--bleed')
@@ -580,34 +579,6 @@ describe('#guideController', () => {
 
       expect(contents.closest('.app-guide-contents').parentElement).toHaveClass('app-guide-reading', 'app-guide-reading--standard')
     })
-
-    test('lists the guide\'s answers in the panel as the prototype\'s metadata list', async () => {
-      mockGuide()
-
-      const panel = within(panelOf(await guideAt()))
-
-      expect(panel.getAllByRole('term').map((term) => term.parentElement)).toEqual(panel.getAllByRole('definition').map((definition) => definition.parentElement))
-      expect(panel.getAllByRole('term')[0].parentElement).toHaveClass('app-guide-metadata-list__row')
-      expect(panel.getByRole('button', { name: 'Hide guide details' })).toHaveClass('app-side-nav__icon-button')
-    })
-
-    test('shows the collapsed panel as the prototype\'s rail, its button named and with a tooltip', async () => {
-      const { cookie: collapsedCookie } = await server.inject({
-        method: 'POST',
-        url: '/guides/panel-toggle',
-        headers: { cookie },
-        payload: { collapsed: 'true', returnTo: GUIDE_URL }
-      }).then(response => ({ cookie: mergeCookies(cookie, response.headers['set-cookie']) }))
-      mockGuide()
-
-      const panel = within(panelOf(await guideAt(GUIDE_URL, { cookie: collapsedCookie })))
-      const show = panel.getByRole('button', { name: 'Show guide details' })
-
-      expect(panel.getByRole('navigation', { name: 'About this guide' })).toHaveClass('app-side-nav', 'app-side-nav--rail')
-      expect(show).toHaveClass('app-side-nav__rail-item')
-      expect(show).toHaveAttribute('data-side-nav-tooltip')
-      expect(within(show).getByText('Show guide details', { selector: '.app-side-nav__tooltip' })).toHaveAttribute('aria-hidden', 'true')
-    })
   })
 
   describe('the page banner', () => {
@@ -618,71 +589,6 @@ describe('#guideController', () => {
 
       expect(sideNavOf(page).getByRole('button', { name: 'Collapse navigation' })).toBeInTheDocument()
       expect(within(page.document.body).queryByRole('banner')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('the About this guide panel', () => {
-    async function togglePanel (collapsed) {
-      const response = await server.inject({
-        method: 'POST',
-        url: '/guides/panel-toggle',
-        headers: { cookie },
-        payload: { collapsed, returnTo: `${GUIDE_URL}?section=assign-case` }
-      })
-
-      return { response, cookie: mergeCookies(cookie, response.headers['set-cookie']) }
-    }
-
-    test('is open, offering to hide the details', async () => {
-      mockGuide()
-
-      const page = await guideAt()
-      const panel = panelOf(page)
-      const hide = within(panel).getByRole('button', { name: 'Hide guide details' })
-
-      expect(page.document.getElementById('guide-panel-body')).toBeInTheDocument()
-      expect(hide).toHaveAttribute('aria-expanded', 'true')
-      expect(hide).toHaveAttribute('aria-controls', 'guide-panel-body')
-      expect(panel).not.toHaveClass('app-guide-panel--collapsed')
-    })
-
-    test('folds away to a rail that offers to show the details, and open again', async () => {
-      const { response, cookie: collapsed } = await togglePanel('true')
-
-      expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(response.headers.location).toBe(`${GUIDE_URL}?section=assign-case`)
-
-      mockGuide()
-      const rail = await guideAt(GUIDE_URL, { cookie: collapsed })
-
-      expect(panelOf(rail)).toHaveClass('app-guide-panel--collapsed')
-      expect(within(panelOf(rail)).getByRole('button', { name: 'Show guide details' })).toHaveAttribute('aria-expanded', 'false')
-      expect(rail.document.getElementById('guide-panel-body')).toBeNull()
-      expect(rail.document.body).not.toHaveTextContent('example.com')
-      expect(rail.document.querySelector('a[href*="example.com"]')).toBeNull()
-
-      const reopened = await togglePanel('false')
-      mockGuide()
-      const open = await guideAt(GUIDE_URL, { cookie: reopened.cookie })
-
-      expect(open.document.getElementById('guide-panel-body')).toBeInTheDocument()
-    })
-
-    test('does not go to another site', async () => {
-      const response = await server.inject({
-        method: 'POST',
-        url: '/guides/panel-toggle',
-        headers: { cookie },
-        payload: { collapsed: 'true', returnTo: 'https://evil.example' }
-      })
-
-      expect(response.headers.location).toBe('/hub')
-    })
-
-    test('refuses something that is not true or false', async () => {
-      const { response } = await togglePanel('maybe')
-
-      expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
     })
   })
 
@@ -708,7 +614,7 @@ describe('#guideController', () => {
       const page = await guideAt(GUIDE_URL, { cookie: updated })
       const widths = within(page.getByRole('group', { name: 'Page width' }))
 
-      expect(page.getByRole('heading', { level: 1 }).parentElement).toHaveClass('app-guide-reading--wide')
+      expect(page.getByRole('heading', { level: 1 }).closest('.app-guide-reading')).toHaveClass('app-guide-reading--wide')
       expect(widths.getByRole('button', { name: 'Wide' })).toHaveAttribute('aria-pressed', 'true')
       expect(widths.getByRole('button', { name: 'Standard' })).toHaveAttribute('aria-pressed', 'false')
     })
@@ -765,8 +671,7 @@ describe('#guideController', () => {
     test.each([
       ['GET', GUIDE_URL],
       ['GET', `${GUIDE_URL}/assets/abc123.png`],
-      ['POST', '/guides/reading-width'],
-      ['POST', '/guides/panel-toggle']
+      ['POST', '/guides/reading-width']
     ])('redirects %s %s to the home page', async (method, url) => {
       const { statusCode, headers } = await server.inject({ method, url })
 
