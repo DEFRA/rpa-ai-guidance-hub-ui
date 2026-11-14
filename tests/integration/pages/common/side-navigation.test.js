@@ -197,7 +197,7 @@ describe('Side navigation', () => {
 
       expect(second).toHaveAttribute('data-reorder-id', `${SECOND}/${SECTION}`)
       expect(second).toHaveAttribute('data-reorder-label', '2 Close it, in Closing a case')
-      expect(secondLink).toHaveAttribute('href', `/guides/${SECOND}?section=2-close-it`)
+      expect(secondLink).toHaveAttribute('href', `/guides/${SECOND}?section=2-close-it#2-close-it`)
       expect(secondLink).toHaveTextContent('2 Close it, in Closing a case')
       expect(within(secondLink).getByText('Closing a case')).toHaveClass('app-side-nav__in-guide')
       expect(firstLink).toHaveTextContent(/^Claiming a payment$/)
@@ -360,8 +360,8 @@ describe('Side navigation', () => {
       expect(shown).toEqual([['Case', 'W7654321', '1 guide'], ['SBI', '123456789', '0 guides']])
       expect(links).toEqual([
         ['Claiming a payment', `/guides/${GUIDE}`],
-        ['1.1 Before you begin', `/guides/${GUIDE}?section=11-before-you-begin`],
-        ['2 Assign case', `/guides/${GUIDE}?section=2-assign-case`]
+        ['1.1 Before you begin', `/guides/${GUIDE}?section=11-before-you-begin#11-before-you-begin`],
+        ['2 Assign case', `/guides/${GUIDE}?section=2-assign-case#2-assign-case`]
       ])
     })
 

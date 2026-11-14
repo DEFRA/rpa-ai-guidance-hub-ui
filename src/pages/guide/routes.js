@@ -2,6 +2,7 @@ import Boom from '@hapi/boom'
 import Joi from 'joi'
 
 import * as guideController from './controller.js'
+import { GUIDE_FORMATS } from './format.js'
 import { READING_WIDTHS } from './reading-width.js'
 
 // A malformed address is a guide that doesn't exist, not a bad request.
@@ -39,17 +40,31 @@ const routes = [
   },
   {
     method: 'POST',
-    path: '/guides/panel-toggle',
+    path: '/guides/format',
     options: {
       validate: {
         payload: Joi.object({
-          collapsed: Joi.boolean().required(),
+          format: Joi.string().valid(...GUIDE_FORMATS.map(option => option.value)).required(),
           returnTo: Joi.string().allow('').default('')
         }),
         failAction: () => { throw Boom.badRequest() }
       }
     },
-    handler: guideController.postPanelToggle
+    handler: guideController.postFormat
+  },
+  {
+    method: 'POST',
+    path: '/guides/information',
+    options: {
+      validate: {
+        payload: Joi.object({
+          shown: Joi.boolean().required(),
+          returnTo: Joi.string().allow('').default('')
+        }),
+        failAction: () => { throw Boom.badRequest() }
+      }
+    },
+    handler: guideController.postInformation
   },
   {
     method: 'GET',

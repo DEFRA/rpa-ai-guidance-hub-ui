@@ -5,91 +5,136 @@ import { caseGuidesHref } from '../common/case-guides-href.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { versionTag } from '../common/version-tag.js'
 import { CONTENTS_WIDTH } from './contents-width.js'
+import { GUIDE_FORMATS } from './format.js'
 import { READING_WIDTHS } from './reading-width.js'
 
 const UNTITLED = 'Untitled guide'
+const NOT_PROVIDED = 'Not provided'
+const TRADITIONAL = 'traditional'
+
+// The top of the page's own content (the GOV.UK template's `main`), where a
+// section without a heading of its own begins.
+const TOP_OF_GUIDE = '#main-content'
 
 /**
- * @typedef {Object} MetadataRow
+ * @typedef {Object} InfoRow
  * @property {string} label
  * @property {string} text
- * @property {string} href - Always a `mailto:` link for the owner's email address
+ * @property {string} [href] - Only the owner's: a `mailto:` link
  */
 
 /**
- * @private
- * @param {string[]} values
- * @returns {string}
- */
-function _list (values) {
-  return values.join(', ')
-}
-
-/**
- * The "About this guide" rows: only the ones the guide has answers for.
+ * The guide's information, under its title: every row, named and in the
+ * order of the upload journey's check answers page, as the milestone spike
+ * has them.
  *
- * @param {Object} metadata - What the guide's author said about it. The
- *   API sends the scheme, audience and system fields as display labels.
- * @returns {MetadataRow[]}
+ * @param {Object} [guide]
+ * @param {string|null} [guide.lastUpdated]
+ * @param {Object} [guide.metadata] - What the guide's author said about it.
+ *   The API sends the scheme, audience and system fields as display labels,
+ *   and the scheme year as a number.
+ * @returns {InfoRow[]} "Not provided" in each row the guide says nothing for
  */
-function buildMetadataRows (metadata = {}) {
+function buildInfoRows ({ lastUpdated, metadata = {} } = {}) {
   return [
-    _schemesRow(metadata.schemes),
-    _listRow("Who it's for", metadata.audience),
-    _listRow('Systems used', metadata.systems),
-    _textRow('Purpose', metadata.goal),
-    _textRow('Required knowledge', metadata.requirements),
-    _ownerRow(metadata.owner)
-  ].filter(Boolean)
+    _infoRow('Last modified date', formatIsoDate(lastUpdated)),
+    _infoRow('Scheme', _schemesText(metadata.schemes)),
+    _infoRow('Scheme year', metadata.schemeYear?.toString()),
+    _ownerRow(metadata.owner),
+    _infoRow('Purpose of guidance', metadata.goal),
+    _infoRow('Required knowledge and training', metadata.requirements),
+    _infoRow('Systems', _listText(metadata.systems)),
+    _infoRow('Who is this guidance for?', _listText(metadata.audience))
+  ]
 }
 
 /**
  * @private
  * @param {string} label
- * @param {string[]} [values]
- * @returns {MetadataRow|null} Null when there are no values
+ * @param {string|null} [text]
+ * @returns {InfoRow}
  */
-function _listRow (label, values) {
-  return values?.length > 0 ? { label, text: _list(values) } : null
+function _infoRow (label, text) {
+  return { label, text: text || NOT_PROVIDED }
+}
+
+/**
+ * @private
+ * @param {string[]} [values]
+ * @returns {string|null} Null when there are no values
+ */
+function _listText (values) {
+  return values?.length > 0 ? values.join(', ') : null
 }
 
 /**
  * @private
  * @param {string[]} [schemes]
- * @returns {MetadataRow|null} "Not scheme-specific" for a guide with none,
- *   which is what it was uploaded as; null when it does not say
+ * @returns {string|null} "Not scheme-specific" for a guide with none, which
+ *   is what it was uploaded as; null when it does not say
  */
-function _schemesRow (schemes) {
-  return schemes?.length === 0
-    ? { label: 'Scheme', text: NOT_SCHEME_SPECIFIC }
-    : _listRow('Scheme', schemes)
-}
-
-/**
- * @private
- * @param {string} label
- * @param {string} [text]
- * @returns {MetadataRow|null} Null when there is no text
- */
-function _textRow (label, text) {
-  return text ? { label, text } : null
+function _schemesText (schemes) {
+  return schemes?.length === 0 ? NOT_SCHEME_SPECIFIC : _listText(schemes)
 }
 
 /**
  * @private
  * @param {string} [owner]
- * @returns {MetadataRow|null} Null when there is no owner
+ * @returns {InfoRow} A link to email the owner, when the guide names one
  */
 function _ownerRow (owner) {
-  if (!owner) {
-    return null
-  }
+  return owner
+    ? { label: 'Owner email', text: owner, href: `mailto:${encodeURIComponent(owner)}` }
+    : _infoRow('Owner email', null)
+}
 
-  return {
-    label: 'Owner',
-    text: owner,
-    href: `mailto:${encodeURIComponent(owner)}`
-  }
+/**
+ * The contents list. In the traditional view every section is on the page,
+ * so each entry goes to its heading and none is current; in the stepper each
+ * section is a page of its own.
+ *
+ * @private
+ * @param {import('../../services/guide-sections.js').GuideSection[]} sections
+ * @param {number} pageNumber
+ * @param {boolean} isTraditional
+ * @param {(page: number) => string} href - The address of a page
+ * @returns {Array<{title: string, href: string, anchor: string, section: string, isCurrent: boolean, subheadings: Array<{title: string, href: string, anchor: string, section: string}>}>}
+ *   Each entry with the anchor of the heading it goes to on the page, and the
+ *   anchor the stepper's `section` names it by, for the scripts that follow
+ *   the reader and take them to a copied address (guide-contents.js). The two
+ *   can differ, as the hub numbers repeated headings differently from the
+ *   page. None for a section without a heading
+ */
+function _contents (sections, pageNumber, isTraditional, href) {
+  return sections.map((section, index) => {
+    const isCurrent = !isTraditional && index + 1 === pageNumber
+    const isOnThePage = isTraditional || isCurrent
+
+    return {
+      title: section.title,
+      href: isTraditional ? _headingHref(section.slug) : href(index + 1),
+      anchor: section.slug ?? '',
+      section: section.sectionAnchor ?? section.slug ?? '',
+      isCurrent,
+      // On the page already, a heading's link need only scroll to it.
+      subheadings: (section.subheadings ?? []).map(subheading => ({
+        title: subheading.title,
+        href: `${isOnThePage ? '' : href(index + 1)}#${subheading.slug}`,
+        anchor: subheading.slug,
+        section: section.headingSectionAnchors[section.headingIds.indexOf(subheading.slug)] ?? subheading.slug
+      }))
+    }
+  })
+}
+
+/**
+ * @private
+ * @param {string|null} slug - A section's heading's anchor
+ * @returns {string} A link to the heading on this page, or to the top of the
+ *   guide for a section without one
+ */
+function _headingHref (slug) {
+  return slug ? `#${slug}` : TOP_OF_GUIDE
 }
 
 /**
@@ -114,9 +159,9 @@ function _bookmarkAdded (bookmarked, cases) {
 }
 
 /**
- * GuideViewModel - One section of a guide, with the page furniture around
- * it: byline, contents, previous and next links, and the "About this
- * guide" rows.
+ * GuideViewModel - A guide, whole or a section at a time, with the page
+ * furniture around it: byline, contents, the format and width controls,
+ * previous and next links, and the guide's information.
  */
 class GuideViewModel {
   /**
@@ -126,9 +171,6 @@ class GuideViewModel {
    * @param {number} data.pageNumber - Already within 1..sections.length
    * @param {string} data.readingWidth
    * @param {string} data.returnTo - Where the width form sends the user back to
-   * @param {MetadataRow[]} data.metadataRows
-   * @param {boolean} [data.panelCollapsed] - Whether the "About this guide"
-   *   panel is folded away to its rail
    * @param {{pinned: boolean, position: number|null}|null} [data.pin] - The
    *   guide among the user's pins, for its Pin guide button; null when not known
    * @param {Map<string, {position: number, sectionId: string, key: string}>|null} [data.pinnedSections]
@@ -138,9 +180,15 @@ class GuideViewModel {
    *   sections bookmarked to it; null when not known
    * @param {{guideId: string, type: string, ref: string, heading: string}} [data.bookmarked]
    *   - A section just bookmarked, to say so once
+   * @param {string} data.format - One of `GUIDE_FORMATS`' values
+   * @param {InfoRow[]} [data.infoRows] - The guide's information, under
+   *   its title
+   * @param {boolean} [data.informationShown] - Whether the user chose to show
+   *   it
    */
-  constructor ({ guide, sections, pageNumber, readingWidth, returnTo, metadataRows, panelCollapsed = false, pin = null, pinnedSections = null, cases = null, bookmarked }) {
-    const href = page => GuideViewModel.pageHref(guide.id, page)
+  constructor ({ guide, sections, pageNumber, readingWidth, returnTo, pin = null, pinnedSections = null, cases = null, bookmarked, format, infoRows = [], informationShown = false }) {
+    const href = page => GuideViewModel.pageHref(guide.id, sections[page - 1])
+    const isTraditional = format === TRADITIONAL
     const adjacent = (page) => {
       const section = sections[page - 1]
 
@@ -157,20 +205,7 @@ class GuideViewModel {
     this.totalPages = sections.length
     // How far through the guide the reader is, by page count.
     this.progressPercentage = sections.length === 0 ? 0 : Math.round(pageNumber / sections.length * 100)
-    this.contents = sections.map((section, index) => {
-      const isCurrent = index + 1 === pageNumber
-
-      return {
-        title: section.title,
-        href: href(index + 1),
-        isCurrent,
-        // On the page already, a heading's link need only scroll to it.
-        subheadings: (section.subheadings ?? []).map(subheading => ({
-          title: subheading.title,
-          href: `${isCurrent ? '' : href(index + 1)}#${subheading.slug}`
-        }))
-      }
-    })
+    this.contents = _contents(sections, pageNumber, isTraditional, href)
     const bookmarkedTo = bookmarkedSections(cases ?? [], guide.id)
     // By the anchor the hub knows the section by, which is not always the
     // heading's anchor on the page (`slug`).
@@ -182,23 +217,24 @@ class GuideViewModel {
         }
       : null
 
-    // Every section is on the page, the others hidden until the browser's
-    // find-in-page reaches into one. Each heading the hub gives a section ID
-    // has its star, which pins its section, and its bookmark control; one in a
-    // quote or a list has neither.
+    // Every section is on the page. In the stepper the others are hidden until
+    // the browser's find-in-page reaches into one. Each heading the hub gives a
+    // section ID has its star, which pins its section, and its bookmark
+    // control; one in a quote or a list has neither.
     this.pages = sections.map((section, index) => ({
       pageNumber: index + 1,
+      href: href(index + 1),
       section,
       bookmark: bookmarkOf(section.sectionAnchor, section.slug),
       headingBookmarks: section.headingSectionAnchors.map((anchor, at) => bookmarkOf(anchor, section.headingIds[at])),
       isCurrent: index + 1 === pageNumber,
+      isShown: isTraditional || index + 1 === pageNumber,
       progressPercentage: Math.round((index + 1) / sections.length * 100),
       previous: adjacent(index),
       next: adjacent(index + 2)
     }))
     this.previous = adjacent(pageNumber - 1)
     this.next = adjacent(pageNumber + 1)
-    this.metadataRows = metadataRows
     this.readingWidth = readingWidth
     this.readingWidths = READING_WIDTHS
     // The contents column's width, which its handle can change, and the
@@ -208,20 +244,36 @@ class GuideViewModel {
     this.returnTo = returnTo
     this.pin = pin
     this.bookmarkAdded = bookmarked?.guideId === guide.id ? _bookmarkAdded(bookmarked, cases ?? []) : null
-    this.panelCollapsed = panelCollapsed
+    this.infoRows = infoRows
+    this.informationShown = informationShown
+    this.format = format
+    this.formats = GUIDE_FORMATS.map(option => ({ ...option, isChosen: option.value === format }))
+    // Where changing the format takes the reader: the page the address names,
+    // at its heading. Each format reads the part it needs: the stepper the
+    // page, the traditional view the heading.
+    const heading = this.section?.slug ? `#${this.section.slug}` : ''
+    this.place = `${href(pageNumber)}${heading}`
   }
 
   /**
+   * A page of the guide in the stepper: the guide's own address, naming the
+   * page's section by its anchor - the hub's, or, for a heading the hub gives
+   * none, the heading's on the page. Just the guide's own address for a first
+   * section without a heading of its own.
+   *
    * @param {string} guideId
-   * @param {number} page
+   * @param {import('../../services/guide-sections.js').GuideSection} [section]
    * @returns {string}
    */
-  static pageHref (guideId, page) {
-    return `/guides/${encodeURIComponent(guideId)}?page=${page}`
+  static pageHref (guideId, section) {
+    const anchor = section?.sectionAnchor ?? section?.slug
+    const query = anchor ? `?section=${encodeURIComponent(anchor)}` : ''
+
+    return `/guides/${encodeURIComponent(guideId)}${query}`
   }
 }
 
 export {
-  buildMetadataRows,
+  buildInfoRows,
   GuideViewModel
 }

@@ -13,14 +13,18 @@ const guide = {
 
 const markdown = '## One\n\nFirst.\n\n## Two\n\nSecond.\n\n## Three\n\nThird.'
 
-function createRequest ({ query = {}, payload, stored } = {}) {
-  const session = new Map(stored ? [['guide-reading-width', stored]] : [])
+function createRequest ({ query = {}, payload, stored, format, informationShown } = {}) {
+  const session = new Map([
+    ...(stored ? [['guide-reading-width', stored]] : []),
+    ...(format ? [['guide-format', format]] : []),
+    ...(informationShown === undefined ? [] : [['guide-information-shown', informationShown]])
+  ])
 
   return {
     params: { guideId: 'guide-1', name: 'abc.png' },
     query,
     payload,
-    url: { pathname: '/guides/guide-1', search: '?page=2' },
+    url: { pathname: '/guides/guide-1', search: '?section=two' },
     yar: { get: key => session.get(key), set: (key, value) => session.set(key, value), flash: () => [], session }
   }
 }
@@ -76,8 +80,8 @@ describe('guide controller', () => {
       expect(usersService.recordOpened).toHaveBeenCalledWith(request, 'guide-1')
     })
 
-    test('records the guide as opened when a direct link names a page', async () => {
-      const request = createRequest({ query: { page: '2' } })
+    test('records the guide as opened when a link names one of its sections', async () => {
+      const request = createRequest({ query: { section: 'two' } })
 
       await controller.getGuidePage(request, h)
 
@@ -92,29 +96,69 @@ describe('guide controller', () => {
     })
 
     test('renders the section asked for, and the chosen width', async () => {
-      const request = createRequest({ query: { page: '2' }, stored: 'full' })
+      const request = createRequest({ query: { section: 'two' }, stored: 'full' })
 
       await controller.getGuidePage(request, h)
 
       expect(h.view.mock.calls[0][1]).toMatchObject({
-        panelCollapsed: false,
         pageNumber: 2,
         readingWidth: 'full',
-        returnTo: '/guides/guide-1?page=2'
+        returnTo: '/guides/guide-1?section=two'
       })
     })
 
     test.each([
-      ['0', 1],
-      ['-4', 1],
-      ['99', 3],
-      ['abc', 1],
-      [undefined, 1],
-      ['2.9', 2]
-    ])('shows page %j as page %i', async (page, expected) => {
-      await controller.getGuidePage(createRequest({ query: { page } }), h)
+      [undefined, 'traditional'],
+      ['stepper', 'stepper']
+    ])('shows the guide in the format chosen, whole until one is (%j)', async (format, shown) => {
+      await controller.getGuidePage(createRequest({ format }), h)
+
+      expect(h.view.mock.calls[0][1].format).toBe(shown)
+    })
+
+    test.each([
+      ['two', 2],
+      ['never', 1],
+      [undefined, 1]
+    ])('shows the page with section %j as page %i, without sending the reader on', async (section, expected) => {
+      await controller.getGuidePage(createRequest({ query: { section } }), h)
 
       expect(h.view.mock.calls[0][1].pageNumber).toBe(expected)
+      expect(h.redirect).not.toHaveBeenCalled()
+    })
+
+    test('shows the page that has a heading inside one of its sections', async () => {
+      guidesService.getGuideContent.mockResolvedValue({ markdown: '## One\n\nFirst.\n\n## Two\n\n### 2.1 Deep\n\nSecond.' })
+
+      await controller.getGuidePage(createRequest({ query: { section: '21-deep' } }), h)
+
+      expect(h.view.mock.calls[0][1].pageNumber).toBe(2)
+    })
+
+    test.each([
+      [undefined, false],
+      [true, true]
+    ])('shows the guide\'s information as the user chose (%j)', async (informationShown, shown) => {
+      await controller.getGuidePage(createRequest({ informationShown }), h)
+
+      expect(h.view.mock.calls[0][1].informationShown).toBe(shown)
+    })
+
+    test('takes a repeated heading by the hub\'s anchor, which the page numbers differently, as the contents name it', async () => {
+      // The title is counted by the page and not by the hub, so the first
+      // `### Help` is `help-1` on the page and `help` to the hub.
+      guidesService.getGuideContent.mockResolvedValue({ markdown: '# Help\n\n## One\n\n### Help\n\n## Two\n\n### Help' })
+
+      await controller.getGuidePage(createRequest({ query: { section: 'help' } }), h)
+      await controller.getGuidePage(createRequest({ query: { section: 'help-1' } }), h)
+
+      expect(h.view.mock.calls.map(([, viewModel]) => viewModel.pageNumber)).toEqual([1, 2])
+    })
+
+    test('ignores a page number in the address', async () => {
+      await controller.getGuidePage(createRequest({ query: { page: '2' } }), h)
+
+      expect(h.view.mock.calls[0][1].pageNumber).toBe(1)
     })
 
     test.each([
@@ -148,22 +192,36 @@ describe('guide controller', () => {
     })
   })
 
-  describe('postPanelToggle', () => {
-    test('remembers the panel as collapsed, and goes back to the page', () => {
-      const request = createRequest({ payload: { collapsed: true, returnTo: '/guides/guide-1?page=2' } })
+  describe('postInformation', () => {
+    test.each([[true], [false]])('remembers the information as shown %s, and goes back to the page', (shown) => {
+      const request = createRequest({ payload: { shown, returnTo: '/guides/guide-1?section=two' } })
 
-      controller.postPanelToggle(request, h)
+      controller.postInformation(request, h)
 
-      expect(request.yar.session.get('guide-panel-collapsed')).toBe(true)
-      expect(h.redirect).toHaveBeenCalledWith('/guides/guide-1?page=2')
+      expect(request.yar.session.get('guide-information-shown')).toBe(shown)
+      expect(h.redirect).toHaveBeenCalledWith('/guides/guide-1?section=two')
     })
 
-    test('remembers the panel as open', () => {
-      const request = createRequest({ payload: { collapsed: false, returnTo: '' } })
+    test.each([[''], ['https://evil.example']])('goes to the hub instead of %j', (returnTo) => {
+      controller.postInformation(createRequest({ payload: { shown: true, returnTo } }), h)
 
-      controller.postPanelToggle(request, h)
+      expect(h.redirect).toHaveBeenCalledWith('/hub')
+    })
+  })
 
-      expect(request.yar.session.get('guide-panel-collapsed')).toBe(false)
+  describe('postFormat', () => {
+    test('remembers the format and goes back to the reader\'s place', () => {
+      const request = createRequest({ payload: { format: 'stepper', returnTo: '/guides/guide-1?page=2#two' } })
+
+      controller.postFormat(request, h)
+
+      expect(request.yar.session.get('guide-format')).toBe('stepper')
+      expect(h.redirect).toHaveBeenCalledWith('/guides/guide-1?page=2#two')
+    })
+
+    test.each([[''], ['https://evil.example'], ['//evil.example']])('goes to the hub instead of %j', (returnTo) => {
+      controller.postFormat(createRequest({ payload: { format: 'traditional', returnTo } }), h)
+
       expect(h.redirect).toHaveBeenCalledWith('/hub')
     })
   })

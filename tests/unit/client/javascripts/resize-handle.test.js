@@ -134,12 +134,12 @@ describe('the side navigation\'s resize handle', () => {
   })
 })
 
-describe('the contents column\'s resize handle', () => {
-  /** A guide's reading column, its contents and their handle, as `guide/page.njk` makes them. */
+describe('the contents pane\'s resize handle', () => {
+  /** A guide's reading column, its contents pane and the pane's handle, as `guide/page.njk` makes them. */
   function render () {
     document.body.innerHTML = `
       <div class="app-guide-reading app-guide-reading--standard">
-        <nav class="app-guide-contents" id="guide:contents" aria-label="Contents"></nav>
+        <div class="app-guide-contents" id="guide:contents"><nav aria-label="Contents"></nav></div>
         <div class="app-guide-contents-resize" role="separator" aria-orientation="vertical"
           aria-label="Resize contents" aria-controls="guide:contents"
           aria-valuemin="240" aria-valuemax="560" aria-valuenow="340" aria-valuetext="340 pixels wide"
@@ -158,7 +158,7 @@ describe('the contents column\'s resize handle', () => {
     document.body.innerHTML = ''
   })
 
-  test('shows once the script can move it, and resizes the contents column within its own limits', () => {
+  test('shows once the script can move it, and resizes the contents pane within its own limits', () => {
     const { reading, handle } = render()
 
     fireEvent.keyDown(handle, { key: 'End' })
