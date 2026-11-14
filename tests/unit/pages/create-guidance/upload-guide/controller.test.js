@@ -17,15 +17,12 @@ vi.mock('../../../../../src/pages/create-guidance/session.js', () => ({
 
 import { RESULTS, startMigration, getGuideUploadProgress } from '../../../../../src/pages/create-guidance/service.js'
 import { getGuideUpload, createGuideUpload, addGuideUpload } from '../../../../../src/pages/create-guidance/session.js'
-import { getUploadForm, UPLOAD_MESSAGES } from '../../../../../src/pages/create-guidance/upload-guide/controller.js'
+import { getUploadForm } from '../../../../../src/pages/create-guidance/upload-guide/controller.js'
+import { UPLOAD_MESSAGES } from '../../../../fixtures/messages.js'
 
 const UPLOAD_GUIDANCE_VIEW = 'create-guidance/upload-guide/page.njk'
 
 describe('uploadGuideController', () => {
-  test('says the upload is done already in these words', () => {
-    expect(UPLOAD_MESSAGES).toEqual({ alreadyUploaded: 'You have already uploaded a document for this guide' })
-  })
-
   let request, h, code
 
   beforeEach(() => {

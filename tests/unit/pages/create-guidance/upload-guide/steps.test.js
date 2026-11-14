@@ -1,17 +1,7 @@
-import { getStepState, STATUS_IDS, STEPS, UPLOAD_STEP_MESSAGES } from '../../../../../src/pages/create-guidance/upload-guide/steps.js'
+import { getStepState, STATUS_IDS, STEPS } from '../../../../../src/pages/create-guidance/upload-guide/steps.js'
+import { UPLOAD_STEP_MESSAGES } from '../../../../fixtures/messages.js'
 
 describe('upload guide steps', () => {
-  test('says why an upload failed in these words', () => {
-    expect(UPLOAD_STEP_MESSAGES).toEqual({
-      notChecked: 'The selected file could not be checked. Upload it again.',
-      notUploaded: 'The selected file could not be uploaded. Upload a different file.',
-      noFile: 'Select a Word document to upload.',
-      notFound: 'Your upload could not be found. Upload the document again.',
-      cannotOpen: 'This file cannot be opened',
-      cannotOpenDetail: 'Check you selected the correct file and that it has not been corrupted, then upload it again. If this keeps happening, contact the support team.'
-    })
-  })
-
   test('lists scanning and parse steps', () => {
     expect(STEPS.map((step) => step.id)).toEqual(['scanning', 'parse'])
   })
@@ -36,16 +26,16 @@ describe('upload guide steps', () => {
     })
 
     test.each([
-      [STATUS_IDS.UPLOADER_FAILED, 'Scan failed'],
-      [STATUS_IDS.UPLOADER_REJECTED, 'File rejected'],
-      [STATUS_IDS.UPLOADER_NO_FILE, 'No file uploaded'],
-      [STATUS_IDS.UPLOADER_MISSING, 'Upload not found']
-    ])('%s is an error state with a user-facing message', (statusId, label) => {
+      [STATUS_IDS.UPLOADER_FAILED, 'Scan failed', UPLOAD_STEP_MESSAGES.notChecked],
+      [STATUS_IDS.UPLOADER_REJECTED, 'File rejected', UPLOAD_STEP_MESSAGES.notUploaded],
+      [STATUS_IDS.UPLOADER_NO_FILE, 'No file uploaded', UPLOAD_STEP_MESSAGES.noFile],
+      [STATUS_IDS.UPLOADER_MISSING, 'Upload not found', UPLOAD_STEP_MESSAGES.notFound]
+    ])('%s is an error state with a user-facing message', (statusId, label, message) => {
       const state = getStepState(statusId)
 
       expect(state.isError).toBe(true)
       expect(state.label).toBe(label)
-      expect(state.message).toEqual(expect.any(String))
+      expect(state.message).toBe(message)
     })
 
     test('parse:failed explains the file could not be opened, with supporting detail', () => {

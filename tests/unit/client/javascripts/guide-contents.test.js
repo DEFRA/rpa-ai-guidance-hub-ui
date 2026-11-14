@@ -102,7 +102,7 @@ describe('a guide\'s contents following the reader', () => {
    */
   function render (tops) {
     document.body.innerHTML = `
-      <div class="app-guide-contents" id="guide-contents" data-guide-format="traditional">
+      <div class="app-guide-contents" id="guide:contents" data-guide-format="traditional">
         <nav aria-label="Contents">
           <p data-guide-contents-page="1"><a href="#introduction" data-guide-contents-target="introduction">Introduction</a></p>
           <p data-guide-contents-page="2"><a href="#assign-case" data-guide-contents-target="assign-case">Assign case</a></p>
@@ -118,11 +118,11 @@ describe('a guide\'s contents following the reader', () => {
       element.getBoundingClientRect = () => ({ top, bottom: top + 30 })
       element.getClientRects = () => [{ top }]
     }
-    document.querySelectorAll('[data-guide-page], nav a, #guide-contents').forEach(element => placeAt(element, 0))
+    document.querySelectorAll('[data-guide-page], nav a, #guide\\:contents').forEach(element => placeAt(element, 0))
     for (const [id, top] of Object.entries(tops)) {
       placeAt(document.getElementById(id), top)
     }
-    document.getElementById('guide-contents').scrollBy = vi.fn()
+    document.getElementById('guide:contents').scrollBy = vi.fn()
 
     initGuideContents()
   }
@@ -160,7 +160,7 @@ describe('a guide\'s contents following the reader', () => {
     // the title too, so the first `### Help` is `help-1` there and `help` to
     // the hub, whose `help-1` is the second.
     document.body.innerHTML = `
-      <div class="app-guide-contents" id="guide-contents" data-guide-format="stepper">
+      <div class="app-guide-contents" id="guide:contents" data-guide-format="stepper">
         <nav aria-label="Contents">
           <p data-guide-contents-page="1"><a href="${GUIDE}?section=one" data-guide-contents-target="one" data-guide-contents-section="one" aria-current="page">One</a></p>
           <ol><li><a href="#help-1" data-guide-contents-target="help-1" data-guide-contents-section="help">Help</a></li></ol>
@@ -175,10 +175,10 @@ describe('a guide\'s contents following the reader', () => {
       element.getBoundingClientRect = () => ({ top, bottom: top + 30 })
       element.getClientRects = () => [{ top }]
     }
-    document.querySelectorAll('[data-guide-page], nav a, #guide-contents').forEach(element => placeAt(element, 0))
+    document.querySelectorAll('[data-guide-page], nav a, #guide\\:contents').forEach(element => placeAt(element, 0))
     placeAt(document.getElementById('one'), -200)
     placeAt(document.getElementById('help-1'), 60)
-    document.getElementById('guide-contents').scrollBy = vi.fn()
+    document.getElementById('guide:contents').scrollBy = vi.fn()
     window.history.replaceState(null, '', `${GUIDE}?section=one`)
 
     initGuideContents()

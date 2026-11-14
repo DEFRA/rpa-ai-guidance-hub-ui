@@ -41,7 +41,7 @@
             {% call govukNotificationBanner({ type: "success" }) %}
               <h3 class="govuk-notification-banner__heading">{{ bookmarkAdded.text }}</h3>
               {% if bookmarkAdded.caseHref %}
-                <p class="govuk-body"><a class="govuk-notification-banner__link" href="{{ bookmarkAdded.caseHref }}">View all guides for this case</a></p>
+                <p class="govuk-body"><a class="govuk-notification-banner__link" href="{{ bookmarkAdded.caseHref }}">View all guides for this case <span class="govuk-visually-hidden">({{ bookmarkAdded.caseName }})</span></a></p>
               {% endif %}
             {% endcall %}
           {% endif %}
@@ -91,7 +91,7 @@
              back there; guide-place.js moves it to where they have scrolled.
              With JavaScript, the contents mark where the reader is, and the
              address follows them (guide-contents.js). #}
-          <div class="app-guide-contents" id="guide-contents" data-guide-format="{{ format }}">
+          <div class="app-guide-contents" id="guide:contents" data-guide-format="{{ format }}">
             <form class="app-guide-format" method="post" action="/guides/format">
               <input type="hidden" name="returnTo" value="{{ place }}" data-guide-place>
               <span class="app-guide-reading-width__label" id="guide-format-label">Guide format</span>
@@ -126,7 +126,7 @@
              screens only: narrower, the contents pane sits above the guide
              pane. #}
           <div class="app-guide-contents-resize" role="separator" aria-orientation="vertical"
-            aria-label="Resize contents" aria-controls="guide-contents"
+            aria-label="Resize contents" aria-controls="guide:contents"
             aria-valuemin="{{ contentsWidthLimits.min }}" aria-valuemax="{{ contentsWidthLimits.max }}"
             aria-valuenow="{{ contentsWidth }}" aria-valuetext="{{ contentsWidth }} pixels wide"
             data-guide-contents-resize data-default-width="{{ contentsWidthLimits.default }}" tabindex="0" hidden></div>
