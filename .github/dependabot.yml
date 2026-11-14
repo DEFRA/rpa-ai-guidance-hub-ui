@@ -23,6 +23,13 @@ updates:
       - dependency-name: 'eslint-*'
       - dependency-name: 'eslint'
 
+      # Bumping stylelint past 17.x is blocked. PR #95 targets stylelint 18.0.0,
+      # but stylelint-config-gds@3.0.0 is pinned to the 17.x range, so stylelint
+      # >= 18.0.0 is ignored. Remove once stylelint-config-gds supports stylelint 18.
+      - dependency-name: stylelint
+        versions:
+          - '>= 18.0.0'
+
     # Schedule run every Monday, local time
     schedule:
       interval: weekly
