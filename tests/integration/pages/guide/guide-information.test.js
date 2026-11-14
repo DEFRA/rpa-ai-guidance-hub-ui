@@ -37,10 +37,10 @@ describe('A guide\'s information', () => {
     await server.stop({ timeout: 0 })
   })
 
-  async function guidePage (cookieToSend = cookie) {
+  async function guidePage (cookieToSend = cookie, markdown = MARKDOWN) {
     nock(GUIDANCE_API_BASE_URL)
       .get(`/guides/${GUIDE_ID}`).reply(statusCodes.HTTP_STATUS_OK, guideResponse({ id: GUIDE_ID }))
-      .get(`/guides/${GUIDE_ID}/content`).reply(statusCodes.HTTP_STATUS_OK, MARKDOWN, { 'Content-Type': 'text/plain' })
+      .get(`/guides/${GUIDE_ID}/content`).reply(statusCodes.HTTP_STATUS_OK, markdown, { 'Content-Type': 'text/plain' })
 
     const { payload } = await server.inject({ method: 'GET', url: GUIDE_URL, headers: { cookie: cookieToSend } })
 
@@ -102,6 +102,18 @@ describe('A guide\'s information', () => {
 
   test('is hidden again once the user hides it', async () => {
     expect(informationOf(await guidePageAfter(true, false))).not.toBeVisible()
+  })
+
+  test('has an ID no heading of the guide can have, so a heading titled "Guide info" keeps its own', async () => {
+    const page = await guidePage(cookie, '# Test guide\n\n## Introduction\n\n### Guide info\n\nText.')
+    const heading = page.getByRole('heading', { name: 'Guide info' })
+    const ids = Array.from(page.document.querySelectorAll('[id]'), element => element.id)
+
+    expect(heading).toHaveAttribute('id', 'guide-info')
+    expect(ids.filter(id => id === 'guide-info')).toHaveLength(1)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(page.document.getElementById('guide-info')).toBe(heading)
+    expect(informationOf(page)).toHaveAttribute('id', 'guide:information')
   })
 
   describe('a choice to show or hide it', () => {

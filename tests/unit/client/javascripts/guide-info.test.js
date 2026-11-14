@@ -12,18 +12,18 @@ describe('a guide\'s information button, with JavaScript', () => {
       <form method="post" action="/guides/information">
         <input type="hidden" name="shown" value="true">
         <input type="hidden" name="returnTo" value="${GUIDE_URL}">
-        <button type="submit" aria-expanded="false" aria-controls="guide-info" data-guide-info-toggle>
+        <button type="submit" aria-expanded="false" aria-controls="guide:information" data-guide-info-toggle>
           <span>Guide information</span>
           <span aria-hidden="true">Guide information</span>
         </button>
       </form>
-      <div id="guide-info" data-guide-info hidden><dl><dt>Scheme</dt><dd>Not provided</dd></dl></div>`
+      <div id="guide:information" data-guide-info hidden><dl><dt>Scheme</dt><dd>Not provided</dd></dl></div>`
 
     initGuideInfo()
 
     return {
       button: screen.getByRole('button', { name: /Guide information/ }),
-      information: document.getElementById('guide-info')
+      information: document.getElementById('guide:information')
     }
   }
 
