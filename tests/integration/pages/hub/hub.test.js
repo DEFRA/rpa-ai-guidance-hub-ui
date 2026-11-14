@@ -490,7 +490,7 @@ describe('#hubController', () => {
       const guideStar = guide.getByRole('button', { name: 'Pin Claiming the SFI payment' })
 
       expect(page.getByRole('heading', { level: 2, name: '2 pins' })).toBeInTheDocument()
-      expect(section.getByRole('link', { name: '1 Pay, in Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${PINNED}?section=1-pay`)
+      expect(section.getByRole('link', { name: '1 Pay, in Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${PINNED}?section=1-pay#1-pay`)
       expect(section.getByText('In Claiming the SFI payment')).toBeInTheDocument()
       expect(sectionStar.form).toHaveAttribute('data-reorder-follows', `${PINNED}/${SECTION}`)
       expect(sectionStar.form).toHaveFormValues({ position: '0', sectionId: SECTION, anchor: 'guide-results' })

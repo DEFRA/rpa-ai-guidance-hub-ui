@@ -16,7 +16,7 @@ const MARKDOWN = '# Claiming the SFI payment\n\n## Introduction\n\nStart here.\n
 // element has no accessible name, so it is found by its label.
 const RESIZE_HANDLE = 'Resize contents'
 
-describe('Resizing a guide\'s contents column', () => {
+describe('Resizing a guide\'s contents pane', () => {
   let server
 
   beforeAll(async () => {
@@ -40,7 +40,7 @@ describe('Resizing a guide\'s contents column', () => {
     await server.stop({ timeout: 0 })
   })
 
-  test('is a handle on the contents column\'s edge, from 240 to 560 pixels wide and 340 at first, hidden until the script can move it', async () => {
+  test('is a handle on the contents pane\'s edge, from 240 to 560 pixels wide and 340 at first, hidden until the script can move it', async () => {
     const cookie = await loginAsDevUser(server)
     const { payload } = await server.inject({ method: 'GET', url: `/guides/${GUIDE_ID}`, headers: { cookie } })
     const page = pageOf(payload)
@@ -50,7 +50,7 @@ describe('Resizing a guide\'s contents column', () => {
 
     expect(handle).toHaveRole('separator')
     expect(handle).toHaveAttribute('aria-orientation', 'vertical')
-    expect(handle).toHaveAttribute('aria-controls', contents.id)
+    expect(page.document.getElementById(handle.getAttribute('aria-controls'))).toContainElement(contents)
     expect(within(contents).getByRole('link', { name: 'Introduction' })).toBeInTheDocument()
     expect(handle).toHaveAttribute('aria-valuemin', '240')
     expect(handle).toHaveAttribute('aria-valuemax', '560')
@@ -72,7 +72,7 @@ describe('Resizing a guide\'s contents column', () => {
 
     const controlled = page.getByLabelText(RESIZE_HANDLE).getAttribute('aria-controls')
 
-    expect(page.getByRole('navigation', { name: 'Contents' })).toHaveAttribute('id', controlled)
+    expect(page.document.getElementById(controlled)).toContainElement(page.getByRole('navigation', { name: 'Contents' }))
     expect(page.document.querySelector('[id="guide-contents"]').textContent).toBe('Guide contents')
     expect(page.document.querySelector('[id="app-layout-nav"]').textContent).toBe('App layout nav')
     expect(page.document.querySelectorAll('[id="app-layout-nav"]')).toHaveLength(1)

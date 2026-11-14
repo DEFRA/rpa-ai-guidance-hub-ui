@@ -8,7 +8,7 @@
 
 import { CASE_TYPES } from '../../../constants/case-types.js'
 import { keptReference } from '../../../services/case-bookmarks.js'
-import { GuideViewModel } from '../view-model.js'
+import { guideSectionHref } from '../../common/guide-section-href.js'
 
 const UNTITLED = 'Untitled guide'
 
@@ -93,14 +93,14 @@ function chosenCase (answer, cases, sbiBookmarks) {
 }
 
 /**
- * The guide's address at a section's heading, on the page that has it.
+ * The guide's address at a section's heading.
  *
  * @param {string} guideId
- * @param {{slug: string, page: number}} heading - As `findHeading` gives it
+ * @param {{anchor: string, slug: string}} heading - As `findHeading` gives it
  * @returns {string}
  */
 function sectionHref (guideId, heading) {
-  return `${GuideViewModel.pageHref(guideId, heading.page)}#${heading.slug}`
+  return guideSectionHref(guideId, heading.anchor, heading.slug)
 }
 
 class BookmarkViewModel {

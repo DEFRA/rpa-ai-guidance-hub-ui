@@ -123,8 +123,8 @@ describe('bookmarking a section of a guide to a case', () => {
       const { payload } = await get(`${BOOKMARK_PAGE}?section=2-assign-case`)
 
       const page = pageOf(payload)
-      expect(within(page.document.body).getByRole('link', { name: 'Back' })).toHaveAttribute('href', `${GUIDE_PAGE}?page=2#2-assign-case`)
-      expect(page.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', `${GUIDE_PAGE}?page=2#2-assign-case`)
+      expect(within(page.document.body).getByRole('link', { name: 'Back' })).toHaveAttribute('href', `${GUIDE_PAGE}?section=2-assign-case#2-assign-case`)
+      expect(page.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', `${GUIDE_PAGE}?section=2-assign-case#2-assign-case`)
     })
 
     test.each([
@@ -253,7 +253,7 @@ describe('bookmarking a section of a guide to a case', () => {
 
       expect(patching.isDone()).toBe(true)
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(headers.location).toBe(`${GUIDE_PAGE}?page=2#2-assign-case`)
+      expect(headers.location).toBe(`${GUIDE_PAGE}?section=2-assign-case#2-assign-case`)
     })
 
     test('bookmarks the section to an existing case, if the cases are still those the page offered', async () => {
@@ -271,7 +271,7 @@ describe('bookmarking a section of a guide to a case', () => {
       const { headers } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [other.key, existing.key] })
 
       expect(patching.isDone()).toBe(true)
-      expect(headers.location).toBe(`${GUIDE_PAGE}?page=1#11-before-you-begin`)
+      expect(headers.location).toBe(`${GUIDE_PAGE}?section=11-before-you-begin#11-before-you-begin`)
     })
 
     test('does not bookmark a section to a case twice', async () => {
@@ -280,7 +280,7 @@ describe('bookmarking a section of a guide to a case', () => {
       const { statusCode, headers } = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: 'W1234567', shown: [caseResponse().key] })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(headers.location).toBe(`${GUIDE_PAGE}?page=1#11-before-you-begin`)
+      expect(headers.location).toBe(`${GUIDE_PAGE}?section=11-before-you-begin#11-before-you-begin`)
     })
 
     test('asks again, saving nothing, when the cases changed while the page was open', async () => {
@@ -474,8 +474,8 @@ describe('a guide that repeats a heading', () => {
   })
 
   test.each([
-    ['first', 'help', '?page=1#help-1'],
-    ['second', 'help-1', '?page=2#help-3']
+    ['first', 'help', '?section=help#help-1'],
+    ['second', 'help-1', '?section=help-1#help-3']
   ])('bookmarks the %s section by the hub\'s anchor, then shows the guide at its heading', async (_which, section, at) => {
     mockGuideAndUser([], REPEATED)
     const patching = nock(GUIDANCE_API_BASE_URL)
@@ -521,12 +521,13 @@ describe('a guide that repeats a heading', () => {
     expect(headers.location).toBe(`${GUIDE_PAGE}#help-3`)
   })
 
-  test('opens at the heading of the section a link names by the hub\'s anchor, as the side navigation links to it', async () => {
+  test('shows the guide for a link naming a section by the hub\'s anchor, as the side navigation does, without sending the reader on', async () => {
     mockGuideAndUser([], REPEATED)
+    nock(GUIDANCE_API_BASE_URL).post(`/users/${USER_ID}/recently-opened`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
 
     const { statusCode, headers } = await get(`${GUIDE_PAGE}?section=help-1`)
 
-    expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-    expect(headers.location).toBe(`${GUIDE_PAGE}?page=2#help-3`)
+    expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+    expect(headers.location).toBeUndefined()
   })
 })

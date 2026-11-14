@@ -7,7 +7,7 @@
 // kept as they are. In the prototype the shell sits outside the page's width
 // container; here the guide page drops the container and the main wrapper's
 // padding (`app-width-container--bleed`, `app-main-wrapper--bleed`) so the
-// shell, and the panel at its right, run the full width and height.
+// shell runs the full width and height.
 
 .app-width-container--bleed {
   width: auto;
@@ -21,10 +21,19 @@
   padding-bottom: 0;
 }
 
+// The shell's rule along its top would sit under a header the hub does not
+// have. The contents pane's grey starts at the top of the page instead, level
+// with the side navigation's.
+.app-shell {
+  border-top: 0;
+}
+
 // The reading column's margins - the same as .app-full-width's in the
 // prototype - now that the container that gave them is gone.
+$app-guide-gutter-top: govuk-spacing(6);
+
 .app-guide-gutter {
-  padding: 0 govuk-spacing(4) govuk-spacing(6);
+  padding: $app-guide-gutter-top govuk-spacing(4) govuk-spacing(6);
 
   @include govuk-media-query($from: tablet) {
     padding-right: govuk-spacing(6);
@@ -37,12 +46,24 @@
   }
 }
 
-// The prototype's tooltip opens to the right of its item, which suits a left
-// side nav. The panel is on the right of the page, so it opens to the left,
-// still bridged by a transparent border so it stays while hovered.
-.app-guide-panel .app-side-nav__tooltip {
-  right: 100%;
-  left: auto;
-  border-right: 10px solid transparent;
-  border-left: 0;
+// Where the contents pane sits beside the guide pane (from 1100px, as
+// _app-guide.scss lays them out), it runs as the spike's does: flush against
+// the side navigation, from the top of the window to its foot, sticking there
+// as the reader scrolls. The gutter's top and left margins are the guide
+// pane's alone.
+@media (min-width: 1100px) {
+  .app-guide-gutter {
+    padding-left: 0;
+  }
+
+  .app-guide-reading > .app-guide-contents,
+  .app-guide-reading > .app-guide-contents-resize {
+    top: 0;
+    height: 100vh;
+    margin-top: -($app-guide-gutter-top);
+  }
+
+  .app-guide-reading > .app-guide-contents {
+    max-height: none;
+  }
 }
