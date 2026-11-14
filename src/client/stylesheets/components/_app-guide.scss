@@ -233,6 +233,15 @@ $app-guide-panel-max-width: 480px;
   .app-guide-format-toggle__option--active {
     background-color: $defra-green;
     color: $govuk-white;
+
+    // Colour alone is lost in forced colours (high contrast), where every
+    // background is replaced. An underline is text decoration, so it stays
+    // and shows which option is chosen.
+    @media (forced-colors: active) {
+      text-decoration: underline;
+      text-decoration-thickness: 3px;
+      text-underline-offset: 4px;
+    }
   }
 
   // The toggle clips what is drawn outside it, so the indicator is kept
