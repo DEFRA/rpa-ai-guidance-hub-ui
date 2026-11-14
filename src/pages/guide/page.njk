@@ -91,10 +91,10 @@
             <form class="app-guide-info-form" method="post" action="/guides/information">
               <input type="hidden" name="shown" value="{{ 'false' if informationShown else 'true' }}">
               <input type="hidden" name="returnTo" value="{{ returnTo }}">
-              <button type="submit" class="app-guide-info-toggle" aria-expanded="{{ 'true' if informationShown else 'false' }}" aria-controls="guide-info" data-guide-info-toggle>
+              <button type="submit" class="app-guide-info-toggle" aria-expanded="{{ 'true' if informationShown else 'false' }}" aria-controls="guide-info" data-guide-info-toggle data-side-nav-tooltip>
                 {{ icon("info") }}
                 <span class="govuk-visually-hidden">Guide information</span>
-                <span class="app-side-nav__tooltip app-side-nav__tooltip--left app-guide-info-toggle__tooltip" aria-hidden="true" data-guide-info-tooltip>{{ "Hide guide information" if informationShown else "Show guide information" }}</span>
+                <span class="app-side-nav__tooltip app-side-nav__tooltip--left app-guide-info-toggle__tooltip" aria-hidden="true">Guide information</span>
               </button>
             </form>
           </div>

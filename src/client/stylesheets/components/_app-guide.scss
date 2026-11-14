@@ -103,11 +103,22 @@
     color: $govuk-black;
   }
 
+  // Open: a black border, which is 3:1 or more against the white and grey it
+  // sits on, as well as the pressed-in fill; the fill and shadow alone are not.
   &[aria-expanded='true'] {
-    border-color: $govuk-mid-grey;
+    border-color: $govuk-black;
     background-color: mix($govuk-black, $govuk-light-grey, 10%);
     box-shadow: inset 0 2px 4px rgba($govuk-black, 0.25);
     color: $govuk-black;
+  }
+
+  // Forced colours drop the fill and shadow and paint every border in a system
+  // colour, so open is shown by a heavier, highlighted border.
+  @media (forced-colors: active) {
+    &[aria-expanded='true'] {
+      border-width: 2px;
+      border-color: Highlight;
+    }
   }
 
   // Keyboard focus only, so a click leaves it looking pressed.
@@ -118,6 +129,12 @@
   &:hover .app-guide-info-toggle__tooltip,
   &:focus-visible .app-guide-info-toggle__tooltip {
     display: block;
+  }
+
+  // Esc dismisses the tooltip (initRailTooltips adds this class) until the
+  // pointer or focus leaves, so the title under it can be read.
+  &.app-side-nav__rail-item--tooltip-dismissed .app-guide-info-toggle__tooltip {
+    display: none;
   }
 }
 

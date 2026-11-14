@@ -2,8 +2,8 @@
  * @module The information button beside a guide's title. Without JavaScript
  * it sends the user's choice in its form and the page comes back with the
  * information shown or hidden. With it, the information is shown or hidden at
- * once, the button says what a press will do next, and the choice is sent
- * behind the scenes, so the next page shows it the same way.
+ * once and the choice is sent behind the scenes, one at a time and in the
+ * order it was made, so the next page shows it the same way.
  */
 
 /**
@@ -23,7 +23,8 @@ function _keepThePageAsItIs () {
  */
 function toggleGuideInfo (button, information) {
   const { form } = button
-  const tooltip = button.querySelector('[data-guide-info-tooltip]')
+  // The last choice sent, so the next waits for it and the latest is saved last.
+  let lastSave = Promise.resolve()
 
   form.addEventListener('submit', (event) => {
     event.preventDefault()
@@ -33,10 +34,11 @@ function toggleGuideInfo (button, information) {
 
     information.hidden = !shown
     button.setAttribute('aria-expanded', String(shown))
-    tooltip.textContent = shown ? 'Hide guide information' : 'Show guide information'
     form.elements.shown.value = String(!shown)
 
-    window.fetch(form.action, { method: 'post', body: choice, redirect: 'manual' }).catch(_keepThePageAsItIs)
+    lastSave = lastSave
+      .then(() => window.fetch(form.action, { method: 'post', body: choice, redirect: 'manual' }))
+      .catch(_keepThePageAsItIs)
   })
 }
 

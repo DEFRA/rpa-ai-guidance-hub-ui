@@ -71,7 +71,8 @@ describe('A guide\'s information', () => {
 
     expect(page.getByRole('heading', { level: 1 }).parentElement).toContainElement(button)
     expect(button).toHaveAttribute('aria-expanded', 'false')
-    expect(within(button).getByText('Show guide information')).toBeInTheDocument()
+    expect(within(button).getByText('Guide information', { ignore: '.govuk-visually-hidden' })).toBeInTheDocument()
+    expect(button).toHaveAttribute('data-side-nav-tooltip')
     expect(informationOf(page)).not.toBeVisible()
   })
 
@@ -90,7 +91,6 @@ describe('A guide\'s information', () => {
 
     expect(informationOf(page)).toBeVisible()
     expect(button).toHaveAttribute('aria-expanded', 'true')
-    expect(within(button).getByText('Hide guide information')).toBeInTheDocument()
     expect(button.form).toHaveFormValues({ shown: 'false' })
     expect(information.getAllByRole('term').map(term => term.textContent)).toEqual([
       'Last modified date', 'Scheme', 'Scheme year', 'Owner email', 'Purpose of guidance',
