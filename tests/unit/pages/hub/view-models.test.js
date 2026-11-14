@@ -1,16 +1,7 @@
-import { HUB_MESSAGES, HubViewModel } from '../../../../src/pages/hub/view-models.js'
+import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
+import { HUB_MESSAGES } from '../../../fixtures/messages.js'
 
 describe('#HubViewModel', () => {
-  test('says a list is empty in these words', () => {
-    expect(HUB_MESSAGES).toEqual({
-      noneMatch: 'No guides match your search or filters. Try removing some filters or using different search terms.',
-      noneOpened: "You haven't opened any guidance yet. Any guidance you open will appear here.",
-      nonePinned: 'You have not pinned any guidance yet. Select <strong>Pin guide</strong> on a guide, or the star next to a section heading, to add it here.',
-      noneBookmarked: "You haven't bookmarked any guidance yet. Bookmark a section of a guide to add it here.",
-      noGuides: 'There are no guides yet.'
-    })
-  })
-
   describe('when no guidance is provided', () => {
     const viewModel = new HubViewModel()
 
@@ -84,6 +75,18 @@ describe('#HubViewModel', () => {
       expect(bookmarkedGuides.heading).toBe('2 bookmarked guides')
       expect(bookmarkedGuides.showing).toBe('Showing 1 to 2')
       expect(bookmarkedGuides.guides.map(row => row.id)).toEqual(['guide-1', 'guide-2'])
+    })
+
+    test('Should name the case in the heading of bookmarked guides narrowed to one', () => {
+      const { bookmarkedGuides } = new HubViewModel({ bookmarkedGuides: [guide], narrowedTo: { key: 'key-1', text: 'Case: W1234567' } })
+
+      expect(bookmarkedGuides.heading).toBe('1 bookmarked guide for Case: W1234567')
+    })
+
+    test('Should not name the case in the heading of any other list', () => {
+      const { pinned } = new HubViewModel({ pinned: [guide], narrowedTo: { key: 'key-1', text: 'Case: W1234567' } })
+
+      expect(pinned.heading).toBe('1 pin')
     })
 
     test('Should say one bookmarked guide in the singular', () => {

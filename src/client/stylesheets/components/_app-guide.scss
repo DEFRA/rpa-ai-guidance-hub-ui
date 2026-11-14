@@ -211,6 +211,22 @@ $app-guide-control-padding: 8px;
   margin-left: auto;
 }
 
+// A label in sight for each group of toggle buttons, beside its buttons
+// where there is room, above them where there is not.
+.app-guide-reading-width,
+.app-guide-format {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: govuk-spacing(2);
+}
+
+.app-guide-reading-width__label {
+  font-size: 16px;
+  font-weight: 700;
+  color: $govuk-text-colour;
+}
+
 // The format toggle's segmented look, on buttons rather than links, at the
 // controls' height: the page width's, and the guide format's own.
 .app-guide-reading-width__options,
@@ -239,10 +255,24 @@ $app-guide-control-padding: 8px;
   .app-guide-format-toggle__option--active {
     background-color: $defra-green;
     color: $govuk-white;
+
+    // Colour alone is lost in forced colours (high contrast), where every
+    // background is replaced. An underline is text decoration, so it stays
+    // and shows which option is chosen.
+    @media (forced-colors: active) {
+      text-decoration: underline;
+      text-decoration-thickness: 3px;
+      text-underline-offset: 4px;
+    }
   }
 
+  // The toggle clips what is drawn outside it, so the indicator is kept
+  // inside the button: the outline and the bar are both drawn within it, and
+  // the outline is what forced colours keeps.
   .app-guide-format-toggle__option:focus {
     @include govuk-focused-text;
+    outline-offset: -3px;
+    box-shadow: inset 0 -4px $govuk-focus-text-colour;
   }
 }
 
@@ -331,7 +361,7 @@ $app-guide-toc-width: 340px;
   // Yellow alone is too close to the grey list for a focus indicator, so
   // focus adds a black inset outline.
   &:focus {
-    outline: none;
+    outline: 3px solid transparent;
     background-color: $govuk-yellow;
     box-shadow: inset 0 0 0 2px $govuk-black;
   }
@@ -349,6 +379,12 @@ $app-guide-toc-width: 340px;
 .app-guide-reading--resizing {
   cursor: col-resize;
   user-select: none;
+
+  // As for the navigation: Chrome shows the cursor of what is under the
+  // pointer, so every element shows it while dragging.
+  * {
+    cursor: col-resize;
+  }
 
   .app-guide-contents-resize {
     background-color: $govuk-yellow;

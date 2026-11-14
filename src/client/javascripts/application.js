@@ -9,6 +9,7 @@ import { initSortSelect } from './hub-sort.js'
 import { initReorder } from './side-nav-reorder.js'
 import { initResizeHandles } from './resize-handle.js'
 import { initPolling } from './status-poll.js'
+import { initCookieBanner, initCookiesPage } from './cookie-consent.js'
 
 govukFrontend.initAll()
 
@@ -22,3 +23,5 @@ initGuideInfo()
 initSortSelect()
 initReorder()
 initResizeHandles()
+initCookieBanner()
+initCookiesPage()

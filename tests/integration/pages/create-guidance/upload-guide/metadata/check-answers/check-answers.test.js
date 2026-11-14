@@ -20,10 +20,8 @@ import {
   stagedDocumentResponse,
   systemsResponse
 } from '../../../../../../fixtures/guidance-api.js'
-import { METADATA_MESSAGES } from '../../../../../../../src/pages/create-guidance/upload-guide/metadata/schemas/metadata-schema.js'
-import { CONVERSION_MESSAGES } from '../../../../../../../src/pages/create-guidance/upload-guide/converting/progress.js'
-import { REFUSAL_MESSAGES } from '../../../../../../../src/pages/create-guidance/upload-guide/metadata/check-answers/controller.js'
 import { RESULTS } from '../../../../../../../src/services/guides.js'
+import { CONVERSION_MESSAGES, METADATA_MESSAGES, REFUSAL_MESSAGES } from '../../../../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const CHECK_ANSWERS_URL = '/create-guidance/upload-guide/metadata/check-answers'

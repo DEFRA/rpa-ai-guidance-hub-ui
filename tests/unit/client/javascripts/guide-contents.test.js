@@ -32,21 +32,27 @@ describe('followedAddress', () => {
     test('names the heading being read as the section, with no fragment', () => {
       const location = { pathname: GUIDE, search: '?section=assign-case', hash: '#assign-case' }
 
-      expect(followedAddress(location, { anchor: '21-check', page: 'assign-case' }, true)).toBe(`${GUIDE}?section=21-check`)
+      expect(followedAddress(location, { anchor: '21-check', section: '21-check', page: 'assign-case' }, true)).toBe(`${GUIDE}?section=21-check`)
+    })
+
+    test('names the heading by the anchor the hub knows it by, where that differs from its anchor on the page', () => {
+      const location = { pathname: GUIDE, search: '', hash: '' }
+
+      expect(followedAddress(location, { anchor: 'help-1', section: 'help', page: 'one' }, true)).toBe(`${GUIDE}?section=help`)
     })
 
     test('names the page\'s own section at its start, and none for a first page without a heading', () => {
       const location = { pathname: GUIDE, search: '?section=21-check', hash: '' }
 
-      expect(followedAddress(location, { anchor: '', page: 'assign-case' }, true)).toBe(`${GUIDE}?section=assign-case`)
-      expect(followedAddress(location, { anchor: '', page: '' }, true)).toBe(GUIDE)
+      expect(followedAddress(location, { anchor: '', section: '', page: 'assign-case' }, true)).toBe(`${GUIDE}?section=assign-case`)
+      expect(followedAddress(location, { anchor: '', section: '', page: '' }, true)).toBe(GUIDE)
     })
   })
 
   test('is nothing when the address names the place already, so it is left as it is', () => {
     expect(followedAddress({ pathname: GUIDE, search: '', hash: '#21-check' }, { anchor: '21-check', page: 'assign-case' }, false)).toBeNull()
     expect(followedAddress({ pathname: GUIDE, search: '', hash: '#a%20b' }, { anchor: 'a b', page: '' }, false)).toBeNull()
-    expect(followedAddress({ pathname: GUIDE, search: '?section=21-check', hash: '' }, { anchor: '21-check', page: 'assign-case' }, true)).toBeNull()
+    expect(followedAddress({ pathname: GUIDE, search: '?section=21-check', hash: '' }, { anchor: '21-check', section: '21-check', page: 'assign-case' }, true)).toBeNull()
   })
 })
 
@@ -96,7 +102,7 @@ describe('a guide\'s contents following the reader', () => {
    */
   function render (tops) {
     document.body.innerHTML = `
-      <div class="app-guide-contents" id="guide-contents" data-guide-format="traditional">
+      <div class="app-guide-contents" id="guide:contents" data-guide-format="traditional">
         <nav aria-label="Contents">
           <p data-guide-contents-page="1"><a href="#introduction" data-guide-contents-target="introduction">Introduction</a></p>
           <p data-guide-contents-page="2"><a href="#assign-case" data-guide-contents-target="assign-case">Assign case</a></p>
@@ -112,11 +118,11 @@ describe('a guide\'s contents following the reader', () => {
       element.getBoundingClientRect = () => ({ top, bottom: top + 30 })
       element.getClientRects = () => [{ top }]
     }
-    document.querySelectorAll('[data-guide-page], nav a, #guide-contents').forEach(element => placeAt(element, 0))
+    document.querySelectorAll('[data-guide-page], nav a, #guide\\:contents').forEach(element => placeAt(element, 0))
     for (const [id, top] of Object.entries(tops)) {
       placeAt(document.getElementById(id), top)
     }
-    document.getElementById('guide-contents').scrollBy = vi.fn()
+    document.getElementById('guide:contents').scrollBy = vi.fn()
 
     initGuideContents()
   }
@@ -147,5 +153,38 @@ describe('a guide\'s contents following the reader', () => {
     await new Promise(resolve => window.requestAnimationFrame(resolve))
 
     expect(window.location.search + window.location.hash).toBe('#21-check')
+  })
+
+  test('in the stepper names a repeated heading by the hub\'s anchor, so the address opens the page the reader is on', async () => {
+    // `# Help`, `## One` / `### Help`, `## Two` / `### Help`: the page numbers
+    // the title too, so the first `### Help` is `help-1` there and `help` to
+    // the hub, whose `help-1` is the second.
+    document.body.innerHTML = `
+      <div class="app-guide-contents" id="guide:contents" data-guide-format="stepper">
+        <nav aria-label="Contents">
+          <p data-guide-contents-page="1"><a href="${GUIDE}?section=one" data-guide-contents-target="one" data-guide-contents-section="one" aria-current="page">One</a></p>
+          <ol><li><a href="#help-1" data-guide-contents-target="help-1" data-guide-contents-section="help">Help</a></li></ol>
+          <p data-guide-contents-page="2"><a href="${GUIDE}?section=two" data-guide-contents-target="two" data-guide-contents-section="two">Two</a></p>
+          <ol><li><a href="${GUIDE}?section=two#help-2" data-guide-contents-target="help-2" data-guide-contents-section="help-1">Help</a></li></ol>
+        </nav>
+      </div>
+      <div data-guide-page="1" data-guide-page-href="${GUIDE}?section=one"><h2 id="one">One</h2><h3 id="help-1">Help</h3></div>
+      <div data-guide-page="2" data-guide-page-href="${GUIDE}?section=two" hidden="until-found"><h2 id="two">Two</h2><h3 id="help-2">Help</h3></div>`
+
+    const placeAt = (element, top) => {
+      element.getBoundingClientRect = () => ({ top, bottom: top + 30 })
+      element.getClientRects = () => [{ top }]
+    }
+    document.querySelectorAll('[data-guide-page], nav a, #guide\\:contents').forEach(element => placeAt(element, 0))
+    placeAt(document.getElementById('one'), -200)
+    placeAt(document.getElementById('help-1'), 60)
+    document.getElementById('guide:contents').scrollBy = vi.fn()
+    window.history.replaceState(null, '', `${GUIDE}?section=one`)
+
+    initGuideContents()
+    window.dispatchEvent(new window.WheelEvent('wheel'))
+    await new Promise(resolve => window.requestAnimationFrame(resolve))
+
+    expect(window.location.search + window.location.hash).toBe('?section=help')
   })
 })

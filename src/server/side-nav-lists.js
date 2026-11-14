@@ -86,6 +86,19 @@ function _caseBookmarks (cases) {
 }
 
 /**
+ * @private
+ * The case the page is narrowed to, if it is one of the user's: only a key
+ * the user has is passed on, so nothing else in the address reaches the page.
+ *
+ * @param {import('@hapi/hapi').Request} request
+ * @param {Array<{key: string}>} cases
+ * @returns {string|null}
+ */
+function _currentCaseKey (request, cases) {
+  return cases.find(({ key }) => key === request.query?.case)?.key ?? null
+}
+
+/**
  * Gives a signed-in page what its side navigation shows of the user's own
  * lists - the guides and sections they pinned, and how many, and their cases
  * with the sections of guides bookmarked to them, and how many - from one call
@@ -110,7 +123,8 @@ async function addSideNavLists (request, h) {
     pins: _pins(pinned ?? []),
     pinnedCount: pinned?.length,
     caseBookmarks: _caseBookmarks(cases ?? []),
-    caseCount: cases?.length
+    caseCount: cases?.length,
+    currentCaseKey: _currentCaseKey(request, cases ?? [])
   }
 
   return h.continue

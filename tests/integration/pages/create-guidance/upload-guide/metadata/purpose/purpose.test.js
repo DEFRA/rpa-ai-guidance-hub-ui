@@ -12,7 +12,7 @@ import {
   audiencesResponse
 } from '../../../../../../fixtures/guidance-api.js'
 import { initiateUploadResponse } from '../../../../../../fixtures/cdp-uploader.js'
-import { PURPOSE_MESSAGES } from '../../../../../../../src/pages/create-guidance/upload-guide/metadata/purpose/schemas/purpose-schema.js'
+import { PURPOSE_MESSAGES } from '../../../../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')

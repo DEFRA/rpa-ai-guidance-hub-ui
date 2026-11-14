@@ -29,12 +29,12 @@ const STEP = 20
 
 // What each key does to the width. The handle is on the right-hand edge, so
 // the right arrow widens it.
-const KEYED_WIDTHS = {
-  ArrowLeft: (width) => width - STEP,
-  ArrowRight: (width) => width + STEP,
-  Home: (_width, { min }) => min,
-  End: (_width, { max }) => max
-}
+const KEYED_WIDTHS = new Map([
+  ['ArrowLeft', (width) => width - STEP],
+  ['ArrowRight', (width) => width + STEP],
+  ['Home', (_width, { min }) => min],
+  ['End', (_width, { max }) => max]
+])
 
 /**
  * @param {number} width - In pixels
@@ -53,7 +53,7 @@ function clampWidth (width, { min, max }) {
  *   does not resize
  */
 function keyedWidth (key, width, limits) {
-  const move = Object.hasOwn(KEYED_WIDTHS, key) ? KEYED_WIDTHS[key] : null
+  const move = KEYED_WIDTHS.get(key)
 
   return move ? clampWidth(move(width, limits), limits) : null
 }

@@ -5,10 +5,9 @@ import * as referenceDataService from '../../../../../../../src/services/referen
 import * as stagedDocumentsService from '../../../../../../../src/services/staged-documents.js'
 import {
   convertDocument,
-  getCheckAnswers,
-  REFUSAL_MESSAGES
+  getCheckAnswers
 } from '../../../../../../../src/pages/create-guidance/upload-guide/metadata/check-answers/controller.js'
-import { METADATA_MESSAGES } from '../../../../../../../src/pages/create-guidance/upload-guide/metadata/schemas/metadata-schema.js'
+import { METADATA_MESSAGES, REFUSAL_MESSAGES } from '../../../../../../fixtures/messages.js'
 
 vi.mock('../../../../../../../src/services/guides.js')
 vi.mock('../../../../../../../src/services/reference-data.js')
@@ -49,14 +48,6 @@ function mockReferenceData () {
 }
 
 describe('upload-guide metadata check-answers controller', () => {
-  test('says why the API would not convert the document in these words', () => {
-    expect(REFUSAL_MESSAGES).toEqual({
-      [guidesService.RESULTS.UPLOAD_EXPIRED]: 'The uploaded document has expired. Start again and upload it again',
-      [guidesService.RESULTS.PARSE_PENDING]: 'The uploaded document is still being processed. Wait a few seconds, then select Convert document again',
-      [guidesService.RESULTS.PARSE_FAILED]: 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team'
-    })
-  })
-
   let request, h, code
 
   beforeEach(() => {

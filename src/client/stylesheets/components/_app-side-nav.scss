@@ -278,6 +278,13 @@ $app-side-nav-muted: #505a5f;
   overflow-y: auto;
   border-right: 1px solid $app-side-nav-divider;
   background-color: $govuk-light-grey;
+
+  // The width the user resized it to (resize-handle.js), or the default. Only
+  // from desktop up, where the handle is, so a narrow or zoomed window is
+  // never left with a wide navigation and nothing to narrow it with.
+  @include govuk-media-query($from: desktop) {
+    width: var(--app-side-nav-width, $app-side-nav-width);
+  }
 }
 
 .app-layout__main {
@@ -294,7 +301,9 @@ $app-side-nav-muted: #505a5f;
 }
 
 // The open navigation's resize handle (resize-handle.js), as the prototype's:
-// full height, overlapping the edge it resizes so it takes no layout space.
+// full height, overlapping the start of the main column so it takes no layout
+// space and leaves the navigation's own scrollbar and links clear. A
+// transparent ::before widens the target to 24px.
 .app-layout__resize {
   position: sticky;
   z-index: 10;
@@ -302,9 +311,16 @@ $app-side-nav-muted: #505a5f;
   flex: 0 0 8px;
   width: 8px;
   height: 100vh;
-  margin-left: -8px;
+  margin-right: -8px;
   cursor: col-resize;
   touch-action: none;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 -8px;
+    cursor: col-resize;
+  }
 
   &:hover {
     background-color: $govuk-yellow;
@@ -313,7 +329,7 @@ $app-side-nav-muted: #505a5f;
   // Yellow alone is too close to the grey panel for a focus indicator, so
   // focus adds a black inset outline.
   &:focus {
-    outline: none;
+    outline: 3px solid transparent;
     background-color: $govuk-yellow;
     box-shadow: inset 0 0 0 2px $govuk-black;
   }
@@ -322,6 +338,12 @@ $app-side-nav-muted: #505a5f;
 .app-layout--resizing {
   cursor: col-resize;
   user-select: none;
+
+  // Chrome takes the cursor from whatever is under the pointer, not from the
+  // handle that captured it, so every element shows it while dragging.
+  * {
+    cursor: col-resize;
+  }
 
   .app-layout__resize {
     background-color: $govuk-yellow;

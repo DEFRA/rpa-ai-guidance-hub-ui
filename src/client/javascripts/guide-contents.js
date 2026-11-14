@@ -33,19 +33,22 @@ const MOVES = Object.freeze(['wheel', 'touchmove', 'keydown', 'pointerdown', 'ha
 /**
  * @param {{pathname: string, search: string, hash: string}} location - The
  *   page's
- * @param {{anchor: string, page: string}} place - The heading being read
- *   (empty where the reader has reached none, at the start of the guide or of
- *   a stepper page), and the anchor its page is named by (empty for a first
- *   page without a heading)
+ * @param {{anchor: string, section: string, page: string}} place - The
+ *   heading being read, by its anchor on the page and by the anchor the
+ *   stepper's `section` names it by (both empty where the reader has reached
+ *   none, at the start of the guide or of a stepper page; the two can differ,
+ *   as the hub numbers repeated headings differently), and the anchor its page
+ *   is named by (empty for a first page without a heading)
  * @param {boolean} isStepper - Whether the guide is shown a section at a time
  * @returns {string|null} The address that names the place once, the rest of
  *   the query kept: the heading as the fragment, without `section`, in the
  *   traditional view; the heading, or else the page, as `section`, without a
  *   fragment, in the stepper. Null when the address names the place already.
  */
-function followedAddress ({ pathname, search, hash }, { anchor, page }, isStepper) {
+function followedAddress (location, place, isStepper) {
+  const { pathname, search, hash } = location
   const query = new URLSearchParams(search)
-  const section = isStepper ? anchor || page : ''
+  const section = isStepper ? place.section || place.page : ''
 
   query.delete('section')
 
@@ -55,7 +58,7 @@ function followedAddress ({ pathname, search, hash }, { anchor, page }, isSteppe
 
   const rest = query.toString()
   const queryString = rest ? `?${rest}` : ''
-  const fragment = !isStepper && anchor ? `#${encodeURIComponent(anchor)}` : ''
+  const fragment = !isStepper && place.anchor ? `#${encodeURIComponent(place.anchor)}` : ''
   const address = `${pathname}${queryString}${fragment}`
 
   return address === `${pathname}${search}${hash}` ? null : address
@@ -194,8 +197,9 @@ function initGuideContents () {
     contents.scrollBy(0, scrollShowing(link.getBoundingClientRect(), inSight))
   }
 
-  const follow = (anchor) => {
-    const address = followedAddress(window.location, { anchor, page: _pageShown() }, isStepper)
+  const follow = (anchor, link) => {
+    const section = anchor ? link.dataset.guideContentsSection || anchor : ''
+    const address = followedAddress(window.location, { anchor, section, page: _pageShown() }, isStepper)
 
     if (address) {
       window.history.replaceState(window.history.state, '', address)
@@ -212,7 +216,7 @@ function initGuideContents () {
       mark(place.link)
     }
     if (place && hasMoved) {
-      follow(anchorRead(place, line))
+      follow(anchorRead(place, line), place.link)
     }
   }
 

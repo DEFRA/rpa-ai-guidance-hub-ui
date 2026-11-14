@@ -71,4 +71,28 @@ describe('A guide\'s top row', () => {
     expect(isBefore(page.document, pin, widths)).toBe(true)
     expect(isBefore(page.document, row, title)).toBe(true)
   })
+
+  test('has Back first, before Pin guide, the page width, the title and the contents, so the tab order follows the page', async () => {
+    const page = await guidePage()
+    const back = page.getByRole('link', { name: 'Back' })
+    const pin = page.getByRole('button', { name: 'Pin guide' })
+    const widths = page.getByRole('group', { name: 'Page width' })
+    const title = page.getByRole('heading', { level: 1 })
+    const format = page.getByRole('group', { name: 'Guide format' })
+
+    for (const later of [pin, widths, title, format]) {
+      expect(isBefore(page.document, back, later)).toBe(true)
+    }
+  })
+
+  test('shows a label for each group of buttons, which names the group', async () => {
+    const page = await guidePage()
+
+    for (const name of ['Page width', 'Guide format']) {
+      const label = page.getByText(name, { selector: '.app-guide-reading-width__label' })
+
+      expect(label).not.toHaveClass('govuk-visually-hidden')
+      expect(page.getByRole('group', { name })).toHaveAttribute('aria-labelledby', label.id)
+    }
+  })
 })

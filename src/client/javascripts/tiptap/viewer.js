@@ -4,6 +4,7 @@
 
 import { Editor } from '@tiptap/core'
 
+import { sectionTarget } from '../guide-section-target.js'
 import { extensionsWithBookmarks } from './bookmarked-heading.js'
 import { EXTENSIONS } from './extensions.js'
 
@@ -65,8 +66,9 @@ function keepLoadedImages (root) {
 
 /**
  * Gives the editor's headings the ids the guide's links name them by, and
- * goes to the one the address names - the page was already at it, but
- * before there was anything there to go to.
+ * goes to the one the address names, by its fragment or, where it has none,
+ * by its `section` - the page was already at it, but before there was
+ * anything there to go to.
  *
  * @param {HTMLElement} root - The editor's content
  * @param {string} [headingIds] - JSON list of the ids, in heading order
@@ -80,9 +82,11 @@ function anchorHeadings (root, headingIds) {
     }
   })
 
-  if (window.location.hash.length > 1) {
-    document.getElementById(decodeURIComponent(window.location.hash.slice(1)))?.scrollIntoView()
-  }
+  const target = window.location.hash.length > 1
+    ? document.getElementById(decodeURIComponent(window.location.hash.slice(1)))
+    : sectionTarget(window.location, document)
+
+  target?.scrollIntoView()
 }
 
 document.querySelectorAll('[data-tiptap-markdown]').forEach(mount)

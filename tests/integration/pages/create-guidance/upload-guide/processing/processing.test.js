@@ -14,7 +14,7 @@ import { loginAsDevUser } from '../../../../helpers/login.js'
 import { mergeCookies } from '../../../../helpers/cookies.js'
 import { errorSummaryOf, pageOf } from '../../../../helpers/page.js'
 import { config } from '../../../../../../src/config/config.js'
-import { UPLOAD_STEP_MESSAGES } from '../../../../../../src/pages/create-guidance/upload-guide/steps.js'
+import { UPLOAD_STEP_MESSAGES } from '../../../../../fixtures/messages.js'
 
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
 const GUIDANCE_API_URL = config.get('guidanceApi.baseUrl')
