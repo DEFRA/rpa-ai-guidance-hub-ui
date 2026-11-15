@@ -9,6 +9,7 @@ import { guideResponse, pinResponse, userResponse, versionResponse } from '../..
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 import { pageOf, sideNavOf } from '../../helpers/page.js'
+import { keepPreferencesInTheApi } from '../../helpers/preferences-api.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const GUIDE_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
@@ -98,11 +99,12 @@ describe('#guideController', () => {
     return pageOf(payload)
   }
 
-  // A guide opens whole; these show it a section at a time.
-  async function guideInStepperAt (url = GUIDE_URL) {
-    const chosen = await server.inject({ method: 'POST', url: '/guides/format', headers: { cookie }, payload: { format: 'stepper', returnTo: url } })
+  // A guide opens whole; these show it a section at a time, as a user who
+  // chose the stepper sees it.
+  function guideInStepperAt (url = GUIDE_URL) {
+    keepPreferencesInTheApi({ guideFormat: 'stepper' })
 
-    return guideAt(url, { cookie: mergeCookies(cookie, chosen.headers['set-cookie']) })
+    return guideAt(url)
   }
 
   describe('GET /guides/{guideId}', () => {
@@ -593,6 +595,12 @@ describe('#guideController', () => {
   })
 
   describe('POST /guides/reading-width', () => {
+    let kept
+
+    beforeEach(() => {
+      kept = keepPreferencesInTheApi()
+    })
+
     async function choose (width, returnTo = `${GUIDE_URL}?section=assign-case`) {
       const response = await server.inject({
         method: 'POST',
@@ -604,9 +612,10 @@ describe('#guideController', () => {
       return { response, cookie: mergeCookies(cookie, response.headers['set-cookie']) }
     }
 
-    test('remembers the width and go back to the page', async () => {
+    test('keeps the width as a preference, and goes back', async () => {
       const { response, cookie: updated } = await choose('wide')
 
+      expect(kept).toEqual({ readingWidth: 'wide' })
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(response.headers.location).toBe(`${GUIDE_URL}?section=assign-case`)
 
