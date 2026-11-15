@@ -7,8 +7,8 @@ import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { guidePageResponse, schemesResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
-import { keepPreferencesInTheApi } from '../../helpers/preferences-api.js'
 import { pageOf } from '../../helpers/page.js'
+import { keepPreferencesInTheApi } from '../../helpers/preferences-api.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 // The handle is hidden until the script that moves it attaches, and a hidden
@@ -61,6 +61,18 @@ describe('Resizing the side navigation', () => {
     expect(handle).toHaveAttribute('data-default-width', '280')
     expect(handle).toHaveAttribute('tabindex', '0')
     expect(handle).not.toBeVisible()
+  })
+
+  test('is drawn at the width the user left it, without a script', async () => {
+    keepPreferencesInTheApi({ sideNavWidth: 360 })
+
+    const page = await hubFor(await loginAsDevUser(server))
+    const handle = within(page.document.body).getByLabelText(RESIZE_HANDLE)
+    const style = page.document.querySelector('style[data-side-nav-width]')
+
+    expect(handle).toHaveAttribute('aria-valuenow', '360')
+    expect(style)
+      .toHaveTextContent('.app-layout { --app-side-nav-width: 360px; }')
   })
 
   test('has no handle when the navigation is folded away', async () => {

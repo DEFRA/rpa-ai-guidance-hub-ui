@@ -170,6 +170,7 @@ class GuideViewModel {
    * @param {import('../../services/guide-sections.js').GuideSection[]} data.sections
    * @param {number} data.pageNumber - Already within 1..sections.length
    * @param {string} data.readingWidth
+   * @param {number} [data.contentsWidth] - The contents pane's, in pixels
    * @param {string} data.returnTo - Where the width form sends the user back to
    * @param {{pinned: boolean, position: number|null}|null} [data.pin] - The
    *   guide among the user's pins, for its Pin guide button; null when not known
@@ -186,7 +187,7 @@ class GuideViewModel {
    * @param {boolean} [data.informationShown] - Whether the user chose to show
    *   it
    */
-  constructor ({ guide, sections, pageNumber, readingWidth, returnTo, pin = null, pinnedSections = null, cases = null, bookmarked, format, infoRows = [], informationShown = false }) {
+  constructor ({ guide, sections, pageNumber, readingWidth, contentsWidth = CONTENTS_WIDTH.default, returnTo, pin = null, pinnedSections = null, cases = null, bookmarked, format, infoRows = [], informationShown = false }) {
     const href = page => GuideViewModel.pageHref(guide.id, sections[page - 1])
     const isTraditional = format === TRADITIONAL
     const adjacent = (page) => {
@@ -239,7 +240,7 @@ class GuideViewModel {
     this.readingWidths = READING_WIDTHS
     // The contents column's width, which its handle can change, and the
     // limits it changes within.
-    this.contentsWidth = CONTENTS_WIDTH.default
+    this.contentsWidth = contentsWidth
     this.contentsWidthLimits = CONTENTS_WIDTH
     this.returnTo = returnTo
     this.pin = pin

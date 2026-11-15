@@ -5,6 +5,24 @@ import { clampWidth, initResizeHandles, keyedWidth } from '../../../../src/clien
 
 const LIMITS = { min: 220, max: 440 }
 
+beforeEach(() => {
+  const kept = () => Promise.resolve(new window.Response(null, { status: 204 }))
+  vi.stubGlobal('fetch', vi.fn(kept))
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+/**
+ * @returns {Array<[string, string, string]>} Each width sent, as the address,
+ *   method and body
+ */
+function widthsSent () {
+  return fetch.mock.calls
+    .map(([url, init]) => [url, init.method, `${init.body}`])
+}
+
 describe('keyedWidth', () => {
   test('widens by 20 pixels for the right arrow, and narrows by 20 for the left', () => {
     expect(keyedWidth('ArrowRight', 280, LIMITS)).toBe(300)
@@ -132,6 +150,35 @@ describe('the side navigation\'s resize handle', () => {
     expect(navWidthOf(layout)).toBe('280px')
     expect(handle).toHaveAttribute('aria-valuenow', '280')
   })
+
+  test('sends the width as a key press, a drag or a double-click ends', () => {
+    const { handle } = render()
+    handle.setPointerCapture = vi.fn()
+
+    fireEvent.keyDown(handle, { key: 'ArrowRight' })
+    fireEvent.keyUp(handle, { key: 'ArrowRight' })
+    fireEvent.pointerDown(handle, { clientX: 300 })
+    fireEvent.pointerMove(handle, { clientX: 350 })
+    fireEvent.pointerUp(handle)
+    fireEvent.dblClick(handle)
+
+    expect(widthsSent()).toEqual([
+      ['/preferences', 'post', 'sideNavWidth=300'],
+      ['/preferences', 'post', 'sideNavWidth=350'],
+      ['/preferences', 'post', 'sideNavWidth=280']
+    ])
+  })
+
+  test('sends nothing when the width is left as it was', () => {
+    const { handle } = render()
+    handle.setPointerCapture = vi.fn()
+
+    fireEvent.pointerDown(handle, { clientX: 300 })
+    fireEvent.pointerUp(handle)
+    fireEvent.keyUp(handle, { key: 'Tab' })
+
+    expect(fetch).not.toHaveBeenCalled()
+  })
 })
 
 describe('the contents pane\'s resize handle', () => {
@@ -178,5 +225,15 @@ describe('the contents pane\'s resize handle', () => {
 
     expect(reading).toHaveClass('app-guide-reading--resizing')
     expect(reading.style.getPropertyValue('--app-guide-toc-width')).toBe('300px')
+  })
+
+  test('sends the width as the contents pane\'s', () => {
+    const { handle } = render()
+
+    fireEvent.keyDown(handle, { key: 'End' })
+    fireEvent.keyUp(handle, { key: 'End' })
+
+    expect(widthsSent())
+      .toEqual([['/preferences', 'post', 'contentsWidth=560']])
   })
 })
