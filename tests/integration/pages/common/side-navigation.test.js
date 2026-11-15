@@ -6,10 +6,18 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { initiateUploadResponse } from '../../../fixtures/cdp-uploader.js'
-import { caseResponse, guidePageResponse, pinResponse, schemesResponse, userResponse } from '../../../fixtures/guidance-api.js'
+import {
+  caseResponse,
+  guidePageResponse,
+  pinResponse,
+  preferencesResponse,
+  schemesResponse,
+  userResponse
+} from '../../../fixtures/guidance-api.js'
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 import { pageOf, sideNavOf } from '../../helpers/page.js'
+import { keepPreferencesInTheApi } from '../../helpers/preferences-api.js'
 import { SIDE_NAV_MESSAGES } from '../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -122,9 +130,14 @@ describe('Side navigation', () => {
     })
 
     test('are counted on the folded navigation\'s icon, and in its name', async () => {
-      const signedIn = await signedInWith([pinResponse({ id: FIRST, title: 'Claiming a payment' })])
-      const folded = await server.inject({ method: 'POST', url: '/side-nav/toggle', headers: { cookie: signedIn }, payload: { collapsed: true, returnTo: '/hub' } })
-      const cookie = mergeCookies(signedIn, folded.headers['set-cookie'])
+      nock(GUIDANCE_API_BASE_URL)
+        .get(`/preferences/${USER_ID}`)
+        .reply(statusCodes.HTTP_STATUS_OK, preferencesResponse({
+          sideNavCollapsed: true
+        }))
+      const cookie = await signedInWith([
+        pinResponse({ id: FIRST, title: 'Claiming a payment' })
+      ])
 
       const nav = sideNavOf(await pageAt('/hub', cookie))
       const pinned = nav.getByRole('link', { name: /^Pinned/ })
@@ -659,6 +672,12 @@ describe('Side navigation', () => {
   })
 
   describe('folding away', () => {
+    let kept
+
+    beforeEach(() => {
+      kept = keepPreferencesInTheApi()
+    })
+
     async function fold (cookie, collapsed, returnTo) {
       const response = await server.inject({
         method: 'POST',
@@ -714,13 +733,38 @@ describe('Side navigation', () => {
       expect(maintenance).toContainElement(nav.getByRole('link', { name: 'Upload guidance' }))
     })
 
-    test('stays folded on the next page, for the session', async () => {
+    test('stays folded on the next page', async () => {
       const signedIn = await loginAsDevUser(server)
 
       const { cookie } = await fold(signedIn, true, '/hub')
       const nav = sideNavOf(await pageAt('/create-guidance/upload-guide', cookie))
 
       expect(nav.getByRole('button', { name: 'Expand navigation' })).toBeInTheDocument()
+    })
+
+    test('is kept for the user\'s next sign-in', async () => {
+      await fold(await loginAsDevUser(server), true, '/hub')
+
+      const nav = sideNavOf(await pageAt('/hub', await loginAsDevUser(server)))
+
+      expect(kept).toEqual({ sideNavCollapsed: true })
+      expect(nav.getByRole('button', { name: 'Expand navigation' }))
+        .toBeInTheDocument()
+    })
+
+    test('shows the error page when the hub cannot keep it', async () => {
+      const signedIn = await loginAsDevUser(server)
+      nock.cleanAll()
+      nock(GUIDANCE_API_BASE_URL)
+        .patch(/^\/preferences\//)
+        .reply(statusCodes.HTTP_STATUS_SERVICE_UNAVAILABLE)
+
+      const { response } = await fold(signedIn, true, '/hub')
+      const page = pageOf(response.payload)
+
+      expect(response.statusCode)
+        .toBe(statusCodes.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+      expect(page.getByText('Something went wrong')).toBeInTheDocument()
     })
 
     test('unfolds again', async () => {

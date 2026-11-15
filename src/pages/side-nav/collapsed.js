@@ -1,22 +1,29 @@
-const SESSION_KEY = 'side-nav-collapsed'
+import {
+  keepPreferences,
+  preferencesOf
+} from '../../services/preferences.js'
 
 /**
  * Whether the user has folded the side navigation away to its icons, for
- * every page they open in this session.
+ * every page they open, on any device. Open until they do.
  *
- * @param {import('@hapi/hapi').Request} request
- * @returns {boolean}
+ * @param {import('@hapi/hapi').Request} request - Signed in
+ * @returns {Promise<boolean>}
  */
-function isNavCollapsed (request) {
-  return request.yar?.get(SESSION_KEY) === true
+async function isNavCollapsed (request) {
+  const { sideNavCollapsed } = await preferencesOf(request)
+
+  return sideNavCollapsed === true
 }
 
 /**
- * @param {import('@hapi/hapi').Request} request
+ * @param {import('@hapi/hapi').Request} request - Signed in
  * @param {boolean} collapsed
+ * @returns {Promise<void>}
+ * @throws {GuidanceApiError} When the API cannot keep it
  */
-function setNavCollapsed (request, collapsed) {
-  request.yar.set(SESSION_KEY, collapsed)
+async function setNavCollapsed (request, collapsed) {
+  await keepPreferences(request, { sideNavCollapsed: collapsed })
 }
 
 export {
