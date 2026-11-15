@@ -6,6 +6,7 @@ import { initGuideInfo } from './guide-info.js'
 import { initGuidePages } from './guide-pages.js'
 import { initGuidePlace } from './guide-place.js'
 import { initSortSelect } from './hub-sort.js'
+import { initSideNavLists } from './side-nav-lists.js'
 import { initReorder } from './side-nav-reorder.js'
 import { initResizeHandles } from './resize-handle.js'
 import { initPolling } from './status-poll.js'
@@ -22,6 +23,7 @@ initGuideContents()
 initGuideInfo()
 initSortSelect()
 initReorder()
+initSideNavLists()
 initResizeHandles()
 initCookieBanner()
 initCookiesPage()

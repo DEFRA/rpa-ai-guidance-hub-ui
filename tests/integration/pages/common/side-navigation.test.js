@@ -671,6 +671,21 @@ describe('Side navigation', () => {
     })
   })
 
+  test('draws each list open or closed, as the user left it', async () => {
+    keepPreferencesInTheApi({ sideNavPinnedCollapsed: true })
+
+    const page = await pageAt('/hub', await loginAsDevUser(server))
+    const pinned = page.document.getElementById('side-nav-pinned')
+    const bookmarks = page.document.getElementById('side-nav-bookmarks')
+
+    expect(pinned).not.toHaveAttribute('open')
+    expect(pinned)
+      .toHaveAttribute('data-preference', 'sideNavPinnedCollapsed')
+    expect(bookmarks).toHaveAttribute('open')
+    expect(bookmarks)
+      .toHaveAttribute('data-preference', 'sideNavBookmarksCollapsed')
+  })
+
   describe('folding away', () => {
     let kept
 
