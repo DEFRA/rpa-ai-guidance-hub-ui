@@ -28,6 +28,15 @@ function _wait (ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+/**
+ * @private
+ * @returns {void} Nothing to do: the page already shows the change, and an
+ *   unkept change only means the next page shows the preference as it was
+ */
+function _keepThePageAsItIs () {
+  // Nothing to undo: see the module's note.
+}
+
 class PreferenceSaver {
   #waiting = {}
   #kept = {}
@@ -48,22 +57,24 @@ class PreferenceSaver {
       return
     }
 
-    this.#sendWaiting()
+    this.#sendWaiting().catch(_keepThePageAsItIs)
   }
 
+  // Sends what is waiting, a gap at least between requests, until nothing is.
   async #sendWaiting () {
-    const changes = this.#takeWaiting()
-
-    if (!changes) {
-      this.#sending = false
-      return
-    }
-
     this.#sending = true
 
-    await Promise.all([this.#send(changes), _wait(GAP_MS)])
+    let changes = this.#takeWaiting()
 
-    this.#sendWaiting()
+    while (changes) {
+      const sent = this.#send(changes).catch(_keepThePageAsItIs)
+
+      await Promise.all([sent, _wait(GAP_MS)])
+
+      changes = this.#takeWaiting()
+    }
+
+    this.#sending = false
   }
 
   #sendAsTheUserLeaves () {
@@ -73,7 +84,7 @@ class PreferenceSaver {
       return
     }
 
-    this.#send(changes, { keepalive: true })
+    this.#send(changes, { keepalive: true }).catch(_keepThePageAsItIs)
   }
 
   // The changes waiting that are not already kept, or null for none.
@@ -89,14 +100,10 @@ class PreferenceSaver {
   async #send (changes, init) {
     const body = new URLSearchParams(changes)
 
-    try {
-      const res = await window.fetch(PREFERENCES_PATH, { ...init, method: 'post', body })
+    const res = await window.fetch(PREFERENCES_PATH, { ...init, method: 'post', body })
 
-      if (res.ok) {
-        Object.assign(this.#kept, changes)
-      }
-    } catch {
-      // Nothing to undo: see the module's note.
+    if (res.ok) {
+      Object.assign(this.#kept, changes)
     }
   }
 }

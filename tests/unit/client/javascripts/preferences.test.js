@@ -43,8 +43,9 @@ function holdAnswer () {
 }
 
 // Real turns of the event loop for a request to reach nock or its answer to
-// come back. setImmediate is not faked.
-const TURNS = 5
+// come back, which takes more for a request that does not get through.
+// setImmediate is not faked.
+const TURNS = 50
 
 /**
  * @returns {Promise<void>}
@@ -80,7 +81,10 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
 })
 
-afterEach(() => {
+afterEach(async () => {
+  // A request still on its way reaches this test's nock, not the next's.
+  await settle()
+
   vi.useRealTimers()
 
   nock.cleanAll()
@@ -181,6 +185,24 @@ test('goes on sending after one cannot be kept, sending it again if asked', asyn
   await pass(GAP_MS)
 
   expect(received).toEqual([{ sideNavWidth: '300' }, { sideNavWidth: '300' }])
+})
+
+test('goes on sending after one does not get through', async () => {
+  nock(window.location.origin)
+    .post('/preferences')
+    .replyWithError('The network is down')
+
+  preferencesAnswer(204)
+
+  const saver = new PreferenceSaver()
+
+  saver.save({ sideNavWidth: 300 })
+  await pass(GAP_MS)
+
+  saver.save({ sideNavWidth: 300 })
+  await pass(GAP_MS)
+
+  expect(received).toEqual([{ sideNavWidth: '300' }])
 })
 
 test('sends a change still waiting as the user leaves the page', async () => {
