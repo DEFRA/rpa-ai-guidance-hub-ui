@@ -82,6 +82,7 @@ describe('Resizing a guide\'s contents pane', () => {
 
   test('is drawn at the width the user left it, without a script', async () => {
     keepPreferencesInTheApi({ contentsWidth: 412 })
+
     const cookie = await loginAsDevUser(server)
 
     const { payload } = await server.inject({

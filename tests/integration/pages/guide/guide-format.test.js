@@ -45,6 +45,7 @@ describe('A guide\'s format', () => {
 
   beforeEach(async () => {
     kept = keepPreferencesInTheApi()
+
     cookie = await loginAsDevUser(server)
   })
 
@@ -168,6 +169,7 @@ describe('A guide\'s format', () => {
 
     test('is kept for the user\'s next sign-in', async () => {
       await chooseFormat('stepper', GUIDE_URL)
+
       const page = await guidePage(GUIDE_URL, await loginAsDevUser(server))
       const stepper = formatsOf(page)
         .getByRole('button', { name: 'Stepper', pressed: true })

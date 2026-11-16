@@ -106,6 +106,7 @@ describe('guide controller', () => {
 
     test('renders the section asked for, and the chosen width', async () => {
       givenPreferences({ readingWidth: 'full' })
+
       const request = createRequest({ query: { section: 'two' } })
 
       await controller.getGuidePage(request, h)

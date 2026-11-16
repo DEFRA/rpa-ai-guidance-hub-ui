@@ -22,6 +22,7 @@ const DEFAULT_GUIDE_FORMAT = GUIDE_FORMATS[0].value
  */
 async function getGuideFormat (request) {
   const { guideFormat } = await preferencesOf(request)
+
   const offered = GUIDE_FORMATS.some(option => option.value === guideFormat)
 
   return offered ? guideFormat : DEFAULT_GUIDE_FORMAT

@@ -33,25 +33,25 @@ describe('getPreferences', () => {
   })
 
   test('escapes the user\'s id in the path', async () => {
-    const read = nock(GUIDANCE_API)
-      .get('/preferences/a%2Fb')
-      .reply(200, preferencesResponse())
+    const kept = preferencesResponse({ guideFormat: 'stepper' })
+    nock(GUIDANCE_API).get('/preferences/a%2Fb').reply(200, kept)
 
-    await getPreferences('a/b')
+    const res = await getPreferences('a/b')
 
-    expect(read.isDone()).toBe(true)
+    expect(res.data).toEqual(kept)
   })
 })
 
 describe('patchPreferences', () => {
-  test('sends the changes as a JSON merge patch', async () => {
-    const patch = nock(GUIDANCE_API)
+  test('sends the changes as a JSON merge patch, answering every preference as it now is', async () => {
+    const kept = preferencesResponse({ guideFormat: 'stepper' })
+    nock(GUIDANCE_API)
       .matchHeader('Content-Type', 'application/merge-patch+json')
       .patch(`/preferences/${HUB_ID}`, { readingWidth: null })
-      .reply(200, preferencesResponse())
+      .reply(200, kept)
 
-    await patchPreferences(HUB_ID, { readingWidth: null })
+    const res = await patchPreferences(HUB_ID, { readingWidth: null })
 
-    expect(patch.isDone()).toBe(true)
+    expect(res.data).toEqual(kept)
   })
 })

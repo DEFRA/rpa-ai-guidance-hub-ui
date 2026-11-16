@@ -8,6 +8,8 @@
  * stays hidden, and the width is the default.
  */
 
+import { savePreferences } from './preferences.js'
+
 /**
  * @typedef {{min: number, max: number}} WidthLimits
  */
@@ -113,6 +115,7 @@ class ResizeHandle {
       this.#setWidth(Number(handle.dataset.defaultWidth))
       this.#keep()
     })
+
     handle.hidden = false
   }
 
@@ -145,6 +148,7 @@ class ResizeHandle {
   #endDrag () {
     this.#dragStart = null
     this.#scope.classList.remove(this.#resizable.resizingClass)
+
     this.#keep()
   }
 
@@ -158,9 +162,8 @@ class ResizeHandle {
     }
 
     this.#kept = width
-    const body = new URLSearchParams({ [this.#resizable.preference]: width })
 
-    window.fetch('/preferences', { method: 'post', body }).catch(() => {})
+    savePreferences({ [this.#resizable.preference]: width })
   }
 
   #onKey (event) {

@@ -135,6 +135,7 @@ describe('Side navigation', () => {
         .reply(statusCodes.HTTP_STATUS_OK, preferencesResponse({
           sideNavCollapsed: true
         }))
+
       const cookie = await signedInWith([
         pinResponse({ id: FIRST, title: 'Claiming a payment' })
       ])
@@ -769,6 +770,7 @@ describe('Side navigation', () => {
 
     test('shows the error page when the hub cannot keep it', async () => {
       const signedIn = await loginAsDevUser(server)
+
       nock.cleanAll()
       nock(GUIDANCE_API_BASE_URL)
         .patch(/^\/preferences\//)

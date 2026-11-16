@@ -63,6 +63,7 @@ describe('preferencesOf', () => {
     const secondRead = nock(GUIDANCE_API)
       .get(PREFERENCES_PATH)
       .reply(200, preferencesResponse())
+
     const request = signedInRequest()
 
     await Promise.all([preferencesOf(request), preferencesOf(request)])
@@ -88,14 +89,17 @@ describe('preferencesOf', () => {
 
 describe('keepPreferences', () => {
   test('sends only the preferences changed, as a merge patch', async () => {
-    const patch = nock(GUIDANCE_API)
+    let sent
+
+    nock(GUIDANCE_API)
       .matchHeader('Content-Type', 'application/merge-patch+json')
-      .patch(PREFERENCES_PATH, { guideFormat: 'stepper' })
+      .patch(PREFERENCES_PATH)
       .reply(200, preferencesResponse({ guideFormat: 'stepper' }))
+      .on('request', (_req, _interceptor, body) => { sent = JSON.parse(body) })
 
     await keepPreferences(signedInRequest(), { guideFormat: 'stepper' })
 
-    expect(patch.isDone()).toBe(true)
+    expect(sent).toEqual({ guideFormat: 'stepper' })
   })
 
   test('rejects when the API cannot keep the change', async () => {

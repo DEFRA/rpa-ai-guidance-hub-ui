@@ -14,11 +14,13 @@ describe('POST /preferences', () => {
   beforeAll(async () => {
     server = await createServer()
     await server.initialize()
+
     nock.disableNetConnect()
   })
 
   beforeEach(async () => {
     kept = keepPreferencesInTheApi()
+
     cookie = await loginAsDevUser(server)
   })
 
@@ -28,6 +30,7 @@ describe('POST /preferences', () => {
 
   afterAll(async () => {
     nock.enableNetConnect()
+
     await server.stop({ timeout: 0 })
   })
 

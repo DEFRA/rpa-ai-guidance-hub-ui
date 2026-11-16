@@ -27,6 +27,7 @@ describe('A guide\'s information', () => {
 
   beforeEach(async () => {
     kept = keepPreferencesInTheApi()
+
     cookie = await loginAsDevUser(server)
   })
 
@@ -108,6 +109,7 @@ describe('A guide\'s information', () => {
 
   test('is kept for the user\'s next sign-in', async () => {
     await choose(true)
+
     const page = await guidePage(await loginAsDevUser(server))
 
     expect(kept).toEqual({ guideInformationShown: true })
