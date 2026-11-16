@@ -1,6 +1,7 @@
 import { statusCodes } from '../../../../src/constants/status-codes.js'
 import * as controller from '../../../../src/pages/guide/controller.js'
 import * as guidesService from '../../../../src/services/guides.js'
+import * as preferencesService from '../../../../src/services/preferences.js'
 import * as usersService from '../../../../src/services/users.js'
 
 const guide = {
@@ -11,22 +12,28 @@ const guide = {
   lastUpdated: '2026-10-06T08:00:00Z'
 }
 
+// Where a returnTo must not send the user.
+const ELSEWHERE = [[''], ['https://evil.example'], ['//evil.example']]
+
 const markdown = '## One\n\nFirst.\n\n## Two\n\nSecond.\n\n## Three\n\nThird.'
 
-function createRequest ({ query = {}, payload, stored, format, informationShown } = {}) {
-  const session = new Map([
-    ...(stored ? [['guide-reading-width', stored]] : []),
-    ...(format ? [['guide-format', format]] : []),
-    ...(informationShown === undefined ? [] : [['guide-information-shown', informationShown]])
-  ])
-
+function createRequest (options = {}) {
   return {
     params: { guideId: 'guide-1', name: 'abc.png' },
-    query,
-    payload,
+    query: options.query ?? {},
+    payload: options.payload,
     url: { pathname: '/guides/guide-1', search: '?section=two' },
-    yar: { get: key => session.get(key), set: (key, value) => session.set(key, value), flash: () => [], session }
+    yar: { flash: () => [] }
   }
+}
+
+/**
+ * The user's preferences, as the preferences service answers them.
+ *
+ * @param {Object<string, unknown>} kept - Those set, by name
+ */
+function givenPreferences (kept) {
+  preferencesService.preferencesOf.mockResolvedValue(kept)
 }
 
 function createToolkit () {
@@ -47,6 +54,8 @@ describe('guide controller', () => {
     vi.spyOn(usersService, 'pinnedOf').mockResolvedValue([])
     vi.spyOn(usersService, 'casesOf').mockResolvedValue([])
     vi.spyOn(usersService, 'recordOpened').mockResolvedValue()
+    vi.spyOn(preferencesService, 'preferencesOf').mockResolvedValue({})
+    vi.spyOn(preferencesService, 'keepPreferences').mockResolvedValue()
   })
 
   describe('getGuidePage', () => {
@@ -96,7 +105,9 @@ describe('guide controller', () => {
     })
 
     test('renders the section asked for, and the chosen width', async () => {
-      const request = createRequest({ query: { section: 'two' }, stored: 'full' })
+      givenPreferences({ readingWidth: 'full' })
+
+      const request = createRequest({ query: { section: 'two' } })
 
       await controller.getGuidePage(request, h)
 
@@ -111,7 +122,9 @@ describe('guide controller', () => {
       [undefined, 'traditional'],
       ['stepper', 'stepper']
     ])('shows the guide in the format chosen, whole until one is (%j)', async (format, shown) => {
-      await controller.getGuidePage(createRequest({ format }), h)
+      givenPreferences({ guideFormat: format })
+
+      await controller.getGuidePage(createRequest(), h)
 
       expect(h.view.mock.calls[0][1].format).toBe(shown)
     })
@@ -139,7 +152,9 @@ describe('guide controller', () => {
       [undefined, false],
       [true, true]
     ])('shows the guide\'s information as the user chose (%j)', async (informationShown, shown) => {
-      await controller.getGuidePage(createRequest({ informationShown }), h)
+      givenPreferences({ guideInformationShown: informationShown })
+
+      await controller.getGuidePage(createRequest(), h)
 
       expect(h.view.mock.calls[0][1].informationShown).toBe(shown)
     })
@@ -176,51 +191,65 @@ describe('guide controller', () => {
   })
 
   describe('postReadingWidth', () => {
-    test('remembers the width and goes back to the page', () => {
-      const request = createRequest({ payload: { width: 'wide', returnTo: '/guides/guide-1?page=2' } })
+    test('keeps the width as a preference, and goes back', async () => {
+      const payload = { width: 'wide', returnTo: '/guides/guide-1?page=2' }
+      const request = createRequest({ payload })
 
-      controller.postReadingWidth(request, h)
+      await controller.postReadingWidth(request, h)
 
-      expect(request.yar.session.get('guide-reading-width')).toBe('wide')
+      expect(preferencesService.keepPreferences)
+        .toHaveBeenCalledWith(request, { readingWidth: 'wide' })
       expect(h.redirect).toHaveBeenCalledWith('/guides/guide-1?page=2')
     })
 
-    test.each([[''], ['https://evil.example'], ['//evil.example']])('goes to the hub instead of %j', (returnTo) => {
-      controller.postReadingWidth(createRequest({ payload: { width: 'full', returnTo } }), h)
+    test.each(ELSEWHERE)('goes to the hub instead of %j', async (returnTo) => {
+      const payload = { width: 'full', returnTo }
+
+      await controller.postReadingWidth(createRequest({ payload }), h)
 
       expect(h.redirect).toHaveBeenCalledWith('/hub')
     })
   })
 
   describe('postInformation', () => {
-    test.each([[true], [false]])('remembers the information as shown %s, and goes back to the page', (shown) => {
-      const request = createRequest({ payload: { shown, returnTo: '/guides/guide-1?section=two' } })
+    test.each([[true], [false]])('keeps it shown as %s, and goes back',
+      async (shown) => {
+        const returnTo = '/guides/guide-1?section=two'
+        const request = createRequest({ payload: { shown, returnTo } })
 
-      controller.postInformation(request, h)
+        await controller.postInformation(request, h)
 
-      expect(request.yar.session.get('guide-information-shown')).toBe(shown)
-      expect(h.redirect).toHaveBeenCalledWith('/guides/guide-1?section=two')
-    })
+        expect(preferencesService.keepPreferences)
+          .toHaveBeenCalledWith(request, { guideInformationShown: shown })
+        expect(h.redirect).toHaveBeenCalledWith(returnTo)
+      })
 
-    test.each([[''], ['https://evil.example']])('goes to the hub instead of %j', (returnTo) => {
-      controller.postInformation(createRequest({ payload: { shown: true, returnTo } }), h)
+    test.each(ELSEWHERE)('goes to the hub instead of %j', async (returnTo) => {
+      const payload = { shown: true, returnTo }
+
+      await controller.postInformation(createRequest({ payload }), h)
 
       expect(h.redirect).toHaveBeenCalledWith('/hub')
     })
   })
 
   describe('postFormat', () => {
-    test('remembers the format and goes back to the reader\'s place', () => {
-      const request = createRequest({ payload: { format: 'stepper', returnTo: '/guides/guide-1?page=2#two' } })
+    test('keeps the format as a preference, and goes back', async () => {
+      const returnTo = '/guides/guide-1?page=2#two'
+      const payload = { format: 'stepper', returnTo }
+      const request = createRequest({ payload })
 
-      controller.postFormat(request, h)
+      await controller.postFormat(request, h)
 
-      expect(request.yar.session.get('guide-format')).toBe('stepper')
-      expect(h.redirect).toHaveBeenCalledWith('/guides/guide-1?page=2#two')
+      expect(preferencesService.keepPreferences)
+        .toHaveBeenCalledWith(request, { guideFormat: 'stepper' })
+      expect(h.redirect).toHaveBeenCalledWith(returnTo)
     })
 
-    test.each([[''], ['https://evil.example'], ['//evil.example']])('goes to the hub instead of %j', (returnTo) => {
-      controller.postFormat(createRequest({ payload: { format: 'traditional', returnTo } }), h)
+    test.each(ELSEWHERE)('goes to the hub instead of %j', async (returnTo) => {
+      const payload = { format: 'traditional', returnTo }
+
+      await controller.postFormat(createRequest({ payload }), h)
 
       expect(h.redirect).toHaveBeenCalledWith('/hub')
     })

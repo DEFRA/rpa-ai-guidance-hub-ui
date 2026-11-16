@@ -1,27 +1,45 @@
-import { isInformationShown, setInformationShown } from '../../../../src/pages/guide/information.js'
+import {
+  isInformationShown,
+  setInformationShown
+} from '../../../../src/pages/guide/information.js'
+import {
+  keepPreferences,
+  preferencesOf
+} from '../../../../src/services/preferences.js'
 
-function createRequest (stored) {
-  const store = new Map(stored === undefined ? [] : [['guide-information-shown', stored]])
+// seam: the preferences service is tested on its own, against the API
+vi.mock('../../../../src/services/preferences.js')
 
-  return {
-    yar: { get: key => store.get(key), set: (key, value) => store.set(key, value) }
-  }
-}
+const request = {}
+
+afterEach(() => {
+  vi.resetAllMocks()
+})
 
 describe('a guide\'s information', () => {
-  test('is hidden until the user shows it', () => {
-    expect(isInformationShown(createRequest())).toBe(false)
+  test('is hidden until the user shows it', async () => {
+    preferencesOf.mockResolvedValue({})
+
+    expect(await isInformationShown(request)).toBe(false)
   })
 
-  test.each([[true], [false]])('remembers shown as %s, for every guide', (shown) => {
-    const request = createRequest()
+  test.each([[true], [false]])('is shown as %s once chosen, for every guide',
+    async (shown) => {
+      preferencesOf.mockResolvedValue({ guideInformationShown: shown })
 
-    setInformationShown(request, shown)
+      expect(await isInformationShown(request)).toBe(shown)
+    })
 
-    expect(isInformationShown(request)).toBe(shown)
+  test('is hidden for anything kept other than true', async () => {
+    preferencesOf.mockResolvedValue({ guideInformationShown: 'true' })
+
+    expect(await isInformationShown(request)).toBe(false)
   })
 
-  test('is hidden for anything stored other than true', () => {
-    expect(isInformationShown(createRequest('true'))).toBe(false)
+  test('is kept as the user\'s preference', async () => {
+    await setInformationShown(request, true)
+
+    expect(keepPreferences)
+      .toHaveBeenCalledWith(request, { guideInformationShown: true })
   })
 })

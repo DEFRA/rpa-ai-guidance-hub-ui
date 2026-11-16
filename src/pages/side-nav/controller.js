@@ -9,12 +9,12 @@ const FALLBACK_RETURN_URL = '/hub'
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
- * @returns {import('@hapi/hapi').ResponseObject}
+ * @returns {Promise<import('@hapi/hapi').ResponseObject>}
  */
-function postToggle (request, h) {
+async function postToggle (request, h) {
   const { collapsed, returnTo } = request.payload
 
-  setNavCollapsed(request, collapsed)
+  await setNavCollapsed(request, collapsed)
 
   return h.redirect(relativeHref(returnTo, FALLBACK_RETURN_URL))
 }

@@ -1,12 +1,21 @@
-import { getGuideFormat, GUIDE_FORMATS, setGuideFormat } from '../../../../src/pages/guide/format.js'
+import {
+  getGuideFormat,
+  GUIDE_FORMATS,
+  setGuideFormat
+} from '../../../../src/pages/guide/format.js'
+import {
+  keepPreferences,
+  preferencesOf
+} from '../../../../src/services/preferences.js'
 
-function requestWith (stored) {
-  const store = new Map(stored === undefined ? [] : [['guide-format', stored]])
+// seam: the preferences service is tested on its own, against the API
+vi.mock('../../../../src/services/preferences.js')
 
-  return {
-    yar: { get: key => store.get(key), set: (key, value) => store.set(key, value) }
-  }
-}
+const request = {}
+
+afterEach(() => {
+  vi.resetAllMocks()
+})
 
 describe('guide format', () => {
   test('offers the whole guide, Traditional, and a section at a time, Stepper', () => {
@@ -16,19 +25,29 @@ describe('guide format', () => {
     ])
   })
 
-  test('is traditional until one is chosen', () => {
-    expect(getGuideFormat(requestWith())).toBe('traditional')
+  test('is traditional until one is chosen', async () => {
+    preferencesOf.mockResolvedValue({})
+
+    expect(await getGuideFormat(request)).toBe('traditional')
   })
 
-  test.each([['stepper'], ['traditional']])('remembers %s', (format) => {
-    const request = requestWith()
+  test.each([['stepper'], ['traditional']])('is %s once chosen',
+    async (format) => {
+      preferencesOf.mockResolvedValue({ guideFormat: format })
 
-    setGuideFormat(request, format)
+      expect(await getGuideFormat(request)).toBe(format)
+    })
 
-    expect(getGuideFormat(request)).toBe(format)
+  test('ignores a kept value that is not an offered format', async () => {
+    preferencesOf.mockResolvedValue({ guideFormat: 'scroll' })
+
+    expect(await getGuideFormat(request)).toBe('traditional')
   })
 
-  test('ignores a stored value that is not an offered format', () => {
-    expect(getGuideFormat(requestWith('scroll'))).toBe('traditional')
+  test('is kept as the user\'s preference', async () => {
+    await setGuideFormat(request, 'stepper')
+
+    expect(keepPreferences)
+      .toHaveBeenCalledWith(request, { guideFormat: 'stepper' })
   })
 })

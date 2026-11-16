@@ -1,6 +1,9 @@
 import { CASE_TYPES } from '../constants/case-types.js'
 import { caseGuidesHref } from '../pages/common/case-guides-href.js'
 import { guideSectionHref } from '../pages/common/guide-section-href.js'
+import { isNavCollapsed } from '../pages/side-nav/collapsed.js'
+import { getSideNavWidth } from '../pages/side-nav/width.js'
+import { preferencesOf } from '../services/preferences.js'
 import * as usersService from '../services/users.js'
 
 const UNTITLED = 'Untitled guide'
@@ -103,7 +106,9 @@ function _currentCaseKey (request, cases) {
  * lists - the guides and sections they pinned, and how many, and their cases
  * with the sections of guides bookmarked to them, and how many - from one call
  * to the hub for the user. Without them, the side navigation lists no pins or
- * cases and counts none.
+ * cases and counts none. With them, whether the user has folded the side
+ * navigation away, its width, and whether each of its lists is closed, from
+ * their preferences: the defaults when they cannot be read.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -116,7 +121,19 @@ async function addSideNavLists (request, h) {
     return h.continue
   }
 
-  const [pinned, cases] = await Promise.all([usersService.pinnedOf(request), usersService.casesOf(request)])
+  const [
+    pinned,
+    cases,
+    sideNavCollapsed,
+    sideNavWidth,
+    preferences
+  ] = await Promise.all([
+    usersService.pinnedOf(request),
+    usersService.casesOf(request),
+    isNavCollapsed(request),
+    getSideNavWidth(request),
+    preferencesOf(request)
+  ])
 
   response.source.context = {
     ...response.source.context,
@@ -124,7 +141,11 @@ async function addSideNavLists (request, h) {
     pinnedCount: pinned?.length,
     caseBookmarks: _caseBookmarks(cases ?? []),
     caseCount: cases?.length,
-    currentCaseKey: _currentCaseKey(request, cases ?? [])
+    currentCaseKey: _currentCaseKey(request, cases ?? []),
+    sideNavCollapsed,
+    sideNavWidth,
+    sideNavPinnedCollapsed: preferences.sideNavPinnedCollapsed === true,
+    sideNavBookmarksCollapsed: preferences.sideNavBookmarksCollapsed === true
   }
 
   return h.continue
