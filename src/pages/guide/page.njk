@@ -152,7 +152,7 @@
               {% if searchSection %}<input type="hidden" name="section" value="{{ searchSection }}">{% endif %}
               <div class="app-guide-keyword-search__bar">
                 {{ govukInput({
-                  id: "guide-search",
+                  id: "guide:search",
                   name: "q",
                   type: "search",
                   value: search.q if search else "",

@@ -60,11 +60,11 @@ describe('Search in a guide', () => {
    * The guide's page at `query`, the API answering a search for "pay" as
    * `search` says: a status and a body.
    */
-  async function guidePage ({ query = '', search, format = 'traditional' } = {}) {
+  async function guidePage ({ query = '', search, format = 'traditional', markdown = MARKDOWN } = {}) {
     keepPreferencesInTheApi({ guideFormat: format })
     const api = nock(GUIDANCE_API_BASE_URL)
       .get(GUIDE_URL).reply(statusCodes.HTTP_STATUS_OK, guideResponse({ id: GUIDE_ID }))
-      .get(`${GUIDE_URL}/content`).reply(statusCodes.HTTP_STATUS_OK, MARKDOWN, { 'Content-Type': 'text/plain' })
+      .get(`${GUIDE_URL}/content`).reply(statusCodes.HTTP_STATUS_OK, markdown, { 'Content-Type': 'text/plain' })
 
     if (search) {
       api.get(`${GUIDE_URL}/search`).query({ q: 'pay' }).reply(...search)
@@ -87,6 +87,16 @@ describe('Search in a guide', () => {
     expect(box.form).toHaveAttribute('method', 'get')
     expect(box.form).toHaveAttribute('action', GUIDE_URL)
     expect(page.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  test('has a search box with an ID no heading of the guide can have, so a heading titled "Guide search" keeps its own', async () => {
+    const page = await guidePage({ markdown: '# Test guide\n\n## Introduction\n\n### Guide search\n\nText.' })
+    const heading = page.getByRole('heading', { name: 'Guide search' })
+    const ids = Array.from(page.document.querySelectorAll('[id]'), element => element.id)
+
+    expect(heading).toHaveAttribute('id', 'guide-search')
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(searchBoxOf(page)).toHaveAttribute('id', 'guide:search')
   })
 
   test('shows how many matches the guide holds, and in how many of its sections, with the words searched for', async () => {
