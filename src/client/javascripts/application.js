@@ -5,6 +5,7 @@ import { initGuideContents } from './guide-contents.js'
 import { initGuideInfo } from './guide-info.js'
 import { initGuidePages } from './guide-pages.js'
 import { initGuidePlace } from './guide-place.js'
+import { initGuideSearch } from './guide-search.js'
 import { initSortSelect } from './hub-sort.js'
 import { initSideNavLists } from './side-nav-lists.js'
 import { initReorder } from './side-nav-reorder.js'
@@ -21,6 +22,7 @@ initGuidePages()
 initGuidePlace()
 initGuideContents()
 initGuideInfo()
+initGuideSearch()
 initSortSelect()
 initReorder()
 initSideNavLists()

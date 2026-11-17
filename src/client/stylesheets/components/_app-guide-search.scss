@@ -1,8 +1,8 @@
 @use 'govuk-frontend' as *;
 
 // Search in this guide, as the prototype has it: the box in the contents pane
-// under the format, how many matches there are, and a count on each contents
-// entry with matches.
+// under the format, how many matches there are and which is current, the
+// matches marked in the guide, and a count on each contents entry with matches.
 
 .app-guide-contents .app-guide-keyword-search {
   margin-bottom: govuk-spacing(4);
@@ -15,8 +15,14 @@
 }
 
 .app-guide-keyword-search__field {
+  position: relative;
   flex-grow: 1;
   margin-bottom: 0;
+
+  // Room for the shortcut the page's script shows in the box.
+  .govuk-input:has(~ .app-search-kbd:not([hidden])) {
+    padding-right: 64px;
+  }
 }
 
 .app-guide-keyword-search__button {
@@ -31,8 +37,55 @@
   margin: 0 0 govuk-spacing(2);
 }
 
+.app-guide-keyword-search__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: govuk-spacing(2);
+  margin-bottom: govuk-spacing(2);
+}
+
+.app-guide-keyword-search__step.govuk-button {
+  margin-bottom: 0;
+  padding: govuk-spacing(1) govuk-spacing(2);
+}
+
+.app-guide-keyword-search__position {
+  margin: 0 0 0 govuk-spacing(1);
+  color: $govuk-secondary-text-colour;
+}
+
 .app-guide-keyword-search__clear {
   @include govuk-font($size: 16);
+}
+
+// A search box's keyboard shortcut, inside the box at its right, shown by
+// the page's script, so it never shows without the shortcut.
+.app-search-kbd {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  padding: 1px 6px;
+  transform: translateY(-50%);
+  border: 1px solid $govuk-border-colour;
+  border-radius: 4px;
+  color: $govuk-secondary-text-colour;
+  font-family: $govuk-font-family;
+  font-size: 13px;
+  line-height: 18px;
+  pointer-events: none;
+}
+
+// The matches, painted by the page's script over the viewer's text.
+::highlight(guide-keyword-match) {
+  background-color: $govuk-focus-colour;
+  color: $govuk-text-colour;
+}
+
+::highlight(guide-keyword-current) {
+  background-color: $govuk-focus-colour;
+  color: $govuk-text-colour;
+  text-decoration: underline 4px $govuk-focus-text-colour;
 }
 
 .app-guide-contents__entry--counted {

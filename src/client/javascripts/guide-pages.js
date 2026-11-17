@@ -1,6 +1,7 @@
 /**
  * Makes a guide page current when the browser's find-in-page reveals a match
- * on it: hides the other pages and updates the address and contents.
+ * on it, or the search in the guide steps to one (`guide-pages:show`): hides
+ * the other pages and updates the address and contents.
  *
  * @returns {void}
  */
@@ -49,6 +50,7 @@ function initGuidePages () {
 
   pages.forEach((page) => {
     page.addEventListener('beforematch', () => showPage(page))
+    page.addEventListener('guide-pages:show', () => showPage(page))
   })
 }
 

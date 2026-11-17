@@ -49,4 +49,13 @@ describe('a guide\'s page revealed by the browser\'s find in page', () => {
 
     expect(window.location.search).toBe('')
   })
+
+  test('is shown, and the others hidden, when the search in the guide steps to a match on it', () => {
+    const [first, second] = document.querySelectorAll('[data-guide-page]')
+
+    second.dispatchEvent(new window.CustomEvent('guide-pages:show'))
+
+    expect([first.getAttribute('hidden'), second.hasAttribute('hidden')]).toEqual(['until-found', false])
+    expect(window.location.search).toBe('?section=assign-case')
+  })
 })

@@ -168,6 +168,43 @@ function _searchStatus (words, counted) {
 
 /**
  * @private
+ * @param {import('../../services/guide-sections.js').GuideSection[]} sections
+ * @returns {Map<string, string>} The id each heading that starts a section
+ *   has on the page, by the anchor the hub knows it by: the two can differ,
+ *   as the page numbers repeated headings among all of its own
+ */
+function _pageIds (sections) {
+  return new Map(sections.flatMap(section => [
+    ...(section.sectionAnchor ? [[section.sectionAnchor, section.slug]] : []),
+    ...section.headingSectionAnchors.flatMap((anchor, at) => anchor ? [[anchor, section.headingIds[at]]] : [])
+  ]))
+}
+
+/**
+ * @private
+ * @param {{title: Array<Object>, sections: Array<{anchor: string|null, matches: Array<Object>}>}} found
+ *   - The search's answer
+ * @param {Map<string, string>} pageIds - As `_pageIds` gives them
+ * @returns {Array<{anchor: string|null, start: number, end: number, text: string}>}
+ *   Every match, in order, for the page's script to place, each by the id
+ *   its section's heading has on the page: null for the guide's title, empty
+ *   for an Introduction
+ */
+function _handedOver (found, pageIds) {
+  const onThePage = anchor => anchor === null ? '' : pageIds.get(anchor)
+
+  return [
+    ...found.title.map(match => ({ anchor: null, ...match })),
+    ...found.sections.flatMap(({ anchor, matches }) => {
+      const id = onThePage(anchor)
+
+      return id === undefined ? [] : matches.map(match => ({ anchor: id, ...match }))
+    })
+  ]
+}
+
+/**
+ * @private
  * The search in the guide's part of the page: the form, what the search
  * found, and the contents with each entry's count.
  *
@@ -186,10 +223,13 @@ function _searching ({ guideId, sections, contents, search, current }) {
   const entries = new Set(contents.flatMap(item => [item.section, ...item.subheadings.map(subheading => subheading.section)]))
   const counted = search?.found ? countMatches(sections, entries, search.found) : null
   const countOf = entry => ({ ...entry, count: counted.byEntry.get(entry.section) ?? 0 })
+  const pageIds = _pageIds(sections)
+  // For the page's script, which marks the matches and steps between them.
+  const forTheScript = counted?.total > 0 ? { matches: _handedOver(search.found, pageIds), sectionStarts: [...pageIds.values()] } : {}
 
   return {
     contents: counted ? contents.map(item => ({ ...countOf(item), subheadings: item.subheadings.map(countOf) })) : contents,
-    search: search && { q: search.q, status: _searchStatus(search.q, counted), clearHref: GuideViewModel.pageHref(guideId, current) },
+    search: search && { q: search.q, status: _searchStatus(search.q, counted), clearHref: GuideViewModel.pageHref(guideId, current), ...forTheScript },
     searchAction: `/guides/${encodeURIComponent(guideId)}`,
     searchSection: current?.sectionAnchor ?? current?.slug ?? null
   }
