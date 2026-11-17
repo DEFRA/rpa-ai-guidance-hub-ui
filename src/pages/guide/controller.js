@@ -2,6 +2,7 @@ import Boom from '@hapi/boom'
 
 import { statusCodes } from '../../constants/status-codes.js'
 import { relativeHref } from '../common/relative-href.js'
+import * as guideSearchService from '../../services/guide-search.js'
 import { findHeading, resolveAnchors, resolveImages, splitIntoSections } from '../../services/guide-sections.js'
 import * as guidesService from '../../services/guides.js'
 import * as usersService from '../../services/users.js'
@@ -59,6 +60,15 @@ function _currentUrl (request) {
 
 /**
  * @private
+ * @param {unknown} q - The `q` query parameter
+ * @returns {string} The words to search the guide for; empty for none
+ */
+function _wordsOf (q) {
+  return typeof q === 'string' ? q.trim() : ''
+}
+
+/**
+ * @private
  * @param {Array<{id: string, sectionId: string|null}>|null} pinned - The
  *   user's pins, guides and sections of guides, in their order
  * @param {string} guideId
@@ -108,6 +118,7 @@ function _pinnedSectionsOf (pinned, guideId) {
  */
 async function getGuidePage (request, h) {
   const { guideId } = request.params
+  const words = _wordsOf(request.query.q)
 
   const [
     guide,
@@ -117,7 +128,8 @@ async function getGuidePage (request, h) {
     format,
     readingWidth,
     contentsWidth,
-    informationShown
+    informationShown,
+    found
   ] = await Promise.all([
     guidesService.getGuideById(guideId),
     guidesService.getGuideContent(guideId),
@@ -126,7 +138,8 @@ async function getGuidePage (request, h) {
     getGuideFormat(request),
     getReadingWidth(request),
     getContentsWidth(request),
-    isInformationShown(request)
+    isInformationShown(request),
+    words ? guideSearchService.matchesInGuide(guideId, words) : null
   ])
 
   const split = content ? splitIntoSections(content.markdown) : []
@@ -159,7 +172,8 @@ async function getGuidePage (request, h) {
     bookmarked: request.yar.flash(BOOKMARKED)[0],
     format,
     infoRows: buildInfoRows(guide),
-    informationShown
+    informationShown,
+    search: words ? { q: words, found } : null
   })
 
   return h

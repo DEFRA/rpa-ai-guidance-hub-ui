@@ -7,6 +7,7 @@ import { versionTag } from '../common/version-tag.js'
 import { CONTENTS_WIDTH } from './contents-width.js'
 import { GUIDE_FORMATS } from './format.js'
 import { READING_WIDTHS } from './reading-width.js'
+import { countMatches } from './search-counts.js'
 
 const UNTITLED = 'Untitled guide'
 const NOT_PROVIDED = 'Not provided'
@@ -139,6 +140,63 @@ function _headingHref (slug) {
 
 /**
  * @private
+ * @param {number} count
+ * @param {string} one
+ * @param {string} many
+ * @returns {string} The count, and the word for that many
+ */
+function _counting (count, one, many) {
+  return `${count} ${count === 1 ? one : many}`
+}
+
+/**
+ * @private
+ * @param {string} words
+ * @param {import('./search-counts.js').Counted|null} counted - Null when the
+ *   search could not answer
+ * @returns {string} What the search found, as the page says it
+ */
+function _searchStatus (words, counted) {
+  if (counted === null) {
+    return 'Search is not available'
+  }
+  if (counted.total === 0) {
+    return `No matches for ${words}`
+  }
+  return `${_counting(counted.total, 'match', 'matches')} in ${_counting(counted.byEntry.size, 'section', 'sections')}`
+}
+
+/**
+ * @private
+ * The search in the guide's part of the page: the form, what the search
+ * found, and the contents with each entry's count.
+ *
+ * @param {Object} data
+ * @param {string} data.guideId
+ * @param {import('../../services/guide-sections.js').GuideSection[]} data.sections
+ * @param {ReturnType<typeof _contents>} data.contents
+ * @param {{q: string, found: Object|null}|null} data.search - The words, and
+ *   the search's answer (null when it could not answer); null while not
+ *   searching
+ * @param {import('../../services/guide-sections.js').GuideSection|null} data.current
+ *   - The page the stepper shows, which a search keeps; null for the whole
+ *   guide
+ */
+function _searching ({ guideId, sections, contents, search, current }) {
+  const entries = new Set(contents.flatMap(item => [item.section, ...item.subheadings.map(subheading => subheading.section)]))
+  const counted = search?.found ? countMatches(sections, entries, search.found) : null
+  const countOf = entry => ({ ...entry, count: counted.byEntry.get(entry.section) ?? 0 })
+
+  return {
+    contents: counted ? contents.map(item => ({ ...countOf(item), subheadings: item.subheadings.map(countOf) })) : contents,
+    search: search && { q: search.q, status: _searchStatus(search.q, counted), clearHref: GuideViewModel.pageHref(guideId, current) },
+    searchAction: `/guides/${encodeURIComponent(guideId)}`,
+    searchSection: current?.sectionAnchor ?? current?.slug ?? null
+  }
+}
+
+/**
+ * @private
  * A section just bookmarked, as the message that confirms it says so, with
  * the address of the Bookmarked guides page narrowed to the case, found among
  * the user's by its type and reference.
@@ -186,9 +244,13 @@ class GuideViewModel {
    *   its title
    * @param {boolean} [data.informationShown] - Whether the user chose to show
    *   it
+   * @param {{q: string, found: Object|null}|null} [data.search] - The words
+   *   searched for in the guide, kept in the address of each of its pages, and
+   *   the search's answer (null when it could not answer); null while not
+   *   searching
    */
-  constructor ({ guide, sections, pageNumber, readingWidth, contentsWidth = CONTENTS_WIDTH.default, returnTo, pin = null, pinnedSections = null, cases = null, bookmarked, format, infoRows = [], informationShown = false }) {
-    const href = page => GuideViewModel.pageHref(guide.id, sections[page - 1])
+  constructor ({ guide, sections, pageNumber, readingWidth, contentsWidth = CONTENTS_WIDTH.default, returnTo, pin = null, pinnedSections = null, cases = null, bookmarked, format, infoRows = [], informationShown = false, search = null }) {
+    const href = page => GuideViewModel.pageHref(guide.id, sections[page - 1], search?.q)
     const isTraditional = format === TRADITIONAL
     const adjacent = (page) => {
       const section = sections[page - 1]
@@ -206,7 +268,8 @@ class GuideViewModel {
     this.totalPages = sections.length
     // How far through the guide the reader is, by page count.
     this.progressPercentage = sections.length === 0 ? 0 : Math.round(pageNumber / sections.length * 100)
-    this.contents = _contents(sections, pageNumber, isTraditional, href)
+    const contents = _contents(sections, pageNumber, isTraditional, href)
+    Object.assign(this, _searching({ guideId: guide.id, sections, contents, search, current: isTraditional ? null : this.section }))
     const bookmarkedTo = bookmarkedSections(cases ?? [], guide.id)
     // By the anchor the hub knows the section by, which is not always the
     // heading's anchor on the page (`slug`).
@@ -264,11 +327,16 @@ class GuideViewModel {
    *
    * @param {string} guideId
    * @param {import('../../services/guide-sections.js').GuideSection} [section]
+   * @param {string} [words] - Words searched for in the guide, kept as `q`
    * @returns {string}
    */
-  static pageHref (guideId, section) {
+  static pageHref (guideId, section, words) {
     const anchor = section?.sectionAnchor ?? section?.slug
-    const query = anchor ? `?section=${encodeURIComponent(anchor)}` : ''
+    const parts = [
+      ...(anchor ? [`section=${encodeURIComponent(anchor)}`] : []),
+      ...(words ? [`q=${encodeURIComponent(words)}`] : [])
+    ]
+    const query = parts.length > 0 ? `?${parts.join('&')}` : ''
 
     return `/guides/${encodeURIComponent(guideId)}${query}`
   }

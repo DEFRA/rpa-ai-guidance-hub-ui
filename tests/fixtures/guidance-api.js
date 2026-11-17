@@ -185,6 +185,27 @@ function guidePageResponse (overrides = {}) {
 }
 
 /**
+ * Body of `GET /guides/{guideId}/search?q=…` on 200: where the words are in the
+ * guide's latest version, in its title and in each section that holds them,
+ * by the hub's anchor for the section (null for the introduction). Each place
+ * is in the section's text as a reader sees it, with the words there.
+ *
+ * Verified against the guidance API's `GuideMatches` schema on 2026-11-17:
+ * versionId, title as `Match` items, and sections as `SectionMatches` items.
+ *
+ * @param {Object} [overrides]
+ * @returns {{versionId: string, title: Array<{start: number, end: number, text: string}>, sections: Array<{anchor: string|null, matches: Array<{start: number, end: number, text: string}>}>}}
+ */
+function guideSearchResponse (overrides = {}) {
+  return {
+    versionId: 'version-1',
+    title: [],
+    sections: [{ anchor: 'introduction', matches: [{ start: 13, end: 16, text: 'Pay' }] }],
+    ...overrides
+  }
+}
+
+/**
  * Body of `POST /users` (201, or 200 for a user signed in before) and of
  * `GET /users/{id}` on 200: the hub's user, with the guides and sections they
  * have pinned (`pinResponse`), in their order, and their cases
@@ -376,6 +397,7 @@ export {
   caseResponse,
   guidePageResponse,
   guideResponse,
+  guideSearchResponse,
   guideSummaryResponse,
   pinnedGuidesResponse,
   pinnedSummaryResponse,
