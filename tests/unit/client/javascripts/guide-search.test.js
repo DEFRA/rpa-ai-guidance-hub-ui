@@ -221,6 +221,18 @@ describe('stepping between the matches', () => {
     expect(currentText()).toEqual(['Pay'])
     expect(shown).toHaveBeenCalled()
   })
+
+  test('goes on to the next match with Enter after a contents count is clicked', () => {
+    searchAt(placedPage())
+    const input = document.querySelector('input[name="q"]')
+
+    // The browser takes the focus from the box when the count is pressed.
+    input.blur()
+    document.querySelector('.app-guide-contents__count').click()
+    document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+
+    expect(positionText()).toBe('Match 4 of 5')
+  })
 })
 
 /** The guide's page that `placeMatches`' tests read. */

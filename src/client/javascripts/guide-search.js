@@ -298,13 +298,15 @@ class _Search {
         this._step(event.shiftKey)
       }
     })
-    // A contents entry's count goes to the first match under it.
+    // A contents entry's count goes to the first match under it, and gives
+    // the focus back to the search box, where Enter goes on to the next.
     document.querySelectorAll(FIRST_UNDER).forEach(count => count.classList.add(STEPS_CLASS))
     document.getElementById('guide:contents')?.addEventListener('click', (event) => {
       const count = event.target.closest(FIRST_UNDER)
 
       if (count) {
         this.show(Number(count.dataset.guideSearchFirst))
+        this.input.focus({ preventScroll: true })
       }
     })
   }
