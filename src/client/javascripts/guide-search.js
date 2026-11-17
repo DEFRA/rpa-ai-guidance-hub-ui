@@ -210,7 +210,7 @@ class _Search {
     this.words = form.dataset.guideSearchQ
     this.found = JSON.parse(form.dataset.guideSearchMatches)
     this.starts = new Set(JSON.parse(form.dataset.guideSearchSections))
-    this.current = 0
+    this.current = 1
     this.matches = []
     this.moved = false
     this.movedOn = () => { this.moved = true }
@@ -218,7 +218,9 @@ class _Search {
 
   start () {
     this.form.querySelector('[data-guide-search-controls]')?.removeAttribute('hidden')
-    this._refind()
+    this.matches = placeMatches(this.found, this.starts)
+    // As every later match is shown: its page too, in the stepper.
+    this.show(this._firstShown())
     this._listen()
     this._watch()
   }
@@ -230,9 +232,10 @@ class _Search {
     return shown === -1 ? 1 : shown + 1
   }
 
+  /** Place the matches again, once the page's text has changed under them. */
   _refind () {
     this.matches = placeMatches(this.found, this.starts)
-    this.current = this.current ? Math.min(this.current, this.matches.length) : this._firstShown()
+    this.current = Math.min(this.current, this.matches.length)
     this._paint()
     this._bringIntoView()
   }

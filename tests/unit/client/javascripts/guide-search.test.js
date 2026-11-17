@@ -143,10 +143,10 @@ describe('stepping between the matches', () => {
     { anchor: 'checks', start: 7, end: 10, text: 'Pay' }
   ]
   // The search form and contents as the server draws them, with the page above.
-  const SEARCHED = `
+  const searched = (matches = MATCHES) => `
     <div id="guide:contents">
       <form data-guide-search data-guide-search-q="pay"
-        data-guide-search-matches='${JSON.stringify(MATCHES)}' data-guide-search-sections='["claims-1","checks"]'>
+        data-guide-search-matches='${JSON.stringify(matches)}' data-guide-search-sections='["claims-1","checks"]'>
         <input name="q" value="pay">
         <div data-guide-search-controls hidden>
           <button type="button" data-guide-search-step="previous">Previous</button>
@@ -174,8 +174,8 @@ describe('stepping between the matches', () => {
   const positionText = () => document.querySelector('[data-guide-search-position]').textContent
   const currentText = () => painted.get('guide-keyword-current').ranges.map(range => range.toString())
 
-  function searchAt (body) {
-    document.body.innerHTML = `${SEARCHED}${body}`
+  function searchAt (body, matches) {
+    document.body.innerHTML = `${searched(matches)}${body}`
     initGuideSearch()
   }
 
@@ -185,6 +185,17 @@ describe('stepping between the matches', () => {
     expect(painted.get('guide-keyword-match').ranges).toHaveLength(5)
     expect(positionText()).toBe('Match 1 of 5')
     expect(document.querySelector('[data-guide-search-controls]')).not.toHaveAttribute('hidden')
+  })
+
+  test('shows the page that holds the first match, when the page shown holds none', () => {
+    const shown = vi.fn()
+    document.addEventListener('guide-pages:show', shown, { capture: true })
+
+    searchAt(placedPage(), MATCHES.slice(2))
+    document.removeEventListener('guide-pages:show', shown, { capture: true })
+
+    expect(positionText()).toBe('Match 1 of 3')
+    expect(shown.mock.calls.map(([event]) => event.target.dataset.guidePage)).toEqual(['2'])
   })
 
   test('goes to the next match with Next, and round from the last to the first', () => {
