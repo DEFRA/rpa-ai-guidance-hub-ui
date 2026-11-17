@@ -200,6 +200,14 @@ describe('Search in a guide', () => {
       expect(controls.querySelector('[aria-live="polite"]')).toBeInTheDocument()
     })
 
+    test('gives each contents count the number of the first match under it, for the script to go to', async () => {
+      const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND] })
+      const firstOf = title => entryOf(page, title).querySelector('.app-guide-contents__count').dataset.guideSearchFirst
+
+      // The title's match is the first, so the Introduction's is the second.
+      expect([firstOf('Introduction'), firstOf('Check payment')]).toEqual(['2', '3'])
+    })
+
     test('hands over nothing, and offers no stepping, when nothing matches', async () => {
       const none = guideSearchResponse({ title: [], sections: [] })
       const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, none] })

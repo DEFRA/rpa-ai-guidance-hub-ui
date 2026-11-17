@@ -2,7 +2,8 @@
  * @module Search in a guide, in the browser: the matches the API found are
  * painted in the guide's text, one of them current; Previous and Next, and
  * Enter and Shift+Enter in the search box (with the same words), step between
- * them, showing the page that holds one in the stepper; Ctrl+F (Cmd+F) comes
+ * them, showing the page that holds one in the stepper, and a contents
+ * entry's count goes to the first match under it; Ctrl+F (Cmd+F) comes
  * to the search box, and a second press is the browser's own find.
  *
  * The server hands over the matches in order, each by the id its section's
@@ -26,6 +27,10 @@ const MARGIN = 16
 
 // A page of the guide: in the stepper, all but one are hidden.
 const PAGE = '[data-guide-page]'
+
+// A contents entry's count, which goes to the first match under it.
+const FIRST_UNDER = '[data-guide-search-first]'
+const STEPS_CLASS = 'app-guide-contents__count--steps'
 
 // The parts of a guide a search reads: the guide's title above it, then each
 // page's title and its text.
@@ -291,6 +296,15 @@ class _Search {
       if (event.key === 'Enter' && sameWords(this.input.value, this.words)) {
         event.preventDefault()
         this._step(event.shiftKey)
+      }
+    })
+    // A contents entry's count goes to the first match under it.
+    document.querySelectorAll(FIRST_UNDER).forEach(count => count.classList.add(STEPS_CLASS))
+    document.getElementById('guide:contents')?.addEventListener('click', (event) => {
+      const count = event.target.closest(FIRST_UNDER)
+
+      if (count) {
+        this.show(Number(count.dataset.guideSearchFirst))
       }
     })
   }

@@ -7,11 +7,12 @@
 {% from "govuk/components/input/macro.njk" import govukInput %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
 
-{# A contents entry's count of the search's matches under it; nothing while
-   not searching, or for an entry with none. #}
+{# A contents entry's count of the search's matches under it, with the number
+   of the first, which guide-search.js goes to when the count is clicked;
+   nothing while not searching, or for an entry with none. #}
 {% macro matchCount(entry) %}
   {%- if entry.count -%}
-    <span class="app-guide-contents__count">{{ entry.count }}<span class="govuk-visually-hidden"> {{ "match" if entry.count == 1 else "matches" }}</span></span>
+    <span class="app-guide-contents__count" data-guide-search-first="{{ entry.first }}">{{ entry.count }}<span class="govuk-visually-hidden"> {{ "match" if entry.count == 1 else "matches" }}</span></span>
   {%- endif -%}
 {% endmacro %}
 

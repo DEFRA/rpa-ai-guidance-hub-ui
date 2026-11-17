@@ -108,3 +108,15 @@
   line-height: 20px;
   text-align: center;
 }
+
+// Once the page's script steps between the matches, a count goes to the
+// first under its entry.
+.app-guide-contents__count--steps {
+  cursor: pointer;
+
+  &:hover {
+    background-color: $govuk-text-colour;
+    color: $govuk-focus-colour;
+  }
+}
+

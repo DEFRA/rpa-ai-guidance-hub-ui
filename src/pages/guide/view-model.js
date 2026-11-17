@@ -222,7 +222,7 @@ function _handedOver (found, pageIds) {
 function _searching ({ guideId, sections, contents, search, current }) {
   const entries = new Set(contents.flatMap(item => [item.section, ...item.subheadings.map(subheading => subheading.section)]))
   const counted = search?.found ? countMatches(sections, entries, search.found) : null
-  const countOf = entry => ({ ...entry, count: counted.byEntry.get(entry.section) ?? 0 })
+  const countOf = entry => ({ ...entry, count: counted.byEntry.get(entry.section) ?? 0, first: counted.firstOf.get(entry.section) ?? null })
   const pageIds = _pageIds(sections)
   // For the page's script, which marks the matches and steps between them.
   const forTheScript = counted?.total > 0 ? { matches: _handedOver(search.found, pageIds), sectionStarts: [...pageIds.values()] } : {}

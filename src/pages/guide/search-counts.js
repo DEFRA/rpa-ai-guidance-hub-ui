@@ -11,6 +11,9 @@
  * @property {Map<string, number>} byEntry - By the contents entry's
  *   `section`, as the view model's contents name it: how many matches under
  *   it
+ * @property {Map<string, number>} firstOf - By the same: the number of the
+ *   first match under it, counting from 1 in the guide's order, the title's
+ *   matches first
  */
 
 /**
@@ -37,7 +40,10 @@ function _anchorsInOrder (sections) {
 function countMatches (sections, entries, found) {
   const inSection = new Map(found.sections.map(section => [section.anchor ?? '', section.matches.length]))
   const byEntry = new Map()
+  const firstOf = new Map()
   let entry = null
+  // How many matches come before, the title's first.
+  let before = found.title.length
 
   for (const anchor of _anchorsInOrder(sections)) {
     entry = entries.has(anchor) ? anchor : entry
@@ -45,12 +51,14 @@ function countMatches (sections, entries, found) {
 
     if (entry !== null && count > 0) {
       byEntry.set(entry, (byEntry.get(entry) ?? 0) + count)
+      firstOf.set(entry, firstOf.get(entry) ?? before + 1)
     }
+    before += count
   }
 
   const inSections = [...inSection.values()].reduce((sum, count) => sum + count, 0)
 
-  return { total: found.title.length + inSections, byEntry }
+  return { total: found.title.length + inSections, byEntry, firstOf }
 }
 
 export {
