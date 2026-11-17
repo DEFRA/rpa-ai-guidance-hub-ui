@@ -37,7 +37,9 @@
   margin: 0 0 govuk-spacing(2);
 }
 
-.app-guide-keyword-search__controls {
+// Laid out only once the page's script shows them: a `display` of its own would
+// override `hidden`, and show controls that do nothing.
+.app-guide-keyword-search__controls:not([hidden]) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
