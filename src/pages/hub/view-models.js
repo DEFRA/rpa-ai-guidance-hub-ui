@@ -92,6 +92,13 @@ function _searchRow (result, withGuide) {
   }
 }
 
+/**
+ * The level of each guide's heading in the results: under the list's own
+ * heading when a title block gives it one, else straight under the page's.
+ */
+const GUIDE_HEADING_LEVEL = 3
+const GUIDE_HEADING_LEVEL_UNDER_LIST = 4
+
 /** How many guides whose title the words cover show until all are asked for. */
 const TITLES_SHOWN = 5
 
@@ -345,7 +352,7 @@ function _buildGuidesSearch (search) {
     titleBlock,
     listHeading,
     listEmpty: _listEmpty(titleBlock, guides.length, search.words),
-    guideHeadingLevel: listHeading ? 4 : 3,
+    guideHeadingLevel: listHeading ? GUIDE_HEADING_LEVEL_UNDER_LIST : GUIDE_HEADING_LEVEL,
     guides,
     results: [],
     pagination: searchPagination({ words: search.words, page: search.page, total: found.total, tooManyMatches: found.tooManyMatches })
@@ -378,7 +385,7 @@ function _buildGuideSearch (search) {
     titleBlock: null,
     listHeading: null,
     listEmpty: null,
-    guideHeadingLevel: 3,
+    guideHeadingLevel: GUIDE_HEADING_LEVEL,
     guides: [],
     results: found.tooManyMatches ? [] : found.results.map((result) => _searchRow(result, false)),
     pagination: searchPagination({ words: search.words, guide: search.guide, page: search.page, total: found.total, tooManyMatches: found.tooManyMatches })

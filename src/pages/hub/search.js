@@ -93,6 +93,28 @@ function searchHref (options) {
 
 /**
  * @private
+ * One page as the pagination shows it: its number when it is the first, the
+ * last, or the current one or a neighbour; else null, left out.
+ *
+ * @param {number} number
+ * @param {number} page - The current one
+ * @param {number} pages
+ * @returns {number|null}
+ */
+function _shownAs (number, page, pages) {
+  if (number === 1 || number === pages) {
+    return number
+  }
+
+  if (Math.abs(number - page) <= NEIGHBOURS) {
+    return number
+  }
+
+  return null
+}
+
+/**
+ * @private
  * The pages the pagination numbers: the first, the last and the current one
  * with its neighbours, an ellipsis (null) for each run left out.
  *
@@ -101,19 +123,9 @@ function searchHref (options) {
  * @returns {Array<number|null>}
  */
 function _numbered (page, pages) {
-  const shown = []
+  const shown = Array.from({ length: pages }, (_, index) => _shownAs(index + 1, page, pages))
 
-  for (let number = 1; number <= pages; number++) {
-    const near = Math.abs(number - page) <= NEIGHBOURS
-
-    if (number === 1 || number === pages || near) {
-      shown.push(number)
-    } else if (shown.at(-1) !== null) {
-      shown.push(null)
-    }
-  }
-
-  return shown
+  return shown.filter((number, index) => number !== null || shown[index - 1] !== null)
 }
 
 /**
@@ -135,7 +147,7 @@ function searchPagination (options) {
     return null
   }
 
-  const href = (page) => searchHref({ words: options.words, guide: options.guide, page })
+  const href = (number) => searchHref({ words: options.words, guide: options.guide, page: number })
   const page = options.page
 
   return {
