@@ -136,6 +136,13 @@ describe('Search in a guide', () => {
     expect(page.getByRole('link', { name: 'Clear search' })).toHaveAttribute('href', GUIDE_URL)
   })
 
+  test('keeps the words in a link from one page of the stepper to another', async () => {
+    const markdown = MARKDOWN.replace('Pay on time.', 'Pay on time, or see [the archive](#archive).')
+    const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND], format: 'stepper', markdown })
+
+    expect(page.getByRole('link', { name: 'the archive' })).toHaveAttribute('href', `${GUIDE_URL}?section=archive&q=pay#archive`)
+  })
+
   test('keeps the words in the address of each of the guide\'s pages, in the stepper', async () => {
     const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND], format: 'stepper' })
 

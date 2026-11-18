@@ -155,7 +155,7 @@ async function getGuidePage (request, h) {
   // In the traditional view every heading is on the page, so the guide's
   // links to them work as they are.
   const linked = format === 'stepper'
-    ? resolveAnchors(split, page => GuideViewModel.pageHref(guideId, split[page - 1]))
+    ? resolveAnchors(split, page => GuideViewModel.pageHref(guideId, split[page - 1], words))
     : split
   const sections = resolveImages(linked, href => guideAssetHref(href, guideId))
 
