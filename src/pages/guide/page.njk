@@ -15,7 +15,9 @@
   {%- endif -%}
 {% endmacro %}
 
-{% set pageTitle = title %}
+{# A search reloads the page: what it found comes first in the title, which a
+   screen reader reads as the page loads. #}
+{% set pageTitle = (search.status ~ " – " ~ title) if search else title %}
 {% set page = 'guide' %}
 {# The page is a shell that runs the full width. #}
 {% set containerClasses = 'app-width-container--bleed' %}

@@ -111,6 +111,13 @@ describe('Search in a guide', () => {
     expect(searchBoxOf(page)).toHaveValue('pay')
   })
 
+  test('starts the page\'s title with what the search found, as a screen reader reads the title first when the page loads', async () => {
+    const searched = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND] })
+    const unsearched = await guidePage()
+
+    expect(searched.document.title).toBe(`5 matches in 2 sections – ${unsearched.document.title}`)
+  })
+
   test('shows how many matches are under each contents entry, and none beside an entry with none', async () => {
     const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND] })
 
