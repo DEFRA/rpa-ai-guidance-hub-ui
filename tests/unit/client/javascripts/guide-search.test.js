@@ -3,6 +3,24 @@ import { within } from '@testing-library/dom'
 
 import { holdFocus, initGuideSearch, isFindShortcut, placeMatches, sameWords, shortcutLabel, steppedMatch } from '../../../../src/client/javascripts/guide-search.js'
 
+// The script listens on the document, which outlives each test: take off
+// what each test added, so one test's page does not answer another's keys.
+const listenOnDocument = document.addEventListener.bind(document)
+let documentListeners
+
+beforeEach(() => {
+  documentListeners = []
+  vi.spyOn(document, 'addEventListener').mockImplementation((...listener) => {
+    documentListeners.push(listener)
+    listenOnDocument(...listener)
+  })
+})
+
+afterEach(() => {
+  documentListeners.forEach(listener => document.removeEventListener(...listener))
+  vi.restoreAllMocks()
+})
+
 describe('steppedMatch', () => {
   test.each([
     [2, 5, false, 3],
@@ -66,6 +84,42 @@ describe('holdFocus', () => {
     loading.load()
 
     expect(input.focus).toHaveBeenCalledWith({ preventScroll: true })
+  })
+})
+
+describe('the find shortcut', () => {
+  function pressFind (target) {
+    const event = new window.KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true, cancelable: true })
+
+    target.dispatchEvent(event)
+
+    return event
+  }
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <form data-guide-search><input name="q" value="pay claims"></form>
+      <a href="#claims">Claims</a>`
+    initGuideSearch()
+  })
+
+  test('brings Ctrl+F from anywhere else on the page to the search box, its words selected, instead of the browser\'s find', () => {
+    const input = document.querySelector('input[name="q"]')
+    const link = document.querySelector('a')
+    link.focus()
+
+    const event = pressFind(link)
+
+    expect(input).toHaveFocus()
+    expect(input.value.slice(input.selectionStart, input.selectionEnd)).toBe('pay claims')
+    expect(event).toHaveProperty('defaultPrevented', true)
+  })
+
+  test('leaves Ctrl+F pressed in the search box to the browser\'s own find', () => {
+    const input = document.querySelector('input[name="q"]')
+    input.focus()
+
+    expect(pressFind(input)).toHaveProperty('defaultPrevented', false)
   })
 })
 
