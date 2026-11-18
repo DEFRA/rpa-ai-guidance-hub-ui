@@ -7,7 +7,7 @@ import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
 import * as searchApi from '../../../fixtures/search-api.js'
-import { bookmarkedGuidesResponse, caseResponse, guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
+import { bookmarkedGuidesResponse, caseResponse, guidePageResponse, guideResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
 import { pageOf, sideNavOf, textOf } from '../../helpers/page.js'
 import { BOOKMARK_MESSAGES, HUB_MESSAGES } from '../../../fixtures/messages.js'
@@ -357,14 +357,145 @@ describe('#hubController', () => {
       expect(main).toContain('<mark class="app-search-match">&lt;script&gt;alert(1)&lt;/script&gt;</mark>')
     })
 
-    test('says when no guide has the words', async () => {
+    describe('guides whose title the words cover', () => {
+      const PROMOTED = '9b2f4c1a-5d3e-4a6b-8c7d-0e1f2a3b4c5d'
+
+      /** One of several guides titled "CS MA Claim - ...", its own id. */
+      function caseTitle (number) {
+        return searchApi.titleResult({
+          documentId: `00000000-0000-4000-8000-00000000000${number}`,
+          documentTitle: `CS MA Claim - Case ${number}`,
+          url: `/guides/00000000-0000-4000-8000-00000000000${number}`
+        })
+      }
+
+      test('promotes the one guide, with what it is for and a way to open it, and does not show it again below', async () => {
+        const promoted = searchApi.titleResult({ sections: [searchApi.sectionResult({ documentId: PROMOTED, anchor: 'introduction', sectionNumber: '1', heading: 'Introduction' })], sectionTotal: 1 })
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ titles: [promoted] }))
+        nock(GUIDANCE_API_BASE_URL).get(`/guides/${PROMOTED}`).reply(statusCodes.HTTP_STATUS_OK, guideResponse({ id: PROMOTED, metadata: { ...guideResponse().metadata, goal: 'Decide a claim over the maximum eligible weight.' } }))
+
+        const { main } = await mainOf('/hub?q=CS+MA+Claim+AB12+maximum+eligible+weight')
+        const panel = main.slice(main.indexOf('<section class="app-title-match"'), main.indexOf('</section>'))
+
+        expect(main).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">2 guides</h2>')
+        expect(panel).toContain('aria-labelledby="title-match-heading"')
+        expect(panel).toContain('Is this the guide you’re looking for?')
+        expect(panel).toContain(`<a class="govuk-link" href="/guides/${PROMOTED}"><mark class="app-search-match">CS MA Claim</mark> - AB12 or OP3 Maximum Eligible Weight</a>`)
+        expect(panel).toContain('Decide a claim over the maximum eligible weight.')
+        expect(panel).toMatch(new RegExp(`<a class="govuk-button[^"]*" href="/guides/${PROMOTED}" role="button"[^>]*>\\s*Open guide`))
+        expect(panel).toMatch(new RegExp(`Words also found in\\s*<a class="govuk-link" href="/guides/${PROMOTED}#introduction">1 Introduction</a>`))
+        expect(main).toContain('<h3 class="govuk-heading-m app-hub-results__list-heading">Other guides that mention these words</h3>')
+        expect(main).toMatch(/<h4 class="govuk-heading-m app-search-results__name">\s*<a class="govuk-link" href="\/guides\/7c9e6679-7425-40de-944b-e07fc1f90ae7">Countryside Stewardship final payments<\/a>/)
+        expect(main.split(`href="/guides/${PROMOTED}"`).length - 1).toBe(2)
+        expect(main).not.toContain('govuk-tag')
+      })
+
+      test('promotes the guide without what it is for when it can\'t be read, saying no other guide mentions the words', async () => {
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [], total: 0, titles: [searchApi.titleResult()] }))
+        nock(GUIDANCE_API_BASE_URL).get(`/guides/${PROMOTED}`).reply(statusCodes.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+
+        const { statusCode, main } = await mainOf('/hub?q=CS+MA+Claim+AB12+maximum+eligible+weight')
+
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+        expect(main).toContain('Is this the guide you’re looking for?')
+        expect(main).toContain('No sections with these words')
+        expect(main).toContain('<h3 class="govuk-heading-m app-hub-results__list-heading">Other guides that mention these words</h3>')
+        expect(main).toContain('<p class="govuk-body app-hub-results__list-empty">No other guides mention ‘CS MA Claim AB12 maximum eligible weight’ in their sections.</p>')
+        expect(main).not.toContain('There are no guides with')
+        expect(main).not.toContain('Words also found in')
+      })
+
+      test('lists several above the sections that have the words, the first five with a link to every one', async () => {
+        const titles = [1, 2, 3, 4, 5, 6].map(caseTitle)
+        const alsoInSections = { ...titles[0], sections: [searchApi.sectionResult()], sectionTotal: 2 }
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ titles: [alsoInSections, ...titles.slice(1)], results: [alsoInSections, searchApi.documentResult()] }))
+
+        const { main } = await mainOf('/hub?q=CS+MA+Claim')
+        const list = main.slice(main.indexOf('<section class="app-title-match"'), main.indexOf('</section>'))
+
+        expect(list).toMatch(/<h3 class="govuk-body app-title-match__lead" id="title-match-heading" tabindex="-1">6 guides have ‘CS MA Claim’ in their title<\/h3>/)
+        expect(list).toContain('<a class="govuk-link app-title-match__row-title" href="/guides/00000000-0000-4000-8000-000000000001"><mark class="app-search-match">CS MA Claim</mark> - Case 1</a>')
+        expect(list).toContain('2 sections')
+        expect(list.match(/app-title-match__row"/g)).toHaveLength(5)
+        expect(list).toContain('<a class="govuk-link" href="/hub?q=CS+MA+Claim&amp;titles=all#title-match-heading">Show all 6 guides<span class="govuk-visually-hidden"> with ‘CS MA Claim’ in their title</span></a>')
+        expect(list).not.toContain('govuk-details')
+        expect(main).not.toContain('Is this the guide you’re looking for?')
+        expect(main).toContain('Sections that mention ‘CS MA Claim’</h3>')
+        expect(main).toMatch(/<h4 class="govuk-heading-m app-search-results__name">\s*<a class="govuk-link" href="\/guides\/00000000-0000-4000-8000-000000000001"><mark class="app-search-match">CS MA Claim<\/mark> - Case 1<\/a>/)
+      })
+
+      test('lists several, saying under the heading over sections that none mention the words when only titles have them', async () => {
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ titles: [caseTitle(1), caseTitle(2)], results: [], total: 0 }))
+
+        const { main } = await mainOf('/hub?q=CS+MA+Claim')
+
+        expect(main).toContain('No sections with these words')
+        expect(main).toContain('Sections that mention ‘CS MA Claim’</h3>')
+        expect(main).toContain('<p class="govuk-body app-hub-results__list-empty">No sections mention ‘CS MA Claim’.</p>')
+      })
+
+      test('lists every one, with no link to show all, when the address asks for every one', async () => {
+        const titles = [1, 2, 3, 4, 5, 6].map(caseTitle)
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ titles, results: [] }))
+
+        const { main } = await mainOf('/hub?q=CS+MA+Claim&titles=all')
+        const list = main.slice(main.indexOf('<section class="app-title-match"'), main.indexOf('</section>'))
+
+        expect(list.match(/app-title-match__row"/g)).toHaveLength(6)
+        expect(list).not.toContain('Show all')
+      })
+
+      test('shows no title block, as before, when the words cover no title', async () => {
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
+
+        const { main } = await mainOf('/hub?q=weight')
+
+        expect(main).not.toContain('app-title-match')
+        expect(main).not.toContain('app-hub-results__list-heading')
+        expect(main).toMatch(/<h3 class="govuk-heading-m app-search-results__name">/)
+      })
+
+      test('shows no title block past the first page', async () => {
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ total: 25, titles: [searchApi.titleResult()] }))
+
+        const { main } = await mainOf('/hub?q=CS+MA+Claim&page=2')
+
+        expect(main).not.toContain('app-title-match')
+      })
+
+      test('escapes the titles the search service sends', async () => {
+        const title = searchApi.titleResult({ documentTitle: '<b>bold</b>', titleMatch: { snippet: [{ text: '<script>x</script>', match: true }] } })
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ titles: [title, caseTitle(2)] }))
+
+        const { main } = await mainOf('/hub?q=CS+MA+Claim')
+
+        expect(main).not.toContain('<script>x')
+        expect(main).not.toContain('<b>bold')
+        expect(main).toContain('<mark class="app-search-match">&lt;script&gt;x&lt;/script&gt;</mark>')
+      })
+    })
+
+    test('says when nothing has the words, with what to try next', async () => {
       nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [], total: 0 }))
 
       const { main } = await mainOf('/hub?q=zebra')
 
       expect(main).toContain('0 guides')
-      expect(main).toContain('No guides have the words “zebra”. Check the spelling or try fewer words.')
+      expect(main).toContain('<h3 class="govuk-heading-m">There are no guides with ‘zebra’</h3>')
+      expect(main).toContain('You could:')
+      expect(main).toMatch(/<ul class="govuk-list govuk-list--bullet">\s*<li>check the spelling<\/li>\s*<li>use fewer or different words<\/li>\s*<li>search for a scheme or case type, for example ‘CS MA Claim’<\/li>\s*<li><a class="govuk-link" href="\/hub">browse all guides<\/a><\/li>\s*<\/ul>/)
+      expect(main).not.toContain('sections with these words')
+      expect(main).not.toContain('app-title-match')
       expect(main).not.toContain('govuk-pagination')
+    })
+
+    test('escapes the words in what it says when nothing has them', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [], total: 0 }))
+
+      const { main } = await mainOf('/hub?q=%3Cscript%3Ex%3C%2Fscript%3E')
+
+      expect(main).not.toContain('<script>x')
+      expect(main).toContain('There are no guides with ‘&lt;script&gt;x&lt;/script&gt;’')
     })
 
     test('says when there are too many matches to show', async () => {

@@ -132,10 +132,13 @@ describe('#hubController', () => {
       const found = {
         unavailable: false,
         total: 12,
+        documentTotal: 12,
         sectionTotal: 30,
         tooManyMatches: false,
-        results: [{ id: 'g-1', title: 'CS final payments', href: '/guides/g-1', sectionTotal: 1, sections: [section] }]
+        results: [{ id: 'g-1', title: 'CS final payments', href: '/guides/g-1', titleSnippet: null, sectionTotal: 1, sections: [section] }],
+        titles: []
       }
+      const promoted = { id: 't-1', title: 'CS MA Claim - Case 1', href: '/guides/t-1', titleSnippet: null, sectionTotal: 0, sections: [] }
 
       beforeEach(() => {
         vi.spyOn(searchService, 'searchGuides').mockResolvedValue(found)
@@ -183,8 +186,51 @@ describe('#hubController', () => {
         expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
       })
 
+      test('Should promote the one guide whose title the words cover, with what it is for', async () => {
+        searchService.searchGuides.mockResolvedValue({ ...found, titles: [promoted] })
+        vi.spyOn(guidesService, 'getGuideById').mockResolvedValue({ id: 't-1', metadata: { goal: 'Check a claim\'s weight.' } })
+
+        await getHubPage({ query: { q: 'CS MA Claim' } }, h)
+
+        const [, viewModel] = h.view.mock.calls[0]
+        expect(guidesService.getGuideById).toHaveBeenCalledWith('t-1')
+        expect(viewModel.search.titleBlock).toEqual(expect.objectContaining({ kind: 'strong', purpose: 'Check a claim\'s weight.' }))
+      })
+
+      test('Should promote the guide without what it is for when the guide can\'t be read', async () => {
+        searchService.searchGuides.mockResolvedValue({ ...found, titles: [promoted] })
+        vi.spyOn(guidesService, 'getGuideById').mockRejectedValue(new GuidanceApiError('API is down', 503))
+        const logger = { warn: vi.fn() }
+
+        await getHubPage({ query: { q: 'CS MA Claim' }, logger }, h)
+
+        const [, viewModel] = h.view.mock.calls[0]
+        expect(viewModel.search.titleBlock).toEqual(expect.objectContaining({ kind: 'strong', purpose: null }))
+        expect(logger.warn).toHaveBeenCalled()
+        expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
+      })
+
+      test('Should not read a guide when the words cover several titles, or none', async () => {
+        vi.spyOn(guidesService, 'getGuideById')
+        searchService.searchGuides.mockResolvedValueOnce({ ...found, titles: [promoted, { ...promoted, id: 't-2' }] })
+
+        await getHubPage({ query: { q: 'CS MA Claim' } }, h)
+        await getHubPage({ query: { q: 'claim' } }, h)
+
+        expect(guidesService.getGuideById).not.toHaveBeenCalled()
+      })
+
+      test('Should not read the promoted guide past the first page, where it is not shown', async () => {
+        searchService.searchGuides.mockResolvedValue({ ...found, titles: [promoted] })
+        vi.spyOn(guidesService, 'getGuideById')
+
+        await getHubPage({ query: { q: 'CS MA Claim', page: '2' } }, h)
+
+        expect(guidesService.getGuideById).not.toHaveBeenCalled()
+      })
+
       test('Should list every guide the filters let through, saying search is not available, when search can\'t answer', async () => {
-        searchService.searchGuides.mockResolvedValue({ unavailable: true, total: 0, sectionTotal: 0, tooManyMatches: false, results: [] })
+        searchService.searchGuides.mockResolvedValue({ unavailable: true, total: 0, documentTotal: 0, sectionTotal: 0, tooManyMatches: false, results: [], titles: [] })
 
         await getHubPage({ query: { q: 'claim rules', audience: 'Processor' } }, h)
 

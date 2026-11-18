@@ -40,12 +40,15 @@ describe('#searchGuides', () => {
     expect(found).toEqual({
       unavailable: false,
       total: 4,
+      documentTotal: 1,
       sectionTotal: 40,
       tooManyMatches: false,
+      titles: [],
       results: [{
         id: 'g/1',
         title: 'Countryside Stewardship final payments',
         href: '/guides/g%2F1',
+        titleSnippet: null,
         sectionTotal: 25,
         sections: [{
           title: '4.2 Claim rules',
@@ -62,6 +65,26 @@ describe('#searchGuides', () => {
     })
   })
 
+  test('gives every guide whose title the words cover, its title\'s words marked', async () => {
+    const title = searchApi.titleResult()
+    nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(200, searchApi.documentSearchResponse({ results: [], titles: [title], documentTotal: 4 }))
+
+    const found = await searchGuides({ words: 'CS MA Claim', page: 1, perPage: 10 })
+
+    expect(found.documentTotal).toBe(4)
+    expect(found.titles).toEqual([{
+      id: '9b2f4c1a-5d3e-4a6b-8c7d-0e1f2a3b4c5d',
+      title: 'CS MA Claim - AB12 or OP3 Maximum Eligible Weight',
+      href: '/guides/9b2f4c1a-5d3e-4a6b-8c7d-0e1f2a3b4c5d',
+      titleSnippet: [
+        { text: 'CS MA Claim', match: true },
+        { text: ' - AB12 or OP3 Maximum Eligible Weight', match: false }
+      ],
+      sectionTotal: 0,
+      sections: []
+    }])
+  })
+
   test('links within the hub, whatever the search service says the guide\'s url is', async () => {
     const document = searchApi.documentResult({ url: 'https://evil.example/' })
     nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(200, searchApi.documentSearchResponse({ results: [document] }))
@@ -76,7 +99,7 @@ describe('#searchGuides', () => {
 
     const found = await searchGuides({ words: 'the', page: 1, perPage: 10 })
 
-    expect(found).toEqual({ unavailable: false, total: 0, sectionTotal: 1500, tooManyMatches: true, results: [] })
+    expect(found).toEqual({ unavailable: false, total: 0, documentTotal: 0, sectionTotal: 1500, tooManyMatches: true, results: [], titles: [] })
   })
 
   test('says search is unavailable, rather than throwing, when the service fails', async () => {
@@ -84,7 +107,7 @@ describe('#searchGuides', () => {
 
     const found = await searchGuides({ words: 'claim', page: 1, perPage: 10 })
 
-    expect(found).toEqual({ unavailable: true, total: 0, sectionTotal: 0, tooManyMatches: false, results: [] })
+    expect(found).toEqual({ unavailable: true, total: 0, documentTotal: 0, sectionTotal: 0, tooManyMatches: false, results: [], titles: [] })
   })
 })
 

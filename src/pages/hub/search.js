@@ -51,13 +51,26 @@ function guideFrom (query = {}) {
 }
 
 /**
+ * Whether the address asks for every guide whose title the words cover
+ * (`titles=all`), rather than the first few.
+ *
+ * @param {Object} query - The request's query
+ * @returns {boolean}
+ */
+function allTitlesFrom (query = {}) {
+  return query.titles === 'all'
+}
+
+/**
  * The address of a page of results for these words: the guide only when
- * searching inside one, the page only when it is not the first.
+ * searching inside one, the page only when it is not the first, and every
+ * covered title only when asked for.
  *
  * @param {Object} options
  * @param {string} options.words
  * @param {string|null} [options.guide]
  * @param {number} [options.page]
+ * @param {boolean} [options.allTitles]
  * @returns {string}
  */
 function searchHref (options) {
@@ -69,6 +82,10 @@ function searchHref (options) {
 
   if (options.page > 1) {
     params.set('page', String(options.page))
+  }
+
+  if (options.allTitles) {
+    params.set('titles', 'all')
   }
 
   return `/hub?${params.toString()}`
@@ -135,6 +152,7 @@ function searchPagination (options) {
 }
 
 export {
+  allTitlesFrom,
   guideFrom,
   pageFrom,
   RESULTS_PER_PAGE,

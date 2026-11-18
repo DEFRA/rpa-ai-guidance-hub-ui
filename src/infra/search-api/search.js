@@ -26,7 +26,8 @@ async function searchSections (options) {
 
 /**
  * Search the guides for words, a page of guides at a time, each guide ranked
- * by its best section and given with its best few.
+ * by its best section and given with its best few, and every guide whose
+ * title the words cover.
  *
  * @param {Object} options
  * @param {string} options.words - Searched for, at most 500 characters
@@ -34,8 +35,10 @@ async function searchSections (options) {
  * @param {number} [options.limit] - Guides per page, 1 to 1000
  * @param {number} [options.offset] - How many guides come before the page
  * @returns {Promise<{ok: boolean, status: number, data: any}>} - data is
- *   `{ queryId, total, sectionTotal, results, tooManyMatches, message }`,
- *   each result `{ documentId, documentTitle, sectionTotal, sections, ... }`
+ *   `{ queryId, total, documentTotal, sectionTotal, results, titles,
+ *   tooManyMatches, message }`, each result and title `{ documentId,
+ *   documentTitle, titleMatch, sectionTotal, sections, ... }`. When `titles`
+ *   has just one, it is left out of `results` and `total`.
  * @throws {SearchApiError} - When response is not ok
  */
 async function searchDocuments (options) {

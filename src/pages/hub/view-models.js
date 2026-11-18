@@ -92,11 +92,15 @@ function _searchRow (result, withGuide) {
   }
 }
 
+/** How many guides whose title the words cover show until all are asked for. */
+const TITLES_SHOWN = 5
+
 /**
  * @private
  * One guide that has the words, as `search-results.njk` shows it: a link to
- * it, how many of its sections have them, its best few, and, when it has more
- * than those, a link to every one of them.
+ * it, its title with the words marked when they cover it, how many of its
+ * sections have them, its best few, and, when it has more than those, a link
+ * to every one of them.
  *
  * @param {import('../../services/search.js').GuideResult} guide
  * @param {string} words
@@ -107,6 +111,7 @@ function _guideGroup (guide, words) {
 
   return {
     title: guide.title,
+    titleSnippet: guide.titleSnippet,
     href: relativeHref(guide.href),
     hint: `${_counted(guide.sectionTotal, 'section', 'sections')} with these words`,
     sections: guide.sections.map((section) => _searchRow(section, false)),
@@ -118,52 +123,230 @@ function _guideGroup (guide, words) {
 
 /**
  * @private
+ * The one guide whose title the words cover, as `title-panel.njk` promotes
+ * it: its title with the words marked, what it is for, and links to its
+ * sections that have the words.
+ *
+ * @param {import('../../services/search.js').GuideResult} guide
+ * @param {string|null} purpose
+ * @returns {Object}
+ */
+function _strongTitle (guide, purpose) {
+  return {
+    kind: 'strong',
+    title: guide.title,
+    titleSnippet: guide.titleSnippet,
+    href: relativeHref(guide.href),
+    purpose,
+    alsoFound: guide.sections.map((section) => ({ title: section.title, href: relativeHref(section.href) }))
+  }
+}
+
+/**
+ * @private
+ * The guides whose title the words cover, as `title-list.njk` lists them: the
+ * first few, with a link to the page again showing every one, or every one
+ * when that was asked for.
+ *
+ * @param {Array<import('../../services/search.js').GuideResult>} guides
+ * @param {string} words
+ * @param {boolean} allTitles - Every one was asked for
+ * @returns {Object}
+ */
+function _severalTitles (guides, words, allTitles) {
+  const rows = guides.map((guide) => ({
+    title: guide.title,
+    titleSnippet: guide.titleSnippet,
+    href: relativeHref(guide.href),
+    sectionsText: guide.sectionTotal > 0 ? _counted(guide.sectionTotal, 'section', 'sections') : null
+  }))
+
+  const showAll = !allTitles && rows.length > TITLES_SHOWN
+
+  return {
+    kind: 'several',
+    label: `${guides.length} guides have ‘${words}’ in their title`,
+    rows: showAll ? rows.slice(0, TITLES_SHOWN) : rows,
+    showAll: showAll
+      ? { href: `${searchHref({ words, allTitles: true })}#title-match-heading`, text: `Show all ${guides.length} guides` }
+      : null
+  }
+}
+
+/**
+ * @private
+ * What `search-results.njk` shows above the guides that have the words: the
+ * one guide whose title they cover, or the several, on the first page only.
+ * Nothing when they cover none, so the page is as it is without them.
+ *
+ * @param {Object} search
+ * @param {string} search.words
+ * @param {number} search.page
+ * @param {string|null} [search.promotedPurpose]
+ * @param {boolean} [search.allTitles] - Every covered title was asked for
+ * @param {import('../../services/search.js').GuideResults} search.found
+ * @returns {Object|null}
+ */
+function _titleBlock (search) {
+  const titles = search.found.titles
+
+  if (search.page !== 1 || titles.length === 0) {
+    return null
+  }
+
+  if (titles.length === 1) {
+    return _strongTitle(titles[0], search.promotedPurpose ?? null)
+  }
+
+  return _severalTitles(titles, search.words, Boolean(search.allTitles))
+}
+
+/**
+ * @private
+ * The heading over the guides that have the words, under a title block, to
+ * say how they differ from it; none without one.
+ *
+ * @param {Object|null} titleBlock
+ * @param {string} words
+ * @returns {string|null}
+ */
+function _listHeading (titleBlock, words) {
+  if (!titleBlock) {
+    return null
+  }
+
+  if (titleBlock.kind === 'strong') {
+    return 'Other guides that mention these words'
+  }
+
+  return `Sections that mention ‘${words}’`
+}
+
+/**
+ * @private
+ * What the list under a title block says when no guide's sections have the
+ * words, so it is plain that they were searched; nothing when some do, or
+ * there is no title block.
+ *
+ * @param {Object|null} titleBlock
+ * @param {number} guideCount - The guides under it
+ * @param {string} words
+ * @returns {string|null}
+ */
+function _listEmpty (titleBlock, guideCount, words) {
+  if (!titleBlock || guideCount > 0) {
+    return null
+  }
+
+  if (titleBlock.kind === 'strong') {
+    return `No other guides mention ‘${words}’ in their sections.`
+  }
+
+  return `No sections mention ‘${words}’.`
+}
+
+/**
+ * @private
+ * When nothing at all has the words, across every guide: what to say, with
+ * what to try next; `search-results.njk` lists the suggestions.
+ *
+ * @param {Object} search
+ * @param {string} search.words
+ * @param {import('../../services/search.js').GuideResults} search.found
+ * @returns {{heading: string}|null}
+ */
+function _noResults (search) {
+  if (search.found.tooManyMatches || search.found.documentTotal > 0) {
+    return null
+  }
+
+  return { heading: `There are no guides with ‘${search.words}’` }
+}
+
+/**
+ * @private
  * @param {Object} search
  * @param {string} search.words
  * @param {number} search.page
  * @param {string|null} search.guide - Searched inside, if one
- * @param {{total: number, tooManyMatches: boolean, results: Array<object>}} search.found
- * @returns {string|null} Why there are no results to list, if there are none
+ * @param {{total: number, documentTotal?: number, tooManyMatches: boolean, results: Array<object>, titles?: Array<object>}} search.found
+ * @returns {string|null} Why there are no results to list, if there are
+ *   none and nothing else says so: across every guide, `_noResults` says when
+ *   nothing has the words, and `_listEmpty` when only titles do
  */
 function _searchEmptyMessage (search) {
-  if (search.found.tooManyMatches) {
+  const found = search.found
+
+  if (found.tooManyMatches) {
     return 'Too many matches. Use more specific words.'
   }
 
-  if (search.found.total === 0) {
-    return search.guide
-      ? `This guide has no sections with the words “${search.words}”.`
-      : `No guides have the words “${search.words}”. Check the spelling or try fewer words.`
+  if (search.guide && found.total === 0) {
+    return `This guide has no sections with the words “${search.words}”.`
   }
 
-  if (search.found.results.length === 0) {
-    return `There is no page ${search.page} of results.`
+  if (found.results.length > 0) {
+    return null
   }
 
-  return null
+  if (!search.guide && (found.documentTotal === 0 || (search.page === 1 && found.titles.length > 0))) {
+    return null
+  }
+
+  return `There is no page ${search.page} of results.`
+}
+
+/**
+ * @private
+ * The count line under the heading: how many sections have the words, or,
+ * when only titles do, that none do; nothing when nothing has them.
+ *
+ * @param {import('../../services/search.js').GuideResults} found
+ * @returns {string|null}
+ */
+function _guidesSummary (found) {
+  if (found.tooManyMatches || found.documentTotal === 0) {
+    return null
+  }
+
+  if (found.sectionTotal === 0) {
+    return 'No sections with these words'
+  }
+
+  return `${_counted(found.sectionTotal, 'section', 'sections')} with these words`
 }
 
 /**
  * The guides that have the words, each with its best sections, as
- * `search-results.njk` shows them.
+ * `search-results.njk` shows them, under the guides whose title they cover.
  *
  * @private
  * @param {Object} search
  * @param {string} search.words
  * @param {number} search.page
+ * @param {string|null} [search.promotedPurpose] - What the one guide whose
+ *   title the words cover is for, if known
  * @param {import('../../services/search.js').GuideResults} search.found
  * @returns {Object}
  */
 function _buildGuidesSearch (search) {
   const found = search.found
+  const guides = found.tooManyMatches ? [] : found.results.map((guide) => _guideGroup(guide, search.words))
+  const titleBlock = found.tooManyMatches ? null : _titleBlock(search)
+  const listHeading = _listHeading(titleBlock, search.words)
 
   return {
     words: search.words,
-    heading: _counted(found.total, 'guide', 'guides'),
-    summary: found.total > 0 ? `${_counted(found.sectionTotal, 'section', 'sections')} with these words` : null,
+    heading: _counted(found.documentTotal, 'guide', 'guides'),
+    summary: _guidesSummary(found),
     backLink: null,
     emptyMessage: _searchEmptyMessage(search),
-    guides: found.tooManyMatches ? [] : found.results.map((guide) => _guideGroup(guide, search.words)),
+    noResults: _noResults(search),
+    titleBlock,
+    listHeading,
+    listEmpty: _listEmpty(titleBlock, guides.length, search.words),
+    guideHeadingLevel: listHeading ? 4 : 3,
+    guides,
     results: [],
     pagination: searchPagination({ words: search.words, page: search.page, total: found.total, tooManyMatches: found.tooManyMatches })
   }
@@ -191,6 +374,11 @@ function _buildGuideSearch (search) {
     summary: guideTitle ? `In ${guideTitle}` : null,
     backLink: { href: searchHref({ words: search.words }), text: 'All guides with these words' },
     emptyMessage: _searchEmptyMessage(search),
+    noResults: null,
+    titleBlock: null,
+    listHeading: null,
+    listEmpty: null,
+    guideHeadingLevel: 3,
     guides: [],
     results: found.tooManyMatches ? [] : found.results.map((result) => _searchRow(result, false)),
     pagination: searchPagination({ words: search.words, guide: search.guide, page: search.page, total: found.total, tooManyMatches: found.tooManyMatches })
@@ -232,9 +420,10 @@ class HubViewModel {
    * @param {boolean} [data.nothingToFilter=false] - The list has no guides for
    *   the chosen filters to narrow, so they don't explain why it is empty
    * @param {string} [data.words=''] - Searched for, shown in the search box
-   * @param {{words: string, page: number, guide: string|null, found: import('../../services/search.js').GuideResults|import('../../services/search.js').SearchResults}|null} [data.search=null]
+   * @param {{words: string, page: number, guide: string|null, promotedPurpose?: string|null, allTitles?: boolean, found: import('../../services/search.js').GuideResults|import('../../services/search.js').SearchResults}|null} [data.search=null]
    *   - What searching for the words found, shown instead of the list: the
-   *   guides that have them, or with `guide`, that guide's sections
+   *   guides that have them and those whose title they cover, or with
+   *   `guide`, that guide's sections
    * @param {boolean} [data.searchUnavailable=false] - Searching failed, so the
    *   list is shown with a warning instead
    * @param {{key: string, text: string}|null} [data.narrowedTo=null] - The case

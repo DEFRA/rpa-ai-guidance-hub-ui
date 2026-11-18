@@ -8,7 +8,7 @@ import * as usersService from '../../services/users.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { guideSectionHref } from '../common/guide-section-href.js'
 import { filterPanel, filtersFrom, sortFrom, wordsFrom } from './filters.js'
-import { guideFrom, pageFrom, RESULTS_PER_PAGE } from './search.js'
+import { allTitlesFrom, guideFrom, pageFrom, RESULTS_PER_PAGE } from './search.js'
 import { HubViewModel } from './view-models.js'
 
 const HUB_VIEW = 'hub/page.njk'
@@ -154,11 +154,39 @@ async function _guideListPage (request, h, options) {
 }
 
 /**
+ * @private
+ * What the one guide whose title the words cover is for, which its panel
+ * shows: only on the first page, as only it has the panel. Without it the
+ * panel still shows, so a guide that can't be read is not the page's failure.
+ *
+ * @param {import('@hapi/hapi').Request} request
+ * @param {import('../../services/search.js').GuideResults} found
+ * @param {number} page
+ * @returns {Promise<string|null>}
+ */
+async function _promotedPurpose (request, found, page) {
+  if (page !== 1 || found.titles.length !== 1) {
+    return null
+  }
+
+  try {
+    const guide = await guidesService.getGuideById(found.titles[0].id)
+
+    return guide?.metadata?.goal ?? null
+  } catch (err) {
+    request.logger.warn({ err }, 'The promoted guide could not be read')
+
+    return null
+  }
+}
+
+/**
  * The hub. With no words searched for, every guide the filters let through.
  * With words, a page of the guides that have them, from the search service,
- * each with its best sections, instead of the list; with a guide too, a page
- * of that guide's sections that have them. When search can't answer, the
- * list again, saying so, as the guides don't depend on search.
+ * each with its best sections, instead of the list, and the guides whose
+ * title they cover above it; with a guide too, a page of that guide's
+ * sections that have them. When search can't answer, the list again, saying
+ * so, as the guides don't depend on search.
  */
 async function getHubPage (request, h) {
   const words = wordsFrom(request.query)
@@ -177,8 +205,10 @@ async function getHubPage (request, h) {
     return _guideListPage(request, h, { words, searchUnavailable: true })
   }
 
+  const promotedPurpose = guide ? null : await _promotedPurpose(request, found, page)
+
   return h
-    .view(HUB_VIEW, new HubViewModel({ words, search: { words, page, guide, found } }))
+    .view(HUB_VIEW, new HubViewModel({ words, search: { words, page, guide, found, promotedPurpose, allTitles: allTitlesFrom(request.query) } }))
     .code(statusCodes.HTTP_STATUS_OK)
 }
 

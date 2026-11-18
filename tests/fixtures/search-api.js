@@ -90,10 +90,36 @@ function documentResult (overrides = {}) {
     versionId: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
     status: 'published',
     url: '/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7',
+    titleMatch: null,
     sectionTotal: sections.length,
     sections,
     ...overrides
   }
+}
+
+/**
+ * One document in `GET /v1/search?group=document`'s `titles`: a guide whose
+ * title the words cover, its covered words marked.
+ *
+ * @param {Object} [overrides] - Replaces any default field
+ * @returns {Object}
+ */
+function titleResult (overrides = {}) {
+  const title = overrides.documentTitle ?? 'CS MA Claim - AB12 or OP3 Maximum Eligible Weight'
+
+  return documentResult({
+    documentId: '9b2f4c1a-5d3e-4a6b-8c7d-0e1f2a3b4c5d',
+    documentTitle: title,
+    url: '/guides/9b2f4c1a-5d3e-4a6b-8c7d-0e1f2a3b4c5d',
+    titleMatch: {
+      snippet: [
+        { text: 'CS MA Claim', match: true },
+        { text: title.slice('CS MA Claim'.length), match: false }
+      ]
+    },
+    sections: [],
+    ...overrides
+  })
 }
 
 /**
@@ -103,16 +129,24 @@ function documentResult (overrides = {}) {
  * @param {Array<Object>} [options.results] - Defaults to one document
  * @param {number} [options.total] - Defaults to how many results there are
  * @param {number} [options.sectionTotal] - Defaults to the results' sections
+ * @param {Array<Object>} [options.titles] - The guides whose title the words
+ *   cover; defaults to none
+ * @param {number} [options.documentTotal] - Defaults to the guides in
+ *   `results` and `titles`
  * @returns {Object}
  */
 function documentSearchResponse (options = {}) {
   const results = options.results ?? [documentResult()]
+  const titles = options.titles ?? []
+  const every = new Set([...results, ...titles].map((result) => result.documentId))
 
   return {
     queryId: '0f8fad5bd9cb469fa16570867728950e',
     total: options.total ?? results.length,
-    sectionTotal: options.sectionTotal ?? results.reduce((sum, result) => sum + result.sectionTotal, 0),
+    documentTotal: options.documentTotal ?? every.size,
+    sectionTotal: options.sectionTotal ?? [...results, ...titles].reduce((sum, result) => sum + result.sectionTotal, 0),
     results,
+    titles,
     tooManyMatches: false,
     message: null
   }
@@ -129,8 +163,10 @@ function tooManyDocumentsResponse (sectionTotal = 1500) {
   return {
     queryId: '0f8fad5bd9cb469fa16570867728950e',
     total: 0,
+    documentTotal: 0,
     sectionTotal,
     results: [],
+    titles: [],
     tooManyMatches: true,
     message: TOO_MANY_MATCHES
   }
@@ -141,6 +177,7 @@ export {
   documentSearchResponse,
   searchResponse,
   sectionResult,
+  titleResult,
   tooManyDocumentsResponse,
   tooManyMatchesResponse
 }

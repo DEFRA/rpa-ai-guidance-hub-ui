@@ -1,0 +1,37 @@
+{#
+  The one guide whose title the words cover, above the guides that have them:
+  its title, the words marked, what it is for, a way to open it, and its
+  sections that also have the words. Reads `search.titleBlock` (kind
+  'strong'). No tag: the lead line says why it is here.
+#}
+{% from "hub/partials/marked.njk" import marked %}
+
+{% set panel = search.titleBlock %}
+
+<section class="app-title-match" aria-labelledby="title-match-heading">
+  <p class="govuk-body app-title-match__lead">Is this the guide you’re looking for?</p>
+
+  <h3 class="govuk-heading-m app-title-match__title" id="title-match-heading">
+    <a class="govuk-link" href="{{ panel.href }}">{{ marked(panel.titleSnippet, panel.title) }}</a>
+  </h3>
+
+  {% if panel.purpose %}
+    <p class="govuk-body app-title-match__purpose">{{ panel.purpose }}</p>
+  {% endif %}
+
+  <div class="app-title-match__actions">
+    <a class="govuk-button govuk-!-margin-bottom-0" href="{{ panel.href }}" role="button" draggable="false" data-module="govuk-button">
+      Open guide<span class="govuk-visually-hidden">: {{ panel.title }}</span>
+    </a>
+  </div>
+
+  {% if panel.alsoFound | length %}
+    <p class="govuk-body-s app-title-match__meta">
+      Words also found in
+      {% for section in panel.alsoFound -%}
+        {%- if not loop.first %}{% if loop.last %} and {% else %}, {% endif %}{% endif -%}
+        <a class="govuk-link" href="{{ section.href }}">{{ section.title }}</a>
+      {%- endfor %}
+    </p>
+  {% endif %}
+</section>

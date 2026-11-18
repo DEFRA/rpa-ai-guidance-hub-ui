@@ -291,12 +291,43 @@ describe('HubViewModel search', () => {
     id: GUIDE,
     title: 'CS final payments',
     href: `/guides/${GUIDE}`,
+    titleSnippet: null,
     sectionTotal: 1,
     sections: [result]
   }
 
-  function searched (found, page = 1, inside = null) {
-    return new HubViewModel({ words: 'claim', search: { words: 'claim', page, guide: inside, found: { unavailable: false, tooManyMatches: false, sectionTotal: 0, ...found } } })
+  /**
+   * A guide whose title the words cover.
+   *
+   * @param {number} [number=1] - Which, so each has a title and id of its own
+   * @param {Object} [overrides]
+   * @returns {Object}
+   */
+  function titled (number = 1, overrides = {}) {
+    const title = `CS MA Claim - Case ${number}`
+
+    return {
+      id: `t-${number}`,
+      title,
+      href: `/guides/t-${number}`,
+      titleSnippet: [{ text: 'CS MA Claim', match: true }, { text: ` - Case ${number}`, match: false }],
+      sectionTotal: 0,
+      sections: [],
+      ...overrides
+    }
+  }
+
+  function searched (found, page = 1, inside = null, promotedPurpose = null) {
+    return new HubViewModel({
+      words: 'claim',
+      search: {
+        words: 'claim',
+        page,
+        guide: inside,
+        promotedPurpose,
+        found: { unavailable: false, tooManyMatches: false, sectionTotal: 0, documentTotal: found.total, titles: [], ...found }
+      }
+    })
   }
 
   test('has no search when nothing was searched for', () => {
@@ -316,8 +347,14 @@ describe('HubViewModel search', () => {
         summary: '1 section with these words',
         backLink: null,
         emptyMessage: null,
+        noResults: null,
+        titleBlock: null,
+        listHeading: null,
+        listEmpty: null,
+        guideHeadingLevel: 3,
         guides: [{
           title: 'CS final payments',
+          titleSnippet: null,
           href: `/guides/${GUIDE}`,
           hint: '1 section with these words',
           sections: [{ title: '4.2 Claim rules', href: '/guides/g-1#claim-rules', hint: '1 match', snippet: [{ text: 'claim', match: true }] }],
@@ -353,11 +390,20 @@ describe('HubViewModel search', () => {
       expect(viewModel.search.guides[0].sections[0].href).toBe('#')
     })
 
-    test('says when no guide has the words', () => {
+    test('says when nothing has the words, with what to try next', () => {
       const viewModel = searched({ total: 0, results: [] })
 
-      expect(viewModel.search.emptyMessage).toBe('No guides have the words “claim”. Check the spelling or try fewer words.')
+      expect(viewModel.search.noResults).toEqual({ heading: 'There are no guides with ‘claim’' })
+      expect(viewModel.search.emptyMessage).toBeNull()
       expect(viewModel.search.summary).toBeNull()
+      expect(viewModel.search.titleBlock).toBeNull()
+    })
+
+    test('says there is no such page when the page asked for is beyond the guides, rather than that nothing has the words', () => {
+      const viewModel = searched({ total: 0, documentTotal: 1, titles: [titled()], results: [] }, 2)
+
+      expect(viewModel.search.noResults).toBeNull()
+      expect(viewModel.search.emptyMessage).toBe('There is no page 2 of results.')
     })
 
     test('says when there are too many matches, showing none', () => {
@@ -374,6 +420,121 @@ describe('HubViewModel search', () => {
     })
   })
 
+  describe('with the one guide whose title the words cover', () => {
+    test('promotes it above the other guides, with what it is for and its sections that have them', () => {
+      const promoted = titled(1, { sectionTotal: 2, sections: [result, { ...result, title: '2 Assign case', href: '/guides/t-1#assign-case' }] })
+      const viewModel = searched({ total: 1, documentTotal: 2, sectionTotal: 3, titles: [promoted], results: [guide] }, 1, null, 'Check a claim\'s weight.')
+
+      expect(viewModel.search.heading).toBe('2 guides')
+      expect(viewModel.search.titleBlock).toEqual({
+        kind: 'strong',
+        title: 'CS MA Claim - Case 1',
+        titleSnippet: promoted.titleSnippet,
+        href: '/guides/t-1',
+        purpose: 'Check a claim\'s weight.',
+        alsoFound: [
+          { title: '4.2 Claim rules', href: '/guides/g-1#claim-rules' },
+          { title: '2 Assign case', href: '/guides/t-1#assign-case' }
+        ]
+      })
+      expect(viewModel.search.listHeading).toBe('Other guides that mention these words')
+      expect(viewModel.search.guideHeadingLevel).toBe(4)
+    })
+
+    test('says, under the heading over other guides, that none mention the words when only its title has them', () => {
+      const viewModel = searched({ total: 0, documentTotal: 1, titles: [titled()], results: [] })
+
+      expect(viewModel.search.titleBlock.kind).toBe('strong')
+      expect(viewModel.search.titleBlock.purpose).toBeNull()
+      expect(viewModel.search.titleBlock.alsoFound).toEqual([])
+      expect(viewModel.search.summary).toBe('No sections with these words')
+      expect(viewModel.search.listHeading).toBe('Other guides that mention these words')
+      expect(viewModel.search.listEmpty).toBe('No other guides mention ‘claim’ in their sections.')
+      expect(viewModel.search.emptyMessage).toBeNull()
+      expect(viewModel.search.noResults).toBeNull()
+    })
+
+    test('says no other guides mention the words though its own sections do', () => {
+      const viewModel = searched({ total: 0, documentTotal: 1, sectionTotal: 1, titles: [titled(1, { sectionTotal: 1, sections: [result] })], results: [] })
+
+      expect(viewModel.search.summary).toBe('1 section with these words')
+      expect(viewModel.search.listEmpty).toBe('No other guides mention ‘claim’ in their sections.')
+    })
+
+    test('makes its links safe', () => {
+      const viewModel = searched({ total: 0, titles: [titled(1, { href: 'javascript:alert(1)', sections: [{ ...result, href: 'javascript:alert(1)' }] })], results: [] })
+
+      expect(viewModel.search.titleBlock.href).toBe('#')
+      expect(viewModel.search.titleBlock.alsoFound[0].href).toBe('#')
+    })
+
+    test('promotes it on the first page only', () => {
+      const viewModel = searched({ total: 15, titles: [titled()], results: [guide] }, 2)
+
+      expect(viewModel.search.titleBlock).toBeNull()
+      expect(viewModel.search.listHeading).toBeNull()
+    })
+  })
+
+  describe('with several guides whose title the words cover', () => {
+    test('lists them above the sections that have the words, marking their titles there too', () => {
+      const listed = titled(2, { sectionTotal: 2, sections: [result] })
+      const viewModel = searched({ total: 2, documentTotal: 3, titles: [titled(1), listed], results: [listed, guide] })
+
+      expect(viewModel.search.titleBlock).toEqual({
+        kind: 'several',
+        label: '2 guides have ‘claim’ in their title',
+        rows: [
+          { title: 'CS MA Claim - Case 1', titleSnippet: titled(1).titleSnippet, href: '/guides/t-1', sectionsText: null },
+          { title: 'CS MA Claim - Case 2', titleSnippet: listed.titleSnippet, href: '/guides/t-2', sectionsText: '2 sections' }
+        ],
+        showAll: null
+      })
+      expect(viewModel.search.listHeading).toBe('Sections that mention ‘claim’')
+      expect(viewModel.search.guides[0].titleSnippet).toEqual(listed.titleSnippet)
+      expect(viewModel.search.guides[1].titleSnippet).toBeNull()
+    })
+
+    test('shows the first five, with a link to the page again showing every one', () => {
+      const titles = [1, 2, 3, 4, 5, 6].map((number) => titled(number))
+      const viewModel = searched({ total: 0, titles, results: [] })
+
+      expect(viewModel.search.titleBlock.rows.map((row) => row.href)).toEqual(['/guides/t-1', '/guides/t-2', '/guides/t-3', '/guides/t-4', '/guides/t-5'])
+      expect(viewModel.search.titleBlock.showAll).toEqual({ href: '/hub?q=claim&titles=all#title-match-heading', text: 'Show all 6 guides' })
+    })
+
+    test('shows every one when every one was asked for', () => {
+      const titles = [1, 2, 3, 4, 5, 6].map((number) => titled(number))
+      const viewModel = new HubViewModel({ words: 'claim', search: { words: 'claim', page: 1, guide: null, allTitles: true, found: { unavailable: false, tooManyMatches: false, total: 0, documentTotal: 6, sectionTotal: 0, titles, results: [] } } })
+
+      expect(viewModel.search.titleBlock.rows).toHaveLength(6)
+      expect(viewModel.search.titleBlock.showAll).toBeNull()
+    })
+
+    test('says, under the heading over sections, that no sections mention the words when only titles have them', () => {
+      const viewModel = searched({ total: 0, documentTotal: 2, titles: [titled(1), titled(2)], results: [] })
+
+      expect(viewModel.search.summary).toBe('No sections with these words')
+      expect(viewModel.search.listHeading).toBe('Sections that mention ‘claim’')
+      expect(viewModel.search.listEmpty).toBe('No sections mention ‘claim’.')
+    })
+
+    test('shows five with no link to show all', () => {
+      const titles = [1, 2, 3, 4, 5].map((number) => titled(number))
+      const viewModel = searched({ total: 0, titles, results: [] })
+
+      expect(viewModel.search.titleBlock.rows).toHaveLength(5)
+      expect(viewModel.search.titleBlock.showAll).toBeNull()
+    })
+  })
+
+  test('shows no title block when there are too many matches', () => {
+    const viewModel = searched({ total: 0, tooManyMatches: true, titles: [titled()], results: [] })
+
+    expect(viewModel.search.titleBlock).toBeNull()
+    expect(viewModel.search.emptyMessage).toBe('Too many matches. Use more specific words.')
+  })
+
   describe('inside one guide', () => {
     test('counts its sections, names it, and links back to every guide', () => {
       const viewModel = searched({ total: 1, results: [result] }, 1, GUIDE)
@@ -384,6 +545,11 @@ describe('HubViewModel search', () => {
         summary: 'In CS final payments',
         backLink: { href: '/hub?q=claim', text: 'All guides with these words' },
         emptyMessage: null,
+        noResults: null,
+        titleBlock: null,
+        listHeading: null,
+        listEmpty: null,
+        guideHeadingLevel: 3,
         guides: [],
         results: [{ title: '4.2 Claim rules', href: '/guides/g-1#claim-rules', hint: '1 match', snippet: [{ text: 'claim', match: true }] }],
         pagination: null

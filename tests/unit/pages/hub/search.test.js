@@ -1,4 +1,4 @@
-import { guideFrom, pageFrom, searchHref, searchPagination } from '../../../../src/pages/hub/search.js'
+import { allTitlesFrom, guideFrom, pageFrom, searchHref, searchPagination } from '../../../../src/pages/hub/search.js'
 
 describe('#pageFrom', () => {
   test.each([
@@ -32,6 +32,17 @@ describe('#guideFrom', () => {
   })
 })
 
+describe('#allTitlesFrom', () => {
+  test.each([
+    [{ titles: 'all' }, true],
+    [{}, false],
+    [{ titles: 'some' }, false],
+    [{ titles: ['all', 'all'] }, false]
+  ])('gives %j as %s', (query, all) => {
+    expect(allTitlesFrom(query)).toBe(all)
+  })
+})
+
 describe('#searchHref', () => {
   test('keeps the words, and the page only when it is not the first', () => {
     expect(searchHref({ words: 'claim rules', page: 1 })).toBe('/hub?q=claim+rules')
@@ -41,6 +52,11 @@ describe('#searchHref', () => {
   test('keeps the guide searched inside, when there is one', () => {
     expect(searchHref({ words: 'claim', guide: GUIDE })).toBe(`/hub?q=claim&guide=${GUIDE}`)
     expect(searchHref({ words: 'claim', guide: GUIDE, page: 2 })).toBe(`/hub?q=claim&guide=${GUIDE}&page=2`)
+  })
+
+  test('asks for every covered title, only when told to', () => {
+    expect(searchHref({ words: 'cs ma claim', allTitles: true })).toBe('/hub?q=cs+ma+claim&titles=all')
+    expect(searchHref({ words: 'cs ma claim', allTitles: false })).toBe('/hub?q=cs+ma+claim')
   })
 })
 

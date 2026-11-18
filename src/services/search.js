@@ -31,6 +31,8 @@ const logger = createLogger()
  * @property {string} id - The guide's
  * @property {string} title - The guide's
  * @property {string} href - The guide in the hub
+ * @property {Array<{text: string, match: boolean}>|null} titleSnippet - Its
+ *   title in parts, the words marked, when the words cover it; else null
  * @property {number} sectionTotal - Every one of its sections with the words
  * @property {SearchResult[]} sections - Its best few, best first
  */
@@ -38,18 +40,22 @@ const logger = createLogger()
 /**
  * @typedef {Object} GuideResults
  * @property {boolean} unavailable - The search service could not answer
- * @property {number} total - Every matching guide, not just this page
+ * @property {number} total - Every guide `results` pages through
+ * @property {number} documentTotal - Every guide the words are in, in its
+ *   sections or covering its title
  * @property {number} sectionTotal - Every matching section, in every guide
  * @property {boolean} tooManyMatches - So many sections match that none are
  *   given
  * @property {GuideResult[]} results - This page's
+ * @property {GuideResult[]} titles - Every guide whose title the words cover,
+ *   most covered first. When there is only one, it is not among `results`.
  */
 
 /** How many of each guide's sections a page of guides shows. */
 const SECTIONS_PER_GUIDE = 3
 
 const UNAVAILABLE = Object.freeze({ unavailable: true, total: 0, tooManyMatches: false, results: [] })
-const GUIDES_UNAVAILABLE = Object.freeze({ ...UNAVAILABLE, sectionTotal: 0 })
+const GUIDES_UNAVAILABLE = Object.freeze({ ...UNAVAILABLE, documentTotal: 0, sectionTotal: 0, titles: [] })
 
 /**
  * @private
@@ -116,6 +122,7 @@ function _toGuideResult (document) {
     id: document.documentId,
     title: document.documentTitle,
     href: _guideHref(document.documentId),
+    titleSnippet: document.titleMatch?.snippet ?? null,
     sectionTotal: document.sectionTotal,
     sections: document.sections.map(_toResult)
   }
@@ -144,9 +151,11 @@ async function searchGuides (options) {
     return {
       unavailable: false,
       total: data.total,
+      documentTotal: data.documentTotal,
       sectionTotal: data.sectionTotal,
       tooManyMatches: Boolean(data.tooManyMatches),
-      results: data.results.map(_toGuideResult)
+      results: data.results.map(_toGuideResult),
+      titles: data.titles.map(_toGuideResult)
     }
   } catch (err) {
     logger.error({ err }, 'Search is unavailable')
