@@ -80,11 +80,10 @@ describe('sameWords', () => {
 })
 
 describe('placeMatches', () => {
-  // A guide's page as the hub draws it: its title, an Introduction with a
-  // made-up title, and a page whose heading is "claims-1" on the page. Its
+  // A guide's page as the hub draws it: an Introduction with a made-up
+  // title, and a page whose heading is "claims-1" on the page. Its
   // heading in a quote does not start a section; its controls are not its text.
   const PAGE = `
-    <h1 class="app-guide-title">Overpayments</h1>
     <div data-guide-page="1" data-guide-page-section="">
       <h2 class="app-guide-heading-1">Introduction</h2>
       <div class="app-guide-markdown"><p>Pay on time.</p></div>
@@ -112,17 +111,16 @@ describe('placeMatches', () => {
     vi.restoreAllMocks()
   })
 
-  test('finds each match where the page shows it: in the title, an Introduction, and a section, across bold', () => {
+  test('finds each match where the page shows it: in an Introduction, and in a section, across bold', () => {
     const placed = placeMatches([
-      { anchor: null, start: 4, end: 7, text: 'pay' },
       { anchor: '', start: 0, end: 3, text: 'Pay' },
       { anchor: 'claims-1', start: 11, end: 20, text: 'the claim' },
       { anchor: 'checks', start: 7, end: 10, text: 'Pay' }
     ], STARTS)
 
-    expect(placed.map(range => range.toString())).toEqual(['pay', 'Pay', 'the claim', 'Pay'])
-    expect(placed[2].startContainer.parentElement.closest('p')).toHaveTextContent('Pay the claim.')
-    expect(placed[3].startContainer.parentElement).toHaveTextContent('Pay twice.')
+    expect(placed.map(range => range.toString())).toEqual(['Pay', 'the claim', 'Pay'])
+    expect(placed[1].startContainer.parentElement.closest('p')).toHaveTextContent('Pay the claim.')
+    expect(placed[2].startContainer.parentElement).toHaveTextContent('Pay twice.')
   })
 
   test('reads a heading that starts no section, as in a quote, as part of the section before it', () => {
@@ -138,7 +136,6 @@ describe('placeMatches', () => {
 
 describe('stepping between the matches', () => {
   const MATCHES = [
-    { anchor: null, start: 4, end: 7, text: 'pay' },
     { anchor: '', start: 0, end: 3, text: 'Pay' },
     { anchor: 'claims-1', start: 7, end: 10, text: 'Pay' },
     { anchor: 'claims-1', start: 27, end: 30, text: 'Pay' },
@@ -156,7 +153,7 @@ describe('stepping between the matches', () => {
           <span data-guide-search-position></span>
         </div>
       </form>
-      <nav><p><a href="#claims-1">Claims</a><span class="app-guide-contents__count" data-guide-search-first="3">2<span class="govuk-visually-hidden"> matches</span></span></p></nav>
+      <nav><p><a href="#claims-1">Claims</a><span class="app-guide-contents__count" data-guide-search-first="2">2<span class="govuk-visually-hidden"> matches</span></span></p></nav>
     </div>`
   let painted
 
@@ -184,8 +181,8 @@ describe('stepping between the matches', () => {
   test('paints every match, and starts at the first on a page that is shown, saying where the reader is', () => {
     searchAt(placedPage())
 
-    expect(painted.get('guide-keyword-match').ranges).toHaveLength(5)
-    expect(positionText()).toBe('Match 1 of 5')
+    expect(painted.get('guide-keyword-match').ranges).toHaveLength(4)
+    expect(positionText()).toBe('Match 1 of 4')
     expect(document.querySelector('[data-guide-search-controls]')).not.toHaveAttribute('hidden')
   })
 
@@ -193,7 +190,7 @@ describe('stepping between the matches', () => {
     const shown = vi.fn()
     document.addEventListener('guide-pages:show', shown, { capture: true })
 
-    searchAt(placedPage(), MATCHES.slice(2))
+    searchAt(placedPage(), MATCHES.slice(1))
     document.removeEventListener('guide-pages:show', shown, { capture: true })
 
     expect(positionText()).toBe('Match 1 of 3')
@@ -205,11 +202,11 @@ describe('stepping between the matches', () => {
     const next = document.querySelector('[data-guide-search-step="next"]')
 
     next.click()
-    expect(positionText()).toBe('Match 2 of 5')
-    for (let step = 0; step < 4; step += 1) {
+    expect(positionText()).toBe('Match 2 of 4')
+    for (let step = 0; step < 3; step += 1) {
       next.click()
     }
-    expect(positionText()).toBe('Match 1 of 5')
+    expect(positionText()).toBe('Match 1 of 4')
   })
 
   test('goes to the next match with Enter in the search box, and the one before with Shift+Enter', () => {
@@ -217,10 +214,10 @@ describe('stepping between the matches', () => {
     const input = document.querySelector('input[name="q"]')
 
     input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
-    expect(positionText()).toBe('Match 2 of 5')
+    expect(positionText()).toBe('Match 2 of 4')
     input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true, cancelable: true }))
     input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true, cancelable: true }))
-    expect(positionText()).toBe('Match 5 of 5')
+    expect(positionText()).toBe('Match 4 of 4')
   })
 
   test('goes to the first match under a contents entry when its count is clicked, showing the page that holds it', () => {
@@ -230,7 +227,7 @@ describe('stepping between the matches', () => {
 
     document.querySelector('.app-guide-contents__count').click()
 
-    expect(positionText()).toBe('Match 3 of 5')
+    expect(positionText()).toBe('Match 2 of 4')
     expect(currentText()).toEqual(['Pay'])
     expect(shown).toHaveBeenCalled()
   })
@@ -242,7 +239,7 @@ describe('stepping between the matches', () => {
 
     expect(count).toHaveAttribute('type', 'button')
     expect(count).toHaveClass('app-guide-contents__count')
-    expect(count).toHaveAttribute('data-guide-search-first', '3')
+    expect(count).toHaveAttribute('data-guide-search-first', '2')
   })
 
   test('goes on to the next match with Enter after a contents count is clicked', () => {
@@ -254,14 +251,13 @@ describe('stepping between the matches', () => {
     document.querySelector('.app-guide-contents__count').click()
     document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
 
-    expect(positionText()).toBe('Match 4 of 5')
+    expect(positionText()).toBe('Match 3 of 4')
   })
 })
 
 /** The guide's page that `placeMatches`' tests read. */
 function placedPage () {
   return `
-    <h1 class="app-guide-title">Overpayments</h1>
     <div data-guide-page="1" data-guide-page-section="">
       <h2 class="app-guide-heading-1">Introduction</h2>
       <div class="app-guide-markdown"><p>Pay on time.</p></div>

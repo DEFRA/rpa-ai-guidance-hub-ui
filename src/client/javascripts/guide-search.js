@@ -7,8 +7,7 @@
  * to the search box, and a second press is the browser's own find.
  *
  * The server hands over the matches in order, each by the id its section's
- * heading has on the page (null for the guide's title, empty for an
- * Introduction), and the ids of the headings that start a section as the
+ * heading has on the page (empty for an Introduction), and the ids of the headings that start a section as the
  * search reads the guide. The viewer replaces the server's HTML, so the
  * matches are placed in the page as it is (search-places.js) and painted
  * with the CSS Custom Highlight API, which leaves the viewer's text alone. A
@@ -32,9 +31,8 @@ const PAGE = '[data-guide-page]'
 const FIRST_UNDER = '[data-guide-search-first]'
 const STEPS_CLASS = 'app-guide-contents__count--steps'
 
-// The parts of a guide a search reads: the guide's title above it, then each
-// page's title and its text.
-const READ = '.app-guide-title, [data-guide-page] .app-guide-heading-1, [data-guide-page] .app-guide-markdown'
+// The parts of a guide a search reads: each page's title and its text.
+const READ = '[data-guide-page] .app-guide-heading-1, [data-guide-page] .app-guide-markdown'
 
 /**
  * @param {number} current - The current match's number, from 1
@@ -92,10 +90,9 @@ function _blockOf (node, root) {
 
 /**
  * @private
- * Start reading one of the parts a search reads: the guide's title starts
- * its own section, a page's title its page's section (or, as a made-up
- * title, nothing); an Introduction's text starts its section, which has no
- * heading; any other page's text reads on.
+ * Start reading one of the parts a search reads: a page's title starts its
+ * page's section (or, as a made-up title, nothing); an Introduction's text
+ * starts its section, which has no heading; any other page's text reads on.
  *
  * @param {Element} root
  * @param {SectionReader} reader
@@ -103,9 +100,7 @@ function _blockOf (node, root) {
  */
 function _startPart (root, reader, starts) {
   reader.endBlock()
-  if (root.matches('.app-guide-title')) {
-    reader.section(null)
-  } else if (root.matches('.app-guide-heading-1')) {
+  if (root.matches('.app-guide-heading-1')) {
     if (starts.has(root.id)) {
       reader.section(root.id)
     } else {

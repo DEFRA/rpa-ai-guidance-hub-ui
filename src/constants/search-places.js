@@ -72,7 +72,8 @@ class SectionReader {
   /**
    * Read what follows into a section of its own.
    *
-   * @param {string|null} anchor - Its heading's; null for the guide's title
+   * @param {string} anchor - Its heading's id on the page; empty for an
+   *   Introduction
    */
   section (anchor) {
     this.#current = { characters: [], places: [] }
