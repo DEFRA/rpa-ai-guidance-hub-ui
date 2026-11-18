@@ -161,6 +161,24 @@ function _readPart (root, reader, starts) {
 }
 
 /**
+ * @private
+ * A contents entry's count, made a button that goes to the first match under
+ * it: without the script, it is the count alone.
+ *
+ * @param {HTMLElement} count
+ */
+function _asButton (count) {
+  const button = document.createElement('button')
+
+  button.type = 'button'
+  button.className = `${count.className} ${STEPS_CLASS}`
+  button.dataset.guideSearchFirst = count.dataset.guideSearchFirst
+  button.append(...count.childNodes)
+  button.setAttribute('aria-label', `${button.textContent}: go to the first`)
+  count.replaceWith(button)
+}
+
+/**
  * Where each match is in the page as it is now.
  *
  * @param {Array<{anchor: string|null, start: number, end: number, text: string}>} found
@@ -303,7 +321,7 @@ class _Search {
     })
     // A contents entry's count goes to the first match under it, and gives
     // the focus back to the search box, where Enter goes on to the next.
-    document.querySelectorAll(FIRST_UNDER).forEach(count => count.classList.add(STEPS_CLASS))
+    document.querySelectorAll(FIRST_UNDER).forEach(_asButton)
     document.getElementById('guide:contents')?.addEventListener('click', (event) => {
       const count = event.target.closest(FIRST_UNDER)
 

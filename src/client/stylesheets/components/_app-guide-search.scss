@@ -111,14 +111,20 @@
   text-align: center;
 }
 
-// Once the page's script steps between the matches, a count goes to the
-// first under its entry.
+// Once the page's script steps between the matches, a count is a button that
+// goes to the first under its entry.
 .app-guide-contents__count--steps {
+  appearance: none;
+  margin: 0;
   cursor: pointer;
 
   &:hover {
     background-color: $govuk-text-colour;
     color: $govuk-focus-colour;
+  }
+
+  &:focus {
+    @include govuk-focused-text;
   }
 }
 

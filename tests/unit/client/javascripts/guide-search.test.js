@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { within } from '@testing-library/dom'
+
 import { holdFocus, initGuideSearch, isFindShortcut, placeMatches, sameWords, shortcutLabel, steppedMatch } from '../../../../src/client/javascripts/guide-search.js'
 
 describe('steppedMatch', () => {
@@ -154,7 +156,7 @@ describe('stepping between the matches', () => {
           <span data-guide-search-position></span>
         </div>
       </form>
-      <nav><p><a href="#claims-1">Claims</a><span class="app-guide-contents__count" data-guide-search-first="3">2</span></p></nav>
+      <nav><p><a href="#claims-1">Claims</a><span class="app-guide-contents__count" data-guide-search-first="3">2<span class="govuk-visually-hidden"> matches</span></span></p></nav>
     </div>`
   let painted
 
@@ -231,6 +233,16 @@ describe('stepping between the matches', () => {
     expect(positionText()).toBe('Match 3 of 5')
     expect(currentText()).toEqual(['Pay'])
     expect(shown).toHaveBeenCalled()
+  })
+
+  test('makes each contents count a button, which the keyboard can reach, named for what it does', () => {
+    searchAt(placedPage())
+
+    const count = within(document.body).getByRole('button', { name: '2 matches: go to the first' })
+
+    expect(count).toHaveAttribute('type', 'button')
+    expect(count).toHaveClass('app-guide-contents__count')
+    expect(count).toHaveAttribute('data-guide-search-first', '3')
   })
 
   test('goes on to the next match with Enter after a contents count is clicked', () => {
