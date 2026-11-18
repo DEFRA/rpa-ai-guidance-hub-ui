@@ -422,9 +422,9 @@ describe('HubViewModel search', () => {
   })
 
   describe('with the one guide whose title the words cover', () => {
-    test('promotes it above the other guides, with what it is for and its sections that have them', () => {
+    test('promotes it above the guides, with what it is for and its sections that have them', () => {
       const promoted = titled(1, { sectionTotal: 2, sections: [result, { ...result, title: '2 Assign case', href: '/guides/t-1#assign-case' }] })
-      const viewModel = searched({ total: 1, documentTotal: 2, sectionTotal: 3, titles: [promoted], results: [guide] }, 1, null, 'Check a claim\'s weight.')
+      const viewModel = searched({ total: 2, documentTotal: 2, sectionTotal: 3, titles: [promoted], results: [promoted, guide] }, 1, null, 'Check a claim\'s weight.')
 
       expect(viewModel.search.heading).toBe('2 guides')
       expect(viewModel.search.titleBlock).toEqual({
@@ -438,28 +438,40 @@ describe('HubViewModel search', () => {
           { title: '2 Assign case', href: '/guides/t-1#assign-case' }
         ]
       })
-      expect(viewModel.search.listHeading).toBe('Other guides that mention these words')
+      expect(viewModel.search.listHeading).toBe('Sections that mention ‘claim’')
       expect(viewModel.search.guideHeadingLevel).toBe(4)
     })
 
-    test('says, under the heading over other guides, that none mention the words when only its title has them', () => {
+    test('lists it among the guides too, with a link to every one of its sections, as the search service gives it in both', () => {
+      const promoted = titled(1, { sectionTotal: 5, sections: [result] })
+      const viewModel = searched({ total: 1, documentTotal: 1, sectionTotal: 5, titles: [promoted], results: [promoted] })
+
+      expect(viewModel.search.titleBlock.kind).toBe('strong')
+      expect(viewModel.search.guides.map((group) => group.title)).toEqual(['CS MA Claim - Case 1'])
+      expect(viewModel.search.guides[0].more).toEqual({ href: '/hub?q=claim&guide=t-1', text: 'See all 5 sections in this guide' })
+      expect(viewModel.search.listEmpty).toBeNull()
+    })
+
+    test('lists it on the later page its sections rank it on, with every page of guides counted', () => {
+      const promoted = titled(1, { sectionTotal: 1, sections: [result] })
+      const viewModel = searched({ total: 11, documentTotal: 11, sectionTotal: 11, titles: [promoted], results: [promoted] }, 2)
+
+      expect(viewModel.search.titleBlock).toBeNull()
+      expect(viewModel.search.guides.map((group) => group.title)).toEqual(['CS MA Claim - Case 1'])
+      expect(viewModel.search.pagination.items.map((item) => item.number)).toEqual([1, 2])
+    })
+
+    test('says, under the heading over the guides, that no sections mention the words when only its title has them', () => {
       const viewModel = searched({ total: 0, documentTotal: 1, titles: [titled()], results: [] })
 
       expect(viewModel.search.titleBlock.kind).toBe('strong')
       expect(viewModel.search.titleBlock.purpose).toBeNull()
       expect(viewModel.search.titleBlock.alsoFound).toEqual([])
       expect(viewModel.search.summary).toBe('No sections with these words')
-      expect(viewModel.search.listHeading).toBe('Other guides that mention these words')
-      expect(viewModel.search.listEmpty).toBe('No other guides mention ‘claim’ in their sections.')
+      expect(viewModel.search.listHeading).toBe('Sections that mention ‘claim’')
+      expect(viewModel.search.listEmpty).toBe('No sections mention ‘claim’.')
       expect(viewModel.search.emptyMessage).toBeNull()
       expect(viewModel.search.noResults).toBeNull()
-    })
-
-    test('says no other guides mention the words though its own sections do', () => {
-      const viewModel = searched({ total: 0, documentTotal: 1, sectionTotal: 1, titles: [titled(1, { sectionTotal: 1, sections: [result] })], results: [] })
-
-      expect(viewModel.search.summary).toBe('1 section with these words')
-      expect(viewModel.search.listEmpty).toBe('No other guides mention ‘claim’ in their sections.')
     })
 
     test('makes its links safe', () => {

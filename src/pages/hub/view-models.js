@@ -211,7 +211,9 @@ function _titleBlock (search) {
 /**
  * @private
  * The heading over the guides that have the words, under a title block, to
- * say how they differ from it; none without one.
+ * say how they differ from it; none without one. A guide the block names is
+ * among them too when its sections have the words, as the search service
+ * gives it in both.
  *
  * @param {Object|null} titleBlock
  * @param {string} words
@@ -220,10 +222,6 @@ function _titleBlock (search) {
 function _listHeading (titleBlock, words) {
   if (!titleBlock) {
     return null
-  }
-
-  if (titleBlock.kind === 'strong') {
-    return 'Other guides that mention these words'
   }
 
   return `Sections that mention ‘${words}’`
@@ -243,10 +241,6 @@ function _listHeading (titleBlock, words) {
 function _listEmpty (titleBlock, guideCount, words) {
   if (!titleBlock || guideCount > 0) {
     return null
-  }
-
-  if (titleBlock.kind === 'strong') {
-    return `No other guides mention ‘${words}’ in their sections.`
   }
 
   return `No sections mention ‘${words}’.`

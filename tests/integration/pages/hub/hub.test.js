@@ -376,9 +376,9 @@ describe('#hubController', () => {
         })
       }
 
-      test('promotes the one guide, with what it is for and a way to open it, and does not show it again below', async () => {
+      test('promotes the one guide, with what it is for and a way to open it, and lists it with the others whose sections have the words', async () => {
         const promoted = searchApi.titleResult({ sections: [searchApi.sectionResult({ documentId: PROMOTED, anchor: 'introduction', sectionNumber: '1', heading: 'Introduction' })], sectionTotal: 1 })
-        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ titles: [promoted] }))
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [promoted, searchApi.documentResult()], titles: [promoted] }))
         nock(GUIDANCE_API_BASE_URL).get(`/guides/${PROMOTED}`).reply(statusCodes.HTTP_STATUS_OK, guideResponse({ id: PROMOTED, metadata: { ...guideResponse().metadata, goal: 'Decide a claim over the maximum eligible weight.' } }))
 
         const { main } = await mainOf('/hub?q=CS+MA+Claim+AB12+maximum+eligible+weight')
@@ -391,13 +391,13 @@ describe('#hubController', () => {
         expect(panel).toContain('Decide a claim over the maximum eligible weight.')
         expect(panel).toMatch(new RegExp(`<a class="govuk-button[^"]*" href="/guides/${PROMOTED}" role="button"[^>]*>\\s*Open guide`))
         expect(panel).toMatch(new RegExp(`Words also found in\\s*<a class="govuk-link" href="/guides/${PROMOTED}\\?section=introduction#introduction">1 Introduction</a>`))
-        expect(main).toContain('<h3 class="govuk-heading-m app-hub-results__list-heading">Other guides that mention these words</h3>')
+        expect(main).toContain('<h3 class="govuk-heading-m app-hub-results__list-heading">Sections that mention ‘CS MA Claim AB12 maximum eligible weight’</h3>')
         expect(main).toMatch(/<h4 class="govuk-heading-m app-search-results__name">\s*<a class="govuk-link" href="\/guides\/7c9e6679-7425-40de-944b-e07fc1f90ae7">Countryside Stewardship final payments<\/a>/)
-        expect(main.split(`href="/guides/${PROMOTED}"`).length - 1).toBe(2)
+        expect(main).toMatch(new RegExp(`<h4 class="govuk-heading-m app-search-results__name">\\s*<a class="govuk-link" href="/guides/${PROMOTED}">`))
         expect(main).not.toContain('govuk-tag')
       })
 
-      test('promotes the guide without what it is for when it can\'t be read, saying no other guide mentions the words', async () => {
+      test('promotes the guide without what it is for when it can\'t be read, saying no sections mention the words', async () => {
         nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [], total: 0, titles: [searchApi.titleResult()] }))
         nock(GUIDANCE_API_BASE_URL).get(`/guides/${PROMOTED}`).reply(statusCodes.HTTP_STATUS_INTERNAL_SERVER_ERROR)
 
@@ -406,8 +406,8 @@ describe('#hubController', () => {
         expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
         expect(main).toContain('Is this the guide you’re looking for?')
         expect(main).toContain('No sections with these words')
-        expect(main).toContain('<h3 class="govuk-heading-m app-hub-results__list-heading">Other guides that mention these words</h3>')
-        expect(main).toContain('<p class="govuk-body app-hub-results__list-empty">No other guides mention ‘CS MA Claim AB12 maximum eligible weight’ in their sections.</p>')
+        expect(main).toContain('<h3 class="govuk-heading-m app-hub-results__list-heading">Sections that mention ‘CS MA Claim AB12 maximum eligible weight’</h3>')
+        expect(main).toContain('<p class="govuk-body app-hub-results__list-empty">No sections mention ‘CS MA Claim AB12 maximum eligible weight’.</p>')
         expect(main).not.toContain('There are no guides with')
         expect(main).not.toContain('Words also found in')
       })

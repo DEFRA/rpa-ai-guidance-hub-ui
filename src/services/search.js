@@ -49,7 +49,8 @@ const logger = createLogger()
  *   given
  * @property {GuideResult[]} results - This page's
  * @property {GuideResult[]} titles - Every guide whose title the words cover,
- *   most covered first. When there is only one, it is not among `results`.
+ *   most covered first. Any whose sections have the words is among
+ *   `results` too.
  */
 
 /** How many of each guide's sections a page of guides shows. */
