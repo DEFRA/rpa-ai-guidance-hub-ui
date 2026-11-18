@@ -157,6 +157,14 @@ describe('Search in a guide', () => {
     expect(page.getByRole('link', { name: 'Clear search' })).toHaveAttribute('href', GUIDE_URL)
   })
 
+  test('keeps the reader on their page of the stepper when they search, and when they clear the search', async () => {
+    const page = await guidePage({ query: '?section=archive&q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND], format: 'stepper' })
+    const sent = Array.from(searchBoxOf(page).form.elements, field => [field.name, field.value]).filter(([name]) => name)
+
+    expect(sent).toEqual([['section', 'archive'], ['q', 'pay']])
+    expect(page.getByRole('link', { name: 'Clear search' })).toHaveAttribute('href', `${GUIDE_URL}?section=archive`)
+  })
+
   test('keeps the words in a link from one page of the stepper to another', async () => {
     const markdown = MARKDOWN.replace('Pay on time.', 'Pay on time, or see [the archive](#archive).')
     const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND], format: 'stepper', markdown })
