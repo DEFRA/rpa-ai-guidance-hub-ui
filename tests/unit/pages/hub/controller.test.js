@@ -6,6 +6,12 @@ import * as guidesService from '../../../../src/services/guides.js'
 import * as searchService from '../../../../src/services/search.js'
 import * as usersService from '../../../../src/services/users.js'
 
+const mockLoggerWarn = vi.fn()
+
+vi.mock('../../../../src/infra/logging/logger.js', () => ({
+  createLogger: () => ({ warn: (...args) => mockLoggerWarn(...args) })
+}))
+
 const COUNTS = {
   audience: [{ label: 'Processor', shortLabel: null, count: 2 }],
   system: [{ label: 'CRM', shortLabel: null, count: 2 }],
@@ -201,13 +207,12 @@ describe('#hubController', () => {
       test('Should promote the guide without what it is for when the guide can\'t be read', async () => {
         searchService.searchGuides.mockResolvedValue({ ...found, titles: [promoted] })
         vi.spyOn(guidesService, 'getGuideById').mockRejectedValue(new GuidanceApiError('API is down', 503))
-        const logger = { warn: vi.fn() }
 
-        await getHubPage({ query: { q: 'CS MA Claim' }, logger }, h)
+        await getHubPage({ query: { q: 'CS MA Claim' } }, h)
 
         const [, viewModel] = h.view.mock.calls[0]
         expect(viewModel.search.titleBlock).toEqual(expect.objectContaining({ kind: 'strong', purpose: null }))
-        expect(logger.warn).toHaveBeenCalled()
+        expect(mockLoggerWarn).toHaveBeenCalledWith(expect.objectContaining({ event: expect.objectContaining({ type: 'promoted_guide_unavailable' }) }), expect.any(String))
         expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
       })
 

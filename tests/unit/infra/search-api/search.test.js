@@ -1,3 +1,5 @@
+import * as searchApi from '../../../fixtures/search-api.js'
+
 import { searchApiClient } from '../../../../src/infra/search-api/client.js'
 import { searchDocuments, searchSections } from '../../../../src/infra/search-api/search.js'
 
@@ -7,18 +9,19 @@ vi.mock('../../../../src/infra/search-api/client.js', () => ({
 
 describe('#searchSections', () => {
   test('searches the sections for the words, a page at a time', async () => {
-    searchApiClient.request.mockResolvedValue({ ok: true, status: 200, data: {} })
+    const body = searchApi.searchResponse()
+    searchApiClient.request.mockResolvedValue({ ok: true, status: 200, data: body })
 
     const result = await searchSections({ words: 'claim rules', limit: 10, offset: 20 })
 
     expect(searchApiClient.request).toHaveBeenCalledWith('/v1/search', {
       query: { q: 'claim rules', tag: undefined, limit: 10, offset: 20 }
     })
-    expect(result).toEqual({ ok: true, status: 200, data: {} })
+    expect(result).toEqual({ ok: true, status: 200, data: body })
   })
 
   test('searches inside one guide when given one', async () => {
-    searchApiClient.request.mockResolvedValue({ ok: true, status: 200, data: {} })
+    searchApiClient.request.mockResolvedValue({ ok: true, status: 200, data: searchApi.searchResponse() })
 
     await searchSections({ words: 'claim', guideId: 'g-1', limit: 10, offset: 0 })
 
@@ -30,13 +33,14 @@ describe('#searchSections', () => {
 
 describe('#searchDocuments', () => {
   test('searches for the words grouped by guide, a page of guides at a time', async () => {
-    searchApiClient.request.mockResolvedValue({ ok: true, status: 200, data: {} })
+    const body = searchApi.documentSearchResponse()
+    searchApiClient.request.mockResolvedValue({ ok: true, status: 200, data: body })
 
     const result = await searchDocuments({ words: 'claim rules', sections: 3, limit: 10, offset: 20 })
 
     expect(searchApiClient.request).toHaveBeenCalledWith('/v1/search', {
       query: { q: 'claim rules', group: 'document', sections: 3, limit: 10, offset: 20 }
     })
-    expect(result).toEqual({ ok: true, status: 200, data: {} })
+    expect(result).toEqual({ ok: true, status: 200, data: body })
   })
 })

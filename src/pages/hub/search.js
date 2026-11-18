@@ -22,13 +22,21 @@ const NEIGHBOURS = 1
  * @returns {number}
  */
 function pageFrom (query = {}) {
-  if (typeof query.page !== 'string' || !/^\d+$/.test(query.page)) {
+  if (typeof query.page !== 'string') {
+    return 1
+  }
+
+  if (!/^\d+$/.test(query.page)) {
     return 1
   }
 
   const page = Number(query.page)
 
-  if (!Number.isSafeInteger(page) || page < 1) {
+  if (!Number.isSafeInteger(page)) {
+    return 1
+  }
+
+  if (page < 1) {
     return 1
   }
 
@@ -43,7 +51,11 @@ function pageFrom (query = {}) {
  * @returns {string|null}
  */
 function guideFrom (query = {}) {
-  if (typeof query.guide !== 'string' || !GUIDE_ID.test(query.guide)) {
+  if (typeof query.guide !== 'string') {
+    return null
+  }
+
+  if (!GUIDE_ID.test(query.guide)) {
     return null
   }
 
@@ -102,7 +114,11 @@ function searchHref (options) {
  * @returns {number|null}
  */
 function _shownAs (number, page, pages) {
-  if (number === 1 || number === pages) {
+  if (number === 1) {
+    return number
+  }
+
+  if (number === pages) {
     return number
   }
 
@@ -125,7 +141,24 @@ function _shownAs (number, page, pages) {
 function _numbered (page, pages) {
   const shown = Array.from({ length: pages }, (_, index) => _shownAs(index + 1, page, pages))
 
-  return shown.filter((number, index) => number !== null || shown[index - 1] !== null)
+  return shown.filter((_, index) => _kept(shown, index))
+}
+
+/**
+ * @private
+ * Whether the pagination keeps a page: every one numbered, and the first
+ * null of each run left out, as its ellipsis.
+ *
+ * @param {Array<number|null>} shown - Each page as `_shownAs` shows it
+ * @param {number} index
+ * @returns {boolean}
+ */
+function _kept (shown, index) {
+  if (shown[index] !== null) {
+    return true
+  }
+
+  return shown[index - 1] !== null
 }
 
 /**
@@ -143,7 +176,11 @@ function _numbered (page, pages) {
 function searchPagination (options) {
   const pages = Math.ceil(options.total / RESULTS_PER_PAGE)
 
-  if (options.tooManyMatches || pages <= 1) {
+  if (options.tooManyMatches) {
+    return null
+  }
+
+  if (pages <= 1) {
     return null
   }
 

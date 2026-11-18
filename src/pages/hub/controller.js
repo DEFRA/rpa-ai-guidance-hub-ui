@@ -2,6 +2,8 @@ import Boom from '@hapi/boom'
 
 import { CASE_TYPES } from '../../constants/case-types.js'
 import { statusCodes } from '../../constants/status-codes.js'
+import { createLogger } from '../../infra/logging/logger.js'
+import { buildErrorLog } from '../../infra/logging/utils/build-error-log.js'
 import * as guidesService from '../../services/guides.js'
 import * as searchService from '../../services/search.js'
 import * as usersService from '../../services/users.js'
@@ -12,6 +14,8 @@ import { allTitlesFrom, guideFrom, pageFrom, RESULTS_PER_PAGE } from './search.j
 import { HubViewModel } from './view-models.js'
 
 const HUB_VIEW = 'hub/page.njk'
+
+const logger = createLogger()
 const NOT_RECORDED = 'Not recorded'
 
 /**
@@ -162,13 +166,16 @@ async function _guideListPage (request, h, options) {
  * shows: only on the first page, as only it has the panel. Without it the
  * panel still shows, so a guide that can't be read is not the page's failure.
  *
- * @param {import('@hapi/hapi').Request} request
  * @param {import('../../services/search.js').GuideResults} found
  * @param {number} page
  * @returns {Promise<string|null>}
  */
-async function _promotedPurpose (request, found, page) {
-  if (page !== 1 || found.titles.length !== 1) {
+async function _promotedPurpose (found, page) {
+  if (page !== 1) {
+    return null
+  }
+
+  if (found.titles.length !== 1) {
     return null
   }
 
@@ -177,7 +184,7 @@ async function _promotedPurpose (request, found, page) {
 
     return guide?.metadata?.goal ?? null
   } catch (err) {
-    request.logger.warn({ err }, 'The promoted guide could not be read')
+    logger.warn(buildErrorLog(err, { type: 'promoted_guide_unavailable' }), `Could not read the promoted guide: ${err.message}`)
 
     return null
   }
@@ -212,7 +219,7 @@ async function getHubPage (request, h) {
     return _guideListPage(request, h, { words, searchUnavailable: true })
   }
 
-  const promotedPurpose = guide ? null : await _promotedPurpose(request, found, page)
+  const promotedPurpose = guide ? null : await _promotedPurpose(found, page)
 
   return h
     .view(HUB_VIEW, new HubViewModel({ words, search: { words, page, guide, found, promotedPurpose, allTitles: allTitlesFrom(request.query) } }))

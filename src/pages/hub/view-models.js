@@ -168,7 +168,7 @@ function _severalTitles (guides, words, allTitles) {
     sectionsText: guide.sectionTotal > 0 ? _counted(guide.sectionTotal, 'section', 'sections') : null
   }))
 
-  const showAll = !allTitles && rows.length > TITLES_SHOWN
+  const showAll = _cutShort(rows.length, allTitles)
 
   return {
     kind: 'several',
@@ -178,6 +178,23 @@ function _severalTitles (guides, words, allTitles) {
       ? { href: `${searchHref({ words, allTitles: true })}#title-match-heading`, text: `Show all ${guides.length} guides` }
       : null
   }
+}
+
+/**
+ * @private
+ * Whether the guides whose title the words cover are too many to list until
+ * every one is asked for.
+ *
+ * @param {number} count
+ * @param {boolean} allTitles - Every one was asked for
+ * @returns {boolean}
+ */
+function _cutShort (count, allTitles) {
+  if (allTitles) {
+    return false
+  }
+
+  return count > TITLES_SHOWN
 }
 
 /**
@@ -197,7 +214,11 @@ function _severalTitles (guides, words, allTitles) {
 function _titleBlock (search) {
   const titles = search.found.titles
 
-  if (search.page !== 1 || titles.length === 0) {
+  if (search.page !== 1) {
+    return null
+  }
+
+  if (titles.length === 0) {
     return null
   }
 
@@ -239,7 +260,11 @@ function _listHeading (titleBlock, words) {
  * @returns {string|null}
  */
 function _listEmpty (titleBlock, guideCount, words) {
-  if (!titleBlock || guideCount > 0) {
+  if (!titleBlock) {
+    return null
+  }
+
+  if (guideCount > 0) {
     return null
   }
 
@@ -257,7 +282,11 @@ function _listEmpty (titleBlock, guideCount, words) {
  * @returns {{heading: string}|null}
  */
 function _noResults (search) {
-  if (search.found.tooManyMatches || search.found.documentTotal > 0) {
+  if (search.found.tooManyMatches) {
+    return null
+  }
+
+  if (search.found.documentTotal > 0) {
     return null
   }
 
@@ -276,21 +305,56 @@ function _noResults (search) {
  *   nothing has the words, and `_listEmpty` when only titles do
  */
 function _searchEmptyMessage (search) {
-  const found = search.found
-
-  if (found.tooManyMatches) {
+  if (search.found.tooManyMatches) {
     return 'Too many matches. Use more specific words.'
   }
 
-  if (search.guide && found.total === 0) {
+  if (search.guide) {
+    return _guideEmptyMessage(search)
+  }
+
+  return _guidesEmptyMessage(search)
+}
+
+/**
+ * @private
+ * @param {Object} search - Inside one guide, as `_searchEmptyMessage` takes it
+ * @returns {string|null} Why that guide has no sections to list, if none
+ */
+function _guideEmptyMessage (search) {
+  if (search.found.total === 0) {
     return `This guide has no sections with the words “${search.words}”.`
   }
+
+  if (search.found.results.length > 0) {
+    return null
+  }
+
+  return `There is no page ${search.page} of results.`
+}
+
+/**
+ * @private
+ * @param {Object} search - Across every guide, as `_searchEmptyMessage` takes it
+ * @returns {string|null} Why there are no guides to list, if none and nothing
+ *   else says so
+ */
+function _guidesEmptyMessage (search) {
+  const found = search.found
 
   if (found.results.length > 0) {
     return null
   }
 
-  if (!search.guide && (found.documentTotal === 0 || (search.page === 1 && found.titles.length > 0))) {
+  if (found.documentTotal === 0) {
+    return null
+  }
+
+  if (search.page !== 1) {
+    return `There is no page ${search.page} of results.`
+  }
+
+  if (found.titles.length > 0) {
     return null
   }
 
@@ -306,7 +370,11 @@ function _searchEmptyMessage (search) {
  * @returns {string|null}
  */
 function _guidesSummary (found) {
-  if (found.tooManyMatches || found.documentTotal === 0) {
+  if (found.tooManyMatches) {
+    return null
+  }
+
+  if (found.documentTotal === 0) {
     return null
   }
 
@@ -318,10 +386,10 @@ function _guidesSummary (found) {
 }
 
 /**
+ * @private
  * The guides that have the words, each with its best sections, as
  * `search-results.njk` shows them, under the guides whose title they cover.
  *
- * @private
  * @param {Object} search
  * @param {string} search.words
  * @param {number} search.page
@@ -354,10 +422,10 @@ function _buildGuidesSearch (search) {
 }
 
 /**
+ * @private
  * One guide's sections that have the words, as `search-results.njk` shows
  * them, with a way back to every guide that has them.
  *
- * @private
  * @param {Object} search
  * @param {string} search.words
  * @param {number} search.page
@@ -387,10 +455,10 @@ function _buildGuideSearch (search) {
 }
 
 /**
+ * @private
  * The results of searching the guides, or one guide, as
  * `search-results.njk` shows them.
  *
- * @private
  * @param {Object} search
  * @param {string|null} [search.guide]
  * @returns {Object}

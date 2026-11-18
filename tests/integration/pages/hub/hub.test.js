@@ -363,15 +363,16 @@ describe('#hubController', () => {
     })
 
     describe('guides whose title the words cover', () => {
-      const PROMOTED = '9b2f4c1a-5d3e-4a6b-8c7d-0e1f2a3b4c5d'
-      const PROMOTED_TITLE = 'CS MA Claim - AB12 or OP3 Maximum Eligible Weight'
+      const PROMOTED = searchApi.titleResult().documentId
+      const PROMOTED_TITLE = searchApi.titleResult().documentTitle
 
       /** One of several guides titled "CS MA Claim - ...", its own id. */
-      function caseTitle (number) {
+      function caseTitle (number, overrides = {}) {
         return searchApi.titleResult({
           documentId: `00000000-0000-4000-8000-00000000000${number}`,
           documentTitle: `CS MA Claim - Case ${number}`,
-          url: `/guides/00000000-0000-4000-8000-00000000000${number}`
+          url: `/guides/00000000-0000-4000-8000-00000000000${number}`,
+          ...overrides
         })
       }
 
@@ -415,8 +416,8 @@ describe('#hubController', () => {
       })
 
       test('lists several above the sections that have the words, the first five with a link to every one', async () => {
-        const titles = [1, 2, 3, 4, 5, 6].map(caseTitle)
-        const alsoInSections = { ...titles[0], sections: [searchApi.sectionResult()], sectionTotal: 2 }
+        const titles = [1, 2, 3, 4, 5, 6].map((number) => caseTitle(number))
+        const alsoInSections = caseTitle(1, { sections: [searchApi.sectionResult()], sectionTotal: 2 })
         nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ titles: [alsoInSections, ...titles.slice(1)], results: [alsoInSections, searchApi.documentResult()] }))
 
         const { page } = await searchAt('/hub?q=CS+MA+Claim')
