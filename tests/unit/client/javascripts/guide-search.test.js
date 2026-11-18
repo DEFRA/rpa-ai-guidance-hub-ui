@@ -242,6 +242,20 @@ describe('stepping between the matches', () => {
     expect(count).toHaveAttribute('data-guide-search-first', '2')
   })
 
+  test('places the matches again when the viewer draws the guide anew, as it does after the script starts', async () => {
+    searchAt(placedPage())
+    const text = document.querySelector('[data-guide-page="2"] .app-guide-markdown')
+
+    // The viewer replaces the server's HTML with its own, which has the same words.
+    text.replaceChildren(...text.cloneNode(true).childNodes)
+
+    await vi.waitFor(() => {
+      const placed = painted.get('guide-keyword-match').ranges
+
+      expect(placed.map(range => range.toString())).toEqual(['Pay', 'Pay', 'Pay', 'Pay'])
+    })
+  })
+
   test('goes on to the next match with Enter after a contents count is clicked', () => {
     searchAt(placedPage())
     const input = document.querySelector('input[name="q"]')
