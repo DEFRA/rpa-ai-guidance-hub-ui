@@ -2,13 +2,16 @@ import Boom from '@hapi/boom'
 
 import { statusCodes } from '../../constants/status-codes.js'
 import { relativeHref } from '../common/relative-href.js'
-import { resolveAnchors, resolveImages, splitIntoSections } from '../../services/guide-sections.js'
+import { findHeading, resolveAnchors, resolveImages, splitIntoSections } from '../../services/guide-sections.js'
 import * as guidesService from '../../services/guides.js'
 import * as usersService from '../../services/users.js'
 import { guideAssetHref } from './asset-href.js'
-import { isPanelCollapsed, setPanelCollapsed } from './panel.js'
+import { BOOKMARKED } from './bookmark/controller.js'
+import { getContentsWidth } from './contents-width.js'
+import { getGuideFormat, setGuideFormat } from './format.js'
+import { isInformationShown, setInformationShown } from './information.js'
 import { getReadingWidth, setReadingWidth } from './reading-width.js'
-import { buildMetadataRows, GuideViewModel } from './view-model.js'
+import { buildInfoRows, GuideViewModel } from './view-model.js'
 
 const GUIDE_VIEW = 'guide/page.njk'
 const FALLBACK_RETURN_URL = '/hub'
@@ -21,18 +24,27 @@ const ALLOWED_ASSET_CONTENT_TYPES = new Set([
 
 /**
  * @private
- * @param {unknown} page - The `page` query parameter
- * @param {number} totalPages
- * @returns {number} `page` as a whole number within 1..totalPages
+ * @param {import('../../services/guide-sections.js').GuideSection[]} sections
+ * @param {unknown} anchor - The `section` query parameter: a heading's anchor
+ *   as the hub knows it, as links from elsewhere name it; or, for a heading the
+ *   hub gives none, its anchor on the page
+ * @returns {number} The number of the page that has the heading; the first
+ *   when the guide has none by that anchor
  */
-function _pageNumber (page, totalPages) {
-  const number = Number.parseInt(page, 10)
-
-  if (Number.isNaN(number)) {
+function _pageNamed (sections, anchor) {
+  if (typeof anchor !== 'string') {
     return 1
   }
 
-  return Math.min(Math.max(number, 1), Math.max(totalPages, 1))
+  const heading = findHeading(sections, anchor)
+
+  if (heading) {
+    return heading.page
+  }
+
+  const index = sections.findIndex(section => section.slug === anchor || section.headingIds.includes(anchor))
+
+  return index === -1 ? 1 : index + 1
 }
 
 /**
@@ -47,24 +59,47 @@ function _currentUrl (request) {
 
 /**
  * @private
- * @param {Array<{id: string}>|null} pinned - The user's pins, in their order
+ * @param {Array<{id: string, sectionId: string|null}>|null} pinned - The
+ *   user's pins, guides and sections of guides, in their order
  * @param {string} guideId
- * @returns {{pinned: boolean, position: number|null}|null} Null when the
- *   user's pins are not known, and the page offers no pin
+ * @returns {{pinned: boolean, position: number|null}|null} Whether the whole
+ *   guide is pinned, and where among the pins; null when the user's pins are
+ *   not known, and the page offers no pin
  */
 function _pinOf (pinned, guideId) {
   if (!pinned) {
     return null
   }
 
-  const position = pinned.findIndex((pin) => pin.id === guideId)
+  const position = pinned.findIndex((pin) => pin.id === guideId && !pin.sectionId)
 
   return { pinned: position !== -1, position: position === -1 ? null : position }
 }
 
 /**
- * Show one section of a guide, with its contents and what the guide is
- * about.
+ * @private
+ * @param {Array<{id: string, sectionId: string|null, section: string|null}>|null} pinned
+ *   - The user's pins, guides and sections of guides, in their order
+ * @param {string} guideId
+ * @returns {Map<string, {position: number, sectionId: string, key: string}>|null}
+ *   The guide's pinned sections by anchor, each with where it is among the
+ *   pins; null when the user's pins are not known, and the page offers no pin
+ */
+function _pinnedSectionsOf (pinned, guideId) {
+  if (!pinned) {
+    return null
+  }
+
+  return new Map(pinned.flatMap((pin, position) => pin.id === guideId && pin.sectionId && pin.section
+    ? [[pin.section, { position, sectionId: pin.sectionId, key: usersService.pinKey(pin) }]]
+    : []))
+}
+
+/**
+ * Show a guide, whole or a section at a time as the user chose, with its
+ * contents and what the guide is about. `?section=` names a heading, and in
+ * the stepper the page that has it is shown; the guide never sends the reader
+ * on, so the browser keeps a link's fragment.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -74,10 +109,24 @@ function _pinOf (pinned, guideId) {
 async function getGuidePage (request, h) {
   const { guideId } = request.params
 
-  const [guide, content, pinned] = await Promise.all([
+  const [
+    guide,
+    content,
+    pinned,
+    cases,
+    format,
+    readingWidth,
+    contentsWidth,
+    informationShown
+  ] = await Promise.all([
     guidesService.getGuideById(guideId),
     guidesService.getGuideContent(guideId),
-    usersService.pinnedOf(request)
+    usersService.pinnedOf(request),
+    usersService.casesOf(request),
+    getGuideFormat(request),
+    getReadingWidth(request),
+    getContentsWidth(request),
+    isInformationShown(request)
   ])
 
   const split = content ? splitIntoSections(content.markdown) : []
@@ -86,24 +135,31 @@ async function getGuidePage (request, h) {
     throw Boom.notFound()
   }
 
-  // Every view counts as opening the guide: a direct link can name a page, so
-  // its address doesn't tell an opening from moving between its parts.
+  // Every view counts as opening the guide: a direct link can name a section,
+  // so its address doesn't tell an opening from moving between its parts.
   await usersService.recordOpened(request, guide.id)
 
-  const sections = resolveImages(
-    resolveAnchors(split, page => GuideViewModel.pageHref(guideId, page)),
-    href => guideAssetHref(href, guideId)
-  )
+  // In the traditional view every heading is on the page, so the guide's
+  // links to them work as they are.
+  const linked = format === 'stepper'
+    ? resolveAnchors(split, page => GuideViewModel.pageHref(guideId, split[page - 1]))
+    : split
+  const sections = resolveImages(linked, href => guideAssetHref(href, guideId))
 
   const viewModel = new GuideViewModel({
     guide,
     sections,
-    pageNumber: _pageNumber(request.query.page, sections.length),
-    readingWidth: getReadingWidth(request),
+    pageNumber: _pageNamed(sections, request.query.section),
+    readingWidth,
+    contentsWidth,
     returnTo: _currentUrl(request),
-    panelCollapsed: isPanelCollapsed(request),
-    metadataRows: buildMetadataRows(guide.metadata),
-    pin: _pinOf(pinned, guide.id)
+    pin: _pinOf(pinned, guide.id),
+    pinnedSections: _pinnedSectionsOf(pinned, guide.id),
+    cases,
+    bookmarked: request.yar.flash(BOOKMARKED)[0],
+    format,
+    infoRows: buildInfoRows(guide),
+    informationShown
   })
 
   return h
@@ -117,28 +173,45 @@ async function getGuidePage (request, h) {
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
- * @returns {import('@hapi/hapi').ResponseObject}
+ * @returns {Promise<import('@hapi/hapi').ResponseObject>}
  */
-function postReadingWidth (request, h) {
+async function postReadingWidth (request, h) {
   const { width, returnTo } = request.payload
 
-  setReadingWidth(request, width)
+  await setReadingWidth(request, width)
 
   return h.redirect(relativeHref(returnTo, FALLBACK_RETURN_URL))
 }
 
 /**
- * Fold the "About this guide" panel away to its rail, or open it again, then
- * send the user back to the page they did it on.
+ * Remember how the user reads guides, whole or a section at a time, then send
+ * them back to their place in the guide.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
- * @returns {import('@hapi/hapi').ResponseObject}
+ * @returns {Promise<import('@hapi/hapi').ResponseObject>}
  */
-function postPanelToggle (request, h) {
-  const { collapsed, returnTo } = request.payload
+async function postFormat (request, h) {
+  const { format, returnTo } = request.payload
 
-  setPanelCollapsed(request, collapsed)
+  await setGuideFormat(request, format)
+
+  return h.redirect(relativeHref(returnTo, FALLBACK_RETURN_URL))
+}
+
+/**
+ * Remember whether the user shows a guide's information under its title, then
+ * send them back to the page they chose it on. With JavaScript the page has
+ * changed already, and only the choice is sent.
+ *
+ * @param {import('@hapi/hapi').Request} request
+ * @param {import('@hapi/hapi').ResponseToolkit} h
+ * @returns {Promise<import('@hapi/hapi').ResponseObject>}
+ */
+async function postInformation (request, h) {
+  const { shown, returnTo } = request.payload
+
+  await setInformationShown(request, shown)
 
   return h.redirect(relativeHref(returnTo, FALLBACK_RETURN_URL))
 }
@@ -174,6 +247,7 @@ async function getGuideAsset (request, h) {
 export {
   getGuideAsset,
   getGuidePage,
-  postPanelToggle,
+  postFormat,
+  postInformation,
   postReadingWidth
 }

@@ -1,4 +1,18 @@
+import { within } from '@testing-library/dom'
+import { JSDOM } from 'jsdom'
+
 import { jsonScript, renderMarkdownFallback } from '../../../../src/pages/guide/markdown.js'
+
+/**
+ * @param {string} markdown
+ * @returns {ReturnType<typeof within>} The fallback's queries, to find what it
+ *   draws as a reader finds it
+ */
+function fallbackOf (markdown) {
+  const { document } = new JSDOM(`<body>${renderMarkdownFallback(markdown)}</body>`).window
+
+  return within(document.body)
+}
 
 describe('renderMarkdownFallback', () => {
   test('renders headings, lists and emphasis', () => {
@@ -42,7 +56,26 @@ describe('renderMarkdownFallback', () => {
     ['#11-eligibility'],
     ['/guides/guide-1']
   ])('keeps the safe link address %s', (href) => {
-    expect(renderMarkdownFallback(`[go](${href})`)).toContain(`<a href="${href}">go</a>`)
+    expect(renderMarkdownFallback(`[go](${href})`)).toContain(`<a href="${href}"`)
+  })
+
+  test('opens a link to another site in a new tab, saying so to a screen reader', () => {
+    const link = fallbackOf('See [GOV.UK](https://www.gov.uk/x).').getByRole('link', { name: /^GOV\.UK ?\(opens in new tab\)$/ })
+
+    expect(link).toHaveAttribute('href', 'https://www.gov.uk/x')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  test.each([
+    ['a place in the same guide', '#eligibility'],
+    ['another guide in the hub', '/guides/guide-2/claim-form'],
+    ['an email address', 'mailto:someone@example.com']
+  ])('leaves a link to %s in the same tab', (_, href) => {
+    const link = fallbackOf(`[go](${href})`).getByRole('link', { name: 'go' })
+
+    expect(link).toHaveAttribute('href', href)
+    expect(link).not.toHaveAttribute('target')
   })
 
   test('keeps an image from the guide and drops an unsafe one', () => {

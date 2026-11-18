@@ -15,8 +15,8 @@ describe('a guide\'s page revealed by the browser\'s find in page', () => {
         <div class="app-layout__main">
           <div class="app-shell">
             ${comesBack}
-            <div data-guide-page="1"></div>
-            <div data-guide-page="2" hidden="until-found"></div>
+            <div data-guide-page="1" data-guide-page-href="${GUIDE_URL}"></div>
+            <div data-guide-page="2" data-guide-page-href="${GUIDE_URL}?section=assign-case" hidden="until-found"></div>
           </div>
         </div>
       </div>`
@@ -33,6 +33,20 @@ describe('a guide\'s page revealed by the browser\'s find in page', () => {
 
     const returnTos = Array.from(document.querySelectorAll('input[name="returnTo"]')).map((input) => input.value)
 
-    expect(returnTos).toEqual([`${GUIDE_URL}?page=2`, `${GUIDE_URL}?page=2`, `${GUIDE_URL}?page=2`])
+    expect(returnTos).toEqual(Array(3).fill(`${GUIDE_URL}?section=assign-case`))
+  })
+
+  test('names the page in the address by its section', () => {
+    document.querySelector('[data-guide-page="2"]').dispatchEvent(new window.Event('beforematch'))
+
+    expect(window.location.search).toBe('?section=assign-case')
+  })
+
+  test('names a first page without a heading of its own by the guide\'s address alone', () => {
+    window.history.replaceState(null, '', `${GUIDE_URL}?section=assign-case`)
+
+    document.querySelector('[data-guide-page="1"]').dispatchEvent(new window.Event('beforematch'))
+
+    expect(window.location.search).toBe('')
   })
 })

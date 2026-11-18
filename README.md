@@ -166,6 +166,7 @@ When using local authentication:
 | `ENTRA_AUTHORITY_HOST` | No | `https://login.microsoftonline.com` | Entra authority host used to build authorization endpoints |
 | `ENTRA_REDIRECT_HOST` | Yes* | `null` | Base URL for the OIDC redirect URI `<host>/login/callback`, which must match the app registration (e.g., `http://localhost:3000` for dev, `https://your-domain.gov.uk` for prod) |
 | `DEV_USER_ROLES` | No | `null` | Comma-separated roles assigned to the local mock user when `AUTH_PROVIDER=local` (defaults to no roles if unset) |
+| `FEATURE_SBI_BOOKMARKS` | No | `false` | Whether a guide can be bookmarked to an SBI as well as to a case ID. When false, the SBI choices are shown, disabled. Turn it on in the guidance API too, which otherwise refuses SBIs |
 
 **\* Required when `AUTH_PROVIDER=entra` and `NODE_ENV=production`. Optional for development/test environments.**
 
@@ -258,6 +259,28 @@ Fix linting issues:
 ```bash
 npm run lint:js:fix
 ```
+
+### Testing
+
+Run lint, the build and the tests:
+
+```bash
+npm test
+```
+
+Tests take their expected values from `tests/fixtures/`, never from `src/`. A
+test that took them from the code it checks would agree with that code
+whatever it said.
+
+- **Messages** (errors, empty lists, statuses, notifications) are in
+  `tests/fixtures/messages.js`, under the same names as the source objects.
+  When you change a message's words in `src/`, the tests that find it fail
+  until you change them in the fixture too. That's one edit, and it confirms
+  the change was meant. A new message needs its words in the fixture and a
+  test that finds it.
+- **API responses** come from the factories in `tests/fixtures/` (for
+  example `guidance-api.js`), so one place owns each response's shape. Lint
+  stops a test from stubbing a body of its own.
 
 ### Update dependencies
 

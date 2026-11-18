@@ -4,6 +4,9 @@
  */
 const SAME_ORIGIN_BASE = 'https://same-origin.invalid'
 
+// Where a form goes back to when it does not say, or names another site.
+const FALLBACK_RETURN_URL = '/hub'
+
 /**
  * Nunjucks auto-escaping only entity-encodes `href` values - it doesn't
  * stop a `javascript:`/`data:` scheme from executing on click. Hrefs that
@@ -35,6 +38,21 @@ function relativeHref (href, fallback = '#') {
   }
 }
 
+/**
+ * Where a form in the side navigation sends the user back to: the page it was
+ * sent from, if that is one of ours, else the hub; at `anchor`, if given.
+ *
+ * @param {unknown} returnTo - The page, as the form sent it
+ * @param {string} [anchor] - Where on the page, without its `#`
+ * @returns {string}
+ */
+function backTo (returnTo, anchor) {
+  const [page] = relativeHref(returnTo, FALLBACK_RETURN_URL).split('#')
+
+  return anchor ? `${page}#${anchor}` : page
+}
+
 export {
+  backTo,
   relativeHref
 }

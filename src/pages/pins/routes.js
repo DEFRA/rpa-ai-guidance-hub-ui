@@ -1,11 +1,20 @@
 import Boom from '@hapi/boom'
 import Joi from 'joi'
 
+import { idsOfPinKey } from '../../services/users.js'
 import * as pinsController from './controller.js'
 
-const guideId = Joi.string().uuid().required()
+const id = Joi.string().uuid()
+const guideId = id.required()
 const position = Joi.number().integer().min(0)
 const returnTo = Joi.string().allow('').default('')
+
+// A pin as a page names it: its guide's id, then its section's for a section.
+const pinKey = Joi.string().custom((value, helpers) => {
+  const ids = idsOfPinKey(value)
+
+  return ids.length <= 2 && ids.every(part => !id.validate(part).error) ? value : helpers.error('any.invalid')
+})
 
 // The pins change through forms, so that they change without JavaScript; the
 // handlers build the change for the API.
@@ -19,9 +28,14 @@ const routes = [
           guideId,
           pin: Joi.boolean().required(),
           position: position.when('pin', { is: false, then: Joi.required() }),
+          // A section of the guide: by its id, to unpin it; by its anchor, to
+          // pin it.
+          sectionId: id,
+          section: Joi.string(),
           returnTo,
-          // The guide's star, to come back to: letters, digits and hyphens.
-          anchor: Joi.string().max(64).pattern(/^[A-Za-z0-9-]+$/)
+          // Where on the page to come back to, the star or the heading: as a
+          // heading's anchor is made, letters, digits, `_` and hyphens.
+          anchor: Joi.string().pattern(/^[\p{L}\p{M}\p{N}\p{Pc}-]+$/u)
         }),
         failAction: () => { throw Boom.badRequest() }
       }
@@ -34,8 +48,8 @@ const routes = [
     options: {
       validate: {
         payload: Joi.object({
-          // The pinned guides as the page showed them: one id, or several.
-          order: Joi.array().items(Joi.string().uuid()).single().min(1).required(),
+          // The pins as the page showed them: one key, or several.
+          order: Joi.array().items(pinKey).single().min(1).required(),
           from: position.required(),
           to: position.required(),
           returnTo

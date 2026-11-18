@@ -71,3 +71,54 @@ describe('when CDP_UPLOADER_BROWSER_URL is set', () => {
     expect(resp.headers['content-security-policy']).toBeUndefined()
   })
 })
+
+describe('when GTM_CONTAINER_ID is set', () => {
+  let server
+
+  beforeAll(async () => {
+    vi.stubEnv('GTM_CONTAINER_ID', 'GTM-TEST123')
+    vi.resetModules()
+
+    const { createServer: createServerWithGtm } = await import('../../../../src/server/server.js')
+    server = await createServerWithGtm()
+    await server.initialize()
+  })
+
+  afterAll(async () => {
+    await server?.stop({ timeout: 0 })
+    vi.unstubAllEnvs()
+    vi.resetModules()
+  })
+
+  async function directive (name) {
+    const { headers } = await server.inject({ method: 'GET', url: '/' })
+
+    return headers['content-security-policy']
+      .split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(`${name} `))
+  }
+
+  test('allows scripts from Tag Manager and Google Analytics', async () => {
+    const scriptSrc = await directive('script-src')
+
+    expect(scriptSrc).toContain('https://www.googletagmanager.com')
+    expect(scriptSrc).toContain('https://www.google-analytics.com')
+  })
+
+  test('allows Google Analytics to send its data', async () => {
+    expect(await directive('connect-src'))
+      .toContain('https://region1.google-analytics.com')
+  })
+})
+
+describe('when GTM_CONTAINER_ID is not set', () => {
+  test('allows nothing from Google', async () => {
+    const server = await createServer()
+    await server.initialize()
+    const { headers } = await server.inject({ method: 'GET', url: '/' })
+    await server.stop({ timeout: 0 })
+
+    expect(headers['content-security-policy']).not.toContain('google')
+  })
+})

@@ -18,6 +18,7 @@ vi.mock('../../../../../src/pages/create-guidance/session.js', () => ({
 import { RESULTS, startMigration, getGuideUploadProgress } from '../../../../../src/pages/create-guidance/service.js'
 import { getGuideUpload, createGuideUpload, addGuideUpload } from '../../../../../src/pages/create-guidance/session.js'
 import { getUploadForm } from '../../../../../src/pages/create-guidance/upload-guide/controller.js'
+import { UPLOAD_MESSAGES } from '../../../../fixtures/messages.js'
 
 const UPLOAD_GUIDANCE_VIEW = 'create-guidance/upload-guide/page.njk'
 
@@ -81,7 +82,7 @@ describe('uploadGuideController', () => {
       test('flashes a notification explaining why', async () => {
         await getUploadForm(request, h)
 
-        expect(request.yar.flash).toHaveBeenCalledWith('uploadNotification', 'You have already uploaded a document for this guide')
+        expect(request.yar.flash).toHaveBeenCalledWith('uploadNotification', UPLOAD_MESSAGES.alreadyUploaded)
       })
 
       test('redirects to metadata', async () => {

@@ -2,6 +2,8 @@ import { Marked } from 'marked'
 
 // The palette is shared with the client-side editor, so the server-rendered
 // viewer colours the same spans the same way.
+import { bookmarkedToHtml, headingControlsHtml } from '../../constants/heading-bookmarks.js'
+import { NEW_TAB_TEXT, opensInNewTab } from '../../constants/new-tab-links.js'
 import { COLOURED_SPAN, colourClass } from '../../constants/text-colours.js'
 import { relativeHref } from '../common/relative-href.js'
 
@@ -67,7 +69,7 @@ function _safeHref (href) {
  * The renderers that keep guide Markdown, which comes from an uploaded
  * document and so is untrusted, from putting anything unsafe in the page:
  * raw HTML is escaped rather than passed through, and unsafe link and image
- * addresses are dropped.
+ * addresses are dropped. A link out of the hub opens in a new tab, saying so.
  */
 const SAFE_RENDERER = {
   html ({ text }) {
@@ -83,7 +85,11 @@ const SAFE_RENDERER = {
 
     const titleAttribute = title ? ` title="${_escape(title)}"` : ''
 
-    return `<a href="${_escape(safe)}"${titleAttribute}>${text}</a>`
+    if (!opensInNewTab(safe)) {
+      return `<a href="${_escape(safe)}"${titleAttribute}>${text}</a>`
+    }
+
+    return `<a href="${_escape(safe)}"${titleAttribute} target="_blank" rel="noopener noreferrer">${text}<span class="govuk-visually-hidden">${NEW_TAB_TEXT}</span></a>`
   },
   image ({ href, title, text }) {
     const safe = _safeHref(href)
@@ -130,9 +136,11 @@ const COLOURED_SPAN_EXTENSION = {
  * @param {string} markdown
  * @param {string[]} [headingIds] - The ids to give the headings, in order, so
  *   the guide's links to them work without the client viewer
+ * @param {Array<import('../../constants/heading-bookmarks.js').HeadingBookmark>} [headingBookmarks]
+ *   - Each heading's controls, in order; a heading without them has none
  * @returns {string} HTML that is safe to output unescaped
  */
-function renderMarkdownFallback (markdown, headingIds = []) {
+function renderMarkdownFallback (markdown, headingIds = [], headingBookmarks = []) {
   let headings = 0
 
   const renderer = new Marked({
@@ -141,11 +149,19 @@ function renderMarkdownFallback (markdown, headingIds = []) {
       ...SAFE_RENDERER,
       heading ({ tokens, depth }) {
         const id = headingIds[headings]
+        const bookmark = headingBookmarks[headings]
 
         headings += 1
         const idAttribute = id ? ` id="${_escape(id)}"` : ''
+        const html = `<h${depth}${idAttribute}>${this.parser.parseInline(tokens)}</h${depth}>`
 
-        return `<h${depth}${idAttribute}>${this.parser.parseInline(tokens)}</h${depth}>\n`
+        if (!bookmark) {
+          return `${html}\n`
+        }
+
+        const text = this.parser.parseInline(tokens, this.parser.textRenderer)
+
+        return `<div class="app-guide-heading"><div class="app-guide-heading-row app-guide-heading-row--sub">${html}${headingControlsHtml(bookmark, text)}</div>${bookmarkedToHtml(bookmark)}</div>\n`
       }
     }
   })

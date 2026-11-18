@@ -131,6 +131,26 @@
     font-family: monospace;
     font-size: 0.9em;
   }
+
+  // The "opens in a new tab" icon after a link out of the hub
+  // (new-tab-links.js): a square with an arrow pointing up and out of it, in
+  // the link's colour and sized to its text. A high contrast mode would hide
+  // it, by replacing its background colour, so there it takes the mode's
+  // colour for links.
+  a[target='_blank']::after {
+    content: '';
+    display: inline-block;
+    width: 0.8em;
+    height: 0.8em;
+    margin-left: 0.2em;
+    background-color: currentcolor;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 4.5H5a1 1 0 0 0-1 1V15a1 1 0 0 0 1 1h9.5a1 1 0 0 0 1-1v-4M12 3.5h4.5V8M16.5 3.5l-7 7'/%3E%3C/svg%3E") center / contain no-repeat;
+
+    @media (forced-colors: active) {
+      background-color: LinkText;
+      forced-color-adjust: none;
+    }
+  }
 }
 
 // The colour palette from text-colours.js ([text]{.red}). The class prefix is

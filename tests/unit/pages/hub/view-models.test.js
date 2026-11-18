@@ -1,23 +1,17 @@
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
-
-const item = {
-  title: 'CS MA Claim - Revenue Options Claim Rule at Signoff 2026',
-  href: '/guidance/1',
-  lastModified: '20 July 2026',
-  version: '1',
-  removeHref: '/hub/remove/1'
-}
+import { HUB_MESSAGES } from '../../../fixtures/messages.js'
 
 describe('#HubViewModel', () => {
   describe('when no guidance is provided', () => {
     const viewModel = new HubViewModel()
 
-    test('Should return an empty bookmarkedGuides table', () => {
+    test('Should return an empty list of bookmarked guides, saying how to bookmark one', () => {
       expect(viewModel.bookmarkedGuides).toEqual(expect.objectContaining({
-        heading: 'Bookmarked guides',
+        heading: '0 bookmarked guides',
+        isGuideList: true,
+        emptyHtml: HUB_MESSAGES.noneBookmarked,
         isEmpty: true,
-        count: 0,
-        rows: []
+        guides: []
       }))
     })
 
@@ -25,7 +19,7 @@ describe('#HubViewModel', () => {
       expect(viewModel.recentlyOpened).toEqual(expect.objectContaining({
         heading: '0 recently opened guides',
         isGuideList: true,
-        emptyMessage: "You haven't opened any guidance yet. Any guidance you open will appear here.",
+        emptyHtml: HUB_MESSAGES.noneOpened,
         isEmpty: true,
         guides: []
       }))
@@ -35,7 +29,7 @@ describe('#HubViewModel', () => {
       expect(viewModel.allGuides).toEqual(expect.objectContaining({
         heading: '0 guides',
         showing: null,
-        emptyMessage: 'There are no guides yet.',
+        emptyHtml: HUB_MESSAGES.noGuides,
         isGuideList: true,
         isEmpty: true,
         count: 0,
@@ -45,9 +39,9 @@ describe('#HubViewModel', () => {
 
     test('Should return an empty list of pinned guides, saying how to pin one', () => {
       expect(viewModel.pinned).toEqual(expect.objectContaining({
-        heading: '0 pinned guides',
+        heading: '0 pins',
         showing: null,
-        emptyMessage: "You haven't pinned any guidance yet. Select 'Pin guide' on a guide to add it here.",
+        emptyHtml: HUB_MESSAGES.nonePinned,
         isGuideList: true,
         isEmpty: true,
         guides: []
@@ -64,61 +58,78 @@ describe('#HubViewModel', () => {
   })
 
   describe('bookmarkedGuides', () => {
-    test('Should build a title/lastModified/version/action row, defaulting status to Published', () => {
-      const viewModel = new HubViewModel({ bookmarkedGuides: [item] })
+    const guide = {
+      id: 'guide-1',
+      pin: { pinned: false, position: null },
+      title: 'Claiming the SFI payment',
+      href: '/guides/guide-1',
+      versionNumber: '2.1',
+      purpose: 'Explain the claim.',
+      lastUpdated: '20 July 2026',
+      published: '1 July 2026'
+    }
 
-      expect(viewModel.bookmarkedGuides.rows).toEqual([[
-        { type: 'title', text: item.title, href: item.href, statusText: 'Published', statusColour: 'green' },
-        { type: 'text', text: item.lastModified },
-        { type: 'version', version: item.version, colour: 'green' },
-        { type: 'removeAction', text: item.title, href: item.removeHref }
-      ]])
+    test('Should list the bookmarked guides as the hub lists guides, counting them in its heading', () => {
+      const { bookmarkedGuides } = new HubViewModel({ bookmarkedGuides: [guide, { ...guide, id: 'guide-2' }] })
+
+      expect(bookmarkedGuides.heading).toBe('2 bookmarked guides')
+      expect(bookmarkedGuides.showing).toBe('Showing 1 to 2')
+      expect(bookmarkedGuides.guides.map(row => row.id)).toEqual(['guide-1', 'guide-2'])
     })
 
-    test('Should use a provided status over the Published default', () => {
-      const viewModel = new HubViewModel({ bookmarkedGuides: [{ ...item, status: 'Archived' }] })
+    test('Should name the case in the heading of bookmarked guides narrowed to one', () => {
+      const { bookmarkedGuides } = new HubViewModel({ bookmarkedGuides: [guide], narrowedTo: { key: 'key-1', text: 'Case: W1234567' } })
 
-      expect(viewModel.bookmarkedGuides.rows[0][0]).toEqual(
-        expect.objectContaining({ statusText: 'Archived', statusColour: 'green' })
-      )
+      expect(bookmarkedGuides.heading).toBe('1 bookmarked guide for Case: W1234567')
     })
 
-    test.each([
-      ['1', 'green'],
-      ['0.5', 'green'],
-      ['1.1', 'purple'],
-      ['2', 'purple']
-    ])('Should tag version %s as %s', (version, colour) => {
-      const viewModel = new HubViewModel({ bookmarkedGuides: [{ ...item, version }] })
+    test('Should not name the case in the heading of any other list', () => {
+      const { pinned } = new HubViewModel({ pinned: [guide], narrowedTo: { key: 'key-1', text: 'Case: W1234567' } })
 
-      expect(viewModel.bookmarkedGuides.rows[0][2]).toEqual({ type: 'version', version, colour })
-    })
-  })
-
-  describe('untrusted hrefs', () => {
-    test.each([
-      ['javascript: URI', 'javascript:alert(document.cookie)'],
-      ['data: URI', 'data:text/html,<script>alert(1)</script>'],
-      ['protocol-relative URL', '//evil.example.com'],
-      ['backslash protocol-relative URL', '/\\evil.example.com'],
-      ['newline protocol-relative URL', '/\n/evil.example.com'],
-      ['carriage return protocol-relative URL', '/\r/evil.example.com'],
-      ['tab protocol-relative URL', '/\t/evil.example.com'],
-      ['unparseable URL', '//['],
-      ['absolute URL', 'https://evil.example.com'],
-      ['missing href', undefined]
-    ])('Should replace a %s href with "#"', (_, href) => {
-      const viewModel = new HubViewModel({ bookmarkedGuides: [{ ...item, href, removeHref: href }] })
-
-      expect(viewModel.bookmarkedGuides.rows[0][0].href).toBe('#')
-      expect(viewModel.bookmarkedGuides.rows[0][3].href).toBe('#')
+      expect(pinned.heading).toBe('1 pin')
     })
 
-    test('Should keep a same-origin relative href', () => {
-      const viewModel = new HubViewModel({ bookmarkedGuides: [item] })
+    test('Should say one bookmarked guide in the singular', () => {
+      expect(new HubViewModel({ bookmarkedGuides: [guide] }).bookmarkedGuides.heading).toBe('1 bookmarked guide')
+    })
 
-      expect(viewModel.bookmarkedGuides.rows[0][0].href).toBe(item.href)
-      expect(viewModel.bookmarkedGuides.rows[0][3].href).toBe(item.removeHref)
+    test('Should say when chosen filters leave none of the bookmarked guides', () => {
+      const { bookmarkedGuides } = new HubViewModel({ shown: 'bookmarkedGuides', filters: { selected: [{ text: 'CRM', href: '/hub/bookmarked-guides' }] } })
+
+      expect(bookmarkedGuides.emptyHtml).toBe(HUB_MESSAGES.noneMatch)
+    })
+
+    test('Should say nothing is bookmarked when chosen filters had nothing to narrow', () => {
+      const { bookmarkedGuides } = new HubViewModel({
+        shown: 'bookmarkedGuides',
+        filters: { selected: [{ text: 'CRM', href: '/hub/bookmarked-guides' }] },
+        nothingToFilter: true
+      })
+
+      expect(bookmarkedGuides.emptyHtml).toBe(HUB_MESSAGES.noneBookmarked)
+    })
+
+    describe('untrusted hrefs', () => {
+      test.each([
+        ['javascript: URI', 'javascript:alert(document.cookie)'],
+        ['data: URI', 'data:text/html,<script>alert(1)</script>'],
+        ['protocol-relative URL', '//evil.example.com'],
+        ['backslash protocol-relative URL', '/\\evil.example.com'],
+        ['newline protocol-relative URL', '/\n/evil.example.com'],
+        ['carriage return protocol-relative URL', '/\r/evil.example.com'],
+        ['tab protocol-relative URL', '/\t/evil.example.com'],
+        ['unparseable URL', '//['],
+        ['absolute URL', 'https://evil.example.com'],
+        ['missing href', undefined]
+      ])('Should replace a %s href with "#"', (_, href) => {
+        const { bookmarkedGuides } = new HubViewModel({ bookmarkedGuides: [{ ...guide, href }] })
+
+        expect(bookmarkedGuides.guides[0].href).toBe('#')
+      })
+
+      test('Should keep a same-origin relative href', () => {
+        expect(new HubViewModel({ bookmarkedGuides: [guide] }).bookmarkedGuides.guides[0].href).toBe('/guides/guide-1')
+      })
     })
   })
 
@@ -171,8 +182,8 @@ describe('#HubViewModel', () => {
       const filtered = new HubViewModel({ allGuides: [], filters: { selected: [{ text: 'CRM', href: '/hub' }] } })
       const unfiltered = new HubViewModel({ allGuides: [], filters: { selected: [] } })
 
-      expect(filtered.allGuides.emptyMessage).toBe('No guides match your search or filters. Try removing some filters or using different search terms.')
-      expect(unfiltered.allGuides.emptyMessage).toBe('There are no guides yet.')
+      expect(filtered.allGuides.emptyHtml).toBe(HUB_MESSAGES.noneMatch)
+      expect(unfiltered.allGuides.emptyHtml).toBe(HUB_MESSAGES.noGuides)
     })
 
     test('Should not link to an untrusted href', () => {
@@ -196,22 +207,22 @@ describe('#HubViewModel', () => {
       published: '1 July 2026'
     }
 
-    test('Should list the pinned guides as the hub lists guides, counting them in its heading', () => {
+    test('Should list the pins as the hub lists guides, counting them in its heading', () => {
       const { pinned } = new HubViewModel({ pinned: [guide, { ...guide, id: 'guide-2' }] })
 
-      expect(pinned.heading).toBe('2 pinned guides')
+      expect(pinned.heading).toBe('2 pins')
       expect(pinned.showing).toBe('Showing 1 to 2')
       expect(pinned.guides[0]).toEqual(expect.objectContaining({ id: 'guide-1', pin: { pinned: true, position: 0 }, versionTag: { text: 'Version 2.1', colour: 'green' } }))
     })
 
-    test('Should say one pinned guide in the singular', () => {
-      expect(new HubViewModel({ pinned: [guide] }).pinned.heading).toBe('1 pinned guide')
+    test('Should say one pin in the singular', () => {
+      expect(new HubViewModel({ pinned: [guide] }).pinned.heading).toBe('1 pin')
     })
 
     test('Should say when chosen filters leave none of the pinned guides', () => {
       const { pinned } = new HubViewModel({ shown: 'pinned', filters: { selected: [{ text: 'CRM', href: '/hub/pinned' }] } })
 
-      expect(pinned.emptyMessage).toBe('No guides match your search or filters. Try removing some filters or using different search terms.')
+      expect(pinned.emptyHtml).toBe(HUB_MESSAGES.noneMatch)
     })
 
     test('Should say nothing is pinned when chosen filters had nothing to narrow', () => {
@@ -221,7 +232,7 @@ describe('#HubViewModel', () => {
         nothingToFilter: true
       })
 
-      expect(pinned.emptyMessage).toBe("You haven't pinned any guidance yet. Select 'Pin guide' on a guide to add it here.")
+      expect(pinned.emptyHtml).toBe(HUB_MESSAGES.nonePinned)
     })
   })
 
@@ -252,7 +263,7 @@ describe('#HubViewModel', () => {
     test('Should say when chosen filters leave none of the recently opened guides', () => {
       const { recentlyOpened } = new HubViewModel({ shown: 'recentlyOpened', filters: { selected: [{ text: 'CRM', href: '/hub/recently-opened' }] } })
 
-      expect(recentlyOpened.emptyMessage).toBe('No guides match your search or filters. Try removing some filters or using different search terms.')
+      expect(recentlyOpened.emptyHtml).toBe(HUB_MESSAGES.noneMatch)
     })
 
     test('Should say none has been opened when chosen filters had nothing to narrow', () => {
@@ -262,7 +273,7 @@ describe('#HubViewModel', () => {
         nothingToFilter: true
       })
 
-      expect(recentlyOpened.emptyMessage).toBe("You haven't opened any guidance yet. Any guidance you open will appear here.")
+      expect(recentlyOpened.emptyHtml).toBe(HUB_MESSAGES.noneOpened)
     })
   })
 })

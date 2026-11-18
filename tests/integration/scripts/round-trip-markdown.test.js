@@ -24,7 +24,7 @@ describe('#round-trip-markdown script', () => {
     const saved = roundTrip('# Title\n\nSome <u>underlined</u> text.\n')
 
     expect(saved).toContain('# Title')
-    expect(saved).toContain('++underlined++')
+    expect(saved).toContain('<u>underlined</u>')
   })
 
   test('Should read HTML in the document as a browser does', () => {

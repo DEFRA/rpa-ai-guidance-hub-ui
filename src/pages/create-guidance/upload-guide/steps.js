@@ -43,6 +43,19 @@ const STEPS = [
 ]
 
 /**
+ * What the upload says when it fails, named once, so that one test holds their
+ * words and the rest name them. `cannotOpenDetail` explains `cannotOpen`.
+ */
+const UPLOAD_STEP_MESSAGES = Object.freeze({
+  notChecked: 'The selected file could not be checked. Upload it again.',
+  notUploaded: 'The selected file could not be uploaded. Upload a different file.',
+  noFile: 'Select a Word document to upload.',
+  notFound: 'Your upload could not be found. Upload the document again.',
+  cannotOpen: 'This file cannot be opened',
+  cannotOpenDetail: 'Check you selected the correct file and that it has not been corrupted, then upload it again. If this keeps happening, contact the support team.'
+})
+
+/**
  * Maps status IDs to their step state. Error states carry a default,
  * user-facing `message`; cdp-uploader supplies a more specific one for
  * rejected files, which takes precedence. `detail` is optional supporting
@@ -69,28 +82,28 @@ const STEP_STATE_BY_STATUS = {
     label: 'Scan failed',
     percentage: 50,
     isError: true,
-    message: 'The selected file could not be checked. Upload it again.'
+    message: UPLOAD_STEP_MESSAGES.notChecked
   },
   [STATUS_IDS.UPLOADER_REJECTED]: {
     stepId: STEP_IDS.SCANNING,
     label: 'File rejected',
     percentage: 50,
     isError: true,
-    message: 'The selected file could not be uploaded. Upload a different file.'
+    message: UPLOAD_STEP_MESSAGES.notUploaded
   },
   [STATUS_IDS.UPLOADER_NO_FILE]: {
     stepId: STEP_IDS.SCANNING,
     label: 'No file uploaded',
     percentage: 50,
     isError: true,
-    message: 'Select a Word document to upload.'
+    message: UPLOAD_STEP_MESSAGES.noFile
   },
   [STATUS_IDS.UPLOADER_MISSING]: {
     stepId: STEP_IDS.SCANNING,
     label: 'Upload not found',
     percentage: 50,
     isError: true,
-    message: 'Your upload could not be found. Upload the document again.'
+    message: UPLOAD_STEP_MESSAGES.notFound
   },
   [STATUS_IDS.PARSE_STARTED]: {
     stepId: STEP_IDS.PARSE,
@@ -115,8 +128,8 @@ const STEP_STATE_BY_STATUS = {
     label: 'File could not be opened',
     percentage: 75,
     isError: true,
-    message: 'This file cannot be opened',
-    detail: 'Check you selected the correct file and that it has not been corrupted, then upload it again. If this keeps happening, contact the support team.'
+    message: UPLOAD_STEP_MESSAGES.cannotOpen,
+    detail: UPLOAD_STEP_MESSAGES.cannotOpenDetail
   }
 }
 
@@ -133,6 +146,7 @@ function getStepState (statusId) {
 
 export {
   STEP_IDS,
+  UPLOAD_STEP_MESSAGES,
   STATUS_IDS,
   STEPS,
   getStepState

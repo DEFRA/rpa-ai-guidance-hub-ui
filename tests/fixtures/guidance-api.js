@@ -186,15 +186,17 @@ function guidePageResponse (overrides = {}) {
 
 /**
  * Body of `POST /users` (201, or 200 for a user signed in before) and of
- * `GET /users/{id}` on 200: the hub's user, with the guides they have pinned,
- * in their order. By default the dev user `loginAsDevUser` signs in, with
- * nothing pinned.
+ * `GET /users/{id}` on 200: the hub's user, with the guides and sections they
+ * have pinned (`pinResponse`), in their order, and their cases
+ * (`caseResponse`), in their order. By default the dev user `loginAsDevUser`
+ * signs in, with nothing pinned and no cases.
  *
- * Verified against the guidance API's `User` schema on 2026-11-04: id,
- * identity, displayName, createdAt, and pinned as `{id, title}` items.
+ * Verified against the guidance API's `User` schema on 2026-11-08: id,
+ * identity, displayName, createdAt, pinned as `PinInBrief` items, and cases
+ * as `CaseInBrief` items.
  *
  * @param {Object} [overrides]
- * @returns {{id: string, identity: {tenantId: string, objectId: string}, displayName: string|null, createdAt: string, pinned: Array<{id: string, title: string|null}>}}
+ * @returns {{id: string, identity: {tenantId: string, objectId: string}, displayName: string|null, createdAt: string, pinned: Array<{id: string, title: string|null}>, cases: Array<object>}}
  */
 function userResponse (overrides = {}) {
   return {
@@ -203,15 +205,77 @@ function userResponse (overrides = {}) {
     displayName: 'Dev User',
     createdAt: '2026-10-06T08:00:00Z',
     pinned: [],
+    cases: [],
     ...overrides
   }
 }
 
 /**
- * Body of `GET /users/{id}/pins` on 200: the guides the user has pinned, in
- * their order, each as `GET /guides` lists it with its position among all
- * their pins, and each filter's counts among them. By default one pinned
- * guide, and no counts.
+ * One of `GET /users/{id}`'s pins: a guide the user has pinned, or a section of
+ * one, with the guide's title. By default the whole guide `guideResponse`
+ * makes, with no section.
+ *
+ * Verified against the guidance API's `PinInBrief` schema on 2026-11-08: id,
+ * title, and sectionId, section and heading, each null for a whole guide.
+ *
+ * @param {Object} [overrides]
+ * @returns {{id: string, title: string|null, sectionId: string|null, section: string|null, heading: string|null}}
+ */
+function pinResponse (overrides = {}) {
+  return {
+    id: 'guide-1',
+    title: 'Claiming the SFI payment',
+    sectionId: null,
+    section: null,
+    heading: null,
+    ...overrides
+  }
+}
+
+/**
+ * One of `GET /users/{id}`'s cases: a case the user has bookmarked sections of
+ * guides to. Its key names it wherever its reference must not go; its guides
+ * come in the order first bookmarked, each with its bookmarked sections in the
+ * guide's order, and each section's position among the case's bookmarks. By
+ * default case W1234567, with nothing bookmarked to it.
+ *
+ * Verified against the guidance API's `CaseInBrief` schema on 2026-11-08: key,
+ * type (`case` or `sbi`), ref, and guides as `{id, title, bookmarks}` items,
+ * each bookmark `{sectionId, section, heading, position}`.
+ *
+ * @param {Object} [overrides]
+ * @returns {{key: string, type: string, ref: string, guides: Array<{id: string, title: string|null, bookmarks: Array<{sectionId: string, section: string|null, heading: string|null, position: number}>}>}}
+ */
+function caseResponse (overrides = {}) {
+  return {
+    key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b',
+    type: 'case',
+    ref: 'W1234567',
+    guides: [],
+    ...overrides
+  }
+}
+
+/**
+ * One item of `GET /users/{id}/pins`: a pin, with its guide as `GET /guides`
+ * lists it, its position among all the user's pins and, for a section, the
+ * section's id, anchor and heading. By default a whole guide, first.
+ *
+ * Verified on 2026-11-08 by validating this item, with UUIDs for its ids,
+ * against the guidance API's `PinnedSummary` schema, as a whole guide and as
+ * a section.
+ *
+ * @param {Object} [overrides]
+ * @returns {Object}
+ */
+function pinnedSummaryResponse (overrides = {}) {
+  return guideSummaryResponse({ position: 0, sectionId: null, section: null, heading: null, ...overrides })
+}
+
+/**
+ * Body of `GET /users/{id}/pins` on 200: the user's pins, guides and sections
+ * of guides, in their order (`pinnedSummaryResponse`), and each filter's
+ * counts among their guides. By default one pinned guide, and no counts.
  *
  * Verified against the guidance API's `Pinned` schema on 2026-11-05: items as
  * `PinnedSummary`, and counts of `OptionCount` by filter.
@@ -221,7 +285,7 @@ function userResponse (overrides = {}) {
  */
 function pinnedGuidesResponse (overrides = {}) {
   return {
-    items: [guideSummaryResponse({ position: 0 })],
+    items: [pinnedSummaryResponse()],
     counts: { audience: [], system: [], scheme: [] },
     ...overrides
   }
@@ -249,6 +313,52 @@ function recentlyOpenedResponse (overrides = {}) {
 }
 
 /**
+ * Body of `GET /users/{id}/bookmarked-guides` on 200: the guides bookmarked to
+ * the user's cases, each once, in the order of the cases, each as `GET /guides`
+ * lists it, and each filter's counts among them. By default one guide, and no
+ * counts.
+ *
+ * Verified on 2026-11-10 by validating this body, with UUIDs for its ids,
+ * against the guidance API's `BookmarkedGuides` schema: items as
+ * `DocumentSummary`, and counts of `OptionCount` by filter.
+ *
+ * @param {Object} [overrides]
+ * @returns {{items: Array<Object>, counts: Object<string, Array<Object>>}}
+ */
+function bookmarkedGuidesResponse (overrides = {}) {
+  return {
+    items: [guideSummaryResponse()],
+    counts: { audience: [], system: [], scheme: [] },
+    ...overrides
+  }
+}
+
+/**
+ * Body of `GET /preferences/{userId}` and `PATCH /preferences/{userId}` on
+ * 200: every one of the user's preferences, null for one they have not set.
+ * By default none is set.
+ *
+ * Verified against the guidance API's `Preferences` schema on 2026-11-11:
+ * these eight names in camelCase, each nullable.
+ *
+ * @param {Object} [overrides] - The preferences set, by name
+ * @returns {Object<string, string|number|boolean|null>}
+ */
+function preferencesResponse (overrides = {}) {
+  return {
+    guideFormat: null,
+    readingWidth: null,
+    contentsWidth: null,
+    guideInformationShown: null,
+    sideNavCollapsed: null,
+    sideNavWidth: null,
+    sideNavPinnedCollapsed: null,
+    sideNavBookmarksCollapsed: null,
+    ...overrides
+  }
+}
+
+/**
  * Body of a request the guidance API refuses itself: why, in words.
  *
  * Verified against the running API on 2026-11-05: `detail` as a string, unlike
@@ -262,10 +372,15 @@ function refusalResponse (overrides = {}) {
 }
 
 export {
+  bookmarkedGuidesResponse,
+  caseResponse,
   guidePageResponse,
   guideResponse,
   guideSummaryResponse,
   pinnedGuidesResponse,
+  pinnedSummaryResponse,
+  pinResponse,
+  preferencesResponse,
   recentlyOpenedResponse,
   refusalResponse,
   versionResponse,

@@ -2,7 +2,6 @@
 
 {% from "govuk/components/phase-banner/macro.njk" import govukPhaseBanner %}
 {% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
-{% from "common/guidance-table.njk" import guidanceTablePanel %}
 {% from "common/guide-list.njk" import guideList %}
 
 {% set pageTitle = ('Error: ' if searchUnavailable else '') + 'RPA Guidance Hub' %}
@@ -53,10 +52,10 @@
         {% if search %}
           {# The sections with the words, instead of the list and its filters. #}
           {% include "hub/partials/search-results.njk" %}
-        {% elif filters %}
+        {% else %}
           {# The filters beside the list, as the prototype's hub has them. #}
           <div class="app-hub-columns">
-            {% include "hub/partials/filters.njk" %}
+            {% if filters %}{% include "hub/partials/filters.njk" %}{% endif %}
 
             <div class="app-hub-results" id="guide-results">
               {% call guideList(shown, currentUrl) %}
@@ -64,8 +63,6 @@
               {% endcall %}
             </div>
           </div>
-        {% else %}
-          {{ guidanceTablePanel(shown) }}
         {% endif %}
       </div>
     </div>

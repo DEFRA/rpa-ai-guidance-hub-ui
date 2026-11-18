@@ -22,6 +22,7 @@ import {
   RESULTS,
   startMigration
 } from '../../../../src/pages/create-guidance/service.js'
+import { UPLOAD_STEP_MESSAGES } from '../../../fixtures/messages.js'
 
 const initiated = { uploadStatus: 'initiated', isReady: false, files: [], hasRejectedFiles: false }
 const pending = { uploadStatus: 'pending', isReady: false, files: [{ fileStatus: 'pending' }], hasRejectedFiles: false }
@@ -133,11 +134,35 @@ describe('create-guidance service', () => {
 
       await startMigration({ hasUpload: () => false })
 
-      expect(initiateUpload).toHaveBeenCalledWith({
+      expect(initiateUpload).toHaveBeenCalledWith(expect.objectContaining({
         redirect: '/create-guidance/upload-guide/processing',
         s3Bucket: 'rpa-ai-guidance-hub-source-docs',
         callback: expect.stringContaining('/guides/staging/callback')
-      })
+      }))
+    })
+
+    test('restricts cdp-uploader to the .docx MIME type only', async () => {
+      initiateUpload.mockResolvedValue({ uploadId: 'u-1' })
+
+      await startMigration({ hasUpload: () => false })
+
+      expect(initiateUpload.mock.calls[0][0].mimeTypes).toEqual([
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ])
+    })
+
+    test('restricts a replacement upload to .docx files when the earlier file failed validation', async () => {
+      getUploadStatus.mockResolvedValue(complete)
+      getStagedDocumentById.mockResolvedValue({ fileId: 'file-1', parsingStatus: 'failed', parsingError: 'boom' })
+      initiateUpload.mockResolvedValue({ uploadId: 'u-2' })
+
+      await startMigration({ hasUpload: () => true, activeUploadId: 'u-1' })
+
+      expect(initiateUpload).toHaveBeenCalledWith(expect.objectContaining({
+        mimeTypes: [
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ]
+      }))
     })
   })
 
@@ -272,10 +297,8 @@ describe('create-guidance service', () => {
         expect(progress.isComplete).toBe(false)
         expect(progress.isError).toBe(true)
         expect(progress.statusId).toBe('parse:failed')
-        expect(progress.message).toBe('This file cannot be opened')
-        expect(progress.detail).toBe(
-          'Check you selected the correct file and that it has not been corrupted, then upload it again. If this keeps happening, contact the support team.'
-        )
+        expect(progress.message).toBe(UPLOAD_STEP_MESSAGES.cannotOpen)
+        expect(progress.detail).toBe(UPLOAD_STEP_MESSAGES.cannotOpenDetail)
       })
 
       test('does not report complete or error while no staged document has been claimed yet (404)', async () => {
@@ -305,7 +328,7 @@ describe('create-guidance service', () => {
       const progress = await getGuideUploadProgress(request)
 
       expect(progress.statusId).toBe('uploader:no-file')
-      expect(progress.message).toBe('Select a Word document to upload.')
+      expect(progress.message).toBe(UPLOAD_STEP_MESSAGES.noFile)
     })
 
     test('reports a generic failure when cdp-uploader cannot be reached', async () => {
@@ -315,7 +338,7 @@ describe('create-guidance service', () => {
 
       expect(progress.statusId).toBe('uploader:failed')
       expect(progress.isError).toBe(true)
-      expect(progress.message).toBe('The selected file could not be checked. Upload it again.')
+      expect(progress.message).toBe(UPLOAD_STEP_MESSAGES.notChecked)
     })
 
     test('uses an already-fetched status instead of calling cdp-uploader again', async () => {

@@ -2,6 +2,7 @@ import { SCHEME_YEAR } from '../constants/scheme-year.js'
 import { statusCodes } from '../constants/status-codes.js'
 
 import * as guidesApi from '../infra/guidance-api/guides.js'
+import { findHeading, splitIntoSections } from './guide-sections.js'
 import { schemesAsKept } from './reference-data.js'
 import * as stagedDocumentsService from './staged-documents.js'
 
@@ -50,7 +51,8 @@ import * as stagedDocumentsService from './staged-documents.js'
  */
 
 const RESULTS = {
-  GUIDE_CREATED: 'guideCreated', // new, or the one this upload made before
+  SAVE_STARTED: 'saveStarted', // accepted: the guide is saving in the background
+  GUIDE_CREATED: 'guideCreated', // the one this upload made before
   UPLOAD_EXPIRED: 'uploadExpired', // the API has no staged file for the upload
   PARSE_PENDING: 'parsePending', // the staged file has not finished parsing
   PARSE_FAILED: 'parseFailed' // the staged file could not be parsed
@@ -103,6 +105,10 @@ async function createGuide ({ uploadId, fileId, metadata, user }) {
 
   if (res.status === statusCodes.HTTP_STATUS_CONFLICT) {
     return _whyNotParsed(fileId)
+  }
+
+  if (res.status === statusCodes.HTTP_STATUS_ACCEPTED) {
+    return { code: RESULTS.SAVE_STARTED }
   }
 
   return { code: RESULTS.GUIDE_CREATED }
@@ -242,6 +248,22 @@ async function getGuideContent (guideId) {
 }
 
 /**
+ * The heading at an anchor in a guide's latest version, with the page it is
+ * on.
+ *
+ * @param {string} guideId
+ * @param {string} anchor
+ * @returns {Promise<{anchor: string, title: string, page: number}|null>} Null
+ *   when there is no such guide, or it has no heading there
+ * @throws {GuidanceApiError} - If the infra layer reports a non-404 failure
+ */
+async function headingOf (guideId, anchor) {
+  const content = await getGuideContent(guideId)
+
+  return content ? findHeading(splitIntoSections(content.markdown), anchor) : null
+}
+
+/**
  * Get an image from a guide's content.
  *
  * @param {string} guideId
@@ -318,6 +340,7 @@ export {
   getGuideAsset,
   getGuideById,
   getGuideContent,
+  headingOf,
   listEveryGuide,
   listGuides,
   RESULTS,

@@ -1,4 +1,5 @@
 import { getStepState, STATUS_IDS, STEPS } from '../../../../../src/pages/create-guidance/upload-guide/steps.js'
+import { UPLOAD_STEP_MESSAGES } from '../../../../fixtures/messages.js'
 
 describe('upload guide steps', () => {
   test('lists scanning and parse steps', () => {
@@ -25,16 +26,16 @@ describe('upload guide steps', () => {
     })
 
     test.each([
-      [STATUS_IDS.UPLOADER_FAILED, 'Scan failed'],
-      [STATUS_IDS.UPLOADER_REJECTED, 'File rejected'],
-      [STATUS_IDS.UPLOADER_NO_FILE, 'No file uploaded'],
-      [STATUS_IDS.UPLOADER_MISSING, 'Upload not found']
-    ])('%s is an error state with a user-facing message', (statusId, label) => {
+      [STATUS_IDS.UPLOADER_FAILED, 'Scan failed', UPLOAD_STEP_MESSAGES.notChecked],
+      [STATUS_IDS.UPLOADER_REJECTED, 'File rejected', UPLOAD_STEP_MESSAGES.notUploaded],
+      [STATUS_IDS.UPLOADER_NO_FILE, 'No file uploaded', UPLOAD_STEP_MESSAGES.noFile],
+      [STATUS_IDS.UPLOADER_MISSING, 'Upload not found', UPLOAD_STEP_MESSAGES.notFound]
+    ])('%s is an error state with a user-facing message', (statusId, label, message) => {
       const state = getStepState(statusId)
 
       expect(state.isError).toBe(true)
       expect(state.label).toBe(label)
-      expect(state.message).toEqual(expect.any(String))
+      expect(state.message).toBe(message)
     })
 
     test('parse:failed explains the file could not be opened, with supporting detail', () => {
@@ -42,8 +43,8 @@ describe('upload guide steps', () => {
 
       expect(state.isError).toBe(true)
       expect(state.label).toBe('File could not be opened')
-      expect(state.message).toBe('This file cannot be opened')
-      expect(state.detail).toEqual(expect.any(String))
+      expect(state.message).toBe(UPLOAD_STEP_MESSAGES.cannotOpen)
+      expect(state.detail).toBe(UPLOAD_STEP_MESSAGES.cannotOpenDetail)
     })
 
     test('falls back to uploader:pending for unknown status', () => {

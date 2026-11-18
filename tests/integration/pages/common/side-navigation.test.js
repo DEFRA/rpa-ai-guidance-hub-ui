@@ -1,19 +1,58 @@
 import { constants as statusCodes } from 'node:http2'
 
+import { getNodeText, within } from '@testing-library/dom'
 import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { initiateUploadResponse } from '../../../fixtures/cdp-uploader.js'
-import { guidePageResponse, schemesResponse, userResponse } from '../../../fixtures/guidance-api.js'
+import {
+  caseResponse,
+  guidePageResponse,
+  pinResponse,
+  preferencesResponse,
+  schemesResponse,
+  userResponse
+} from '../../../fixtures/guidance-api.js'
 import { mergeCookies } from '../../helpers/cookies.js'
 import { loginAsDevUser } from '../../helpers/login.js'
+import { pageOf, sideNavOf } from '../../helpers/page.js'
+import { keepPreferencesInTheApi } from '../../helpers/preferences-api.js'
+import { SIDE_NAV_MESSAGES } from '../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
-const SIDE_NAVIGATION = '<nav class="app-side-nav" aria-label="Guidance hub">'
 // How a browser sends a form, repeating a field for each of its values.
 const FORM = { 'content-type': 'application/x-www-form-urlencoded' }
+
+/** The text of each element, its spacing collapsed, as a reader sees it. */
+function textsOf (elements) {
+  return elements.map((element) => element.textContent.replaceAll(/\s+/g, ' ').trim())
+}
+
+/**
+ * One of the side navigation's sections (Pinned guidance, Case bookmarks): a
+ * disclosure, found by the label in its summary.
+ */
+function sectionOf (nav, label) {
+  return nav.getByText(label).closest('details')
+}
+
+/**
+ * The items of a section's own list, not those of the lists inside them. A
+ * control in an item is named for what it acts on, with a visually hidden
+ * part; a browser hears "Unpin Claiming a payment", but jsdom's accessible
+ * names lose the space before the hidden part, so a test finds the control by
+ * what it begins with, and checks the whole of what it says with its text.
+ */
+function itemsOf (list) {
+  return [...list.children].filter((child) => child.tagName === 'LI')
+}
+
+/** The form a control sends, found by what its name begins with; it may be hidden. */
+function formOf (item, begins) {
+  return within(item).getByRole('button', { name: new RegExp(`^${begins}`), hidden: true }).form
+}
 
 describe('Side navigation', () => {
   let server
@@ -40,34 +79,39 @@ describe('Side navigation', () => {
     await server.stop({ timeout: 0 })
   })
 
+  /** The page at `url`, signed in as the dev user unless a cookie is given. */
+  async function pageAt (url, cookie) {
+    const { payload } = await server.inject({ method: 'GET', url, headers: { cookie: cookie ?? await loginAsDevUser(server) } })
+
+    return pageOf(payload)
+  }
+
   test.each([
     ['the hub', '/hub'],
     ['uploading a guide', '/create-guidance/upload-guide']
   ])('shows on %s when signed in', async (_name, url) => {
-    const cookie = await loginAsDevUser(server)
+    const page = await pageAt(url)
 
-    const { payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
-
-    expect(payload).toContain(SIDE_NAVIGATION)
+    expect(sideNavOf(page).getByRole('button', { name: 'Collapse navigation' })).toBeInTheDocument()
   })
 
   test.each([
     ['the hub', '/hub'],
     ['uploading a guide', '/create-guidance/upload-guide']
   ])('takes the place of the header on %s when signed in', async (_name, url) => {
-    const cookie = await loginAsDevUser(server)
+    const page = await pageAt(url)
+    const nav = sideNavOf(page)
 
-    const { payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
-
-    expect(payload).not.toContain('class="defra-header')
-    expect(payload).not.toContain('defra-service-navigation')
-    expect(payload).toMatch(/<nav class="app-side-nav"[^]*class="app-side-nav__logo"[^]*class="app-side-nav__service-link"/)
+    expect(within(page.document.body).queryByRole('banner')).not.toBeInTheDocument()
+    expect(nav.getByRole('img', { name: 'Department for Environment, Food & Rural Affairs' })).toBeInTheDocument()
+    expect(nav.getByRole('link', { name: config.get('serviceName') })).toHaveAttribute('href', '/hub')
   })
 
   describe('the user\'s pinned guides', () => {
     const { id: USER_ID } = userResponse()
     const FIRST = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
     const SECOND = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
+    const SECTION = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d99'
 
     function signedInWith (pinned) {
       nock(GUIDANCE_API_BASE_URL)
@@ -77,24 +121,31 @@ describe('Side navigation', () => {
       return loginAsDevUser(server)
     }
 
-    test('are counted beside "Pinned"', async () => {
-      const cookie = await signedInWith([{ id: FIRST, title: 'Claiming a payment' }, { id: SECOND, title: 'Closing a case' }])
+    test('are counted beside "Pinned", one for each pin, guide or section', async () => {
+      const cookie = await signedInWith([pinResponse({ id: FIRST, title: 'Claiming a payment' }), pinResponse({ id: SECOND, title: 'Closing a case', sectionId: SECTION, section: '2-close-it', heading: '2 Close it' })])
 
-      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+      const page = await pageAt('/hub', cookie)
 
-      expect(payload).toMatch(/Pinned<\/span>\s*<span class="app-side-nav__badge">2<span class="govuk-visually-hidden"> guides<\/span><\/span>/)
+      expect(sideNavOf(page).getByRole('link', { name: /^Pinned/ })).toHaveTextContent(/^Pinned 2 pins$/)
     })
 
     test('are counted on the folded navigation\'s icon, and in its name', async () => {
-      const signedIn = await signedInWith([{ id: FIRST, title: 'Claiming a payment' }])
-      const folded = await server.inject({ method: 'POST', url: '/side-nav/toggle', headers: { cookie: signedIn }, payload: { collapsed: true, returnTo: '/hub' } })
-      const cookie = mergeCookies(signedIn, folded.headers['set-cookie'])
+      nock(GUIDANCE_API_BASE_URL)
+        .get(`/preferences/${USER_ID}`)
+        .reply(statusCodes.HTTP_STATUS_OK, preferencesResponse({
+          sideNavCollapsed: true
+        }))
 
-      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+      const cookie = await signedInWith([
+        pinResponse({ id: FIRST, title: 'Claiming a payment' })
+      ])
 
-      expect(payload).toContain('<span class="app-side-nav__rail-label">Pinned (1<span class="govuk-visually-hidden"> guides</span>)</span>')
-      expect(payload).toMatch(/Pinned \(1[^]*?<span class="app-side-nav__rail-dot" aria-hidden="true">1<\/span>/)
-      expect(payload).toContain('<span class="app-side-nav__rail-label">Recently opened</span>')
+      const nav = sideNavOf(await pageAt('/hub', cookie))
+      const pinned = nav.getByRole('link', { name: /^Pinned/ })
+
+      expect(within(pinned).getByText('Pinned (1', { exact: false })).toHaveTextContent('Pinned (1 pins)')
+      expect(within(pinned).getByText('1', { ignore: '.govuk-visually-hidden' })).toHaveAttribute('aria-hidden', 'true')
+      expect(nav.getByRole('link', { name: 'Recently opened' })).toBeInTheDocument()
     })
 
     test('are not counted when they cannot be had, the page showing all the same', async () => {
@@ -103,61 +154,128 @@ describe('Side navigation', () => {
       const { statusCode, payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(payload).not.toContain('app-side-nav__badge')
+      expect(sideNavOf(pageOf(payload)).getByRole('link', { name: /^Pinned/ })).toHaveTextContent(/^Pinned$/)
+      expect(sideNavOf(pageOf(payload)).getByRole('link', { name: /^Bookmarked/ })).toHaveTextContent(/^Bookmarked$/)
     })
 
+    /** The side navigation's Pinned guidance section, for a user with `pinned`. */
     async function pinnedSection (pinned) {
-      nock(GUIDANCE_API_BASE_URL)
-        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
-        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ pinned }))
-      const cookie = await loginAsDevUser(server)
-      const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
-      const start = payload.indexOf('id="side-nav-pinned"')
+      const cookie = await signedInWith(pinned)
 
-      return payload.slice(start, payload.indexOf('</details>\n\n', start))
+      return sectionOf(sideNavOf(await pageAt('/hub', cookie)), 'Pinned guidance')
     }
 
     test('are listed in the user\'s order, each linking to its guide, with their number', async () => {
-      const section = await pinnedSection([{ id: FIRST, title: 'Claiming a payment' }, { id: SECOND, title: 'Closing a case' }])
+      const section = await pinnedSection([pinResponse({ id: FIRST, title: 'Claiming a payment' }), pinResponse({ id: SECOND, title: 'Closing a case' })])
+      const list = within(section).getByRole('list')
 
-      expect(section).toMatch(/app-side-nav__section-count">2</)
-      expect(section.indexOf(`href="/guides/${FIRST}"`)).toBeGreaterThan(-1)
-      expect(section.indexOf(`href="/guides/${SECOND}"`)).toBeGreaterThan(section.indexOf(`/guides/${FIRST}"`))
-      expect(section).toContain('data-reorder-list="/pin-order"')
-      expect(section).toContain('role="status" data-reorder-status')
+      expect(section.querySelector('summary')).toHaveTextContent('Pinned guidance 2 pinned')
+      expect(itemsOf(list).map((item) => within(item).getAllByRole('link')[0].getAttribute('href'))).toEqual([`/guides/${FIRST}`, `/guides/${SECOND}`])
+      expect(list).toHaveAttribute('data-reorder-list', '/pin-order')
+      expect(within(section).getByRole('status')).toHaveAttribute('data-reorder-status')
     })
 
     test('each have a menu to open, unpin and move it, moving only where it can go', async () => {
-      const section = await pinnedSection([{ id: FIRST, title: 'Claiming a payment' }, { id: SECOND, title: 'Closing a case' }])
-      const [first, second] = section.split('<li class="app-side-nav__row"').slice(1)
-      const moveForms = (row) => row.split('<form').filter((form) => form.includes('action="/pin-order"'))
-      const [firstUp, firstDown] = moveForms(first)
-      const [secondUp, secondDown] = moveForms(second)
+      const section = await pinnedSection([pinResponse({ id: FIRST, title: 'Claiming a payment' }), pinResponse({ id: SECOND, title: 'Closing a case' })])
+      const [first, second] = itemsOf(within(section).getByRole('list'))
+      const unpin = formOf(first, 'Unpin')
+      const firstDown = formOf(first, 'Move down')
+      const secondUp = formOf(second, 'Move up')
 
-      expect(first).toContain('More actions for Claiming a payment')
-      expect(first).toMatch(/>Open<\/a>/)
-      expect(first).toMatch(/action="\/pin-toggle"[\s\S]*name="pin" value="false"[\s\S]*name="position" value="0"[\s\S]*>Unpin<span class="govuk-visually-hidden"> Claiming a payment</)
-      expect(firstDown).toMatch(/data-reorder-move="1">[\s\S]*name="from" value="0"[\s\S]*name="to" value="1"[\s\S]*>Move down</)
-      expect(firstDown.match(/name="order" value="([^"]+)"/g)).toEqual([`name="order" value="${FIRST}"`, `name="order" value="${SECOND}"`])
-      expect(firstDown).not.toContain('name="guideId"')
-      expect(secondUp).toMatch(/data-reorder-move="-1">[\s\S]*name="from" value="1"[\s\S]*name="to" value="0"[\s\S]*>Move up</)
-      expect(firstUp).toMatch(/data-reorder-move="-1" hidden>[\s\S]*>Move up</)
-      expect(secondDown).toMatch(/data-reorder-move="1" hidden>[\s\S]*>Move down</)
+      expect(within(first).getByText('More actions for Claiming a payment')).toBeInTheDocument()
+      expect(within(first).getByRole('link', { name: 'Open' })).toHaveAttribute('href', `/guides/${FIRST}`)
+      expect(unpin).toHaveAttribute('action', '/pin-toggle')
+      expect(unpin).toHaveFormValues({ pin: 'false', position: '0' })
+      expect(within(unpin).getByRole('button')).toHaveTextContent('Unpin Claiming a payment')
+      expect(firstDown).toHaveAttribute('action', '/pin-order')
+      expect(firstDown).toHaveAttribute('data-reorder-move', '1')
+      expect(firstDown).toHaveFormValues({ from: '0', to: '1' })
+      expect(firstDown).toSendInOrder('order', [FIRST, SECOND])
+      expect(firstDown.elements.namedItem('guideId')).toBeNull()
+      expect(firstDown).not.toHaveAttribute('hidden')
+      expect(secondUp).toHaveAttribute('action', '/pin-order')
+      expect(secondUp).toHaveAttribute('data-reorder-move', '-1')
+      expect(secondUp).toHaveFormValues({ from: '1', to: '0' })
+      expect(secondUp).not.toHaveAttribute('hidden')
+      expect(formOf(first, 'Move up')).toHaveAttribute('hidden')
+      expect(formOf(second, 'Move down')).toHaveAttribute('hidden')
+    })
+
+    test('list a pinned section by its heading, with its guide\'s title, linking to the section', async () => {
+      const section = await pinnedSection([pinResponse({ id: FIRST, title: 'Claiming a payment' }), pinResponse({ id: SECOND, title: 'Closing a case', sectionId: SECTION, section: '2-close-it', heading: '2 Close it' })])
+      const [first, second] = itemsOf(within(section).getByRole('list'))
+      const [firstLink] = within(first).getAllByRole('link')
+      const [secondLink] = within(second).getAllByRole('link')
+      const secondUnpin = formOf(second, 'Unpin')
+      const firstUnpin = formOf(first, 'Unpin')
+
+      expect(second).toHaveAttribute('data-reorder-id', `${SECOND}/${SECTION}`)
+      expect(second).toHaveAttribute('data-reorder-label', '2 Close it, in Closing a case')
+      expect(secondLink).toHaveAttribute('href', `/guides/${SECOND}?section=2-close-it#2-close-it`)
+      expect(secondLink).toHaveTextContent('2 Close it, in Closing a case')
+      expect(within(secondLink).getByText('Closing a case')).toHaveClass('app-side-nav__in-guide')
+      expect(firstLink).toHaveTextContent(/^Claiming a payment$/)
+      // Another guide may have a heading of the same name, so its controls name the guide too.
+      expect(within(second).getByText('More actions for 2 Close it, in Closing a case')).toBeInTheDocument()
+      expect(within(secondUnpin).getByRole('button')).toHaveTextContent('Unpin 2 Close it, in Closing a case')
+      expect(within(formOf(second, 'Move up')).getByRole('button', { hidden: true })).toHaveTextContent('Move up 2 Close it, in Closing a case')
+      expect(secondUnpin).toHaveAttribute('data-reorder-follows', `${SECOND}/${SECTION}`)
+      expect(secondUnpin).toHaveFormValues({ position: '1', sectionId: SECTION })
+      expect(firstUnpin).toHaveAttribute('data-reorder-follows', FIRST)
+      expect(firstUnpin.elements.namedItem('sectionId')).toBeNull()
+      expect(formOf(first, 'Move down')).toSendInOrder('order', [FIRST, `${SECOND}/${SECTION}`])
+    })
+
+    test('move a pinned section by its key, testing its guide and its section', async () => {
+      nock(GUIDANCE_API_BASE_URL).post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+      const moving = nock(GUIDANCE_API_BASE_URL)
+        .patch(`/users/${USER_ID}/pins`, [
+          { op: 'test', path: '/0/guideId', value: FIRST },
+          { op: 'test', path: '/0/sectionId', value: null },
+          { op: 'test', path: '/1/guideId', value: SECOND },
+          { op: 'test', path: '/1/sectionId', value: SECTION },
+          { op: 'move', from: '/1', path: '/0' }
+        ])
+        .reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode } = await server.inject({
+        method: 'POST', url: '/pin-order', headers: { cookie, ...FORM }, payload: `order=${FIRST}&order=${SECOND}%2F${SECTION}&from=1&to=0&returnTo=%2Fhub`
+      })
+
+      expect(moving.isDone()).toBe(true)
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+    })
+
+    test.each([
+      ['an id that is not one', 'not-an-id'],
+      ['a section with no guide', `/${SECTION}`],
+      ['more than a guide and a section', `${FIRST}/${SECTION}/${SECTION}`]
+    ])('refuse an order that names a pin by %s', async (_name, key) => {
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode } = await server.inject({
+        method: 'POST', url: '/pin-order', headers: { cookie, ...FORM }, payload: `order=${encodeURIComponent(key)}&from=0&to=0&returnTo=%2Fhub`
+      })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
     })
 
     test('say when nothing is pinned yet', async () => {
       const section = await pinnedSection([])
 
-      expect(section).toMatch(/app-side-nav__section-count">0</)
-      expect(section).toContain("You haven't pinned any guidance yet.")
+      expect(section.querySelector('summary')).toHaveTextContent('Pinned guidance 0 pinned')
+      expect(within(section).getByText(SIDE_NAV_MESSAGES.nonePinned)).toBeInTheDocument()
     })
 
     test('move from where the page showed them, then go back to the page\'s pinned guides', async () => {
       nock(GUIDANCE_API_BASE_URL).post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
       const moving = nock(GUIDANCE_API_BASE_URL)
         .patch(`/users/${USER_ID}/pins`, [
-          { op: 'test', path: '/0', value: FIRST },
-          { op: 'test', path: '/1', value: SECOND },
+          { op: 'test', path: '/0/guideId', value: FIRST },
+          { op: 'test', path: '/0/sectionId', value: null },
+          { op: 'test', path: '/1/guideId', value: SECOND },
+          { op: 'test', path: '/1/sectionId', value: null },
           { op: 'move', from: '/0', path: '/1' }
         ])
         .reply(statusCodes.HTTP_STATUS_NO_CONTENT)
@@ -200,91 +318,382 @@ describe('Side navigation', () => {
     })
   })
 
+  describe('the user\'s case bookmarks', () => {
+    const { id: USER_ID } = userResponse()
+    const GUIDE = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
+    const BEFORE = { sectionId: '019a0000-0000-7000-8000-000000000011', section: '11-before-you-begin', heading: '1.1 Before you begin', position: 1 }
+    const ASSIGN = { sectionId: '019a0000-0000-7000-8000-000000000002', section: '2-assign-case', heading: '2 Assign case', position: 0 }
+
+    /** The side navigation's Case bookmarks section, for a user with `cases`. */
+    async function bookmarksSection (cases) {
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ cases }))
+      const cookie = await loginAsDevUser(server)
+
+      return sectionOf(sideNavOf(await pageAt('/hub', cookie)), 'Case bookmarks')
+    }
+
+    /** Each case in the section, as its own row: its name, and its menu. */
+    function caseRowsOf (section) {
+      return itemsOf(within(section).getAllByRole('list')[0]).map((item) => item.firstElementChild)
+    }
+
+    test('are counted beside "Case bookmarks", one for each case', async () => {
+      const section = await bookmarksSection([caseResponse(), caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', ref: 'W7654321' })])
+
+      expect(section.querySelector('summary')).toHaveTextContent('Case bookmarks 2 cases')
+    })
+
+    test('are counted beside "Bookmarked", one for each case', async () => {
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+        .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ cases: [caseResponse(), caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', ref: 'W7654321' })] }))
+      const cookie = await loginAsDevUser(server)
+
+      const nav = sideNavOf(await pageAt('/hub', cookie))
+
+      expect(nav.getByRole('link', { name: /^Bookmarked/ })).toHaveTextContent(/^Bookmarked 2 cases$/)
+    })
+
+    test('are listed in the user\'s order, each with its guides and their number, each guide with its sections in the guide\'s order', async () => {
+      const section = await bookmarksSection([
+        caseResponse({ ref: 'W7654321', guides: [{ id: GUIDE, title: 'Claiming a payment', bookmarks: [BEFORE, ASSIGN] }] }),
+        caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', type: 'sbi', ref: '123456789' })
+      ])
+
+      const shown = caseRowsOf(section).map((row) => [
+        within(row).getByText(/^(Case|SBI)$/).textContent,
+        getNodeText(within(row).getByText(/^(W\d{7}|\d{9})$/)).trim(),
+        within(row).getByText(/ guides?$/, { ignore: '.govuk-visually-hidden' }).textContent
+      ])
+      const links = within(section).getAllByRole('list', { name: /^Guides bookmarked to / })
+        .flatMap((guides) => within(guides).getAllByRole('link'))
+        .map((link) => [link.textContent, link.getAttribute('href')])
+
+      expect(shown).toEqual([['Case', 'W7654321', '1 guide'], ['SBI', '123456789', '0 guides']])
+      expect(links).toEqual([
+        ['Claiming a payment', `/guides/${GUIDE}`],
+        ['1.1 Before you begin', `/guides/${GUIDE}?section=11-before-you-begin#11-before-you-begin`],
+        ['2 Assign case', `/guides/${GUIDE}?section=2-assign-case#2-assign-case`]
+      ])
+    })
+
+    test('each link to the Bookmarked guides page narrowed to them, by their key, not their reference', async () => {
+      const OTHER = '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c'
+      const section = await bookmarksSection([caseResponse(), caseResponse({ key: OTHER, type: 'sbi', ref: '123456789' })])
+
+      const hrefs = caseRowsOf(section).map((row) => within(row).getByRole('link', { name: /^(Case|SBI)\b/ }).getAttribute('href'))
+
+      expect(hrefs).toEqual([`/hub/bookmarked-guides?case=${caseResponse().key}`, `/hub/bookmarked-guides?case=${OTHER}`])
+    })
+
+    describe('changed from their menus', () => {
+      const K1 = caseResponse().key
+      const K2 = '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c'
+      const OTHER = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
+      const INTRO = { sectionId: '019a0000-0000-7000-8000-000000000001', section: '1-introduction', heading: '1 Introduction', position: 0 }
+      const ASSIGNED = { ...ASSIGN, position: 2 }
+      const CLOSE = { sectionId: '019a0000-0000-7000-8000-000000000003', section: '3-close-case', heading: '3 Close case', position: 1 }
+      const W1 = caseResponse({
+        guides: [
+          { id: GUIDE, title: 'Claiming a payment', bookmarks: [INTRO, ASSIGNED] },
+          { id: OTHER, title: 'Closing a case', bookmarks: [CLOSE] }
+        ]
+      })
+      const SBI = caseResponse({ key: K2, type: 'sbi', ref: '123456789', guides: [{ id: GUIDE, title: 'Claiming a payment', bookmarks: [{ ...INTRO }] }] })
+
+      async function postAs (url, payload, cases = [W1, SBI]) {
+        nock(GUIDANCE_API_BASE_URL)
+          .post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
+          .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_OK, userResponse({ cases }))
+        const cookie = await loginAsDevUser(server)
+
+        return server.inject({ method: 'POST', url, headers: { cookie }, payload })
+      }
+
+      function patching (operations) {
+        return nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`, operations).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+      }
+
+      test('give each case a menu to remove it and move it, moving only where it can go', async () => {
+        const [first] = caseRowsOf(await bookmarksSection([W1, SBI]))
+        const remove = formOf(first, 'Remove bookmark')
+        const moveDown = formOf(first, 'Move down')
+
+        expect(within(first).getByText('More actions for Case W1234567')).toBeInTheDocument()
+        expect(remove).toHaveAttribute('action', '/case-bookmarks/remove')
+        expect(remove).toHaveFormValues({ key: K1 })
+        expect(formOf(first, 'Move up')).toHaveAttribute('hidden')
+        expect(moveDown).toHaveAttribute('action', '/case-bookmarks/order')
+        expect(moveDown).toHaveAttribute('data-reorder-move', '1')
+        expect(moveDown).toHaveFormValues({ from: '0', to: '1' })
+        expect(moveDown).toSendInOrder('order', [K1, K2])
+      })
+
+      test('give each guide a menu to remove it or move it, and each section one to remove it', async () => {
+        const section = await bookmarksSection([W1, SBI])
+        const guides = within(section).getByRole('list', { name: 'Guides bookmarked to Case W1234567' })
+        const [first, second] = itemsOf(guides)
+        const guideRow = first.firstElementChild
+        const sections = within(first).getByRole('list', { name: 'Bookmarked sections of Claiming a payment' })
+        const assign = itemsOf(sections)[1]
+        const removeGuide = formOf(guideRow, 'Remove')
+        const moveDown = formOf(guideRow, 'Move down')
+        const removeSection = formOf(assign, 'Remove')
+
+        expect(within(guideRow).getByText('More actions for Claiming a payment')).toBeInTheDocument()
+        expect(removeGuide).toHaveFormValues({ guideId: GUIDE })
+        expect(within(removeGuide).getByRole('button')).toHaveTextContent('Remove Claiming a payment from Case W1234567')
+        expect(formOf(guideRow, 'Move up')).toHaveAttribute('hidden')
+        expect(moveDown).toHaveAttribute('action', '/case-bookmarks/guide-order')
+        expect(moveDown).toHaveAttribute('data-reorder-move', '1')
+        expect(moveDown).toHaveFormValues({ key: K1, from: '0', to: '1' })
+        expect(moveDown).toSendInOrder('order', [GUIDE, OTHER])
+        expect(within(assign).getByText('More actions for 2 Assign case, in Claiming a payment')).toBeInTheDocument()
+        expect(removeSection).toHaveFormValues({ sectionId: ASSIGN.sectionId })
+        expect(within(removeSection).getByRole('button')).toHaveTextContent('Remove 2 Assign case, in Claiming a payment, from Case W1234567')
+        expect(within(sections).queryAllByRole('button', { name: /^Move/, hidden: true })).toEqual([])
+        expect(formOf(second.firstElementChild, 'Move down')).toHaveAttribute('hidden')
+      })
+
+      test('remove a case, then go back to the page\'s case bookmarks', async () => {
+        const removing = patching([
+          { op: 'test', path: '/1/key', value: K2 },
+          { op: 'remove', path: '/1' }
+        ])
+
+        const { statusCode, headers } = await postAs('/case-bookmarks/remove', { key: K2, returnTo: '/hub' })
+
+        expect(removing.isDone()).toBe(true)
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+        expect(headers.location).toBe('/hub#side-nav-bookmarks')
+      })
+
+      test.each([
+        [
+          'a guide, with all its sections',
+          { guideId: GUIDE },
+          [
+            { op: 'test', path: '/0/key', value: K1 },
+            { op: 'test', path: '/0/bookmarks/2/guideId', value: GUIDE },
+            { op: 'test', path: '/0/bookmarks/0/guideId', value: GUIDE },
+            { op: 'remove', path: '/0/bookmarks/2' },
+            { op: 'remove', path: '/0/bookmarks/0' }
+          ]
+        ],
+        [
+          'a section',
+          { guideId: GUIDE, sectionId: ASSIGN.sectionId },
+          [
+            { op: 'test', path: '/0/key', value: K1 },
+            { op: 'test', path: '/0/bookmarks/2/sectionId', value: ASSIGN.sectionId },
+            { op: 'remove', path: '/0/bookmarks/2' }
+          ]
+        ]
+      ])('remove %s from a case, then go back to the page\'s case bookmarks', async (_what, form, operations) => {
+        const removing = patching(operations)
+
+        const { statusCode, headers } = await postAs('/case-bookmarks/remove', { key: K1, returnTo: '/hub', ...form })
+
+        expect(removing.isDone()).toBe(true)
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+        expect(headers.location).toBe('/hub#side-nav-bookmarks')
+      })
+
+      test.each([
+        ['its last section', { guideId: GUIDE, sectionId: INTRO.sectionId }, { op: 'test', path: '/1/bookmarks/0/sectionId', value: INTRO.sectionId }],
+        ['its only guide', { guideId: GUIDE }, { op: 'test', path: '/1/bookmarks/0/guideId', value: GUIDE }]
+      ])('remove the case with %s, only if nothing was added to it since', async (_what, form, tested) => {
+        const removing = patching([
+          { op: 'test', path: '/1/key', value: K2 },
+          tested,
+          { op: 'remove', path: '/1/bookmarks/0' },
+          { op: 'test', path: '/1/bookmarks', value: [] },
+          { op: 'remove', path: '/1' }
+        ])
+
+        const { statusCode, headers } = await postAs('/case-bookmarks/remove', { key: K2, returnTo: '/hub', ...form })
+
+        expect(removing.isDone()).toBe(true)
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+        expect(headers.location).toBe('/hub#side-nav-bookmarks')
+      })
+
+      test.each([
+        ['the case', {}],
+        ['the only guide of the case', { guideId: GUIDE }],
+        ['the last section of the case', { guideId: GUIDE, sectionId: INTRO.sectionId }]
+      ])('removing %s the list is narrowed to, go back to every bookmarked guide, keeping the other filters', async (_what, form) => {
+        nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+
+        const { headers } = await postAs('/case-bookmarks/remove', { key: K2, returnTo: `/hub/bookmarked-guides?case=${K2}&system=CRM`, ...form })
+
+        expect(headers.location).toBe('/hub/bookmarked-guides?system=CRM#side-nav-bookmarks')
+      })
+
+      test('go back to the list narrowed to a case that still has guides', async () => {
+        nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+
+        const { headers } = await postAs('/case-bookmarks/remove', { key: K1, guideId: GUIDE, returnTo: `/hub/bookmarked-guides?case=${K1}` })
+
+        expect(headers.location).toBe(`/hub/bookmarked-guides?case=${K1}#side-nav-bookmarks`)
+      })
+
+      test('move a case, answering a script that dragged it with nothing to show', async () => {
+        const moving = patching([
+          { op: 'test', path: '/0/key', value: K1 },
+          { op: 'test', path: '/1/key', value: K2 },
+          { op: 'move', from: '/0', path: '/1' }
+        ])
+
+        const { statusCode } = await postAs('/case-bookmarks/order', { order: [K1, K2], from: '0', to: '1' })
+
+        expect(moving.isDone()).toBe(true)
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_NO_CONTENT)
+      })
+
+      test('move a guide with its sections, in one patch', async () => {
+        const moving = patching([
+          { op: 'test', path: '/0/key', value: K1 },
+          { op: 'test', path: '/0/bookmarks/0/guideId', value: GUIDE },
+          { op: 'test', path: '/0/bookmarks/2/guideId', value: GUIDE },
+          { op: 'test', path: '/0/bookmarks/1/guideId', value: OTHER },
+          { op: 'move', from: '/0/bookmarks/1', path: '/0/bookmarks/0' }
+        ])
+
+        const { statusCode } = await postAs('/case-bookmarks/guide-order', { key: K1, order: [GUIDE, OTHER], from: '1', to: '0' })
+
+        expect(moving.isDone()).toBe(true)
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_NO_CONTENT)
+      })
+
+      test.each([
+        ['/case-bookmarks/order', { order: [K1, K2], from: '1', to: '0', returnTo: '/hub' }],
+        ['/case-bookmarks/guide-order', { key: K1, order: [GUIDE, OTHER], from: '1', to: '0', returnTo: '/hub' }]
+      ])('move from %s without JavaScript, then go back to the page\'s case bookmarks', async (url, form) => {
+        nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
+
+        const { statusCode, headers } = await postAs(url, form)
+
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+        expect(headers.location).toBe('/hub#side-nav-bookmarks')
+      })
+
+      test('answer a conflict for guides that are not as the page showed them', async () => {
+        const { statusCode } = await postAs('/case-bookmarks/guide-order', { key: K1, order: [OTHER, GUIDE], from: '1', to: '0' })
+
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_CONFLICT)
+      })
+    })
+
+    test('say when nothing is bookmarked to a case yet', async () => {
+      const section = await bookmarksSection([])
+
+      expect(section.querySelector('summary')).toHaveTextContent('Case bookmarks 0 cases')
+      expect(within(section).getByText(SIDE_NAV_MESSAGES.noCaseBookmarks)).toBeInTheDocument()
+    })
+  })
+
   test('lets the user sign out from its footer', async () => {
-    const cookie = await loginAsDevUser(server)
+    const nav = sideNavOf(await pageAt('/hub'))
 
-    const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
-
-    expect(payload).toMatch(/app-side-nav__footer"[^]*href="\/logout"[^>]*>[^<]*Sign out/)
+    expect(nav.getAllByRole('list').at(-1)).toContainElement(nav.getByRole('link', { name: 'Sign out' }))
+    expect(nav.getByRole('link', { name: 'Sign out' })).toHaveAttribute('href', '/logout')
   })
 
   test.each([
     ['Hub.Viewer', 'Viewer'],
-    ['Hub.Editor,Hub.Viewer', 'Viewer, Designer'],
-    ['Hub.Admin,Hub.Editor,Hub.Viewer', 'Viewer, Designer, Administrator'],
+    ['Hub.Editor,Hub.Viewer', 'Viewer, Maintainer'],
+    ['Hub.Admin,Hub.Editor,Hub.Viewer', 'Viewer, Maintainer, Administrator'],
     ['Hub.Viewer,toString', 'Viewer']
   ])('displays the user name and role caption for DEV_USER_ROLES=%s', async (roles, caption) => {
     vi.stubEnv('DEV_USER_ROLES', roles)
-    const cookie = await loginAsDevUser(server)
 
-    const { payload } = await server.inject({ method: 'GET', url: '/hub', headers: { cookie } })
+    const nav = sideNavOf(await pageAt('/hub'))
 
-    expect(payload).toContain('class="app-side-nav__user-name">Dev User</div>')
-    expect(payload).toContain(`class="app-side-nav__user-roles">${caption}</div>`)
+    expect(nav.getByText('Dev User').nextElementSibling).toHaveTextContent(new RegExp(`^${caption}$`))
   })
 
   describe('contents', () => {
     async function navOf (url) {
-      const cookie = await loginAsDevUser(server)
-      const { payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
-
-      return payload.slice(payload.indexOf('<nav class="app-side-nav"'), payload.indexOf('</nav>', payload.indexOf('<nav class="app-side-nav"')))
-    }
-
-    function linkTexts (nav) {
-      return [...nav.matchAll(/<a [^>]*href="([^"]+)"[^>]*>[^]*?app-side-nav__text">([^<]+)</g)]
-        .map(([, href, text]) => [text, href])
+      return sideNavOf(await pageAt(url))
     }
 
     test('has a search box that searches from the hub', async () => {
       const nav = await navOf('/create-guidance/upload-guide')
+      const search = nav.getByRole('search')
 
-      expect(nav).toContain('<form class="app-side-nav__search" method="get" action="/hub" role="search">')
-      expect(nav).toContain('<label class="govuk-visually-hidden" for="side-nav-search">Search or ask question</label>')
-      expect(nav).toMatch(/<input [^>]*id="side-nav-search" name="q"/)
+      expect(search).toHaveAttribute('action', '/hub')
+      expect(search).toHaveAttribute('method', 'get')
+      expect(within(search).getByRole('searchbox', { name: 'Search or ask question' })).toHaveAttribute('name', 'q')
     })
 
     test('leaves the search to the hub\'s own search box on the hub', async () => {
       const nav = await navOf('/hub')
 
-      expect(nav).not.toContain('app-side-nav__search')
+      expect(nav.queryByRole('search')).not.toBeInTheDocument()
     })
 
-    test('links to the hub and each list of guides, then a designer\'s work, in order', async () => {
+    test('links to the hub and each list of guides, then a maintainer\'s work, in order', async () => {
       const nav = await navOf('/hub')
+      const links = [
+        ...within(nav.getAllByRole('list')[0]).getAllByRole('link'),
+        ...within(nav.getByRole('list', { name: 'Maintenance' })).getAllByRole('link')
+      ]
 
-      expect(linkTexts(nav)).toEqual([
+      expect(textsOf(links).map((text, index) => [text, links[index].getAttribute('href')])).toEqual([
         ['Hub', '/hub'],
         ['Recently opened', '/hub/recently-opened'],
         ['Pinned', '/hub/pinned'],
-        ['Bookmarked guides', '/hub/bookmarked-guides'],
+        ['Bookmarked', '/hub/bookmarked-guides'],
         ['Upload guidance', '/create-guidance/upload-guide']
       ])
-      expect(nav).toContain('>Designing</h2>')
+      expect(nav.getByRole('heading', { name: 'Maintenance' })).toBeInTheDocument()
     })
 
     test('has sections for pinned guidance and case bookmarks, empty for now', async () => {
       const nav = await navOf('/hub')
 
-      expect(nav).toMatch(/<details class="app-side-nav__section"[^>]*>[^]*Pinned guidance[^]*You haven't pinned any guidance yet\./)
-      expect(nav).toMatch(/<details class="app-side-nav__section"[^>]*>[^]*Case bookmarks[^]*You haven't bookmarked any guidance to a case yet\./)
+      expect(sectionOf(nav, 'Pinned guidance')).toHaveTextContent(SIDE_NAV_MESSAGES.nonePinned)
+      expect(sectionOf(nav, 'Case bookmarks')).toHaveTextContent(SIDE_NAV_MESSAGES.noCaseBookmarks)
     })
 
     test.each([
       ['/hub', 'Hub'],
       ['/hub/recently-opened', 'Recently opened'],
       ['/hub/pinned', 'Pinned'],
-      ['/hub/bookmarked-guides', 'Bookmarked guides'],
+      ['/hub/bookmarked-guides', 'Bookmarked'],
       ['/create-guidance/upload-guide', 'Upload guidance']
     ])('marks the current page on %s', async (url, current) => {
       const nav = await navOf(url)
 
-      const marked = [...nav.matchAll(/<a [^>]*aria-current="page"[^>]*>[^]*?app-side-nav__text">([^<]+)</g)].map(([, text]) => text)
-      expect(marked).toEqual([current])
+      expect(textsOf(nav.getAllByRole('link', { current: 'page' }))).toEqual([current])
     })
   })
 
+  test('draws each list open or closed, as the user left it', async () => {
+    keepPreferencesInTheApi({ sideNavPinnedCollapsed: true })
+
+    const page = await pageAt('/hub', await loginAsDevUser(server))
+    const pinned = page.document.getElementById('side-nav-pinned')
+    const bookmarks = page.document.getElementById('side-nav-bookmarks')
+
+    expect(pinned).not.toHaveAttribute('open')
+    expect(pinned)
+      .toHaveAttribute('data-preference', 'sideNavPinnedCollapsed')
+    expect(bookmarks).toHaveAttribute('open')
+    expect(bookmarks)
+      .toHaveAttribute('data-preference', 'sideNavBookmarksCollapsed')
+  })
+
   describe('folding away', () => {
+    let kept
+
+    beforeEach(() => {
+      kept = keepPreferencesInTheApi()
+    })
+
     async function fold (cookie, collapsed, returnTo) {
       const response = await server.inject({
         method: 'POST',
@@ -296,58 +705,83 @@ describe('Side navigation', () => {
       return { response, cookie: mergeCookies(cookie, response.headers['set-cookie']) }
     }
 
-    async function pageOf (cookie, url) {
-      const { payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
-
-      return payload
-    }
-
     test('offers to fold the navigation away, coming back to the same page', async () => {
       const cookie = await loginAsDevUser(server)
 
-      const payload = await pageOf(cookie, '/create-guidance/upload-guide?step=1')
+      const page = await pageAt('/create-guidance/upload-guide?step=1', cookie)
+      const toggle = sideNavOf(page).getByRole('button', { name: 'Collapse navigation' }).form
 
-      expect(payload).toMatch(/<button type="submit" form="side-nav-toggle-form"[^>]*>[^]*Collapse navigation/)
-      expect(payload).toMatch(/<form id="side-nav-toggle-form" method="post" action="\/side-nav\/toggle" hidden>[^]*name="collapsed" value="true"[^]*name="returnTo" value="\/create-guidance\/upload-guide\?step=1"/)
+      expect(toggle).toHaveAttribute('action', '/side-nav/toggle')
+      expect(toggle).toHaveAttribute('method', 'post')
+      expect(toggle).toHaveAttribute('hidden')
+      expect(toggle).toHaveFormValues({ collapsed: 'true', returnTo: '/create-guidance/upload-guide?step=1' })
     })
 
     test('folds down to its icons, back on the page it was folded on', async () => {
       const signedIn = await loginAsDevUser(server)
 
       const { response, cookie } = await fold(signedIn, true, '/hub')
-      const payload = await pageOf(cookie, '/hub')
+      const page = await pageAt('/hub', cookie)
+      const nav = sideNavOf(page)
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(response.headers.location).toBe('/hub')
-      expect(payload).toContain('<nav class="app-side-nav app-side-nav--rail" aria-label="Guidance hub">')
-      for (const name of ['Expand navigation', 'Hub', 'Recently opened', 'Pinned', 'Bookmarked guides', 'Upload guidance', 'Sign out']) {
-        expect(payload).toContain(`<span class="app-side-nav__rail-label">${name}</span>`)
+      expect(nav.queryByRole('button', { name: 'Collapse navigation' })).not.toBeInTheDocument()
+      expect(nav.getByRole('button', { name: 'Expand navigation' }).form).toHaveFormValues({ collapsed: 'false' })
+      for (const name of ['Hub', 'Recently opened', 'Pinned', 'Bookmarked', 'Upload guidance', 'Sign out']) {
+        expect(nav.getByRole('link', { name })).toBeInTheDocument()
       }
-      expect(payload).not.toContain('Awaiting my review')
-      expect(payload).not.toContain('<span class="app-side-nav__rail-label">Pinned guidance</span>')
-      expect(payload).not.toContain('<span class="app-side-nav__rail-label">Case bookmarks</span>')
-      expect(payload).not.toContain('app-side-nav__search')
-      expect(payload).toMatch(/name="collapsed" value="false"/)
+      expect(page.document.body).not.toHaveTextContent('Awaiting my review')
+      expect(nav.queryByText('Pinned guidance')).not.toBeInTheDocument()
+      expect(nav.queryByText('Case bookmarks')).not.toBeInTheDocument()
+      expect(nav.queryByRole('search')).not.toBeInTheDocument()
     })
 
-    test('keeps a designer\'s work in a list of its own, after the lists of guides', async () => {
+    test('keeps a maintainer\'s work in a list of its own, after the lists of guides', async () => {
       const signedIn = await loginAsDevUser(server)
 
       const { cookie } = await fold(signedIn, true, '/hub')
-      const payload = await pageOf(cookie, '/hub')
+      const nav = sideNavOf(await pageAt('/hub', cookie))
 
-      const designing = payload.indexOf('<ul class="app-side-nav__rail-list" aria-label="Designing">')
-      expect(designing).toBeGreaterThan(payload.indexOf('<span class="app-side-nav__rail-label">Bookmarked guides</span>'))
-      expect(payload.indexOf('<span class="app-side-nav__rail-label">Upload guidance</span>')).toBeGreaterThan(designing)
+      const lists = nav.getAllByRole('list')
+      const maintenance = nav.getByRole('list', { name: 'Maintenance' })
+      expect(lists.indexOf(maintenance)).toBe(lists.indexOf(nav.getByRole('link', { name: 'Bookmarked' }).closest('ul')) + 1)
+      expect(maintenance).toContainElement(nav.getByRole('link', { name: 'Upload guidance' }))
     })
 
-    test('stays folded on the next page, for the session', async () => {
+    test('stays folded on the next page', async () => {
       const signedIn = await loginAsDevUser(server)
 
       const { cookie } = await fold(signedIn, true, '/hub')
-      const payload = await pageOf(cookie, '/create-guidance/upload-guide')
+      const nav = sideNavOf(await pageAt('/create-guidance/upload-guide', cookie))
 
-      expect(payload).toContain('app-side-nav--rail')
+      expect(nav.getByRole('button', { name: 'Expand navigation' })).toBeInTheDocument()
+    })
+
+    test('is kept for the user\'s next sign-in', async () => {
+      await fold(await loginAsDevUser(server), true, '/hub')
+
+      const nav = sideNavOf(await pageAt('/hub', await loginAsDevUser(server)))
+
+      expect(kept).toEqual({ sideNavCollapsed: true })
+      expect(nav.getByRole('button', { name: 'Expand navigation' }))
+        .toBeInTheDocument()
+    })
+
+    test('shows the error page when the hub cannot keep it', async () => {
+      const signedIn = await loginAsDevUser(server)
+
+      nock.cleanAll()
+      nock(GUIDANCE_API_BASE_URL)
+        .patch(/^\/preferences\//)
+        .reply(statusCodes.HTTP_STATUS_SERVICE_UNAVAILABLE)
+
+      const { response } = await fold(signedIn, true, '/hub')
+      const page = pageOf(response.payload)
+
+      expect(response.statusCode)
+        .toBe(statusCodes.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+      expect(page.getByText('Something went wrong')).toBeInTheDocument()
     })
 
     test('unfolds again', async () => {
@@ -355,10 +789,10 @@ describe('Side navigation', () => {
 
       const folded = await fold(signedIn, true, '/hub')
       const { cookie } = await fold(folded.cookie, false, '/hub')
-      const payload = await pageOf(cookie, '/hub')
+      const nav = sideNavOf(await pageAt('/hub', cookie))
 
-      expect(payload).toContain('<nav class="app-side-nav" aria-label="Guidance hub">')
-      expect(payload).not.toContain('app-side-nav--rail')
+      expect(nav.getByRole('button', { name: 'Collapse navigation' })).toBeInTheDocument()
+      expect(nav.queryByRole('button', { name: 'Expand navigation' })).not.toBeInTheDocument()
     })
 
     test('goes back to the hub, not to another site', async () => {
@@ -373,13 +807,14 @@ describe('Side navigation', () => {
   test('leaves the header on the sign-in page', async () => {
     const { payload } = await server.inject({ method: 'GET', url: '/' })
 
-    expect(payload).toContain('class="defra-header')
+    expect(within(pageOf(payload).document.body).getByRole('banner')).toBeInTheDocument()
   })
 
   test('does not show on the sign-in page', async () => {
     const { payload } = await server.inject({ method: 'GET', url: '/' })
 
-    expect(payload).toContain('Sign in')
-    expect(payload).not.toContain('class="app-side-nav"')
+    const body = within(pageOf(payload).document.body)
+    expect(body.getAllByText(/Sign in/).length).toBeGreaterThan(0)
+    expect(body.queryByRole('navigation', { name: 'Guidance hub' })).not.toBeInTheDocument()
   })
 })

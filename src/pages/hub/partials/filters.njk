@@ -29,7 +29,8 @@
   {% endif %}
 
   <form id="hub-filters" method="get" action="{{ filters.action }}#guide-results">
-    {% if filters.words %}<input type="hidden" name="q" value="{{ filters.words }}">{% endif %}
+    {# The list's own parameters: the words searched for, or the case it is narrowed to. #}
+    {% for name, value in filters.kept %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
     {% for group in filters.groups %}
       {% set items = [] %}
       {% for option in group.options %}

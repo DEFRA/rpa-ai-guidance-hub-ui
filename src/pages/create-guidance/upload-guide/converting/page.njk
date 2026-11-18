@@ -1,0 +1,67 @@
+{% extends "common/layout.njk" %}
+{% from "govuk/components/warning-text/macro.njk" import govukWarningText %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+
+{% block head %}
+  {{ super() }}
+  <style nonce="{{ cspNonce.style }}" data-progress-style>
+    #conversion-progress-bar {
+      --progress-width: {{ percentage }}%;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds app-content">
+      <div data-module="app-progress"
+        data-poll-url="{{ pollUrl }}"
+        data-redirect-url="{{ redirectUrl }}">
+
+        <div data-progress-error{% if not isError %} hidden{% endif %}>
+          {% set errorSummaryHtml %}
+            <span data-progress-error-message>{{ errorMessage }}</span><br>
+            <span data-progress-error-detail{% if not errorDetail %} hidden{% endif %}>{{ errorDetail }}</span>
+          {% endset %}
+
+          {{ govukErrorSummary({
+            titleText: "There is a problem",
+            descriptionHtml: errorSummaryHtml
+          }) }}
+        </div>
+
+        <h1 class="govuk-heading-l" id="conversion-status-heading">Converting your document</h1>
+
+        <p class="govuk-body" data-progress-intro{% if isError %} hidden{% endif %}>We are saving the document and each of its pictures. A document with many pictures can take a minute or two.</p>
+
+        <noscript>
+          {{ govukWarningText({
+            text: "JavaScript is required for this page to automatically refresh. Refresh manually to see updates.",
+            iconFallbackText: "Warning"
+          }) }}
+        </noscript>
+
+        <div class="app-progress{{ ' app-progress--error' if isError }}">
+          <p class="app-progress__status" id="conversion-status-label" data-progress-label role="status">{{ label }}</p>
+          <div class="app-progress__track" role="progressbar" aria-labelledby="conversion-status-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ percentage }}">
+            <div id="conversion-progress-bar" class="app-progress__bar{{ ' app-progress__bar--error' if isError }}" data-progress-bar></div>
+          </div>
+        </div>
+
+        <p class="govuk-body" data-progress-waiting{% if isError %} hidden{% endif %}>Do not close this page.</p>
+
+        <p class="govuk-body" data-progress-retry{% if not isError %} hidden{% endif %}>
+          <a class="govuk-link" href="{{ checkAnswersUrl }}">Go back to check your answers</a>
+        </p>
+
+        <p class="govuk-body" data-progress-complete hidden>
+          Your document has been converted. <a class="govuk-link" href="{{ convertingUrl }}">Continue</a>.
+        </p>
+
+        <p class="govuk-body" data-progress-timeout hidden>
+          This is taking longer than expected. <a class="govuk-link" href="{{ convertingUrl }}">Refresh the page</a> to check again.
+        </p>
+      </div>
+    </div>
+  </div>
+{% endblock %}

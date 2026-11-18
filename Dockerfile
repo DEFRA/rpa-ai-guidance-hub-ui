@@ -1,10 +1,8 @@
-ARG PARENT_VERSION=3.2.4-node24.22.1
+ARG PARENT_VERSION=3.2.8-node24.22.3
 ARG PORT=3000
 ARG PORT_DEBUG=9229
 
-FROM defradigital/node-development:${PARENT_VERSION} AS development
-ARG PARENT_VERSION
-LABEL uk.gov.defra.ffc.parent-image=defradigital/node-development:${PARENT_VERSION}
+FROM defradigital/node-development:3.2.8-node24.22.3 AS development
 
 ENV TZ="Europe/London"
 
@@ -26,9 +24,7 @@ ENV NODE_ENV=production
 
 RUN npm run build
 
-FROM defradigital/node:${PARENT_VERSION} AS production
-ARG PARENT_VERSION
-LABEL uk.gov.defra.ffc.parent-image=defradigital/node:${PARENT_VERSION}
+FROM defradigital/node:3.2.8-node24.22.3 AS production
 
 ENV TZ="Europe/London"
 
@@ -49,4 +45,3 @@ ENV PORT=${PORT}
 EXPOSE ${PORT}
 
 CMD [ "node", "src" ]
-

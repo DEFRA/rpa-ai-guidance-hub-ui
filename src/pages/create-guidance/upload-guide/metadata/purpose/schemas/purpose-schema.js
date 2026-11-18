@@ -2,13 +2,19 @@ import Joi from 'joi'
 
 const MAX_GOAL_LENGTH = 200
 
-const OWNER_REQUIRED_MESSAGE = 'Enter an email address'
-const OWNER_FORMAT_MESSAGE = 'Enter an email address in the correct format'
-const GOAL_REQUIRED_MESSAGE = 'Enter what this guidance aims to achieve'
-const GOAL_MAX_MESSAGE = 'Purpose must be 200 characters or fewer'
-const REQUIREMENTS_REQUIRED_MESSAGE = 'Enter what users need to perform or understand'
-const SYSTEMS_REQUIRED_MESSAGE = 'Select the systems this guidance uses'
-const AUDIENCE_REQUIRED_MESSAGE = 'Select who this guidance is for'
+/**
+ * What the owner and purpose form says of an answer it cannot take, named
+ * once, so that one test holds their words and the rest name them.
+ */
+const PURPOSE_MESSAGES = Object.freeze({
+  ownerRequired: 'Enter an email address',
+  ownerFormat: 'Enter an email address in the correct format',
+  goalRequired: 'Enter what this guidance aims to achieve',
+  goalTooLong: 'Purpose must be 200 characters or fewer',
+  requirementsRequired: 'Enter what users need to perform or understand',
+  systemsRequired: 'Select the systems this guidance uses',
+  audienceRequired: 'Select who this guidance is for'
+})
 
 /**
  * A required GOV.UK checkbox group whose valid values come from a reference
@@ -65,9 +71,9 @@ function buildPurposeSchema ({ systemOptions, audienceOptions }) {
       .required()
       .email({ tlds: { allow: false } })
       .messages({
-        'any.required': OWNER_REQUIRED_MESSAGE,
-        'string.empty': OWNER_REQUIRED_MESSAGE,
-        'string.email': OWNER_FORMAT_MESSAGE
+        'any.required': PURPOSE_MESSAGES.ownerRequired,
+        'string.empty': PURPOSE_MESSAGES.ownerRequired,
+        'string.email': PURPOSE_MESSAGES.ownerFormat
       }),
     goal: Joi.string()
       .trim()
@@ -78,23 +84,24 @@ function buildPurposeSchema ({ systemOptions, audienceOptions }) {
       .required()
       .max(MAX_GOAL_LENGTH)
       .messages({
-        'any.required': GOAL_REQUIRED_MESSAGE,
-        'string.empty': GOAL_REQUIRED_MESSAGE,
-        'string.max': GOAL_MAX_MESSAGE
+        'any.required': PURPOSE_MESSAGES.goalRequired,
+        'string.empty': PURPOSE_MESSAGES.goalRequired,
+        'string.max': PURPOSE_MESSAGES.goalTooLong
       }),
     requirements: Joi.string()
       .trim()
       .required()
       .messages({
-        'any.required': REQUIREMENTS_REQUIRED_MESSAGE,
-        'string.empty': REQUIREMENTS_REQUIRED_MESSAGE
+        'any.required': PURPOSE_MESSAGES.requirementsRequired,
+        'string.empty': PURPOSE_MESSAGES.requirementsRequired
       }),
-    systems: _requiredSelection(systemOptions, SYSTEMS_REQUIRED_MESSAGE, 'system'),
-    audience: _requiredSelection(audienceOptions, AUDIENCE_REQUIRED_MESSAGE, 'audience')
+    systems: _requiredSelection(systemOptions, PURPOSE_MESSAGES.systemsRequired, 'system'),
+    audience: _requiredSelection(audienceOptions, PURPOSE_MESSAGES.audienceRequired, 'audience')
   })
 }
 
 export {
   MAX_GOAL_LENGTH,
+  PURPOSE_MESSAGES,
   buildPurposeSchema
 }

@@ -21,12 +21,16 @@ async function signIn (signedIn) {
 }
 
 /**
- * The user, with the guides they have pinned.
+ * The user, with the guides and sections they have pinned and their cases.
  *
  * @param {string} userId - The hub's id for them
  * @returns {Promise<{ok: boolean, status: number, data: any}>} - data is
- *   `{id, identity, displayName, createdAt, pinned}`, `pinned` in the user's
- *   order, each `{id, title}`
+ *   `{id, identity, displayName, createdAt, pinned, cases}`, `pinned` in the
+ *   user's order, each `{id, title, sectionId, section, heading}`, the last
+ *   three null for a whole guide; `cases` in the user's order, each
+ *   `{key, type, ref, guides}`, each guide `{id, title, bookmarks}` with its
+ *   bookmarked sections in the guide's order, each
+ *   `{sectionId, section, heading, position}`
  * @throws {GuidanceApiError} - When response is not ok
  */
 async function getUser (userId) {
@@ -34,10 +38,11 @@ async function getUser (userId) {
 }
 
 /**
- * Change the user's pinned guides by a JSON Patch on their ordered ids.
+ * Change the user's pins by a JSON Patch on the ordered list of them, each
+ * `{guideId, sectionId, section, heading}`, a whole guide with no section.
  *
  * @param {string} userId
- * @param {Array<{op: string, path: string, value?: string, from?: string}>} operations
+ * @param {Array<{op: string, path: string, value?: any, from?: string}>} operations
  * @returns {Promise<{ok: boolean, status: number, data: any}>} - 204; not ok
  *   with 409 when a `test` failed (the pins changed since the page showed
  *   them) or 422 when the patch cannot apply (a guide pinned already)
@@ -45,6 +50,28 @@ async function getUser (userId) {
  */
 async function patchPins (userId, operations) {
   return guidanceApiClient.request(`${_userPath(userId)}/pins`, {
+    method: 'PATCH',
+    body: operations,
+    headers: { 'Content-Type': 'application/json-patch+json' },
+    expected: [statusCodes.HTTP_STATUS_CONFLICT, statusCodes.HTTP_STATUS_UNPROCESSABLE_ENTITY],
+    responseType: 'text'
+  })
+}
+
+/**
+ * Change the user's cases, and the sections of guides bookmarked to them, by a
+ * JSON Patch over the whole list of cases.
+ *
+ * @param {string} userId
+ * @param {Array<{op: string, path: string, value?: any, from?: string}>} operations
+ * @returns {Promise<{ok: boolean, status: number, data: any}>} - 204; not ok
+ *   with 409 when a `test` failed (the cases changed since the page showed
+ *   them), or 422 when the patch no longer fits them (another page bookmarked
+ *   the same section meanwhile)
+ * @throws {GuidanceApiError} - When response is not ok, and not a 409 or 422
+ */
+async function patchCases (userId, operations) {
+  return guidanceApiClient.request(`${_userPath(userId)}/cases`, {
     method: 'PATCH',
     body: operations,
     headers: { 'Content-Type': 'application/json-patch+json' },
@@ -99,6 +126,23 @@ async function getRecentlyOpened (userId, filters = {}) {
 }
 
 /**
+ * The guides bookmarked to the user's cases, each once, in the order of the
+ * cases, that the filters let through; or those of one case alone.
+ *
+ * @param {string} userId
+ * @param {{audience?: string[], system?: string[], scheme?: string[], noScheme?: boolean}} [filters]
+ * @param {string} [caseKey] - The one case's key
+ * @returns {Promise<{ok: boolean, status: number, data: any}>} - data is
+ *   `{items, counts}`, each item a guide as `GET /guides` lists it
+ * @throws {GuidanceApiError} - When response is not ok
+ */
+async function getBookmarkedGuides (userId, filters = {}, caseKey = undefined) {
+  const query = { ..._filterQuery(filters), ...(caseKey && { case: caseKey }) }
+
+  return guidanceApiClient.request(`${_userPath(userId)}/bookmarked-guides`, { query })
+}
+
+/**
  * @private
  * @param {{audience?: string[], system?: string[], scheme?: string[], noScheme?: boolean}} filters
  * @returns {Object} The hub's filters as the API's lists of a user's guides
@@ -123,9 +167,11 @@ function _userPath (userId) {
 }
 
 export {
+  getBookmarkedGuides,
   getPins,
   getRecentlyOpened,
   getUser,
+  patchCases,
   patchPins,
   recordOpened,
   signIn

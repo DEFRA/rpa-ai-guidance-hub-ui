@@ -1,13 +1,13 @@
 import { constants as statusCodes } from 'node:http2'
 
+import { within } from '@testing-library/dom'
 import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { guidePageResponse, schemesResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
-
-const SIDE_NAVIGATION = 'app-side-nav'
+import { pageOf, sideNavOf } from '../../helpers/page.js'
 
 describe('Access control (Hub.Viewer)', () => {
   let server
@@ -65,14 +65,14 @@ describe('Access control (Hub.Viewer)', () => {
 
       const { statusCode, payload } = await server.inject({ method: 'GET', url: '/access-denied', headers: { cookie } })
 
+      const page = pageOf(payload)
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FORBIDDEN)
-      expect(payload).toContain('<h1 class="govuk-heading-l">You do not have access to the guidance hub</h1>')
-      expect(payload).toContain('You are signed in as dev@example.com')
-      expect(payload).toContain('not part of the pilot group')
-      expect(payload).toContain('Only people taking part in the pilot can use the hub for now.')
-      expect(payload).toContain(`href="mailto:${config.get('accessRequestEmail')}"`)
-      expect(payload).toContain('href="/logout"')
-      expect(payload).not.toContain(SIDE_NAVIGATION)
+      expect(page.getByRole('heading', { level: 1, name: 'You do not have access to the guidance hub' })).toBeInTheDocument()
+      expect(page.getByText('You are signed in as dev@example.com, but you are not part of the pilot group.')).toBeInTheDocument()
+      expect(page.getByText('Only people taking part in the pilot can use the hub for now.')).toBeInTheDocument()
+      expect(page.getByRole('link', { name: config.get('accessRequestEmail') })).toHaveAttribute('href', `mailto:${config.get('accessRequestEmail')}`)
+      expect(page.getByRole('link', { name: 'sign out' })).toHaveAttribute('href', '/logout')
+      expect(within(page.document.body).queryByRole('navigation', { name: 'Guidance hub' })).not.toBeInTheDocument()
     })
 
     test('can still sign out', async () => {
@@ -152,7 +152,7 @@ describe('Access control (Hub.Viewer)', () => {
 
       const { payload } = await openServer.inject({ method: 'GET', url: '/hub', headers: { cookie } })
 
-      expect(payload).toContain('Upload guidance')
+      expect(sideNavOf(pageOf(payload)).getByRole('link', { name: 'Upload guidance' })).toHaveAttribute('href', '/create-guidance/upload-guide')
     })
 
     test('a user without Hub.Viewer can use the hub', async () => {

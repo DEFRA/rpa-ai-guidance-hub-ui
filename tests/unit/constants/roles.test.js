@@ -15,6 +15,6 @@ describe('roles', () => {
   })
 
   test('roleDisplayNames names each role as the hub shows it, in its order', () => {
-    expect(roleDisplayNames(['Hub.Admin', 'Hub.Editor', 'Hub.Viewer'])).toEqual(['Viewer', 'Designer', 'Administrator'])
+    expect(roleDisplayNames(['Hub.Admin', 'Hub.Editor', 'Hub.Viewer'])).toEqual(['Viewer', 'Maintainer', 'Administrator'])
   })
 })

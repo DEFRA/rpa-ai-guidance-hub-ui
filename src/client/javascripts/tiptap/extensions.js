@@ -22,8 +22,32 @@ import { Text } from '@tiptap/extension-text'
 import { Underline } from '@tiptap/extension-underline'
 import { Markdown } from '@tiptap/markdown'
 
+import { NEW_TAB_TEXT, opensInNewTab } from '../../../constants/new-tab-links.js'
 import { ClassColor, MarkdownTextStyle } from './coloured-text.js'
 import { FaithfulTable } from './tables.js'
+
+/**
+ * The link mark: one out of the hub opens in a new tab and says so, as the
+ * server-drawn guide's do. The words are drawn with the link, since the
+ * viewer owns its DOM; the link's text goes in a span of its own, because
+ * ProseMirror's content hole must be the only child of its element.
+ */
+const GuideLink = Link.extend({
+  renderHTML (props) {
+    const [tag, attributes, content] = this.parent(props)
+
+    if (!opensInNewTab(attributes.href)) {
+      return [tag, attributes, content]
+    }
+
+    return [
+      tag,
+      { ...attributes, target: '_blank', rel: 'noopener noreferrer' },
+      ['span', content],
+      ['span', { class: 'govuk-visually-hidden' }, NEW_TAB_TEXT]
+    ]
+  }
+})
 
 /**
  * Configured Tiptap extensions defining the guidance document schema.
@@ -51,10 +75,10 @@ const EXTENSIONS = [
   Strike,
   Underline,
   Code,
-  // The editor opens a link in a new tab by default. A guide's links to
-  // its own sections should stay in the page, so leave the link to the
-  // browser, as the plain anchor it is.
-  Link.configure({ openOnClick: false, HTMLAttributes: { target: null } }),
+  // Tiptap opens every link in a new tab by default. A guide's links within
+  // the hub should stay in the tab, so leave those to the browser, as the
+  // plain anchors they are; GuideLink opens the rest in a new tab.
+  GuideLink.configure({ openOnClick: false, HTMLAttributes: { target: null } }),
   Image.configure({ HTMLAttributes: { loading: 'lazy', decoding: 'async' } }),
   FaithfulTable,
   TableRow,

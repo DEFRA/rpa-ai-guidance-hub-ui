@@ -177,7 +177,7 @@ describe('describeRefusal', () => {
     const { refusal, statusCode } = await refusalFor(['Hub.Viewer'], requireRoles('Hub.Editor'))
 
     expect(statusCode).toBe(403)
-    expect(refusal).toEqual({ redirectTo: ROLE_REQUIRED_PATH, missingRoles: ['Designer'], reason: 'do this' })
+    expect(refusal).toEqual({ redirectTo: ROLE_REQUIRED_PATH, missingRoles: ['Maintainer'], reason: 'do this' })
   })
 
   test('carries the reason the route gives', async () => {
@@ -189,7 +189,7 @@ describe('describeRefusal', () => {
   test('leaves out a missing role the hub does not name', async () => {
     const { refusal } = await refusalFor(['Hub.Viewer'], requireRoles('Hub.Auditor', 'Hub.Editor'))
 
-    expect(refusal.missingRoles).toEqual(['Designer'])
+    expect(refusal.missingRoles).toEqual(['Maintainer'])
   })
 
   test.each([[[]], [['Hub.Editor']]])('redirects a user without Hub.Viewer (roles %j)', async (roles) => {

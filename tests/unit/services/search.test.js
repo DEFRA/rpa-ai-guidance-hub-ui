@@ -177,7 +177,7 @@ describe('#searchGuide', () => {
   })
 
   test('says search is unavailable when no search service is configured', async () => {
-    vi.stubEnv('SEARCH_API_BASE_URL', undefined)
+    vi.stubEnv('SEARCH_API_BASE_URL', '')
     vi.resetModules()
     const unconfigured = await import('../../../src/services/search.js')
 

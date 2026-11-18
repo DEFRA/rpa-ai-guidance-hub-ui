@@ -3,9 +3,11 @@ import nock from 'nock'
 import { createServer } from '../../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../../helpers/login.js'
 import { mergeCookies } from '../../../../helpers/cookies.js'
+import { errorSummaryOf, pageOf, summaryValueOf } from '../../../../helpers/page.js'
 import { config } from '../../../../../../src/config/config.js'
 import { schemesResponse, stagedDocumentResponse } from '../../../../../fixtures/guidance-api.js'
 import { initiateUploadResponse, uploadStatusResponse } from '../../../../../fixtures/cdp-uploader.js'
+import { METADATA_MESSAGES } from '../../../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
@@ -117,9 +119,10 @@ describe('#metadataController Integration', () => {
         headers: { cookie }
       })
 
+      const errors = errorSummaryOf(pageOf(response.payload))
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
-      expect(response.payload).toContain('There is a problem')
-      expect(response.payload).toContain('Enter the guidance title')
+      expect(errors.getByRole('heading', { name: 'There is a problem' })).toBeInTheDocument()
+      expect(errors.getByRole('link', { name: METADATA_MESSAGES.titleRequired })).toBeInTheDocument()
     })
 
     test('POST /create-guidance/upload-guide/metadata normalizes "none" out and redirects when submitted alongside another scheme', async () => {
@@ -157,17 +160,18 @@ describe('#metadataController Integration', () => {
         headers: { cookie }
       })
 
+      const page = pageOf(response.payload)
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(response.payload).toContain('value="Parsed Document Title"')
-      expect(response.payload).toContain('10 May 2026')
-      expect(response.payload).toMatch(/<label class="govuk-label govuk-label--s" for="version-number">\s*Version number\s*<\/label>/)
-      expect(response.payload).toMatch(/<input[^>]*id="version-number"[^>]*name="versionNumber"[^>]*value=""/)
-      expect(response.payload).not.toContain('2.0')
+      expect(page.getByLabelText('Guidance title')).toHaveValue('Parsed Document Title')
+      expect(summaryValueOf(page, 'Last modified date')).toHaveTextContent('10 May 2026')
+      expect(page.getByLabelText('Version number')).toHaveAttribute('name', 'versionNumber')
+      expect(page.getByLabelText('Version number')).not.toHaveValue()
+      expect(page.document.querySelector('main')).not.toHaveTextContent('2.0')
     })
 
     test.each([
-      ['', 'Enter the version number'],
-      ['1', 'Enter the version number as 2 whole numbers with a full stop between them, for example 1.0']
+      ['', METADATA_MESSAGES.versionNumberRequired],
+      ['1', METADATA_MESSAGES.versionNumberFormat]
     ])('POST /create-guidance/upload-guide/metadata re-renders 400 for the version number %j, keeping what was entered', async (versionNumber, message) => {
       const cookie = await loginAsDevUser(server)
 
@@ -182,10 +186,12 @@ describe('#metadataController Integration', () => {
         headers: { cookie }
       })
 
+      const page = pageOf(response.payload)
+      const field = page.getByLabelText('Version number')
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
-      expect(response.payload).toContain(`<li><a href="#version-number">${message}</a></li>`)
-      expect(response.payload).toContain(`<span class="govuk-visually-hidden">Error:</span> ${message}`)
-      expect(response.payload).toMatch(new RegExp(`id="version-number"[^>]*value="${versionNumber}"`))
+      expect(errorSummaryOf(page).getByRole('link', { name: message })).toHaveAttribute('href', '#version-number')
+      expect(field).toHaveAccessibleDescription(`For example, 1.0 Error: ${message}`)
+      expect(field).toHaveAttribute('value', versionNumber)
     })
 
     test('GET /create-guidance/upload-guide/metadata shows the scheme year, 2026, chosen and fixed', async () => {
@@ -196,8 +202,12 @@ describe('#metadataController Integration', () => {
 
       const { payload } = await server.inject({ method: 'GET', url: '/create-guidance/upload-guide/metadata', headers: { cookie } })
 
-      expect(payload).toMatch(/<legend class="govuk-fieldset__legend govuk-fieldset__legend--s">\s*Scheme year\s*<\/legend>/)
-      expect(payload).toMatch(/<input class="govuk-radios__input" id="scheme-year" name="schemeYear" type="radio" value="2026" checked disabled>/)
+      const page = pageOf(payload)
+      const year = page.getByRole('radio', { name: '2026' })
+      expect(page.getByRole('group', { name: 'Scheme year' })).toContainElement(year)
+      expect(year).toHaveAttribute('name', 'schemeYear')
+      expect(year).toBeChecked()
+      expect(year).toBeDisabled()
     })
   })
 

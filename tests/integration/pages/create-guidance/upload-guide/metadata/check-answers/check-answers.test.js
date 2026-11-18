@@ -1,8 +1,10 @@
 import { constants as statusCodes } from 'node:http2'
+import { within } from '@testing-library/dom'
 import nock from 'nock'
 import { createServer } from '../../../../../../../src/server/server.js'
 import { loginAsDevUser } from '../../../../../helpers/login.js'
 import { mergeCookies } from '../../../../../helpers/cookies.js'
+import { errorSummaryOf, pageOf, summaryValueOf } from '../../../../../helpers/page.js'
 import {
   completeAllMetadata,
   expectFreshUploadForm,
@@ -18,6 +20,8 @@ import {
   stagedDocumentResponse,
   systemsResponse
 } from '../../../../../../fixtures/guidance-api.js'
+import { RESULTS } from '../../../../../../../src/services/guides.js'
+import { CONVERSION_MESSAGES, METADATA_MESSAGES, REFUSAL_MESSAGES } from '../../../../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const CHECK_ANSWERS_URL = '/create-guidance/upload-guide/metadata/check-answers'
@@ -97,25 +101,22 @@ describe('#checkAnswersController Integration', () => {
         headers: { cookie }
       })
 
+      const page = pageOf(response.payload)
+      const cardTitled = (title) => within(page.getByRole('heading', { name: title }).closest('.govuk-summary-card'))
+      const details = cardTitled('The guide\'s details')
+      const purpose = cardTitled('Owner and purpose')
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(response.payload).toContain('The guide&#39;s details')
-      expect(response.payload).toContain('Owner and purpose')
-      expect(response.payload).not.toContain('Who it&#39;s for and system access')
-      expect(response.payload).toContain('Complete Guide Title')
-      expect(response.payload).toMatch(/Version number\s*<\/dt>\s*<dd class="govuk-summary-list__value">\s*1\.0\s*</)
-      expect(response.payload).not.toContain('1.2')
-      expect(response.payload).toContain('designer@example.com')
-      expect(response.payload).toContain('Clear guidance purpose')
-      expect(response.payload).toContain('Required knowledge and training')
-      expect(response.payload).toContain('Standard training required')
-      expect(response.payload).toContain('Who is this guidance for?')
-      expect(response.payload).toContain('Processor')
-      expect(response.payload).toContain(
-        'href="/create-guidance/upload-guide/metadata?from=check"'
-      )
-      expect(response.payload).toContain(
-        'href="/create-guidance/upload-guide/metadata/purpose?from=check"'
-      )
+      expect(page.queryByRole('heading', { name: 'Who it\'s for and system access' })).not.toBeInTheDocument()
+      expect(summaryValueOf(details, 'Guidance title')).toHaveTextContent('Complete Guide Title')
+      // The version number the user gave, not the document's own.
+      expect(summaryValueOf(details, 'Version number')).toHaveTextContent(/^1\.0$/)
+      expect(page.document.querySelector('main')).not.toHaveTextContent('1.2')
+      expect(summaryValueOf(purpose, 'Owner email')).toHaveTextContent('designer@example.com')
+      expect(summaryValueOf(purpose, 'Purpose of guidance')).toHaveTextContent('Clear guidance purpose')
+      expect(summaryValueOf(purpose, 'Required knowledge and training')).toHaveTextContent('Standard training required')
+      expect(summaryValueOf(purpose, 'Who is this guidance for?')).toHaveTextContent('Processor')
+      expect(details.getByRole('link', { name: /^Change/ })).toHaveAttribute('href', '/create-guidance/upload-guide/metadata?from=check')
+      expect(purpose.getByRole('link', { name: /^Change/ })).toHaveAttribute('href', '/create-guidance/upload-guide/metadata/purpose?from=check')
     })
 
     test('Change action returns to check-answers when continuing from metadata screen', async () => {
@@ -134,9 +135,7 @@ describe('#checkAnswersController Integration', () => {
       })
 
       expect(getChangeResponse.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(getChangeResponse.payload).toContain(
-        'action="/create-guidance/upload-guide/metadata?from=check"'
-      )
+      expect(pageOf(getChangeResponse.payload).getByLabelText('Guidance title').form).toHaveAttribute('action', '/create-guidance/upload-guide/metadata?from=check')
 
       nock(GUIDANCE_API_BASE_URL)
         .get('/reference/schemes')
@@ -200,6 +199,101 @@ describe('#checkAnswersController Integration', () => {
       await expectFreshUploadForm(server, mergeCookies(convertedCookie, converted.headers['set-cookie']))
     })
 
+    describe('Saving the converted document in the background', () => {
+      const CONVERTING_URL = '/create-guidance/upload-guide/converting'
+
+      function saving (fields) {
+        return stagedDocumentResponse({
+          parsingStatus: 'complete',
+          documentId: 'document-1',
+          savingStatus: 'in_progress',
+          saveStepsCompleted: 0,
+          saveStepsTotal: null,
+          ...fields
+        })
+      }
+
+      async function submit () {
+        const devCookie = await loginAsDevUser(server)
+        const cookie = await completeAllMetadata(server, devCookie)
+
+        mockReferenceData()
+        nock(GUIDANCE_API_BASE_URL)
+          .post('/guides')
+          .reply(statusCodes.HTTP_STATUS_ACCEPTED, saving({}), { location: '/guides/staging/file-1' })
+
+        const response = await server.inject({ method: 'POST', url: CHECK_ANSWERS_URL, payload: {}, headers: { cookie } })
+
+        return { response, cookie: mergeCookies(cookie, response.headers['set-cookie']) }
+      }
+
+      async function converting (cookie, stagedDocument) {
+        nock(GUIDANCE_API_BASE_URL)
+          .get('/guides/staging/file-1')
+          .reply(statusCodes.HTTP_STATUS_OK, stagedDocument)
+
+        return server.inject({ method: 'GET', url: CONVERTING_URL, headers: { cookie } })
+      }
+
+      test('when the API accepts the document, the service shows the converting page', async () => {
+        const { response } = await submit()
+
+        expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+        expect(response.headers.location).toBe(CONVERTING_URL)
+      })
+
+      test('the converting page shows a progress bar of the parts saved, in the style of the existing progress bar', async () => {
+        const { cookie } = await submit()
+
+        const page = await converting(cookie, saving({ saveStepsCompleted: 37, saveStepsTotal: 74 }))
+
+        const shown = pageOf(page.result)
+        const progress = shown.getByRole('progressbar', { name: 'Saving the document: 37 of 74 parts saved' })
+        expect(page.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+        expect(progress).toHaveAttribute('aria-valuenow', '50')
+        expect(progress.parentElement).toHaveClass('app-progress')
+        expect(shown.document.querySelector('[data-module="app-progress"]')).toHaveAttribute('data-poll-url', '/create-guidance/upload-guide/converting/status')
+      })
+
+      test('the page gets the progress again from the status the browser polls', async () => {
+        const { cookie } = await submit()
+        nock(GUIDANCE_API_BASE_URL)
+          .get('/guides/staging/file-1')
+          .reply(statusCodes.HTTP_STATUS_OK, saving({ saveStepsCompleted: 74, saveStepsTotal: 74 }))
+
+        const status = await server.inject({ method: 'GET', url: `${CONVERTING_URL}/status`, headers: { cookie } })
+
+        expect(JSON.parse(status.payload)).toEqual(expect.objectContaining({ percentage: 100, isComplete: false }))
+      })
+
+      test('when the save is complete, the service shows the Guidance converted page', async () => {
+        const { cookie } = await submit()
+
+        const page = await converting(cookie, saving({ savingStatus: 'complete', saveStepsCompleted: 74, saveStepsTotal: 74 }))
+        expect(page.headers.location).toBe(CONVERTED_URL)
+
+        const confirmation = await server.inject({
+          method: 'GET',
+          url: CONVERTED_URL,
+          headers: { cookie: mergeCookies(cookie, page.headers['set-cookie']) }
+        })
+
+        expect(confirmation.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+        expect(pageOf(confirmation.result).getByText('Complete Guide Title')).toHaveClass('govuk-panel__body')
+      })
+
+      test('when the save fails, the page shows an error that tells the user what to do next', async () => {
+        const { cookie } = await submit()
+
+        const page = await converting(cookie, saving({ savingStatus: 'failed', saveStepsCompleted: 3, saveStepsTotal: 74, saveError: 'refused' }))
+
+        const shown = pageOf(page.result)
+        expect(shown.getByRole('alert')).toHaveTextContent(CONVERSION_MESSAGES.failed)
+        expect(shown.getByRole('alert')).toHaveTextContent(CONVERSION_MESSAGES.failedDetail)
+        expect(shown.document.title).toMatch(/^Error: Converting your document \| /)
+      })
+    })
+
     test('POST redisplays check answers asking for the document again when its upload has expired', async () => {
       const devCookie = await loginAsDevUser(server)
       const cookie = await completeAllMetadata(server, devCookie)
@@ -220,12 +314,12 @@ describe('#checkAnswersController Integration', () => {
       })
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
-      expect(response.payload).toContain('The uploaded document has expired. Start again and upload it again')
+      expect(pageOf(response.payload).getByRole('alert')).toHaveTextContent(REFUSAL_MESSAGES[RESULTS.UPLOAD_EXPIRED])
     })
 
     test.each([
-      ['unfinished', 'in_progress', 'The uploaded document is still being processed. Wait a few seconds, then select Convert document again'],
-      ['failed', 'failed', 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team']
+      ['unfinished', 'in_progress', REFUSAL_MESSAGES[RESULTS.PARSE_PENDING]],
+      ['failed', 'failed', REFUSAL_MESSAGES[RESULTS.PARSE_FAILED]]
     ])('POST redisplays check answers explaining why when the document parse is %s', async (_, parsingStatus, message) => {
       const devCookie = await loginAsDevUser(server)
       const cookie = await completeAllMetadata(server, devCookie)
@@ -247,7 +341,7 @@ describe('#checkAnswersController Integration', () => {
       })
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
-      expect(response.payload).toContain(message)
+      expect(pageOf(response.payload).getByRole('alert')).toHaveTextContent(message)
     })
 
     test('POST waits for a conversion slower than the API client\'s timeout, then starts a new guide', async () => {
@@ -308,11 +402,10 @@ describe('#checkAnswersController Integration', () => {
         headers: { cookie }
       })
 
+      const errors = errorSummaryOf(pageOf(response.payload))
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
-      expect(response.payload).toContain('There is a problem')
-      expect(response.payload).toContain(
-        'Select at least one scheme this guidance relates to'
-      )
+      expect(errors.getByRole('heading', { name: 'There is a problem' })).toBeInTheDocument()
+      expect(errors.getByRole('link', { name: METADATA_MESSAGES.schemeRequired })).toBeInTheDocument()
     })
   })
 

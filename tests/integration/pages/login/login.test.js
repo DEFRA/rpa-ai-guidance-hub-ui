@@ -6,6 +6,7 @@ import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { guidePageResponse, userResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
+import { pageOf, sideNavOf } from '../../helpers/page.js'
 
 describe('#loginController', () => {
   let server
@@ -58,7 +59,7 @@ describe('#loginController', () => {
 
       // Confirms the dev-session profile was actually stored against the
       // session (not just that a cookie was set) - it flows through to the
-      // shared layout's header on the next request.
+      // side navigation on the next request.
       const { statusCode, payload } = await server.inject({
         method: 'GET',
         url: '/hub',
@@ -66,7 +67,7 @@ describe('#loginController', () => {
       })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(payload).toContain('Dev User')
+      expect(sideNavOf(pageOf(payload)).getByText('Dev User')).toHaveClass('app-side-nav__user-name')
     })
 
     test('signs the mock user in to the hub as a user of its own, apart from anyone signing in with Entra', async () => {

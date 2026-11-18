@@ -197,4 +197,36 @@ describe('#config', () => {
       expect(config.get('cdpUploader.browserUrl')).toBe('https://uploader.example')
     })
   })
+
+  describe('#googleTagManager.containerId', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    })
+
+    async function loadConfig () {
+      vi.resetModules()
+
+      return (await import('../../../src/config/config.js')).config
+    }
+
+    test('Should default to no analytics', async () => {
+      const config = await loadConfig()
+
+      expect(config.get('googleTagManager.containerId')).toBeNull()
+    })
+
+    test('Should accept a Tag Manager container ID', async () => {
+      vi.stubEnv('GTM_CONTAINER_ID', 'GTM-ABC123')
+      const config = await loadConfig()
+
+      expect(config.get('googleTagManager.containerId')).toBe('GTM-ABC123')
+    })
+
+    test('Should reject a Google Analytics measurement ID', async () => {
+      vi.stubEnv('GTM_CONTAINER_ID', 'G-ABC123')
+
+      await expect(loadConfig()).rejects.toThrow(/GTM-XXXXXXX/)
+    })
+  })
 })
