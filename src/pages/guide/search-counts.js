@@ -17,14 +17,16 @@
  * @private
  * @param {import('../../services/guide-sections.js').GuideSection[]} sections
  * @returns {Array<string>} The anchor the hub knows each heading by, in the
- *   guide's order: each section's own (an empty one for an introduction),
- *   then those inside it; none for a heading it gives no anchor
+ *   guide's order: each section's own (an empty one for the Introduction,
+ *   which has no heading), then those inside it; none for a heading it gives
+ *   no anchor, such as an underlined one, whose words the search reads in the
+ *   section before it
  */
 function _anchorsInOrder (sections) {
   return sections.flatMap(section => [
-    section.sectionAnchor ?? '',
-    ...section.headingSectionAnchors.filter(anchor => anchor !== null)
-  ])
+    ...(section.slug === null ? [''] : [section.sectionAnchor]),
+    ...section.headingSectionAnchors
+  ].filter(anchor => anchor !== null))
 }
 
 /**
