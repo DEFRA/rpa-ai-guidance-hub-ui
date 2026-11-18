@@ -128,7 +128,8 @@ function titleResult (overrides = {}) {
  * @param {Object} [options]
  * @param {Array<Object>} [options.results] - Defaults to one document
  * @param {number} [options.total] - Defaults to how many results there are
- * @param {number} [options.sectionTotal] - Defaults to the results' sections
+ * @param {number} [options.sectionTotal] - Defaults to the sections of every
+ *   guide in `results` and `titles`, each guide counted once
  * @param {Array<Object>} [options.titles] - The guides whose title the words
  *   cover; defaults to none
  * @param {number} [options.documentTotal] - Defaults to the guides in
@@ -138,13 +139,13 @@ function titleResult (overrides = {}) {
 function documentSearchResponse (options = {}) {
   const results = options.results ?? [documentResult()]
   const titles = options.titles ?? []
-  const every = new Set([...results, ...titles].map((result) => result.documentId))
+  const every = new Map([...results, ...titles].map((result) => [result.documentId, result]))
 
   return {
     queryId: '0f8fad5bd9cb469fa16570867728950e',
     total: options.total ?? results.length,
     documentTotal: options.documentTotal ?? every.size,
-    sectionTotal: options.sectionTotal ?? [...results, ...titles].reduce((sum, result) => sum + result.sectionTotal, 0),
+    sectionTotal: options.sectionTotal ?? [...every.values()].reduce((sum, result) => sum + result.sectionTotal, 0),
     results,
     titles,
     tooManyMatches: false,

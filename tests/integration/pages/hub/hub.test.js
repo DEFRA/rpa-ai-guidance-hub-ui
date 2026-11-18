@@ -251,18 +251,20 @@ describe('#hubController', () => {
     })
 
     test('keeps the words searched for in the box', async () => {
-      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse())
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
 
-      const { search } = await hubAt('/hub?q=claim+rules')
+      const { page, search } = await hubAt('/hub?q=claim+rules')
 
+      expect(page.document.getElementById('search-results')).not.toBeNull()
       expect(search.getByRole('searchbox', { name: 'Search or ask question' })).toHaveValue('claim rules')
     })
 
     test('escapes the words searched for', async () => {
-      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse({ results: [], total: 0 }))
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [], total: 0 }))
 
       const { page, search } = await hubAt('/hub?q=%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E')
 
+      expect(page.document.getElementById('search-results')).not.toBeNull()
       expect(search.getByRole('searchbox', { name: 'Search or ask question' })).toHaveValue('"><script>alert(1)</script>')
       expect(page.document.querySelector('main script')).toBeNull()
     })
@@ -285,9 +287,11 @@ describe('#hubController', () => {
         .query({ q: 'claim rules', group: 'document', sections: '3', limit: '10', offset: '0' })
         .reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
 
-      await mainOf('/hub?q=claim+rules')
+      const { main } = await mainOf('/hub?q=claim+rules')
 
       expect(search.isDone()).toBe(true)
+      expect(main).toContain('id="search-results"')
+      expect(main).toContain('Countryside Stewardship final payments')
     })
 
     test('asks for the page of guides the address asks for', async () => {
@@ -296,9 +300,11 @@ describe('#hubController', () => {
         .query({ q: 'claim', group: 'document', sections: '3', limit: '10', offset: '20' })
         .reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ total: 35 }))
 
-      await mainOf('/hub?q=claim&page=3')
+      const { main } = await mainOf('/hub?q=claim&page=3')
 
       expect(search.isDone()).toBe(true)
+      expect(main).toContain('id="search-results"')
+      expect(main).toContain('Countryside Stewardship final payments')
     })
 
     test('shows each guide found with its sections, linked to them, their words marked, instead of the list and filters', async () => {

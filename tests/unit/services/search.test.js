@@ -26,9 +26,11 @@ describe('#searchGuides', () => {
       .query({ q: 'claim', group: 'document', sections: '3', limit: '10', offset: '20' })
       .reply(200, searchApi.documentSearchResponse())
 
-    await searchGuides({ words: 'claim', page: 3, perPage: 10 })
+    const found = await searchGuides({ words: 'claim', page: 3, perPage: 10 })
 
     expect(scope.isDone()).toBe(true)
+    expect(found.unavailable).toBe(false)
+    expect(found.results.map((guide) => guide.title)).toEqual(['Countryside Stewardship final payments'])
   })
 
   test('gives each guide as a link to it, with its sections as links to them', async () => {
@@ -118,9 +120,11 @@ describe('#searchGuide', () => {
       .query({ q: 'claim', tag: 'g-1', limit: '10', offset: '20' })
       .reply(200, searchApi.searchResponse())
 
-    await searchGuide({ words: 'claim', guideId: 'g-1', page: 3, perPage: 10 })
+    const found = await searchGuide({ words: 'claim', guideId: 'g-1', page: 3, perPage: 10 })
 
     expect(scope.isDone()).toBe(true)
+    expect(found.unavailable).toBe(false)
+    expect(found.results.map((result) => result.title)).toEqual(['4.2 Claim rules'])
   })
 
   test('gives each section as a link to it in its guide, numbered where it has a number', async () => {

@@ -36,11 +36,13 @@ describe('SearchApiClient', () => {
   })
 
   test('request() uses SEARCH_API_BASE_URL when given no base URL', async () => {
-    const scope = nock(process.env.SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(200, searchApi.searchResponse())
+    const body = searchApi.searchResponse()
+    const scope = nock(process.env.SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(200, body)
 
-    await new SearchApiClient().request('/v1/search', { query: { q: 'claim' } })
+    const result = await new SearchApiClient().request('/v1/search', { query: { q: 'claim' } })
 
     expect(scope.isDone()).toBe(true)
+    expect(result.data).toEqual(body)
   })
 
   test('request() throws SearchApiError on unexpected non-ok status', async () => {
