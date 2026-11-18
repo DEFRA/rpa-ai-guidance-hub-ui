@@ -115,9 +115,11 @@ describe('the find shortcut', () => {
     expect(event).toHaveProperty('defaultPrevented', true)
   })
 
-  test('leaves Ctrl+F pressed in the search box to the browser\'s own find', () => {
+  test('leaves a second Ctrl+F, pressed with the search box\'s words selected, to the browser\'s own find', () => {
     const input = document.querySelector('input[name="q"]')
-    input.focus()
+    document.querySelector('a').focus()
+
+    pressFind(document.activeElement)
 
     expect(pressFind(input)).toHaveProperty('defaultPrevented', false)
   })
@@ -308,6 +310,18 @@ describe('stepping between the matches', () => {
 
       expect(placed.map(range => range.toString())).toEqual(['Pay', 'Pay', 'Pay', 'Pay'])
     })
+  })
+
+  test('brings Ctrl+F to the search box after a contents count is clicked, though the focus is already there', () => {
+    searchAt(placedPage())
+    const input = document.querySelector('input[name="q"]')
+
+    document.querySelector('.app-guide-contents__count').click()
+    const event = new window.KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true, cancelable: true })
+    document.activeElement.dispatchEvent(event)
+
+    expect(input.value.slice(input.selectionStart, input.selectionEnd)).toBe('pay')
+    expect(event).toHaveProperty('defaultPrevented', true)
   })
 
   test('goes on to the next match with Enter after a contents count is clicked', () => {

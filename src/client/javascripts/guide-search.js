@@ -355,8 +355,9 @@ class _Search {
 
 /**
  * @private
- * Ctrl+F (Cmd+F) comes to the search box, its shortcut shown in it; pressed
- * there, it is the browser's own find.
+ * Ctrl+F (Cmd+F) comes to the search box and selects its words, its shortcut
+ * shown in it; pressed again, with the words still selected, it is the
+ * browser's own find.
  *
  * @param {HTMLFormElement} form
  */
@@ -373,12 +374,22 @@ function _bringFindHere (form) {
   input.addEventListener('input', () => { kbd.hidden = Boolean(input.value) })
 
   document.addEventListener('keydown', (event) => {
-    if (isFindShortcut(event) && document.activeElement !== input) {
+    if (isFindShortcut(event) && !_isSelected(input)) {
       event.preventDefault()
       input.focus()
       input.select()
     }
   })
+}
+
+/**
+ * @private
+ * @param {HTMLInputElement} input
+ * @returns {boolean} Whether it has the focus with all its words selected, as
+ *   Ctrl+F leaves it
+ */
+function _isSelected (input) {
+  return document.activeElement === input && input.selectionStart === 0 && input.selectionEnd === input.value.length
 }
 
 /**
