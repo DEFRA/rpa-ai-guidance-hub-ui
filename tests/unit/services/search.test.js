@@ -202,15 +202,4 @@ describe('#searchGuide', () => {
     expect(searchSectionsApi.searchSections).toHaveBeenCalled()
     expect(found.unavailable).toBe(true)
   })
-
-  test('says search is unavailable when no search service is configured', async () => {
-    vi.stubEnv('SEARCH_API_BASE_URL', '')
-    vi.resetModules()
-    const unconfigured = await import('../../../src/services/search.js')
-
-    const found = await unconfigured.searchGuide({ guideId: 'g-1', words: 'claim', page: 1, perPage: 10 })
-
-    expect(found.unavailable).toBe(true)
-    vi.unstubAllEnvs()
-  })
 })

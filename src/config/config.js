@@ -286,7 +286,7 @@ const config = convict({
       env: 'SEARCH_API_AUDIENCE'
     },
     baseUrl: {
-      doc: 'Search API base URL, for searching the guides. Optional: without it the hub still starts and lists every guide, saying search is not available',
+      doc: 'Search API base URL, for searching the guides. Required: the hub will not start without it. When the search service is unreachable or failing, the hub still lists every guide, saying search is not available',
       format: String,
       nullable: false,
       default: null,
