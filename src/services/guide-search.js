@@ -21,7 +21,16 @@ async function matchesInGuide (guideId, words) {
   try {
     const res = await guidesApi.searchGuide(guideId, words)
 
-    return res.ok ? res.data : null
+    if (!res.ok) {
+      logger.warn(
+        { event: { type: 'guide_search_unavailable', outcome: 'failure' } },
+        `Could not search guide ${guideId}: the API answered ${res.status}`
+      )
+
+      return null
+    }
+
+    return res.data
   } catch (err) {
     logger.warn(
       buildErrorLog(err, { type: 'guide_search_unavailable' }),
