@@ -88,6 +88,12 @@ describe('Search in a guide', () => {
     expect(page.queryByRole('status')).not.toBeInTheDocument()
   })
 
+  test('names its search area, so a screen reader tells it from the hub\'s search in the side navigation', async () => {
+    const page = await guidePage()
+
+    expect(page.getByRole('search', { name: 'Search this guide' })).toContainElement(searchBoxOf(page))
+  })
+
   test('has a search box with an ID no heading of the guide can have, so a heading titled "Guide search" keeps its own', async () => {
     const page = await guidePage({ markdown: '# Test guide\n\n## Introduction\n\n### Guide search\n\nText.' })
     const heading = page.getByRole('heading', { name: 'Guide search' })
