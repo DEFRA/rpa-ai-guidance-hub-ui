@@ -54,7 +54,7 @@ describe('#searchGuides', () => {
         sectionTotal: 25,
         sections: [{
           title: '4.2 Claim rules',
-          href: '/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7#claim-rules',
+          href: '/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7?section=claim-rules#claim-rules',
           documentTitle: 'Countryside Stewardship final payments',
           matches: 2,
           snippet: [
@@ -138,7 +138,7 @@ describe('#searchGuide', () => {
       tooManyMatches: false,
       results: [{
         title: '4.2 Claim rules',
-        href: '/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7#claim-rules',
+        href: '/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7?section=claim-rules#claim-rules',
         documentTitle: 'Countryside Stewardship final payments',
         matches: 2,
         snippet: [
@@ -166,7 +166,7 @@ describe('#searchGuide', () => {
 
     const { results } = await searchGuide({ guideId: 'g-1', words: 'claim', page: 1, perPage: 10 })
 
-    expect(results[0].href).toBe('/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7#claim-rules')
+    expect(results[0].href).toBe('/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7?section=claim-rules#claim-rules')
   })
 
   test('says when there are too many matches to give', async () => {

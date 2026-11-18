@@ -1,5 +1,6 @@
 import * as searchApi from '../infra/search-api/search.js'
 import { createLogger } from '../infra/logging/logger.js'
+import { guideSectionHref } from '../pages/common/guide-section-href.js'
 
 const logger = createLogger()
 
@@ -83,18 +84,19 @@ function _guideHref (documentId) {
 }
 
 /**
+ * The section in its guide: named as `section` too, as pins and the side
+ * navigation link to one, so a stepper guide opens on the page that has it.
+ *
  * @private
  * @param {{documentId: string, anchor: string}} section
  * @returns {string}
  */
 function _href (section) {
-  const guide = _guideHref(section.documentId)
-
   if (!section.anchor) {
-    return guide
+    return _guideHref(section.documentId)
   }
 
-  return `${guide}#${encodeURIComponent(section.anchor)}`
+  return guideSectionHref(section.documentId, section.anchor)
 }
 
 /**
