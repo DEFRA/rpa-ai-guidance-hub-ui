@@ -335,6 +335,7 @@ describe('HubViewModel search', () => {
 
     expect(viewModel.search).toBeNull()
     expect(viewModel.searchUnavailable).toBe(false)
+    expect(viewModel.wordsTooLong).toBe(false)
   })
 
   describe('across every guide', () => {
@@ -575,5 +576,11 @@ describe('HubViewModel search', () => {
     const viewModel = new HubViewModel({ searchUnavailable: true })
 
     expect(viewModel.searchUnavailable).toBe(true)
+  })
+
+  test('says when the words are too long to search for', () => {
+    const viewModel = new HubViewModel({ wordsTooLong: true })
+
+    expect(viewModel.wordsTooLong).toBe(true)
   })
 })

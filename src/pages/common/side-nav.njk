@@ -98,7 +98,7 @@
   <form class="app-side-nav__search" method="get" action="/hub" role="search">
     <label class="govuk-visually-hidden" for="side-nav-search">Search or ask question</label>
     <span class="app-side-nav__search-icon">{{ icon("search") }}</span>
-    <input class="app-side-nav__search-input" id="side-nav-search" name="q" type="search" autocomplete="off" placeholder="Search or ask question">
+    <input class="app-side-nav__search-input" id="side-nav-search" name="q" type="search" maxlength="{{ searchWordsMaxLength }}" autocomplete="off" placeholder="Search or ask question">
     <button type="submit" class="govuk-visually-hidden-focusable">Search</button>
   </form>
   {% endif %}

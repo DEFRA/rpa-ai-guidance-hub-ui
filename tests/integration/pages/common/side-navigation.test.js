@@ -627,6 +627,7 @@ describe('Side navigation', () => {
       expect(search).toHaveAttribute('action', '/hub')
       expect(search).toHaveAttribute('method', 'get')
       expect(within(search).getByRole('searchbox', { name: 'Search or ask question' })).toHaveAttribute('name', 'q')
+      expect(within(search).getByRole('searchbox', { name: 'Search or ask question' })).toHaveAttribute('maxlength', '500')
     })
 
     test('leaves the search to the hub\'s own search box on the hub', async () => {

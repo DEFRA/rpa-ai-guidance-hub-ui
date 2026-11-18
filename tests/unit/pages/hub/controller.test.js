@@ -61,7 +61,8 @@ describe('#hubController', () => {
         filters: expect.objectContaining({ action: '/hub' }),
         words: '',
         search: null,
-        searchUnavailable: false
+        searchUnavailable: false,
+        wordsTooLong: false
       })
       expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
     })
@@ -245,6 +246,32 @@ describe('#hubController', () => {
         expect(viewModel.filters.kept).toEqual({ q: 'claim rules' })
         expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
       })
+    })
+
+    test('Should list every guide, saying the words are too long, rather than searching for more than the search service takes', async () => {
+      const words = 'a'.repeat(501)
+
+      vi.spyOn(searchService, 'searchGuides')
+
+      await getHubPage({ query: { q: words } }, h)
+
+      const [, viewModel] = h.view.mock.calls[0]
+      expect(searchService.searchGuides).not.toHaveBeenCalled()
+      expect(viewModel.wordsTooLong).toBe(true)
+      expect(viewModel.searchUnavailable).toBe(false)
+      expect(viewModel.search).toBeNull()
+      expect(viewModel.words).toBe(words)
+      expect(code).toHaveBeenCalledWith(statusCodes.HTTP_STATUS_OK)
+    })
+
+    test('Should search for words of the most characters the search service takes', async () => {
+      vi.spyOn(searchService, 'searchGuides').mockResolvedValue({ unavailable: false, total: 0, documentTotal: 0, sectionTotal: 0, tooManyMatches: false, results: [], titles: [] })
+
+      await getHubPage({ query: { q: 'a'.repeat(500) } }, h)
+
+      const [, viewModel] = h.view.mock.calls[0]
+      expect(searchService.searchGuides).toHaveBeenCalled()
+      expect(viewModel.wordsTooLong).toBe(false)
     })
 
     test('Should not search when no words are searched for', async () => {

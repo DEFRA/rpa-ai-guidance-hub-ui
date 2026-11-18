@@ -433,6 +433,8 @@ class HubViewModel {
    *   `guide`, that guide's sections
    * @param {boolean} [data.searchUnavailable=false] - Searching failed, so the
    *   list is shown with a warning instead
+   * @param {boolean} [data.wordsTooLong=false] - The words are too long to
+   *   search for, so the list is shown with an error instead
    * @param {{key: string, text: string}|null} [data.narrowedTo=null] - The case
    *   the bookmarked guides are narrowed to, which their heading names
    */
@@ -448,6 +450,7 @@ class HubViewModel {
       words = '',
       search = null,
       searchUnavailable = false,
+      wordsTooLong = false,
       narrowedTo = null
     } = data
 
@@ -487,6 +490,7 @@ class HubViewModel {
     this.words = words
     this.search = search && _buildSearch(search)
     this.searchUnavailable = searchUnavailable
+    this.wordsTooLong = wordsTooLong
   }
 }
 

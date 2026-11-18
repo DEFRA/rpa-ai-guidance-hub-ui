@@ -245,6 +245,7 @@ describe('#hubController', () => {
       expect(form).toHaveAttribute('action', '/hub')
       expect(form).toHaveAttribute('method', 'get')
       expect(box).toHaveAttribute('name', 'q')
+      expect(box).toHaveAttribute('maxlength', '500')
       expect(box).toHaveAttribute('placeholder', 'Search or ask a question about all guidance')
       expect(search.getByRole('button', { name: 'Search' })).toHaveAttribute('type', 'submit')
       expect(page.document.body).not.toHaveTextContent('Search guidance')
@@ -557,6 +558,20 @@ describe('#hubController', () => {
 
       expect(payload).not.toContain('govuk-error-summary')
       expect(payload).toMatch(/<title>\s*RPA Guidance Hub/)
+    })
+
+    test('lists every guide, saying the words must be shorter, rather than searching for more than the search service takes', async () => {
+      const search = nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
+      const cookie = await loginAsDevUser(server)
+
+      const { statusCode, payload } = await server.inject({ method: 'GET', url: `/hub?q=${'a'.repeat(501)}`, headers: { cookie } })
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(search.isDone()).toBe(false)
+      expect(payload).toMatch(/<title>\s*Error: RPA Guidance Hub/)
+      expect(payload).toMatch(/<a href="#hub-search">\s*Search must be 500 characters or fewer\s*<\/a>/)
+      expect(payload).not.toContain('Search is not available')
+      expect(payload).toContain('id="guide-results"')
     })
 
     test('does not search without words', async () => {

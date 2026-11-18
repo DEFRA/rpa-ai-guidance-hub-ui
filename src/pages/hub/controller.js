@@ -7,7 +7,7 @@ import * as searchService from '../../services/search.js'
 import * as usersService from '../../services/users.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { guideSectionHref } from '../common/guide-section-href.js'
-import { filterPanel, filtersFrom, sortFrom, wordsFrom } from './filters.js'
+import { filterPanel, filtersFrom, sortFrom, WORDS_MAX_LENGTH, wordsFrom } from './filters.js'
 import { allTitlesFrom, guideFrom, pageFrom, RESULTS_PER_PAGE } from './search.js'
 import { HubViewModel } from './view-models.js'
 
@@ -131,6 +131,8 @@ async function _refusingUnknownFilters (listing) {
  * @param {string} options.words - Searched for
  * @param {boolean} options.searchUnavailable - Searching for them failed,
  *   which the list says above itself
+ * @param {boolean} [options.wordsTooLong=false] - They are too long to search
+ *   for, which the list says above itself instead
  */
 async function _guideListPage (request, h, options) {
   const filters = filtersFrom(request.query)
@@ -145,7 +147,8 @@ async function _guideListPage (request, h, options) {
     allGuides: _pinnedFirst(guides.map((guide) => _toGuideItem(guide, pinPositions))),
     filters: filterPanel({ path: '/hub', filters, counts, sort, total: guides.length, withSort: true, words: options.words }),
     words: options.words,
-    searchUnavailable: options.searchUnavailable
+    searchUnavailable: options.searchUnavailable,
+    wordsTooLong: options.wordsTooLong ?? false
   })
 
   return h
@@ -193,6 +196,10 @@ async function getHubPage (request, h) {
 
   if (!words) {
     return _guideListPage(request, h, { words, searchUnavailable: false })
+  }
+
+  if (words.length > WORDS_MAX_LENGTH) {
+    return _guideListPage(request, h, { words, searchUnavailable: false, wordsTooLong: true })
   }
 
   const page = pageFrom(request.query)
