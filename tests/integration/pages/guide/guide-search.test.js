@@ -88,6 +88,12 @@ describe('Search in a guide', () => {
     expect(page.queryByRole('status')).not.toBeInTheDocument()
   })
 
+  test('names its search area, so a screen reader tells it from the hub\'s search in the side navigation', async () => {
+    const page = await guidePage()
+
+    expect(page.getByRole('search', { name: 'Search this guide' })).toContainElement(searchBoxOf(page))
+  })
+
   test('has a search box with an ID no heading of the guide can have, so a heading titled "Guide search" keeps its own', async () => {
     const page = await guidePage({ markdown: '# Test guide\n\n## Introduction\n\n### Guide search\n\nText.' })
     const heading = page.getByRole('heading', { name: 'Guide search' })
@@ -103,6 +109,13 @@ describe('Search in a guide', () => {
 
     expect(page.getByRole('status')).toHaveTextContent('5 matches in 2 sections')
     expect(searchBoxOf(page)).toHaveValue('pay')
+  })
+
+  test('starts the page\'s title with what the search found, as a screen reader reads the title first when the page loads', async () => {
+    const searched = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND] })
+    const unsearched = await guidePage()
+
+    expect(searched.document.title).toBe(`5 matches in 2 sections – ${unsearched.document.title}`)
   })
 
   test('shows how many matches are under each contents entry, and none beside an entry with none', async () => {
@@ -142,6 +155,14 @@ describe('Search in a guide', () => {
     const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND] })
 
     expect(page.getByRole('link', { name: 'Clear search' })).toHaveAttribute('href', GUIDE_URL)
+  })
+
+  test('keeps the reader on their page of the stepper when they search, and when they clear the search', async () => {
+    const page = await guidePage({ query: '?section=archive&q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND], format: 'stepper' })
+    const sent = Array.from(searchBoxOf(page).form.elements, field => [field.name, field.value]).filter(([name]) => name)
+
+    expect(sent).toEqual([['section', 'archive'], ['q', 'pay']])
+    expect(page.getByRole('link', { name: 'Clear search' })).toHaveAttribute('href', `${GUIDE_URL}?section=archive`)
   })
 
   test('keeps the words in a link from one page of the stepper to another', async () => {
