@@ -182,25 +182,21 @@ function _pageIds (sections) {
 
 /**
  * @private
- * @param {{title: Array<Object>, sections: Array<{anchor: string|null, matches: Array<Object>}>}} found
+ * @param {{sections: Array<{anchor: string|null, matches: Array<Object>}>}} found
  *   - The search's answer
  * @param {Map<string, string>} pageIds - As `_pageIds` gives them
- * @returns {Array<{anchor: string|null, start: number, end: number, text: string}>}
+ * @returns {Array<{anchor: string, start: number, end: number, text: string}>}
  *   Every match, in order, for the page's script to place, each by the id
- *   its section's heading has on the page: null for the guide's title, empty
- *   for an Introduction
+ *   its section's heading has on the page: empty for an Introduction
  */
 function _handedOver (found, pageIds) {
   const onThePage = anchor => anchor === null ? '' : pageIds.get(anchor)
 
-  return [
-    ...found.title.map(match => ({ anchor: null, ...match })),
-    ...found.sections.flatMap(({ anchor, matches }) => {
-      const id = onThePage(anchor)
+  return found.sections.flatMap(({ anchor, matches }) => {
+    const id = onThePage(anchor)
 
-      return id === undefined ? [] : matches.map(match => ({ anchor: id, ...match }))
-    })
-  ]
+    return id === undefined ? [] : matches.map(match => ({ anchor: id, ...match }))
+  })
 }
 
 /**

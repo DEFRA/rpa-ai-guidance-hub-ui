@@ -186,20 +186,19 @@ function guidePageResponse (overrides = {}) {
 
 /**
  * Body of `GET /guides/{guideId}/search?q=…` on 200: where the words are in the
- * guide's latest version, in its title and in each section that holds them,
- * by the hub's anchor for the section (null for the introduction). Each place
- * is in the section's text as a reader sees it, with the words there.
+ * guide's latest version, in each section that holds them, by the hub's anchor
+ * for the section (null for the introduction). Each place is in the section's
+ * text as a reader sees it, with the words there.
  *
- * Verified against the guidance API's `GuideMatches` schema on 2026-11-17:
- * versionId, title as `Match` items, and sections as `SectionMatches` items.
+ * Verified against the guidance API's `GuideMatches` schema on 2026-11-18:
+ * versionId, and sections as `SectionMatches` items.
  *
  * @param {Object} [overrides]
- * @returns {{versionId: string, title: Array<{start: number, end: number, text: string}>, sections: Array<{anchor: string|null, matches: Array<{start: number, end: number, text: string}>}>}}
+ * @returns {{versionId: string, sections: Array<{anchor: string|null, matches: Array<{start: number, end: number, text: string}>}>}}
  */
 function guideSearchResponse (overrides = {}) {
   return {
     versionId: 'version-1',
-    title: [],
     sections: [{ anchor: 'introduction', matches: [{ start: 13, end: 16, text: 'Pay' }] }],
     ...overrides
   }

@@ -22,10 +22,9 @@ const MARKDOWN = [
   '## Archive', 'Keep it.'
 ].join('\n\n')
 
-// "pay" in the guide's title once, and in three sections: a heading the
+// "pay" in three sections: a heading the
 // contents do not list ("Late payment") is under the one before it.
 const FOUND = guideSearchResponse({
-  title: [{ start: 0, end: 3, text: 'Pay' }],
   sections: [
     { anchor: 'introduction', matches: [{ start: 13, end: 16, text: 'Pay' }] },
     { anchor: 'check-payment', matches: [{ start: 6, end: 9, text: 'pay' }, { start: 14, end: 17, text: 'Pay' }] },
@@ -102,7 +101,7 @@ describe('Search in a guide', () => {
   test('shows how many matches the guide holds, and in how many of its sections, with the words searched for', async () => {
     const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND] })
 
-    expect(page.getByRole('status')).toHaveTextContent('6 matches in 2 sections')
+    expect(page.getByRole('status')).toHaveTextContent('5 matches in 2 sections')
     expect(searchBoxOf(page)).toHaveValue('pay')
   })
 
@@ -116,7 +115,7 @@ describe('Search in a guide', () => {
   })
 
   test('says so when the guide does not hold the words', async () => {
-    const none = guideSearchResponse({ title: [], sections: [] })
+    const none = guideSearchResponse({ sections: [] })
     const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, none] })
 
     expect(page.getByRole('status')).toHaveTextContent('No matches for pay')
@@ -130,10 +129,26 @@ describe('Search in a guide', () => {
     expect(entryOf(page, 'Introduction')).toHaveTextContent(/^Introduction$/)
   })
 
+  test('shows no counts, saying search is not available, when the search was of another version than the one shown', async () => {
+    // A version saved between the page's reads of the guide and of the search.
+    const ofAnother = guideSearchResponse({ ...FOUND, versionId: 'version-2' })
+    const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, ofAnother] })
+
+    expect(page.getByRole('status')).toHaveTextContent('Search is not available')
+    expect(entryOf(page, 'Check payment')).toHaveTextContent(/^Check payment$/)
+  })
+
   test('offers to clear the search, back to the guide without it', async () => {
     const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND] })
 
     expect(page.getByRole('link', { name: 'Clear search' })).toHaveAttribute('href', GUIDE_URL)
+  })
+
+  test('keeps the words in a link from one page of the stepper to another', async () => {
+    const markdown = MARKDOWN.replace('Pay on time.', 'Pay on time, or see [the archive](#archive).')
+    const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND], format: 'stepper', markdown })
+
+    expect(page.getByRole('link', { name: 'the archive' })).toHaveAttribute('href', `${GUIDE_URL}?section=archive&q=pay#archive`)
   })
 
   test('keeps the words in the address of each of the guide\'s pages, in the stepper', async () => {
@@ -148,7 +163,6 @@ describe('Search in a guide', () => {
     // section, so its text is in the one before it.
     const NAMED_TWICE = '# Claims\n\nPay first.\n\n## Claims\n\nPay the claim.\n\n> ### Note\n>\n> Pay late.\n\n### Checks\n\nPay twice.'
     const FOUND_IN_IT = guideSearchResponse({
-      title: [{ start: 0, end: 3, text: 'Pay' }],
       sections: [
         { anchor: null, matches: [{ start: 0, end: 3, text: 'Pay' }] },
         { anchor: 'claims', matches: [{ start: 7, end: 10, text: 'Pay' }, { start: 27, end: 30, text: 'Pay' }] },
@@ -167,7 +181,6 @@ describe('Search in a guide', () => {
       expect(handedOver(searchBoxOf(page).form)).toEqual({
         q: 'pay',
         matches: [
-          { anchor: null, start: 0, end: 3, text: 'Pay' },
           { anchor: '', start: 0, end: 3, text: 'Pay' },
           { anchor: 'claims-1', start: 7, end: 10, text: 'Pay' },
           { anchor: 'claims-1', start: 27, end: 30, text: 'Pay' },
@@ -204,8 +217,7 @@ describe('Search in a guide', () => {
       const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND] })
       const firstOf = title => entryOf(page, title).querySelector('.app-guide-contents__count').dataset.guideSearchFirst
 
-      // The title's match is the first, so the Introduction's is the second.
-      expect([firstOf('Introduction'), firstOf('Check payment')]).toEqual(['2', '3'])
+      expect([firstOf('Introduction'), firstOf('Check payment')]).toEqual(['1', '2'])
     })
 
     test('hands over nothing, and offers no stepping, when nothing matches', async () => {

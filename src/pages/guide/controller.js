@@ -60,6 +60,18 @@ function _currentUrl (request) {
 
 /**
  * @private
+ * @param {{versionId: string}|null} found - The search's answer
+ * @param {{latestVersion: {id: string}|null}} guide
+ * @returns {Object|null} The answer, if it is of the version the page shows;
+ *   else none, as when the search could not answer: a version saved between
+ *   the page's reads would place the matches in the wrong text
+ */
+function _ofVersionShown (found, guide) {
+  return found?.versionId === guide.latestVersion?.id ? found : null
+}
+
+/**
+ * @private
  * @param {unknown} q - The `q` query parameter
  * @returns {string} The words to search the guide for; empty for none
  */
@@ -155,7 +167,7 @@ async function getGuidePage (request, h) {
   // In the traditional view every heading is on the page, so the guide's
   // links to them work as they are.
   const linked = format === 'stepper'
-    ? resolveAnchors(split, page => GuideViewModel.pageHref(guideId, split[page - 1]))
+    ? resolveAnchors(split, page => GuideViewModel.pageHref(guideId, split[page - 1], words))
     : split
   const sections = resolveImages(linked, href => guideAssetHref(href, guideId))
 
@@ -173,7 +185,7 @@ async function getGuidePage (request, h) {
     format,
     infoRows: buildInfoRows(guide),
     informationShown,
-    search: words ? { q: words, found } : null
+    search: words ? { q: words, found: _ofVersionShown(found, guide) } : null
   })
 
   return h
