@@ -9,7 +9,7 @@ import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
 import * as searchApi from '../../../fixtures/search-api.js'
 import { bookmarkedGuidesResponse, caseResponse, guidePageResponse, guideResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
-import { pageOf, sideNavOf, textOf } from '../../helpers/page.js'
+import { errorSummaryOf, pageOf, sideNavOf, textOf } from '../../helpers/page.js'
 import { BOOKMARK_MESSAGES, HUB_MESSAGES } from '../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -256,7 +256,7 @@ describe('#hubController', () => {
 
       const { page, search } = await hubAt('/hub?q=claim+rules')
 
-      expect(page.document.getElementById('search-results')).not.toBeNull()
+      expect(page.document.getElementById('search-results')).toBeInTheDocument()
       expect(search.getByRole('searchbox', { name: 'Search or ask question' })).toHaveValue('claim rules')
     })
 
@@ -265,19 +265,19 @@ describe('#hubController', () => {
 
       const { page, search } = await hubAt('/hub?q=%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E')
 
-      expect(page.document.getElementById('search-results')).not.toBeNull()
+      expect(page.document.getElementById('search-results')).toBeInTheDocument()
       expect(search.getByRole('searchbox', { name: 'Search or ask question' })).toHaveValue('"><script>alert(1)</script>')
       expect(page.document.querySelector('main script')).toBeNull()
     })
   })
 
   describe('searching', () => {
-    /** The page's main area, at `url`. */
-    async function mainOf (url) {
+    /** The page at `url`, to query as a user finds things on it. */
+    async function searchAt (url) {
       const cookie = await loginAsDevUser(server)
       const { statusCode, payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
 
-      return { statusCode, main: payload.slice(payload.indexOf('<main'), payload.indexOf('</main>')) }
+      return { statusCode, page: pageOf(payload) }
     }
 
     const GUIDE = '7c9e6679-7425-40de-944b-e07fc1f90ae7'
@@ -288,11 +288,10 @@ describe('#hubController', () => {
         .query({ q: 'claim rules', group: 'document', sections: '3', limit: '10', offset: '0' })
         .reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
 
-      const { main } = await mainOf('/hub?q=claim+rules')
+      const { page } = await searchAt('/hub?q=claim+rules')
 
       expect(search.isDone()).toBe(true)
-      expect(main).toContain('id="search-results"')
-      expect(main).toContain('Countryside Stewardship final payments')
+      expect(page.getByRole('link', { name: 'Countryside Stewardship final payments' })).toHaveAttribute('href', `/guides/${GUIDE}`)
     })
 
     test('asks for the page of guides the address asks for', async () => {
@@ -301,38 +300,37 @@ describe('#hubController', () => {
         .query({ q: 'claim', group: 'document', sections: '3', limit: '10', offset: '20' })
         .reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ total: 35 }))
 
-      const { main } = await mainOf('/hub?q=claim&page=3')
+      const { page } = await searchAt('/hub?q=claim&page=3')
 
       expect(search.isDone()).toBe(true)
-      expect(main).toContain('id="search-results"')
-      expect(main).toContain('Countryside Stewardship final payments')
+      expect(page.getByRole('link', { name: 'Countryside Stewardship final payments' })).toHaveAttribute('href', `/guides/${GUIDE}`)
     })
 
     test('shows each guide found with its sections, linked to them, their words marked, instead of the list and filters', async () => {
       nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
 
-      const { statusCode, main } = await mainOf('/hub?q=claim')
+      const { statusCode, page } = await searchAt('/hub?q=claim')
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(main).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">1 guide</h2>')
-      expect(main).toContain(`<a class="govuk-link" href="/guides/${GUIDE}">Countryside Stewardship final payments</a>`)
-      expect(main).toContain('1 section with these words')
-      expect(main).toContain(`<a class="govuk-link" href="/guides/${GUIDE}?section=claim-rules#claim-rules">4.2 Claim rules</a>`)
-      expect(main).toContain('2 matches')
-      expect(main).toContain('Check the <mark class="app-search-match">claim</mark> was made on time.')
-      expect(main).toContain('<a class="govuk-link" href="/hub">Clear search</a>')
-      expect(main).not.toContain('See all')
-      expect(main).not.toContain('id="hub-filters"')
-      expect(main).not.toContain('id="guide-results"')
+      expect(page.getByRole('heading', { level: 2, name: '1 guide' })).toBeInTheDocument()
+      expect(page.getByRole('link', { name: 'Countryside Stewardship final payments' })).toHaveAttribute('href', `/guides/${GUIDE}`)
+      expect(page.getAllByText('1 section with these words')).toHaveLength(2)
+      expect(page.getByRole('link', { name: '4.2 Claim rules' })).toHaveAttribute('href', `/guides/${GUIDE}?section=claim-rules#claim-rules`)
+      expect(page.getByText('2 matches')).toBeInTheDocument()
+      expect(page.getByText('claim', { selector: 'mark' }).parentElement).toHaveTextContent('Check the claim was made on time.')
+      expect(page.getByRole('link', { name: 'Clear search' })).toHaveAttribute('href', '/hub')
+      expect(page.queryByRole('link', { name: /^See all/ })).not.toBeInTheDocument()
+      expect(page.document.getElementById('hub-filters')).not.toBeInTheDocument()
+      expect(page.document.getElementById('guide-results')).not.toBeInTheDocument()
     })
 
     test('links to every section of a guide that has more than it shows', async () => {
       const document = searchApi.documentResult({ sectionTotal: 25 })
       nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [document] }))
 
-      const { main } = await mainOf('/hub?q=claim+rules')
+      const { page } = await searchAt('/hub?q=claim+rules')
 
-      expect(main).toContain(`<a class="govuk-link" href="/hub?q=claim+rules&amp;guide=${GUIDE}">See all 25 sections in this guide<span class="govuk-visually-hidden">: Countryside Stewardship final payments</span></a>`)
+      expect(page.getByRole('link', { name: 'See all 25 sections in this guide: Countryside Stewardship final payments' })).toHaveAttribute('href', `/hub?q=claim+rules&guide=${GUIDE}`)
     })
 
     test('searches inside one guide, a page of its sections at a time, with a way back to every guide', async () => {
@@ -341,14 +339,14 @@ describe('#hubController', () => {
         .query({ q: 'claim rules', tag: GUIDE, limit: '10', offset: '10' })
         .reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse({ total: 25 }))
 
-      const { main } = await mainOf(`/hub?q=claim+rules&guide=${GUIDE}&page=2`)
+      const { page } = await searchAt(`/hub?q=claim+rules&guide=${GUIDE}&page=2`)
 
       expect(search.isDone()).toBe(true)
-      expect(main).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">25 sections</h2>')
-      expect(main).toContain('In Countryside Stewardship final payments')
-      expect(main).toMatch(/<a href="\/hub\?q=claim\+rules" class="govuk-back-link">All guides with these words<\/a>/)
-      expect(main).toContain(`<a class="govuk-link" href="/guides/${GUIDE}?section=claim-rules#claim-rules">4.2 Claim rules</a>`)
-      expect(main).toContain(`href="/hub?q=claim+rules&amp;guide=${GUIDE}&amp;page=3"`)
+      expect(page.getByRole('heading', { level: 2, name: '25 sections' })).toBeInTheDocument()
+      expect(page.getByText('In Countryside Stewardship final payments')).toBeInTheDocument()
+      expect(page.getByRole('link', { name: 'All guides with these words' })).toHaveAttribute('href', '/hub?q=claim+rules')
+      expect(page.getByRole('link', { name: '4.2 Claim rules' })).toHaveAttribute('href', `/guides/${GUIDE}?section=claim-rules#claim-rules`)
+      expect(page.getByRole('link', { name: 'Page 3' })).toHaveAttribute('href', `/hub?q=claim+rules&guide=${GUIDE}&page=3`)
     })
 
     test('escapes what the search service sends', async () => {
@@ -356,16 +354,17 @@ describe('#hubController', () => {
       const document = searchApi.documentResult({ documentTitle: '<b>bold</b>', sections: [section] })
       nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [document] }))
 
-      const { main } = await mainOf('/hub?q=claim')
+      const { page } = await searchAt('/hub?q=claim')
 
-      expect(main).not.toContain('<img src=x')
-      expect(main).not.toContain('<b>bold')
-      expect(main).not.toContain('<script>alert(1)')
-      expect(main).toContain('<mark class="app-search-match">&lt;script&gt;alert(1)&lt;/script&gt;</mark>')
+      expect(page.getByRole('link', { name: '<b>bold</b>' })).toBeInTheDocument()
+      expect(page.getByRole('link', { name: '4.2 <img src=x onerror=alert(1)>' })).toBeInTheDocument()
+      expect(page.getByText('<script>alert(1)</script>', { selector: 'mark' })).toBeInTheDocument()
+      expect(page.document.querySelector('main script, main img, main b')).not.toBeInTheDocument()
     })
 
     describe('guides whose title the words cover', () => {
       const PROMOTED = '9b2f4c1a-5d3e-4a6b-8c7d-0e1f2a3b4c5d'
+      const PROMOTED_TITLE = 'CS MA Claim - AB12 or OP3 Maximum Eligible Weight'
 
       /** One of several guides titled "CS MA Claim - ...", its own id. */
       function caseTitle (number) {
@@ -381,35 +380,38 @@ describe('#hubController', () => {
         nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [promoted, searchApi.documentResult()], titles: [promoted] }))
         nock(GUIDANCE_API_BASE_URL).get(`/guides/${PROMOTED}`).reply(statusCodes.HTTP_STATUS_OK, guideResponse({ id: PROMOTED, metadata: { ...guideResponse().metadata, goal: 'Decide a claim over the maximum eligible weight.' } }))
 
-        const { main } = await mainOf('/hub?q=CS+MA+Claim+AB12+maximum+eligible+weight')
-        const panel = main.slice(main.indexOf('<section class="app-title-match"'), main.indexOf('</section>'))
+        const { page } = await searchAt('/hub?q=CS+MA+Claim+AB12+maximum+eligible+weight')
+        const panel = within(page.getByRole('region', { name: PROMOTED_TITLE }))
 
-        expect(main).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">2 guides</h2>')
-        expect(panel).toContain('aria-labelledby="title-match-heading"')
-        expect(panel).toContain('Is this the guide you’re looking for?')
-        expect(panel).toContain(`<a class="govuk-link" href="/guides/${PROMOTED}"><mark class="app-search-match">CS MA Claim</mark> - AB12 or OP3 Maximum Eligible Weight</a>`)
-        expect(panel).toContain('Decide a claim over the maximum eligible weight.')
-        expect(panel).toMatch(new RegExp(`<a class="govuk-button[^"]*" href="/guides/${PROMOTED}" role="button"[^>]*>\\s*Open guide`))
-        expect(panel).toMatch(new RegExp(`Words also found in\\s*<a class="govuk-link" href="/guides/${PROMOTED}\\?section=introduction#introduction">1 Introduction</a>`))
-        expect(main).toContain('<h3 class="govuk-heading-m app-hub-results__list-heading">Sections that mention ‘CS MA Claim AB12 maximum eligible weight’</h3>')
-        expect(main).toMatch(/<h4 class="govuk-heading-m app-search-results__name">\s*<a class="govuk-link" href="\/guides\/7c9e6679-7425-40de-944b-e07fc1f90ae7">Countryside Stewardship final payments<\/a>/)
-        expect(main).toMatch(new RegExp(`<h4 class="govuk-heading-m app-search-results__name">\\s*<a class="govuk-link" href="/guides/${PROMOTED}">`))
-        expect(main).not.toContain('govuk-tag')
+        expect(page.getByRole('heading', { level: 2, name: '2 guides' })).toBeInTheDocument()
+        expect(panel.getByText('Is this the guide you’re looking for?')).toBeInTheDocument()
+        expect(panel.getByRole('heading', { level: 3, name: PROMOTED_TITLE })).toBeInTheDocument()
+        expect(panel.getByRole('link', { name: PROMOTED_TITLE })).toHaveAttribute('href', `/guides/${PROMOTED}`)
+        expect(panel.getByText('CS MA Claim', { selector: 'mark' })).toBeInTheDocument()
+        expect(panel.getByText('Decide a claim over the maximum eligible weight.')).toBeInTheDocument()
+        expect(panel.getByRole('button', { name: `Open guide: ${PROMOTED_TITLE}` })).toHaveAttribute('href', `/guides/${PROMOTED}`)
+        expect(panel.getByText(/Words also found in/)).toContainElement(panel.getByRole('link', { name: '1 Introduction' }))
+        expect(panel.getByRole('link', { name: '1 Introduction' })).toHaveAttribute('href', `/guides/${PROMOTED}?section=introduction#introduction`)
+        expect(page.getByRole('heading', { level: 3, name: 'Sections that mention ‘CS MA Claim AB12 maximum eligible weight’' })).toBeInTheDocument()
+        expect(page.getByRole('heading', { level: 4, name: 'Countryside Stewardship final payments' })).toBeInTheDocument()
+        expect(page.getByRole('heading', { level: 4, name: PROMOTED_TITLE })).toBeInTheDocument()
+        expect(page.document.querySelector('main .govuk-tag')).not.toBeInTheDocument()
       })
 
       test('promotes the guide without what it is for when it can\'t be read, saying no sections mention the words', async () => {
         nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [], total: 0, titles: [searchApi.titleResult()] }))
         nock(GUIDANCE_API_BASE_URL).get(`/guides/${PROMOTED}`).reply(statusCodes.HTTP_STATUS_INTERNAL_SERVER_ERROR)
 
-        const { statusCode, main } = await mainOf('/hub?q=CS+MA+Claim+AB12+maximum+eligible+weight')
+        const { statusCode, page } = await searchAt('/hub?q=CS+MA+Claim+AB12+maximum+eligible+weight')
 
         expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-        expect(main).toContain('Is this the guide you’re looking for?')
-        expect(main).toContain('No sections with these words')
-        expect(main).toContain('<h3 class="govuk-heading-m app-hub-results__list-heading">Sections that mention ‘CS MA Claim AB12 maximum eligible weight’</h3>')
-        expect(main).toContain('<p class="govuk-body app-hub-results__list-empty">No sections mention ‘CS MA Claim AB12 maximum eligible weight’.</p>')
-        expect(main).not.toContain('There are no guides with')
-        expect(main).not.toContain('Words also found in')
+        expect(page.getByRole('region', { name: PROMOTED_TITLE })).toBeInTheDocument()
+        expect(page.getByText('Is this the guide you’re looking for?')).toBeInTheDocument()
+        expect(page.getByText('No sections with these words')).toBeInTheDocument()
+        expect(page.getByRole('heading', { level: 3, name: 'Sections that mention ‘CS MA Claim AB12 maximum eligible weight’' })).toBeInTheDocument()
+        expect(page.getByText('No sections mention ‘CS MA Claim AB12 maximum eligible weight’.')).toBeInTheDocument()
+        expect(page.queryByText(/There are no guides with/)).not.toBeInTheDocument()
+        expect(page.queryByText(/Words also found in/)).not.toBeInTheDocument()
       })
 
       test('lists several above the sections that have the words, the first five with a link to every one', async () => {
@@ -417,112 +419,123 @@ describe('#hubController', () => {
         const alsoInSections = { ...titles[0], sections: [searchApi.sectionResult()], sectionTotal: 2 }
         nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ titles: [alsoInSections, ...titles.slice(1)], results: [alsoInSections, searchApi.documentResult()] }))
 
-        const { main } = await mainOf('/hub?q=CS+MA+Claim')
-        const list = main.slice(main.indexOf('<section class="app-title-match"'), main.indexOf('</section>'))
+        const { page } = await searchAt('/hub?q=CS+MA+Claim')
+        const region = page.getByRole('region', { name: '6 guides have ‘CS MA Claim’ in their title' })
+        const list = within(region)
 
-        expect(list).toMatch(/<h3 class="govuk-body app-title-match__lead" id="title-match-heading" tabindex="-1">6 guides have ‘CS MA Claim’ in their title<\/h3>/)
-        expect(list).toContain('<a class="govuk-link app-title-match__row-title" href="/guides/00000000-0000-4000-8000-000000000001"><mark class="app-search-match">CS MA Claim</mark> - Case 1</a>')
-        expect(list).toContain('2 sections')
-        expect(list.match(/app-title-match__row"/g)).toHaveLength(5)
-        expect(list).toContain('<a class="govuk-link" href="/hub?q=CS+MA+Claim&amp;titles=all#title-match-heading">Show all 6 guides<span class="govuk-visually-hidden"> with ‘CS MA Claim’ in their title</span></a>')
-        expect(list).not.toContain('govuk-details')
-        expect(main).not.toContain('Is this the guide you’re looking for?')
-        expect(main).toContain('Sections that mention ‘CS MA Claim’</h3>')
-        expect(main).toMatch(/<h4 class="govuk-heading-m app-search-results__name">\s*<a class="govuk-link" href="\/guides\/00000000-0000-4000-8000-000000000001"><mark class="app-search-match">CS MA Claim<\/mark> - Case 1<\/a>/)
+        expect(list.getByRole('heading', { level: 3, name: '6 guides have ‘CS MA Claim’ in their title' })).toBeInTheDocument()
+        expect(list.getByRole('link', { name: 'CS MA Claim - Case 1' })).toHaveAttribute('href', '/guides/00000000-0000-4000-8000-000000000001')
+        expect(list.getByRole('link', { name: 'CS MA Claim - Case 1' }).querySelector('mark')).toHaveTextContent('CS MA Claim')
+        expect(list.getByText('2 sections')).toBeInTheDocument()
+        expect(list.getAllByRole('link', { name: /^CS MA Claim - Case/ })).toHaveLength(5)
+        // Found by how it starts: jsdom drops the space before its visually hidden words, which browsers keep.
+        expect(list.getByRole('link', { name: /^Show all 6 guides/ })).toHaveTextContent('Show all 6 guides with ‘CS MA Claim’ in their title')
+        expect(list.getByRole('link', { name: /^Show all 6 guides/ })).toHaveAttribute('href', '/hub?q=CS+MA+Claim&titles=all#title-match-heading')
+        expect(region.querySelector('.govuk-details')).not.toBeInTheDocument()
+        expect(page.queryByText('Is this the guide you’re looking for?')).not.toBeInTheDocument()
+        expect(page.getByRole('heading', { level: 3, name: 'Sections that mention ‘CS MA Claim’' })).toBeInTheDocument()
+        expect(page.getByRole('heading', { level: 4, name: 'CS MA Claim - Case 1' })).toBeInTheDocument()
       })
 
       test('lists several, saying under the heading over sections that none mention the words when only titles have them', async () => {
         nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ titles: [caseTitle(1), caseTitle(2)], results: [], total: 0 }))
 
-        const { main } = await mainOf('/hub?q=CS+MA+Claim')
+        const { page } = await searchAt('/hub?q=CS+MA+Claim')
 
-        expect(main).toContain('No sections with these words')
-        expect(main).toContain('Sections that mention ‘CS MA Claim’</h3>')
-        expect(main).toContain('<p class="govuk-body app-hub-results__list-empty">No sections mention ‘CS MA Claim’.</p>')
+        expect(page.getByText('No sections with these words')).toBeInTheDocument()
+        expect(page.getByRole('heading', { level: 3, name: 'Sections that mention ‘CS MA Claim’' })).toBeInTheDocument()
+        expect(page.getByText('No sections mention ‘CS MA Claim’.')).toBeInTheDocument()
       })
 
       test('lists every one, with no link to show all, when the address asks for every one', async () => {
         const titles = [1, 2, 3, 4, 5, 6].map(caseTitle)
         nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ titles, results: [] }))
 
-        const { main } = await mainOf('/hub?q=CS+MA+Claim&titles=all')
-        const list = main.slice(main.indexOf('<section class="app-title-match"'), main.indexOf('</section>'))
+        const { page } = await searchAt('/hub?q=CS+MA+Claim&titles=all')
+        const list = within(page.getByRole('region', { name: '6 guides have ‘CS MA Claim’ in their title' }))
 
-        expect(list.match(/app-title-match__row"/g)).toHaveLength(6)
-        expect(list).not.toContain('Show all')
+        expect(list.getAllByRole('link', { name: /^CS MA Claim - Case/ })).toHaveLength(6)
+        expect(list.queryByRole('link', { name: /^Show all/ })).not.toBeInTheDocument()
       })
 
       test('shows no title block, as before, when the words cover no title', async () => {
         nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
 
-        const { main } = await mainOf('/hub?q=weight')
+        const { page } = await searchAt('/hub?q=weight')
 
-        expect(main).not.toContain('app-title-match')
-        expect(main).not.toContain('app-hub-results__list-heading')
-        expect(main).toMatch(/<h3 class="govuk-heading-m app-search-results__name">/)
+        expect(page.queryByRole('region')).not.toBeInTheDocument()
+        expect(page.queryByRole('heading', { name: /^Sections that mention/ })).not.toBeInTheDocument()
+        expect(page.getByRole('heading', { level: 3, name: 'Countryside Stewardship final payments' })).toBeInTheDocument()
       })
 
       test('shows no title block past the first page', async () => {
         nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ total: 25, titles: [searchApi.titleResult()] }))
 
-        const { main } = await mainOf('/hub?q=CS+MA+Claim&page=2')
+        const { page } = await searchAt('/hub?q=CS+MA+Claim&page=2')
 
-        expect(main).not.toContain('app-title-match')
+        expect(page.queryByRole('region')).not.toBeInTheDocument()
+        expect(page.queryByText('Is this the guide you’re looking for?')).not.toBeInTheDocument()
       })
 
       test('escapes the titles the search service sends', async () => {
         const title = searchApi.titleResult({ documentTitle: '<b>bold</b>', titleMatch: { snippet: [{ text: '<script>x</script>', match: true }] } })
         nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ titles: [title, caseTitle(2)] }))
 
-        const { main } = await mainOf('/hub?q=CS+MA+Claim')
+        const { page } = await searchAt('/hub?q=CS+MA+Claim')
 
-        expect(main).not.toContain('<script>x')
-        expect(main).not.toContain('<b>bold')
-        expect(main).toContain('<mark class="app-search-match">&lt;script&gt;x&lt;/script&gt;</mark>')
+        expect(page.getByText('<script>x</script>', { selector: 'mark' })).toBeInTheDocument()
+        expect(page.document.querySelector('main script, main b')).not.toBeInTheDocument()
       })
     })
 
     test('says when nothing has the words, with what to try next', async () => {
       nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [], total: 0 }))
 
-      const { main } = await mainOf('/hub?q=zebra')
+      const { page } = await searchAt('/hub?q=zebra')
+      const suggestions = within(page.getByText('check the spelling').closest('ul'))
 
-      expect(main).toContain('0 guides')
-      expect(main).toContain('<h3 class="govuk-heading-m">There are no guides with ‘zebra’</h3>')
-      expect(main).toContain('You could:')
-      expect(main).toMatch(/<ul class="govuk-list govuk-list--bullet">\s*<li>check the spelling<\/li>\s*<li>use fewer or different words<\/li>\s*<li>search for a scheme or case type, for example ‘CS MA Claim’<\/li>\s*<li><a class="govuk-link" href="\/hub">browse all guides<\/a><\/li>\s*<\/ul>/)
-      expect(main).not.toContain('sections with these words')
-      expect(main).not.toContain('app-title-match')
-      expect(main).not.toContain('govuk-pagination')
+      expect(page.getByRole('heading', { level: 2, name: '0 guides' })).toBeInTheDocument()
+      expect(page.getByRole('heading', { level: 3, name: 'There are no guides with ‘zebra’' })).toBeInTheDocument()
+      expect(page.getByText('You could:')).toBeInTheDocument()
+      expect(suggestions.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+        'check the spelling',
+        'use fewer or different words',
+        'search for a scheme or case type, for example ‘CS MA Claim’',
+        'browse all guides'
+      ])
+      expect(suggestions.getByRole('link', { name: 'browse all guides' })).toHaveAttribute('href', '/hub')
+      expect(page.queryByText(/sections with these words/)).not.toBeInTheDocument()
+      expect(page.queryByRole('region')).not.toBeInTheDocument()
+      expect(page.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument()
     })
 
     test('escapes the words in what it says when nothing has them', async () => {
       nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [], total: 0 }))
 
-      const { main } = await mainOf('/hub?q=%3Cscript%3Ex%3C%2Fscript%3E')
+      const { page } = await searchAt('/hub?q=%3Cscript%3Ex%3C%2Fscript%3E')
 
-      expect(main).not.toContain('<script>x')
-      expect(main).toContain('There are no guides with ‘&lt;script&gt;x&lt;/script&gt;’')
+      expect(page.getByRole('heading', { level: 3, name: 'There are no guides with ‘<script>x</script>’' })).toBeInTheDocument()
+      expect(page.document.querySelector('main script')).not.toBeInTheDocument()
     })
 
     test('says when there are too many matches to show', async () => {
       nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.tooManyDocumentsResponse(1500))
 
-      const { main } = await mainOf('/hub?q=the')
+      const { page } = await searchAt('/hub?q=the')
 
-      expect(main).toContain('Too many matches. Use more specific words.')
-      expect(main).not.toContain('govuk-pagination')
+      expect(page.getByText('Too many matches. Use more specific words.')).toBeInTheDocument()
+      expect(page.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument()
     })
 
     test('pages between the guides, keeping the words', async () => {
       nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ total: 25 }))
 
-      const { main } = await mainOf('/hub?q=claim+rules&page=2')
+      const { page } = await searchAt('/hub?q=claim+rules&page=2')
+      const pagination = within(page.getByRole('navigation', { name: 'Pagination' }))
 
-      expect(main).toContain('govuk-pagination')
-      expect(main).toContain('href="/hub?q=claim+rules"')
-      expect(main).toContain('href="/hub?q=claim+rules&amp;page=3"')
-      expect(main).toMatch(/aria-current="page"/)
+      expect(pagination.getByRole('link', { name: 'Page 1' })).toHaveAttribute('href', '/hub?q=claim+rules')
+      expect(pagination.getByRole('link', { name: 'Page 3' })).toHaveAttribute('href', '/hub?q=claim+rules&page=3')
+      expect(pagination.getByRole('link', { name: 'Page 2' })).toHaveAttribute('aria-current', 'page')
     })
 
     test.each([
@@ -531,57 +544,54 @@ describe('#hubController', () => {
     ])('lists every guide, with the filters keeping the words, saying search is not available, when the search service %s', async (_, respond) => {
       respond(nock(SEARCH_API_BASE_URL).get('/v1/search').query(true))
 
-      const { statusCode, main } = await mainOf('/hub?q=claim+rules')
+      const { statusCode, page } = await searchAt('/hub?q=claim+rules')
+      const errorSummary = errorSummaryOf(page)
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
-      expect(main).toContain('govuk-error-summary')
-      expect(main).toContain('There is a problem')
-      expect(main).toMatch(/<a href="#hub-search">\s*Search is not available at the moment. Try again later, or find a guide in the list below.\s*<\/a>/)
-      expect(main).toContain('<h2 class="govuk-heading-l govuk-!-margin-bottom-1">1 guide</h2>')
-      expect(main).toContain('<input type="hidden" name="q" value="claim rules">')
+      expect(errorSummary.getByRole('heading', { name: 'There is a problem' })).toBeInTheDocument()
+      expect(errorSummary.getByRole('link', { name: 'Search is not available at the moment. Try again later, or find a guide in the list below.' })).toHaveAttribute('href', '#hub-search')
+      expect(page.getByRole('heading', { level: 2, name: '1 guide' })).toBeInTheDocument()
+      expect(page.document.querySelector('#hub-filters input[type="hidden"][name="q"]')).toHaveValue('claim rules')
     })
 
     test('says there is an error in the page title when search is not available', async () => {
       nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_INTERNAL_SERVER_ERROR)
-      const cookie = await loginAsDevUser(server)
 
-      const { payload } = await server.inject({ method: 'GET', url: '/hub?q=claim', headers: { cookie } })
+      const { page } = await searchAt('/hub?q=claim')
 
-      expect(payload).toMatch(/<title>\s*Error: RPA Guidance Hub/)
+      expect(page.document.title).toMatch(/^Error: RPA Guidance Hub/)
     })
 
     test('does not say there is an error when search answers', async () => {
       nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
-      const cookie = await loginAsDevUser(server)
 
-      const { payload } = await server.inject({ method: 'GET', url: '/hub?q=claim', headers: { cookie } })
+      const { page } = await searchAt('/hub?q=claim')
 
-      expect(payload).not.toContain('govuk-error-summary')
-      expect(payload).toMatch(/<title>\s*RPA Guidance Hub/)
+      expect(page.queryByRole('alert')).not.toBeInTheDocument()
+      expect(page.document.title).toMatch(/^RPA Guidance Hub/)
     })
 
     test('lists every guide, saying the words must be shorter, rather than searching for more than the search service takes', async () => {
       const search = nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
-      const cookie = await loginAsDevUser(server)
 
-      const { statusCode, payload } = await server.inject({ method: 'GET', url: `/hub?q=${'a'.repeat(501)}`, headers: { cookie } })
+      const { statusCode, page } = await searchAt(`/hub?q=${'a'.repeat(501)}`)
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(search.isDone()).toBe(false)
-      expect(payload).toMatch(/<title>\s*Error: RPA Guidance Hub/)
-      expect(payload).toMatch(/<a href="#hub-search">\s*Search must be 500 characters or fewer\s*<\/a>/)
-      expect(payload).not.toContain('Search is not available')
-      expect(payload).toContain('id="guide-results"')
+      expect(page.document.title).toMatch(/^Error: RPA Guidance Hub/)
+      expect(errorSummaryOf(page).getByRole('link', { name: 'Search must be 500 characters or fewer' })).toHaveAttribute('href', '#hub-search')
+      expect(page.queryByText(/Search is not available/)).not.toBeInTheDocument()
+      expect(page.document.getElementById('guide-results')).toBeInTheDocument()
     })
 
     test('does not search without words', async () => {
       const search = nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse())
 
-      const { main } = await mainOf('/hub?q=+')
+      const { page } = await searchAt('/hub?q=+')
 
       expect(search.isDone()).toBe(false)
-      expect(main).not.toContain('govuk-error-summary')
-      expect(main).toContain('id="hub-filters"')
+      expect(page.queryByRole('alert')).not.toBeInTheDocument()
+      expect(page.document.getElementById('hub-filters')).toBeInTheDocument()
     })
   })
 
