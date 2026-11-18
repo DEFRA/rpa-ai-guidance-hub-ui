@@ -22,10 +22,9 @@ const MARKDOWN = [
   '## Archive', 'Keep it.'
 ].join('\n\n')
 
-// "pay" in the guide's title once, and in three sections: a heading the
+// "pay" in three sections: a heading the
 // contents do not list ("Late payment") is under the one before it.
 const FOUND = guideSearchResponse({
-  title: [{ start: 0, end: 3, text: 'Pay' }],
   sections: [
     { anchor: 'introduction', matches: [{ start: 13, end: 16, text: 'Pay' }] },
     { anchor: 'check-payment', matches: [{ start: 6, end: 9, text: 'pay' }, { start: 14, end: 17, text: 'Pay' }] },
@@ -102,7 +101,7 @@ describe('Search in a guide', () => {
   test('shows how many matches the guide holds, and in how many of its sections, with the words searched for', async () => {
     const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND] })
 
-    expect(page.getByRole('status')).toHaveTextContent('6 matches in 2 sections')
+    expect(page.getByRole('status')).toHaveTextContent('5 matches in 2 sections')
     expect(searchBoxOf(page)).toHaveValue('pay')
   })
 
@@ -116,7 +115,7 @@ describe('Search in a guide', () => {
   })
 
   test('says so when the guide does not hold the words', async () => {
-    const none = guideSearchResponse({ title: [], sections: [] })
+    const none = guideSearchResponse({ sections: [] })
     const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, none] })
 
     expect(page.getByRole('status')).toHaveTextContent('No matches for pay')

@@ -15,7 +15,7 @@ const logger = createLogger()
  *
  * @param {string} guideId
  * @param {string} words
- * @returns {Promise<{versionId: string, title: Array<Object>, sections: Array<{anchor: string|null, matches: Array<Object>}>}|null>}
+ * @returns {Promise<{versionId: string, sections: Array<{anchor: string|null, matches: Array<Object>}>}|null>}
  */
 async function matchesInGuide (guideId, words) {
   try {

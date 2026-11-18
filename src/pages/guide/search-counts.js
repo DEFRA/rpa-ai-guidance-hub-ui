@@ -2,12 +2,12 @@
  * @module A search in a guide, counted: how many matches it holds, and how
  * many are under each contents entry. A match counts under the entry it comes
  * after, so one under a heading the contents do not list counts under the
- * entry before it; one in the guide's title counts under none.
+ * entry before it.
  */
 
 /**
  * @typedef {Object} Counted
- * @property {number} total - Every match, the title's too
+ * @property {number} total - Every match
  * @property {Map<string, number>} byEntry - By the contents entry's
  *   `section`, as the view model's contents name it: how many matches under
  *   it
@@ -32,7 +32,7 @@ function _anchorsInOrder (sections) {
 /**
  * @param {import('../../services/guide-sections.js').GuideSection[]} sections
  * @param {Set<string>} entries - The contents entries, by `section`
- * @param {{title: Array<Object>, sections: Array<{anchor: string|null, matches: Array<Object>}>}} found
+ * @param {{sections: Array<{anchor: string|null, matches: Array<Object>}>}} found
  *   - The search's answer
  * @returns {Counted}
  */
@@ -50,9 +50,9 @@ function countMatches (sections, entries, found) {
     }
   }
 
-  const inSections = [...inSection.values()].reduce((sum, count) => sum + count, 0)
+  const total = [...inSection.values()].reduce((sum, count) => sum + count, 0)
 
-  return { total: found.title.length + inSections, byEntry }
+  return { total, byEntry }
 }
 
 export {

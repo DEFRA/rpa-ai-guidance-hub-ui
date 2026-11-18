@@ -7,7 +7,7 @@ describe('counting a search\'s matches in a guide', () => {
     // search finds "Pay late." in the Claims section.
     const sections = splitIntoSections('Pay first.\n\n## Claims\n\nPay.\n\nLate\n----\n\nPay late.')
     const match = { start: 0, end: 3, text: 'Pay' }
-    const found = { title: [], sections: [{ anchor: null, matches: [match] }, { anchor: 'claims', matches: [match, match] }] }
+    const found = { sections: [{ anchor: null, matches: [match] }, { anchor: 'claims', matches: [match, match] }] }
 
     const counted = countMatches(sections, new Set(['', 'claims', 'late']), found)
 

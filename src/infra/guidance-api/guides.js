@@ -124,7 +124,7 @@ async function getGuideAsset (guideId, name) {
  * @param {string} guideId
  * @param {string} words
  * @returns {Promise<{ok: boolean, status: number, data: any}>} - data is
- *   `{versionId, title: [{start, end, text}], sections: [{anchor, matches}]}`;
+ *   `{versionId, sections: [{anchor, matches: [{start, end, text}]}]}`;
  *   not ok with 404 when there is no such guide
  * @throws {GuidanceApiError} - When response is not ok and not a 404, such
  *   as a 500 when the search is not available
