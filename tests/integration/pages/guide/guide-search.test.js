@@ -130,6 +130,15 @@ describe('Search in a guide', () => {
     expect(entryOf(page, 'Introduction')).toHaveTextContent(/^Introduction$/)
   })
 
+  test('shows no counts, saying search is not available, when the search was of another version than the one shown', async () => {
+    // A version saved between the page's reads of the guide and of the search.
+    const ofAnother = guideSearchResponse({ ...FOUND, versionId: 'version-2' })
+    const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, ofAnother] })
+
+    expect(page.getByRole('status')).toHaveTextContent('Search is not available')
+    expect(entryOf(page, 'Check payment')).toHaveTextContent(/^Check payment$/)
+  })
+
   test('offers to clear the search, back to the guide without it', async () => {
     const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND] })
 
