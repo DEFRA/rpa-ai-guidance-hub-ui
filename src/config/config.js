@@ -272,6 +272,33 @@ const config = convict({
       env: 'GUIDANCE_API_TIMEOUT'
     }
   },
+  searchApi: {
+    auth: {
+      doc: 'How requests to the search API are authenticated: "none", or "web-identity" (an AWS STS web identity token as a bearer token). The search service does not check tokens yet, so "none" until it does',
+      format: ['none', 'web-identity'],
+      default: 'none',
+      env: 'SEARCH_API_AUTH'
+    },
+    audience: {
+      doc: 'Audience requested for the STS web identity token sent to the search API - the search service, which must reject tokens for any other audience',
+      format: String,
+      default: 'rpa_ai_guidance_hub_search',
+      env: 'SEARCH_API_AUDIENCE'
+    },
+    baseUrl: {
+      doc: 'Search API base URL, for searching the guides. Required: the hub will not start without it. When the search service is unreachable or failing, the hub still lists every guide, saying search is not available',
+      format: String,
+      nullable: false,
+      default: null,
+      env: 'SEARCH_API_BASE_URL'
+    },
+    timeout: {
+      doc: 'Timeout in milliseconds for search API requests',
+      format: Number,
+      default: 5000,
+      env: 'SEARCH_API_TIMEOUT'
+    }
+  },
   cdpUploader: {
     baseUrl: {
       doc: 'CDP uploader service URL',

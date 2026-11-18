@@ -39,6 +39,20 @@ describe('#config', () => {
     })
   })
 
+  describe('#searchApi.baseUrl', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    })
+
+    test('Should fail to load when SEARCH_API_BASE_URL is not set', async () => {
+      vi.stubEnv('SEARCH_API_BASE_URL', undefined)
+      vi.resetModules()
+
+      await expect(import('../../../src/config/config.js')).rejects.toThrow('searchApi.baseUrl: must be of type String')
+    })
+  })
+
   describe('#auth.entra client credentials', () => {
     async function loadConfig () {
       vi.resetModules()

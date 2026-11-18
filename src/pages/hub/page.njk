@@ -1,9 +1,10 @@
 {% extends "common/layout.njk" %}
 
 {% from "govuk/components/phase-banner/macro.njk" import govukPhaseBanner %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
 {% from "common/guide-list.njk" import guideList %}
 
-{% set pageTitle = 'RPA Guidance Hub' %}
+{% set pageTitle = ('Error: ' if searchUnavailable or wordsTooLong else '') + 'RPA Guidance Hub' %}
 {% set page = 'hub' %}
 {# The hub has its own search box, so the side navigation leaves out its own. #}
 {% set hideNavSearch = true %}
@@ -19,7 +20,7 @@
           <form class="defra-hero__search" action="/hub" method="get" role="search">
             <label class="govuk-visually-hidden" for="hub-search">Search or ask question</label>
             <div class="defra-search-bar">
-              <input class="govuk-input defra-search-bar__input" id="hub-search" name="q" type="search" autocomplete="off" placeholder="Search or ask a question about all guidance" value="{{ words }}">
+              <input class="govuk-input defra-search-bar__input" id="hub-search" name="q" type="search" maxlength="{{ searchWordsMaxLength }}" autocomplete="off" placeholder="Search or ask a question about all guidance" value="{{ words }}">
               <button class="defra-search-bar__button defra-search-bar__button--on-green" type="submit">
                 <span class="govuk-visually-hidden">Search</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="27" height="27" viewBox="0 0 27 27" aria-hidden="true" focusable="false"><circle cx="12.0161" cy="11.0161" r="8.51613" stroke="currentColor" stroke-width="3" fill="none"></circle><line x1="17.8668" y1="17.3587" x2="26.4475" y2="25.9393" stroke="currentColor" stroke-width="3"></line></svg>
@@ -28,7 +29,7 @@
           </form>
 
           <p class="govuk-body govuk-!-margin-top-4 govuk-!-margin-bottom-0">
-            Find guidance to help you review and process claims, or manage guidance documents if you're responsible for keeping them up to date.
+            Currently covers Countryside Stewardship Final Payments.
           </p>
         </div>
       </div>
@@ -38,16 +39,39 @@
   <div class="govuk-width-container">
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-full">
-        {# The filters beside the list, as the prototype's hub has them. #}
-        <div class="app-hub-columns">
-          {% if filters %}{% include "hub/partials/filters.njk" %}{% endif %}
+        {% if wordsTooLong %}
+          {{ govukErrorSummary({
+            titleText: "There is a problem",
+            errorList: [{
+              text: "Search must be " + searchWordsMaxLength + " characters or fewer",
+              href: "#hub-search"
+            }]
+          }) }}
+        {% elif searchUnavailable %}
+          {{ govukErrorSummary({
+            titleText: "There is a problem",
+            errorList: [{
+              text: "Search is not available at the moment. Try again later, or find a guide in the list below.",
+              href: "#hub-search"
+            }]
+          }) }}
+        {% endif %}
 
-          <div class="app-hub-results" id="guide-results">
-            {% call guideList(shown, currentUrl) %}
-              {% if filters.sort %}{% include "hub/partials/sort.njk" %}{% endif %}
-            {% endcall %}
+        {% if search %}
+          {# The sections with the words, instead of the list and its filters. #}
+          {% include "hub/partials/search-results.njk" %}
+        {% else %}
+          {# The filters beside the list, as the prototype's hub has them. #}
+          <div class="app-hub-columns">
+            {% if filters %}{% include "hub/partials/filters.njk" %}{% endif %}
+
+            <div class="app-hub-results" id="guide-results">
+              {% call guideList(shown, currentUrl) %}
+                {% if filters.sort %}{% include "hub/partials/sort.njk" %}{% endif %}
+              {% endcall %}
+            </div>
           </div>
-        </div>
+        {% endif %}
       </div>
     </div>
 
