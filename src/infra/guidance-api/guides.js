@@ -119,6 +119,24 @@ async function getGuideAsset (guideId, name) {
 }
 
 /**
+ * Where words are in a guide's latest version.
+ *
+ * @param {string} guideId
+ * @param {string} words
+ * @returns {Promise<{ok: boolean, status: number, data: any}>} - data is
+ *   `{versionId, sections: [{anchor, matches: [{start, end, text}]}]}`;
+ *   not ok with 404 when there is no such guide
+ * @throws {GuidanceApiError} - When response is not ok and not a 404, such
+ *   as a 500 when the search is not available
+ */
+async function searchGuide (guideId, words) {
+  return guidanceApiClient.request(`${_guidePath(guideId)}/search`, {
+    query: { q: words },
+    expected: [statusCodes.HTTP_STATUS_NOT_FOUND]
+  })
+}
+
+/**
  * @private
  * @param {string} guideId
  * @returns {string} The guide's path
@@ -132,5 +150,6 @@ export {
   getGuide,
   getGuideAsset,
   getGuideContent,
-  listGuides
+  listGuides,
+  searchGuide
 }

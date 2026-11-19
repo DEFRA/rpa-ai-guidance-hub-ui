@@ -1,0 +1,57 @@
+@use 'govuk-frontend' as *;
+
+// Search in this guide, as the prototype has it: the box in the contents pane
+// under the format, how many matches there are, and a count on each contents
+// entry with matches.
+
+.app-guide-contents .app-guide-keyword-search {
+  margin-bottom: govuk-spacing(4);
+}
+
+.app-guide-keyword-search__bar {
+  display: flex;
+  align-items: flex-start;
+  gap: govuk-spacing(2);
+}
+
+.app-guide-keyword-search__field {
+  flex-grow: 1;
+  margin-bottom: 0;
+}
+
+.app-guide-keyword-search__button {
+  margin-bottom: 0;
+}
+
+.app-guide-keyword-search__results {
+  margin-top: govuk-spacing(2);
+}
+
+.app-guide-keyword-search__status {
+  margin: 0 0 govuk-spacing(2);
+}
+
+.app-guide-keyword-search__clear {
+  @include govuk-font($size: 16);
+}
+
+.app-guide-contents__entry--counted {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: govuk-spacing(2);
+}
+
+.app-guide-contents__count {
+  @include govuk-font($size: 16, $weight: bold);
+
+  flex: 0 0 auto;
+  min-width: 22px;
+  padding: 0 4px;
+  border: 2px solid $govuk-text-colour;
+  border-radius: 999px;
+  background-color: $govuk-focus-colour;
+  color: $govuk-text-colour;
+  line-height: 20px;
+  text-align: center;
+}

@@ -4,8 +4,20 @@
 {% from "govuk/components/pagination/macro.njk" import govukPagination %}
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 {% from "common/icon.njk" import icon %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
 
-{% set pageTitle = title %}
+{# A contents entry's count of the search's matches under it; nothing while
+   not searching, or for an entry with none. #}
+{% macro matchCount(entry) %}
+  {%- if entry.count -%}
+    <span class="app-guide-contents__count">{{ entry.count }}<span class="govuk-visually-hidden"> {{ "match" if entry.count == 1 else "matches" }}</span></span>
+  {%- endif -%}
+{% endmacro %}
+
+{# A search reloads the page: what it found comes first in the title, which a
+   screen reader reads as the page loads. #}
+{% set pageTitle = (search.status ~ " – " ~ title) if search else title %}
 {% set page = 'guide' %}
 {# The page is a shell that runs the full width. #}
 {% set containerClasses = 'app-width-container--bleed' %}
@@ -135,16 +147,41 @@
               </div>
             </form>
 
+            {# Search in this guide: a form that reloads the page with the words
+               in its address; then how many matches there are, and a count at
+               each contents entry. The API finds them. #}
+            <form class="app-guide-keyword-search" role="search" aria-label="Search this guide" method="get" action="{{ searchAction }}">
+              {% if searchSection %}<input type="hidden" name="section" value="{{ searchSection }}">{% endif %}
+              <div class="app-guide-keyword-search__bar">
+                {{ govukInput({
+                  id: "guide:search",
+                  name: "q",
+                  type: "search",
+                  value: search.q if search else "",
+                  label: { text: "Search this guide", classes: "govuk-visually-hidden" },
+                  attributes: { placeholder: "Search this guide", autocomplete: "off" },
+                  formGroup: { classes: "app-guide-keyword-search__field" }
+                }) }}
+                {{ govukButton({ text: "Search", classes: "govuk-visually-hidden-focusable app-guide-keyword-search__button" }) }}
+              </div>
+              {% if search %}
+                <div class="app-guide-keyword-search__results">
+                  <p class="govuk-body-s govuk-!-font-weight-bold app-guide-keyword-search__status" role="status">{{ search.status }}</p>
+                  <a class="govuk-link app-guide-keyword-search__clear" href="{{ search.clearHref }}">Clear search</a>
+                </div>
+              {% endif %}
+            </form>
+
             <nav aria-labelledby="guide-contents-heading">
               <h2 class="govuk-heading-s" id="guide-contents-heading">Contents</h2>
               {% for item in contents %}
-                <p class="app-guide-contents__section{{ ' app-guide-contents__section--current' if item.isCurrent }}" data-guide-contents-page="{{ loop.index }}">
-                  <a class="govuk-link app-guide-contents__section-link" data-guide-contents-target="{{ item.anchor }}" data-guide-contents-section="{{ item.section }}" href="{{ item.href }}"{% if item.isCurrent %} aria-current="page"{% endif %}>{{ item.title }}</a>
+                <p class="app-guide-contents__section{{ ' app-guide-contents__section--current' if item.isCurrent }}{{ ' app-guide-contents__entry--counted' if item.count }}" data-guide-contents-page="{{ loop.index }}">
+                  <a class="govuk-link app-guide-contents__section-link" data-guide-contents-target="{{ item.anchor }}" data-guide-contents-section="{{ item.section }}" href="{{ item.href }}"{% if item.isCurrent %} aria-current="page"{% endif %}>{{ item.title }}</a>{{ matchCount(item) }}
                 </p>
                 {% if item.subheadings.length %}
                   <ol class="govuk-list app-guide-contents__list">
                     {% for subheading in item.subheadings %}
-                      <li><a class="govuk-link app-guide-contents__link" data-guide-contents-target="{{ subheading.anchor }}" data-guide-contents-section="{{ subheading.section }}" href="{{ subheading.href }}">{{ subheading.title }}</a></li>
+                      <li{% if subheading.count %} class="app-guide-contents__entry--counted"{% endif %}><a class="govuk-link app-guide-contents__link" data-guide-contents-target="{{ subheading.anchor }}" data-guide-contents-section="{{ subheading.section }}" href="{{ subheading.href }}">{{ subheading.title }}</a>{{ matchCount(subheading) }}</li>
                     {% endfor %}
                   </ol>
                 {% endif %}
