@@ -62,6 +62,13 @@ function sortFrom (query = {}) {
 }
 
 /**
+ * The most characters the words searched for can have: the search service
+ * refuses any more. Both search boxes stop there, and the hub says so rather
+ * than asking, for words typed into the address.
+ */
+const WORDS_MAX_LENGTH = 500
+
+/**
  * The words searched for in the address (`q`), without the spaces around
  * them; none for anything but one value.
  *
@@ -224,5 +231,6 @@ export {
   filtersFrom,
   listHref,
   sortFrom,
+  WORDS_MAX_LENGTH,
   wordsFrom
 }

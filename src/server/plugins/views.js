@@ -10,7 +10,7 @@ import { roleEnforcementEnabled } from '../access-control/hub-access.js'
 import { getConsent, isConsentSet } from '../cookie-consent.js'
 import { bookmarkedToHtml, headingControlsHtml } from '../../constants/heading-bookmarks.js'
 import { jsonScript, renderMarkdownFallback } from '../../pages/guide/markdown.js'
-import { filtersFrom, listHref } from '../../pages/hub/filters.js'
+import { filtersFrom, listHref, WORDS_MAX_LENGTH } from '../../pages/hub/filters.js'
 import { SIDE_NAV_MESSAGES } from '../../pages/common/side-nav-messages.js'
 import { SIDE_NAV_WIDTH } from '../../pages/side-nav/width.js'
 
@@ -139,6 +139,8 @@ const viewPlugin = {
         // The hub's filters chosen on this page, which the side navigation's
         // links to the hub and its lists carry on: '' or '?audience=…'.
         listQuery: listHref('', filtersFrom(request?.query)),
+        // The most characters either search box takes.
+        searchWordsMaxLength: WORDS_MAX_LENGTH,
         // Where a form on the page sends the user back to: this page.
         currentUrl: request?.url ? `${request.url.pathname}${request.url.search}` : null,
         userDisplayName: _userDisplayName(request),

@@ -2,14 +2,20 @@ import Boom from '@hapi/boom'
 
 import { CASE_TYPES } from '../../constants/case-types.js'
 import { statusCodes } from '../../constants/status-codes.js'
+import { createLogger } from '../../infra/logging/logger.js'
+import { buildErrorLog } from '../../infra/logging/utils/build-error-log.js'
 import * as guidesService from '../../services/guides.js'
+import * as searchService from '../../services/search.js'
 import * as usersService from '../../services/users.js'
 import { formatIsoDate } from '../common/format-date.js'
 import { guideSectionHref } from '../common/guide-section-href.js'
-import { filterPanel, filtersFrom, sortFrom, wordsFrom } from './filters.js'
+import { filterPanel, filtersFrom, sortFrom, WORDS_MAX_LENGTH, wordsFrom } from './filters.js'
+import { allTitlesFrom, guideFrom, pageFrom, RESULTS_PER_PAGE } from './search.js'
 import { HubViewModel } from './view-models.js'
 
 const HUB_VIEW = 'hub/page.njk'
+
+const logger = createLogger()
 const NOT_RECORDED = 'Not recorded'
 
 /**
@@ -118,15 +124,23 @@ async function _refusingUnknownFilters (listing) {
 }
 
 /**
- * The hub, listing every guide the filters let through, beside the filters
+ * @private
+ * The hub's list of every guide the filters let through, beside the filters
  * and sort, the user's pinned guides first. The words searched for are kept,
- * in the search box and as the filters change, but find nothing yet: the list
- * is every guide.
+ * in the search box and as the filters change.
+ *
+ * @param {import('@hapi/hapi').Request} request
+ * @param {import('@hapi/hapi').ResponseToolkit} h
+ * @param {Object} options
+ * @param {string} options.words - Searched for
+ * @param {boolean} options.searchUnavailable - Searching for them failed,
+ *   which the list says above itself
+ * @param {boolean} [options.wordsTooLong=false] - They are too long to search
+ *   for, which the list says above itself instead
  */
-async function getHubPage (request, h) {
+async function _guideListPage (request, h, options) {
   const filters = filtersFrom(request.query)
   const sort = sortFrom(request.query)
-  const words = wordsFrom(request.query)
   const [{ guides, counts }, pinned] = await Promise.all([
     _refusingUnknownFilters(guidesService.listEveryGuide({ filters, sort })),
     usersService.pinnedOf(request)
@@ -135,12 +149,80 @@ async function getHubPage (request, h) {
 
   const viewModel = new HubViewModel({
     allGuides: _pinnedFirst(guides.map((guide) => _toGuideItem(guide, pinPositions))),
-    filters: filterPanel({ path: '/hub', filters, counts, sort, total: guides.length, withSort: true, words }),
-    words
+    filters: filterPanel({ path: '/hub', filters, counts, sort, total: guides.length, withSort: true, words: options.words }),
+    words: options.words,
+    searchUnavailable: options.searchUnavailable,
+    wordsTooLong: options.wordsTooLong ?? false
   })
 
   return h
     .view(HUB_VIEW, viewModel)
+    .code(statusCodes.HTTP_STATUS_OK)
+}
+
+/**
+ * @private
+ * What the one guide whose title the words cover is for, which its panel
+ * shows: only on the first page, as only it has the panel. Without it the
+ * panel still shows, so a guide that can't be read is not the page's failure.
+ *
+ * @param {import('../../services/search.js').GuideResults} found
+ * @param {number} page
+ * @returns {Promise<string|null>}
+ */
+async function _promotedPurpose (found, page) {
+  if (page !== 1) {
+    return null
+  }
+
+  if (found.titles.length !== 1) {
+    return null
+  }
+
+  try {
+    const guide = await guidesService.getGuideById(found.titles[0].id)
+
+    return guide?.metadata?.goal ?? null
+  } catch (err) {
+    logger.warn(buildErrorLog(err, { type: 'promoted_guide_unavailable' }), `Could not read the promoted guide: ${err.message}`)
+
+    return null
+  }
+}
+
+/**
+ * The hub. With no words searched for, every guide the filters let through.
+ * With words, a page of the guides that have them, from the search service,
+ * each with its best sections, instead of the list, and the guides whose
+ * title they cover above it; with a guide too, a page of that guide's
+ * sections that have them. When search can't answer, the list again, saying
+ * so, as the guides don't depend on search.
+ */
+async function getHubPage (request, h) {
+  const words = wordsFrom(request.query)
+
+  if (!words) {
+    return _guideListPage(request, h, { words, searchUnavailable: false })
+  }
+
+  if (words.length > WORDS_MAX_LENGTH) {
+    return _guideListPage(request, h, { words, searchUnavailable: false, wordsTooLong: true })
+  }
+
+  const page = pageFrom(request.query)
+  const guide = guideFrom(request.query)
+  const found = guide
+    ? await searchService.searchGuide({ words, guideId: guide, page, perPage: RESULTS_PER_PAGE })
+    : await searchService.searchGuides({ words, page, perPage: RESULTS_PER_PAGE })
+
+  if (found.unavailable) {
+    return _guideListPage(request, h, { words, searchUnavailable: true })
+  }
+
+  const promotedPurpose = guide ? null : await _promotedPurpose(found, page)
+
+  return h
+    .view(HUB_VIEW, new HubViewModel({ words, search: { words, page, guide, found, promotedPurpose, allTitles: allTitlesFrom(request.query) } }))
     .code(statusCodes.HTTP_STATUS_OK)
 }
 

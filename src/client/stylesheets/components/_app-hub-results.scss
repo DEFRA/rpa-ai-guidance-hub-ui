@@ -36,6 +36,18 @@
   color: $govuk-secondary-text-colour;
 }
 
+// A guide's best sections, under the guide, set in from it.
+.app-search-results__sections {
+  margin: 0;
+  padding: 0 0 0 govuk-spacing(3);
+  border-left: 4px solid $govuk-border-colour;
+  list-style: none;
+}
+
+.app-search-results__section + .app-search-results__section {
+  margin-top: govuk-spacing(4);
+}
+
 // The tags sit at the start of the row, where the pin star will join them.
 .app-hub-results__top {
   justify-content: flex-start;
@@ -96,4 +108,101 @@
   &:focus {
     @include app-side-nav-focus;
   }
+}
+
+// The words searched for, in each search result's sentence.
+.app-search-match {
+  padding: 0 2px;
+  background-color: govuk-colour('yellow');
+  color: $govuk-text-colour;
+}
+
+// The guides whose title the words cover, above the guides that have them:
+// one promoted, or several listed. A grey panel, never a tag; the lead line
+// says why it is there.
+.app-title-match {
+  margin-bottom: govuk-spacing(6);
+  padding: govuk-spacing(5);
+  background-color: $govuk-light-grey;
+
+  > * + * {
+    margin-top: govuk-spacing(3);
+  }
+}
+
+.app-title-match__lead {
+  margin-bottom: 0;
+  color: $govuk-secondary-text-colour;
+  font-weight: $govuk-font-weight-regular;
+}
+
+.app-title-match__title,
+.app-title-match__purpose {
+  margin-bottom: 0;
+}
+
+.app-title-match__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: govuk-spacing(4);
+}
+
+.app-title-match__meta {
+  margin-bottom: 0;
+  color: $govuk-secondary-text-colour;
+}
+
+.app-title-match__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// A title on the left, how many of its sections have the words on the right;
+// they wrap, one under the other, when there is no room.
+.app-title-match__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: govuk-spacing(1) govuk-spacing(3);
+  padding: govuk-spacing(2) 0;
+
+  & + & {
+    border-top: 1px solid $govuk-mid-grey;
+  }
+}
+
+.app-title-match__row-title {
+  @include govuk-font($size: 19, $weight: bold);
+}
+
+.app-title-match__more {
+  margin-top: govuk-spacing(2);
+  margin-bottom: 0;
+}
+
+// Where "Show all" lands: focusable so the page reads on from the list, but
+// with no ring, as the reader did not move focus there.
+.app-title-match__lead:focus {
+  outline: none;
+}
+
+// Under a title block: what the guides below it are, ruled off from them.
+.app-hub-results__list-heading {
+  margin-bottom: 0;
+  padding-bottom: govuk-spacing(2);
+  border-bottom: 1px solid $govuk-mid-grey;
+}
+
+// Under that heading when no guide's sections have the words.
+.app-hub-results__list-empty {
+  margin-top: govuk-spacing(4);
+  color: $govuk-secondary-text-colour;
+}
+
+// The list's own top rule would double the heading's.
+.app-search-results--under-heading .app-search-results__item:first-child {
+  border-top: 0;
 }

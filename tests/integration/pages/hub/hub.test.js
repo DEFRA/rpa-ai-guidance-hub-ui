@@ -6,12 +6,14 @@ import nock from 'nock'
 import { config } from '../../../../src/config/config.js'
 import { createServer } from '../../../../src/server/server.js'
 import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
-import { bookmarkedGuidesResponse, caseResponse, guidePageResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
+import * as searchApi from '../../../fixtures/search-api.js'
+import { bookmarkedGuidesResponse, caseResponse, guidePageResponse, guideResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
-import { pageOf, sideNavOf, textOf } from '../../helpers/page.js'
+import { errorSummaryOf, pageOf, sideNavOf, textOf } from '../../helpers/page.js'
 import { BOOKMARK_MESSAGES, HUB_MESSAGES } from '../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
+const SEARCH_API_BASE_URL = config.get('searchApi.baseUrl')
 
 /** The text of each element, its spacing collapsed, as a reader sees it. */
 function textsOf (elements) {
@@ -243,23 +245,354 @@ describe('#hubController', () => {
       expect(form).toHaveAttribute('action', '/hub')
       expect(form).toHaveAttribute('method', 'get')
       expect(box).toHaveAttribute('name', 'q')
+      expect(box).toHaveAttribute('maxlength', '500')
       expect(box).toHaveAttribute('placeholder', 'Search or ask a question about all guidance')
       expect(search.getByRole('button', { name: 'Search' })).toHaveAttribute('type', 'submit')
       expect(page.document.body).not.toHaveTextContent('Search guidance')
     })
 
-    test('keeps the words searched for, in the box and in the filters', async () => {
+    test('keeps the words searched for in the box', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
+
       const { page, search } = await hubAt('/hub?q=claim+rules')
 
+      expect(page.document.getElementById('search-results')).toBeInTheDocument()
       expect(search.getByRole('searchbox', { name: 'Search or ask question' })).toHaveValue('claim rules')
-      expect(filtersOf(page).getByRole('button', { name: 'Apply filters' }).form).toHaveFormValues({ q: 'claim rules' })
     })
 
     test('escapes the words searched for', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [], total: 0 }))
+
       const { page, search } = await hubAt('/hub?q=%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E')
 
+      expect(page.document.getElementById('search-results')).toBeInTheDocument()
       expect(search.getByRole('searchbox', { name: 'Search or ask question' })).toHaveValue('"><script>alert(1)</script>')
       expect(page.document.querySelector('main script')).toBeNull()
+    })
+  })
+
+  describe('searching', () => {
+    /** The page at `url`, to query as a user finds things on it. */
+    async function searchAt (url) {
+      const cookie = await loginAsDevUser(server)
+      const { statusCode, payload } = await server.inject({ method: 'GET', url, headers: { cookie } })
+
+      return { statusCode, page: pageOf(payload) }
+    }
+
+    const GUIDE = '7c9e6679-7425-40de-944b-e07fc1f90ae7'
+
+    test('asks the search service for the first page of guides with the words, each with its best sections', async () => {
+      const search = nock(SEARCH_API_BASE_URL)
+        .get('/v1/search')
+        .query({ q: 'claim rules', group: 'document', sections: '3', limit: '10', offset: '0' })
+        .reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
+
+      const { page } = await searchAt('/hub?q=claim+rules')
+
+      expect(search.isDone()).toBe(true)
+      expect(page.getByRole('link', { name: 'Countryside Stewardship final payments' })).toHaveAttribute('href', `/guides/${GUIDE}`)
+    })
+
+    test('asks for the page of guides the address asks for', async () => {
+      const search = nock(SEARCH_API_BASE_URL)
+        .get('/v1/search')
+        .query({ q: 'claim', group: 'document', sections: '3', limit: '10', offset: '20' })
+        .reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ total: 35 }))
+
+      const { page } = await searchAt('/hub?q=claim&page=3')
+
+      expect(search.isDone()).toBe(true)
+      expect(page.getByRole('link', { name: 'Countryside Stewardship final payments' })).toHaveAttribute('href', `/guides/${GUIDE}`)
+    })
+
+    test('shows each guide found with its sections, linked to them, their words marked, instead of the list and filters', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
+
+      const { statusCode, page } = await searchAt('/hub?q=claim')
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(page.getByRole('heading', { level: 2, name: '1 guide' })).toBeInTheDocument()
+      expect(page.getByRole('link', { name: 'Countryside Stewardship final payments' })).toHaveAttribute('href', `/guides/${GUIDE}`)
+      expect(page.getAllByText('1 section with these words')).toHaveLength(2)
+      expect(page.getByRole('link', { name: '4.2 Claim rules' })).toHaveAttribute('href', `/guides/${GUIDE}?section=claim-rules#claim-rules`)
+      expect(page.getByText('2 matches')).toBeInTheDocument()
+      expect(page.getByText('claim', { selector: 'mark' }).parentElement).toHaveTextContent('Check the claim was made on time.')
+      expect(page.getByRole('link', { name: 'Clear search' })).toHaveAttribute('href', '/hub')
+      expect(page.queryByRole('link', { name: /^See all/ })).not.toBeInTheDocument()
+      expect(page.document.getElementById('hub-filters')).not.toBeInTheDocument()
+      expect(page.document.getElementById('guide-results')).not.toBeInTheDocument()
+    })
+
+    test('links to every section of a guide that has more than it shows', async () => {
+      const document = searchApi.documentResult({ sectionTotal: 25 })
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [document] }))
+
+      const { page } = await searchAt('/hub?q=claim+rules')
+
+      expect(page.getByRole('link', { name: 'See all 25 sections in this guide: Countryside Stewardship final payments' })).toHaveAttribute('href', `/hub?q=claim+rules&guide=${GUIDE}`)
+    })
+
+    test('searches inside one guide, a page of its sections at a time, with a way back to every guide', async () => {
+      const search = nock(SEARCH_API_BASE_URL)
+        .get('/v1/search')
+        .query({ q: 'claim rules', tag: GUIDE, limit: '10', offset: '10' })
+        .reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse({ total: 25 }))
+
+      const { page } = await searchAt(`/hub?q=claim+rules&guide=${GUIDE}&page=2`)
+
+      expect(search.isDone()).toBe(true)
+      expect(page.getByRole('heading', { level: 2, name: '25 sections' })).toBeInTheDocument()
+      expect(page.getByText('In Countryside Stewardship final payments')).toBeInTheDocument()
+      expect(page.getByRole('link', { name: 'All guides with these words' })).toHaveAttribute('href', '/hub?q=claim+rules')
+      expect(page.getByRole('link', { name: '4.2 Claim rules' })).toHaveAttribute('href', `/guides/${GUIDE}?section=claim-rules#claim-rules`)
+      expect(page.getByRole('link', { name: 'Page 3' })).toHaveAttribute('href', `/hub?q=claim+rules&guide=${GUIDE}&page=3`)
+    })
+
+    test('escapes what the search service sends', async () => {
+      const section = searchApi.sectionResult({ heading: '<img src=x onerror=alert(1)>', snippet: [{ text: '<script>alert(1)</script>', match: true }] })
+      const document = searchApi.documentResult({ documentTitle: '<b>bold</b>', sections: [section] })
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [document] }))
+
+      const { page } = await searchAt('/hub?q=claim')
+
+      expect(page.getByRole('link', { name: '<b>bold</b>' })).toBeInTheDocument()
+      expect(page.getByRole('link', { name: '4.2 <img src=x onerror=alert(1)>' })).toBeInTheDocument()
+      expect(page.getByText('<script>alert(1)</script>', { selector: 'mark' })).toBeInTheDocument()
+      expect(page.document.querySelector('main script, main img, main b')).not.toBeInTheDocument()
+    })
+
+    describe('guides whose title the words cover', () => {
+      const PROMOTED = searchApi.titleResult().documentId
+      const PROMOTED_TITLE = searchApi.titleResult().documentTitle
+
+      /** One of several guides titled "CS MA Claim - ...", its own id. */
+      function caseTitle (number, overrides = {}) {
+        return searchApi.titleResult({
+          documentId: `00000000-0000-4000-8000-00000000000${number}`,
+          documentTitle: `CS MA Claim - Case ${number}`,
+          url: `/guides/00000000-0000-4000-8000-00000000000${number}`,
+          ...overrides
+        })
+      }
+
+      test('promotes the one guide, with what it is for and a way to open it, and lists it with the others whose sections have the words', async () => {
+        const promoted = searchApi.titleResult({ sections: [searchApi.sectionResult({ documentId: PROMOTED, anchor: 'introduction', sectionNumber: '1', heading: 'Introduction' })], sectionTotal: 1 })
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [promoted, searchApi.documentResult()], titles: [promoted] }))
+        nock(GUIDANCE_API_BASE_URL).get(`/guides/${PROMOTED}`).reply(statusCodes.HTTP_STATUS_OK, guideResponse({ id: PROMOTED, metadata: { ...guideResponse().metadata, goal: 'Decide a claim over the maximum eligible weight.' } }))
+
+        const { page } = await searchAt('/hub?q=CS+MA+Claim+AB12+maximum+eligible+weight')
+        const panel = within(page.getByRole('region', { name: PROMOTED_TITLE }))
+
+        expect(page.getByRole('heading', { level: 2, name: '2 guides' })).toBeInTheDocument()
+        expect(panel.getByText('Is this the guide you’re looking for?')).toBeInTheDocument()
+        expect(panel.getByRole('heading', { level: 3, name: PROMOTED_TITLE })).toBeInTheDocument()
+        expect(panel.getByRole('link', { name: PROMOTED_TITLE })).toHaveAttribute('href', `/guides/${PROMOTED}`)
+        expect(panel.getByText('CS MA Claim', { selector: 'mark' })).toBeInTheDocument()
+        expect(panel.getByText('Decide a claim over the maximum eligible weight.')).toBeInTheDocument()
+        expect(panel.getByRole('button', { name: `Open guide: ${PROMOTED_TITLE}` })).toHaveAttribute('href', `/guides/${PROMOTED}`)
+        expect(panel.getByText(/Words also found in/)).toContainElement(panel.getByRole('link', { name: '1 Introduction' }))
+        expect(panel.getByRole('link', { name: '1 Introduction' })).toHaveAttribute('href', `/guides/${PROMOTED}?section=introduction#introduction`)
+        expect(page.getByRole('heading', { level: 3, name: 'Sections that mention ‘CS MA Claim AB12 maximum eligible weight’' })).toBeInTheDocument()
+        expect(page.getByRole('heading', { level: 4, name: 'Countryside Stewardship final payments' })).toBeInTheDocument()
+        expect(page.getByRole('heading', { level: 4, name: PROMOTED_TITLE })).toBeInTheDocument()
+        expect(page.document.querySelector('main .govuk-tag')).not.toBeInTheDocument()
+      })
+
+      test('promotes the guide without what it is for when it can\'t be read, saying no sections mention the words', async () => {
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [], total: 0, titles: [searchApi.titleResult()] }))
+        nock(GUIDANCE_API_BASE_URL).get(`/guides/${PROMOTED}`).reply(statusCodes.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+
+        const { statusCode, page } = await searchAt('/hub?q=CS+MA+Claim+AB12+maximum+eligible+weight')
+
+        expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+        expect(page.getByRole('region', { name: PROMOTED_TITLE })).toBeInTheDocument()
+        expect(page.getByText('Is this the guide you’re looking for?')).toBeInTheDocument()
+        expect(page.getByText('No sections with these words')).toBeInTheDocument()
+        expect(page.getByRole('heading', { level: 3, name: 'Sections that mention ‘CS MA Claim AB12 maximum eligible weight’' })).toBeInTheDocument()
+        expect(page.getByText('No sections mention ‘CS MA Claim AB12 maximum eligible weight’.')).toBeInTheDocument()
+        expect(page.queryByText(/There are no guides with/)).not.toBeInTheDocument()
+        expect(page.queryByText(/Words also found in/)).not.toBeInTheDocument()
+      })
+
+      test('lists several above the sections that have the words, the first five with a link to every one', async () => {
+        const titles = [1, 2, 3, 4, 5, 6].map((number) => caseTitle(number))
+        const alsoInSections = caseTitle(1, { sections: [searchApi.sectionResult()], sectionTotal: 2 })
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ titles: [alsoInSections, ...titles.slice(1)], results: [alsoInSections, searchApi.documentResult()] }))
+
+        const { page } = await searchAt('/hub?q=CS+MA+Claim')
+        const region = page.getByRole('region', { name: '6 guides have ‘CS MA Claim’ in their title' })
+        const list = within(region)
+
+        expect(list.getByRole('heading', { level: 3, name: '6 guides have ‘CS MA Claim’ in their title' })).toBeInTheDocument()
+        expect(list.getByRole('link', { name: 'CS MA Claim - Case 1' })).toHaveAttribute('href', '/guides/00000000-0000-4000-8000-000000000001')
+        expect(list.getByRole('link', { name: 'CS MA Claim - Case 1' }).querySelector('mark')).toHaveTextContent('CS MA Claim')
+        expect(list.getByText('2 sections')).toBeInTheDocument()
+        expect(list.getAllByRole('link', { name: /^CS MA Claim - Case/ })).toHaveLength(5)
+        // Found by how it starts: jsdom drops the space before its visually hidden words, which browsers keep.
+        expect(list.getByRole('link', { name: /^Show all 6 guides/ })).toHaveTextContent('Show all 6 guides with ‘CS MA Claim’ in their title')
+        expect(list.getByRole('link', { name: /^Show all 6 guides/ })).toHaveAttribute('href', '/hub?q=CS+MA+Claim&titles=all#title-match-heading')
+        expect(region.querySelector('.govuk-details')).not.toBeInTheDocument()
+        expect(page.queryByText('Is this the guide you’re looking for?')).not.toBeInTheDocument()
+        expect(page.getByRole('heading', { level: 3, name: 'Sections that mention ‘CS MA Claim’' })).toBeInTheDocument()
+        expect(page.getByRole('heading', { level: 4, name: 'CS MA Claim - Case 1' })).toBeInTheDocument()
+      })
+
+      test('lists several, saying under the heading over sections that none mention the words when only titles have them', async () => {
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ titles: [caseTitle(1), caseTitle(2)], results: [], total: 0 }))
+
+        const { page } = await searchAt('/hub?q=CS+MA+Claim')
+
+        expect(page.getByText('No sections with these words')).toBeInTheDocument()
+        expect(page.getByRole('heading', { level: 3, name: 'Sections that mention ‘CS MA Claim’' })).toBeInTheDocument()
+        expect(page.getByText('No sections mention ‘CS MA Claim’.')).toBeInTheDocument()
+      })
+
+      test('lists every one, with no link to show all, when the address asks for every one', async () => {
+        const titles = [1, 2, 3, 4, 5, 6].map(caseTitle)
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ titles, results: [] }))
+
+        const { page } = await searchAt('/hub?q=CS+MA+Claim&titles=all')
+        const list = within(page.getByRole('region', { name: '6 guides have ‘CS MA Claim’ in their title' }))
+
+        expect(list.getAllByRole('link', { name: /^CS MA Claim - Case/ })).toHaveLength(6)
+        expect(list.queryByRole('link', { name: /^Show all/ })).not.toBeInTheDocument()
+      })
+
+      test('shows no title block, as before, when the words cover no title', async () => {
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
+
+        const { page } = await searchAt('/hub?q=weight')
+
+        expect(page.queryByRole('region')).not.toBeInTheDocument()
+        expect(page.queryByRole('heading', { name: /^Sections that mention/ })).not.toBeInTheDocument()
+        expect(page.getByRole('heading', { level: 3, name: 'Countryside Stewardship final payments' })).toBeInTheDocument()
+      })
+
+      test('shows no title block past the first page', async () => {
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ total: 25, titles: [searchApi.titleResult()] }))
+
+        const { page } = await searchAt('/hub?q=CS+MA+Claim&page=2')
+
+        expect(page.queryByRole('region')).not.toBeInTheDocument()
+        expect(page.queryByText('Is this the guide you’re looking for?')).not.toBeInTheDocument()
+      })
+
+      test('escapes the titles the search service sends', async () => {
+        const title = searchApi.titleResult({ documentTitle: '<b>bold</b>', titleMatch: { snippet: [{ text: '<script>x</script>', match: true }] } })
+        nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ titles: [title, caseTitle(2)] }))
+
+        const { page } = await searchAt('/hub?q=CS+MA+Claim')
+
+        expect(page.getByText('<script>x</script>', { selector: 'mark' })).toBeInTheDocument()
+        expect(page.document.querySelector('main script, main b')).not.toBeInTheDocument()
+      })
+    })
+
+    test('says when nothing has the words, with what to try next', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [], total: 0 }))
+
+      const { page } = await searchAt('/hub?q=zebra')
+      const suggestions = within(page.getByText('check the spelling').closest('ul'))
+
+      expect(page.getByRole('heading', { level: 2, name: '0 guides' })).toBeInTheDocument()
+      expect(page.getByRole('heading', { level: 3, name: 'There are no guides with ‘zebra’' })).toBeInTheDocument()
+      expect(page.getByText('You could:')).toBeInTheDocument()
+      expect(suggestions.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+        'check the spelling',
+        'use fewer or different words',
+        'search for a scheme or case type, for example ‘CS MA Claim’',
+        'browse all guides'
+      ])
+      expect(suggestions.getByRole('link', { name: 'browse all guides' })).toHaveAttribute('href', '/hub')
+      expect(page.queryByText(/sections with these words/)).not.toBeInTheDocument()
+      expect(page.queryByRole('region')).not.toBeInTheDocument()
+      expect(page.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument()
+    })
+
+    test('escapes the words in what it says when nothing has them', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ results: [], total: 0 }))
+
+      const { page } = await searchAt('/hub?q=%3Cscript%3Ex%3C%2Fscript%3E')
+
+      expect(page.getByRole('heading', { level: 3, name: 'There are no guides with ‘<script>x</script>’' })).toBeInTheDocument()
+      expect(page.document.querySelector('main script')).not.toBeInTheDocument()
+    })
+
+    test('says when there are too many matches to show', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.tooManyDocumentsResponse(1500))
+
+      const { page } = await searchAt('/hub?q=the')
+
+      expect(page.getByText('Too many matches. Use more specific words.')).toBeInTheDocument()
+      expect(page.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument()
+    })
+
+    test('pages between the guides, keeping the words', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse({ total: 25 }))
+
+      const { page } = await searchAt('/hub?q=claim+rules&page=2')
+      const pagination = within(page.getByRole('navigation', { name: 'Pagination' }))
+
+      expect(pagination.getByRole('link', { name: 'Page 1' })).toHaveAttribute('href', '/hub?q=claim+rules')
+      expect(pagination.getByRole('link', { name: 'Page 3' })).toHaveAttribute('href', '/hub?q=claim+rules&page=3')
+      expect(pagination.getByRole('link', { name: 'Page 2' })).toHaveAttribute('aria-current', 'page')
+    })
+
+    test.each([
+      ['fails', (scope) => scope.reply(statusCodes.HTTP_STATUS_INTERNAL_SERVER_ERROR)],
+      ['can\'t be reached', (scope) => scope.replyWithError('connect ECONNREFUSED')]
+    ])('lists every guide, with the filters keeping the words, saying search is not available, when the search service %s', async (_, respond) => {
+      respond(nock(SEARCH_API_BASE_URL).get('/v1/search').query(true))
+
+      const { statusCode, page } = await searchAt('/hub?q=claim+rules')
+      const errorSummary = errorSummaryOf(page)
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(errorSummary.getByRole('heading', { name: 'There is a problem' })).toBeInTheDocument()
+      expect(errorSummary.getByRole('link', { name: 'Search is not available at the moment. Try again later, or find a guide in the list below.' })).toHaveAttribute('href', '#hub-search')
+      expect(page.getByRole('heading', { level: 2, name: '1 guide' })).toBeInTheDocument()
+      expect(page.document.querySelector('#hub-filters input[type="hidden"][name="q"]')).toHaveValue('claim rules')
+    })
+
+    test('says there is an error in the page title when search is not available', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+
+      const { page } = await searchAt('/hub?q=claim')
+
+      expect(page.document.title).toMatch(/^Error: RPA Guidance Hub/)
+    })
+
+    test('does not say there is an error when search answers', async () => {
+      nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
+
+      const { page } = await searchAt('/hub?q=claim')
+
+      expect(page.queryByRole('alert')).not.toBeInTheDocument()
+      expect(page.document.title).toMatch(/^RPA Guidance Hub/)
+    })
+
+    test('lists every guide, saying the words must be shorter, rather than searching for more than the search service takes', async () => {
+      const search = nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.documentSearchResponse())
+
+      const { statusCode, page } = await searchAt(`/hub?q=${'a'.repeat(501)}`)
+
+      expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+      expect(search.isDone()).toBe(false)
+      expect(page.document.title).toMatch(/^Error: RPA Guidance Hub/)
+      expect(errorSummaryOf(page).getByRole('link', { name: 'Search must be 500 characters or fewer' })).toHaveAttribute('href', '#hub-search')
+      expect(page.queryByText(/Search is not available/)).not.toBeInTheDocument()
+      expect(page.document.getElementById('guide-results')).toBeInTheDocument()
+    })
+
+    test('does not search without words', async () => {
+      const search = nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(statusCodes.HTTP_STATUS_OK, searchApi.searchResponse())
+
+      const { page } = await searchAt('/hub?q=+')
+
+      expect(search.isDone()).toBe(false)
+      expect(page.queryByRole('alert')).not.toBeInTheDocument()
+      expect(page.document.getElementById('hub-filters')).toBeInTheDocument()
     })
   })
 

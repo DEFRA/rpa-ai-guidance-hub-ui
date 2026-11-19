@@ -361,9 +361,12 @@ $app-side-nav-muted: #505a5f;
 // ($app-content-gutter there). Width containers nested in the page's own (the
 // hub's) take no margins of their own, or the content would be inset twice.
 // A page that bleeds to the edges (the guide's) keeps its own gutters.
+// Their width is the column's, less the gutters: `width: 100%` (core/_main)
+// would add the gutters to it, and the page would scroll sideways.
 $app-content-gutter: govuk-spacing(4);
 
 .app-layout__main .govuk-width-container {
+  width: auto;
   max-width: none;
   margin-right: 0;
   margin-left: 0;

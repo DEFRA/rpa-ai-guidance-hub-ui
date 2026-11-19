@@ -1,0 +1,31 @@
+{#
+  The guides whose title the words cover, when there are several, above the
+  sections that have them: each title a link, the words marked, and how many
+  of its sections have them. The first few show, with a link to the page
+  again showing every one, which lands back on this list. Reads
+  `search.titleBlock` (kind 'several').
+#}
+{% from "hub/partials/marked.njk" import marked %}
+
+{% set list = search.titleBlock %}
+
+<section class="app-title-match" aria-labelledby="title-match-heading">
+  <h3 class="govuk-body app-title-match__lead" id="title-match-heading" tabindex="-1">{{ list.label }}</h3>
+
+  <ul class="app-title-match__list">
+    {% for row in list.rows %}
+      <li class="app-title-match__row">
+        <a class="govuk-link app-title-match__row-title" href="{{ row.href }}">{{ marked(row.titleSnippet, row.title) }}</a>
+        {% if row.sectionsText %}
+          <span class="govuk-body-s app-title-match__meta">{{ row.sectionsText }}</span>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+
+  {% if list.showAll %}
+    <p class="govuk-body app-title-match__more">
+      <a class="govuk-link" href="{{ list.showAll.href }}">{{ list.showAll.text }}<span class="govuk-visually-hidden"> with ‘{{ search.words }}’ in their title</span></a>
+    </p>
+  {% endif %}
+</section>
