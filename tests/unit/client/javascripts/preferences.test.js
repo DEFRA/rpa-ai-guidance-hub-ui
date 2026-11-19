@@ -202,7 +202,9 @@ test('goes on sending after one does not get through', async () => {
   saver.save({ sideNavWidth: 300 })
   await pass(GAP_MS)
 
-  expect(received).toEqual([{ sideNavWidth: '300' }])
+  // A request that does not get through takes more turns than settle()
+  // gives on a slow machine, so wait for the next to arrive.
+  await vi.waitFor(() => expect(received).toEqual([{ sideNavWidth: '300' }]))
 })
 
 test('sends a change still waiting as the user leaves the page', async () => {
