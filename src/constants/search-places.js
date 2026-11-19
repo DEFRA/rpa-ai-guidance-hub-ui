@@ -154,7 +154,7 @@ class SectionReader {
   placesOf (anchor, { start, end, text }) {
     const section = this.#sections.get(anchor)
 
-    if (!section || section.characters.slice(start, end).join('') !== text) {
+    if (section?.characters.slice(start, end).join('') !== text) {
       return null
     }
 

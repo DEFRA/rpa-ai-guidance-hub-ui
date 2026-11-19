@@ -16,6 +16,12 @@
   {%- endif -%}
 {% endmacro %}
 
+{# What guide-search.js needs to mark the search's matches on the page:
+   nothing while not searching, or when there are none. #}
+{% macro searchData(search) %}
+  {%- if search.matches %} data-guide-search-q="{{ search.q }}" data-guide-search-matches="{{ search.matches | dump }}" data-guide-search-sections="{{ search.sectionStarts | dump }}"{% endif -%}
+{% endmacro %}
+
 {# A search reloads the page: what it found comes first in the title, which a
    screen reader reads as the page loads. #}
 {% set pageTitle = (search.status ~ " – " ~ title) if search else title %}
@@ -151,7 +157,7 @@
             {# Search in this guide: a form that reloads the page with the words
                in its address; then how many matches there are, and a count at
                each contents entry. The API finds them. #}
-            <form class="app-guide-keyword-search" role="search" aria-label="Search this guide" method="get" action="{{ searchAction }}" data-guide-search{% if search.matches %} data-guide-search-q="{{ search.q }}" data-guide-search-matches="{{ search.matches | dump }}" data-guide-search-sections="{{ search.sectionStarts | dump }}"{% endif %}>
+            <form class="app-guide-keyword-search" role="search" aria-label="Search this guide" method="get" action="{{ searchAction }}" data-guide-search{{ searchData(search) }}>
               {% if searchSection %}<input type="hidden" name="section" value="{{ searchSection }}">{% endif %}
               <div class="app-guide-keyword-search__bar">
                 {{ govukInput({

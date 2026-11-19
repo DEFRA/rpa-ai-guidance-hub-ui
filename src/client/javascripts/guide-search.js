@@ -27,6 +27,9 @@ const MARGIN = 16
 // A page of the guide: in the stepper, all but one are hidden.
 const PAGE = '[data-guide-page]'
 
+// The search box, where the words are typed.
+const WORDS_INPUT = 'input[name="q"]'
+
 // A contents entry's count, which goes to the first match under it.
 const FIRST_UNDER = '[data-guide-search-first]'
 const STEPS_CLASS = 'app-guide-contents__count--steps'
@@ -215,10 +218,10 @@ function placeMatches (found, starts, doc = document) {
  *
  * @private
  */
-class _Search {
+class GuideSearch {
   constructor (form) {
     this.form = form
-    this.input = form.querySelector('input[name="q"]')
+    this.input = form.querySelector(WORDS_INPUT)
     this.position = form.querySelector('[data-guide-search-position]')
     this.words = form.dataset.guideSearchQ
     this.found = JSON.parse(form.dataset.guideSearchMatches)
@@ -362,7 +365,7 @@ class _Search {
  * @param {HTMLFormElement} form
  */
 function _bringFindHere (form) {
-  const input = form.querySelector('input[name="q"]')
+  const input = form.querySelector(WORDS_INPUT)
   const kbd = document.createElement('kbd')
 
   input.setAttribute('aria-keyshortcuts', 'Control+F Meta+F')
@@ -424,14 +427,14 @@ function initGuideSearch () {
 
   _bringFindHere(form)
 
-  const input = form.querySelector('input[name="q"]')
+  const input = form.querySelector(WORDS_INPUT)
 
   if (input.value.trim()) {
     holdFocus(input)
   }
 
   if (form.dataset.guideSearchMatches && window.CSS?.highlights) {
-    new _Search(form).start()
+    new GuideSearch(form).start()
   }
 }
 

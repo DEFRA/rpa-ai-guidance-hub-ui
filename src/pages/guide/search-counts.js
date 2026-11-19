@@ -43,7 +43,6 @@ function countMatches (sections, entries, found) {
   const byEntry = new Map()
   const firstOf = new Map()
   let entry = null
-  // How many matches come before.
   let before = 0
 
   for (const anchor of _anchorsInOrder(sections)) {
