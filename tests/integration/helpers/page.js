@@ -65,6 +65,29 @@ function summaryValueOf (page, key) {
 }
 
 /**
+ * The button that hides and shows the hub's filters. JavaScript reveals it, so
+ * until then it is hidden and a role query would not find it.
+ *
+ * @param {ReturnType<typeof pageOf>} page
+ * @returns {Element}
+ */
+function filtersToggleOf (page) {
+  return page.document.querySelector('[data-filters-toggle]')
+}
+
+/**
+ * One filter's group in the hub's filter panel, which opens like a folder,
+ * found by the name on its summary.
+ *
+ * @param {ReturnType<typeof pageOf>} page
+ * @param {string} name
+ * @returns {HTMLDetailsElement}
+ */
+function filterGroupOf (page, name) {
+  return page.getByText(name, { selector: '.app-hub-filters__summary-text' }).closest('details')
+}
+
+/**
  * The text a reader gets from a piece of the hub's own HTML, such as a message
  * that bolds the name of a control: to find it on a page by its words.
  *
@@ -77,6 +100,8 @@ function textOf (html) {
 
 export {
   errorSummaryOf,
+  filterGroupOf,
+  filtersToggleOf,
   pageOf,
   sideNavOf,
   summaryValueOf,

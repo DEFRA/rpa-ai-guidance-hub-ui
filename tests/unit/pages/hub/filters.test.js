@@ -82,6 +82,20 @@ describe('filterPanel', () => {
     ...overrides
   })
 
+  test('counts what is chosen in each group, the fixed scheme year as one', () => {
+    const { groups } = panel({ filters: { ...NONE, audience: ['Checker', 'Processor'] } })
+
+    expect(groups.map((group) => [group.name, group.selectedCount])).toEqual([
+      ['audience', 2], ['system', 0], ['year', 1]
+    ])
+  })
+
+  test('counts the fixed scheme year and each chosen tag as applied, and names the year', () => {
+    expect(panel().applied).toBe(1)
+    expect(panel({ filters: { ...NONE, audience: ['Checker'], system: ['CRM'] } }).applied).toBe(3)
+    expect(panel().fixedSummary).toBe('scheme year: 2026')
+  })
+
   test('offers who it\'s for, the system and the scheme year, each value with its count', () => {
     const { groups } = panel()
 

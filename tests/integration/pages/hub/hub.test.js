@@ -9,7 +9,7 @@ import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
 import * as searchApi from '../../../fixtures/search-api.js'
 import { bookmarkedGuidesResponse, caseResponse, guidePageResponse, guideResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
-import { errorSummaryOf, pageOf, sideNavOf, textOf } from '../../helpers/page.js'
+import { errorSummaryOf, filterGroupOf, filtersToggleOf, pageOf, sideNavOf, textOf } from '../../helpers/page.js'
 import { BOOKMARK_MESSAGES, HUB_MESSAGES } from '../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -35,7 +35,7 @@ function starFormOf (row, options = {}) {
 
 /** The filter panel beside a list, found as a screen reader finds it. */
 function filtersOf (page) {
-  return within(page.getByRole('complementary', { name: 'Filter results' }))
+  return within(page.getByRole('complementary', { name: 'Narrow down the list' }))
 }
 
 describe('#hubController', () => {
@@ -86,7 +86,7 @@ describe('#hubController', () => {
 
       const page = pageOf(payload)
       expect(page.queryByRole('tablist')).not.toBeInTheDocument()
-      expect(textsOf(page.getAllByRole('heading', { level: 2 }))).toEqual(['Filter results', '1 guide'])
+      expect(textsOf(page.getAllByRole('heading', { level: 2 }))).toEqual(['Narrow down the list', '1 guide'])
     })
 
     test('leaves a maintainer\'s work to the side navigation', async () => {
@@ -632,9 +632,9 @@ describe('#hubController', () => {
       const { page } = await hubWith({})
       const filters = filtersOf(page)
       const year = within(filters.getByRole('group', { name: 'Scheme year' })).getByRole('checkbox', { name: '2026 (1)' })
-      const apply = filters.getByRole('button', { name: 'Apply filters' })
+      const apply = filters.getByRole('button', { name: 'Apply' })
 
-      expect(filters.getByRole('heading', { name: 'Filter results' })).toBeInTheDocument()
+      expect(filters.getByRole('heading', { name: 'Narrow down the list' })).toBeInTheDocument()
       expect(within(filters.getByRole('group', { name: 'Who it\'s for' })).getByRole('checkbox', { name: 'Processor (3)' })).toBeInTheDocument()
       expect(filters.getByRole('group', { name: 'System used' })).toBeInTheDocument()
       expect(year).toHaveAttribute('name', 'year')
@@ -645,14 +645,34 @@ describe('#hubController', () => {
       expect(apply.form).toHaveAttribute('action', '/hub#guide-results')
     })
 
+    test('say in a toolbar what the list is filtered by, with a button to hide the filters', async () => {
+      const { page } = await hubWith({})
+      const toggle = filtersToggleOf(page)
+
+      expect(toggle).toHaveTextContent('Hide filters (1 applied)')
+      expect(toggle).toHaveAttribute('aria-controls', 'hub-filters-panel')
+      expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      expect(page.getByText('Filtered by scheme year: 2026')).toBeInTheDocument()
+      expect(page.document.getElementById('hub-filters-panel')).toBeInTheDocument()
+    })
+
+    test('open the filters that have something chosen, saying how many, and leave the others closed', async () => {
+      const { page } = await hubWith({ audience: 'Checker' })
+
+      expect(filtersToggleOf(page)).toHaveTextContent('Hide filters (2 applied)')
+      expect(filterGroupOf(page, 'Who it\'s for')).toHaveProperty('open', true)
+      expect(page.getAllByText('· 1 selected')).toHaveLength(2)
+      expect(filterGroupOf(page, 'System used')).toHaveProperty('open', false)
+    })
+
     test('pass the chosen values to the API, check them, and show each as a tag that takes it away', async () => {
       const { listing, page } = await hubWith({ audience: 'Checker', system: 'CRM' })
       const filters = filtersOf(page)
 
       expect(listing.isDone()).toBe(true)
       expect(filters.getByRole('checkbox', { name: 'Checker (1)' })).toBeChecked()
-      expect(filters.getByRole('link', { name: 'Remove filter Checker' })).toHaveAttribute('href', '/hub?system=CRM')
-      expect(filters.getByRole('link', { name: 'Remove filter CRM' })).toHaveAttribute('href', '/hub?audience=Checker')
+      expect(page.getByRole('link', { name: 'Remove filter Checker' })).toHaveAttribute('href', '/hub?system=CRM')
+      expect(page.getByRole('link', { name: 'Remove filter CRM' })).toHaveAttribute('href', '/hub?audience=Checker')
       expect(filters.getByRole('link', { name: 'Clear filters' })).toHaveAttribute('href', '/hub')
     })
 
@@ -662,7 +682,7 @@ describe('#hubController', () => {
 
       expect(listing.isDone()).toBe(true)
       expect(sort).toHaveAttribute('name', 'sort')
-      expect(sort.form).toBe(filtersOf(page).getByRole('button', { name: 'Apply filters' }).form)
+      expect(sort.form).toBe(filtersOf(page).getByRole('button', { name: 'Apply' }).form)
       expect(sort).toHaveAttribute('data-sort-select', 'true')
       expect(sort).toHaveDisplayValue('Oldest updated')
       expect(within(sort).getByRole('option', { name: 'Most relevant' })).toBeDisabled()
@@ -801,7 +821,7 @@ describe('#hubController', () => {
       expect(row.getByRole('link', { name: 'Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${PINNED}`)
       expect(row.getByText('Pinned')).toBeInTheDocument()
       expect(starFormOf(row)).toHaveFormValues({ position: '1' })
-      expect(filtersOf(page).getByRole('button', { name: 'Apply filters' }).form).toHaveAttribute('action', '/hub/pinned#guide-results')
+      expect(filtersOf(page).getByRole('button', { name: 'Apply' }).form).toHaveAttribute('action', '/hub/pinned#guide-results')
       expect(page.queryByRole('combobox', { name: 'Sort by:' })).not.toBeInTheDocument()
     })
 
@@ -955,7 +975,7 @@ describe('#hubController', () => {
       expect(older.getByRole('link', { name: 'Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${OLDER}`)
       expect(older.getByText('Pinned')).toBeInTheDocument()
       expect(starFormOf(older)).toHaveFormValues({ position: '0' })
-      expect(filtersOf(page).getByRole('button', { name: 'Apply filters' }).form).toHaveAttribute('action', '/hub/recently-opened#guide-results')
+      expect(filtersOf(page).getByRole('button', { name: 'Apply' }).form).toHaveAttribute('action', '/hub/recently-opened#guide-results')
       expect(page.queryByRole('combobox', { name: 'Sort by:' })).not.toBeInTheDocument()
     })
 
@@ -1032,7 +1052,7 @@ describe('#hubController', () => {
       expect(claims.getByRole('link', { name: 'Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${CLAIMS}`)
       expect(starFormOf(claims)).toHaveFormValues({ position: '0' })
       expect(filtersOf(page).getByRole('checkbox', { name: 'CRM (2)' })).toBeChecked()
-      expect(filtersOf(page).getByRole('button', { name: 'Apply filters' }).form).toHaveAttribute('action', '/hub/bookmarked-guides#guide-results')
+      expect(filtersOf(page).getByRole('button', { name: 'Apply' }).form).toHaveAttribute('action', '/hub/bookmarked-guides#guide-results')
       expect(page.queryByRole('combobox', { name: 'Sort by:' })).not.toBeInTheDocument()
     })
 
@@ -1085,7 +1105,7 @@ describe('#hubController', () => {
         expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
         expect(listing.isDone()).toBe(true)
         expect(rowsOf(page)[0].getByRole('link', { name: 'Claiming the SFI payment' })).toHaveAttribute('href', `/guides/${CLAIMS}`)
-        expect(filtersOf(page).getByRole('link', { name: 'Remove filter Case: W1234567' })).toHaveAttribute('href', '/hub/bookmarked-guides')
+        expect(page.getByRole('link', { name: 'Remove filter Case: W1234567' })).toHaveAttribute('href', '/hub/bookmarked-guides')
       })
 
       test('name the case in the heading of the results, as well as in the filters', async () => {
@@ -1098,10 +1118,10 @@ describe('#hubController', () => {
         const { page } = await narrowedPage(`${NARROWED}&system=CRM`, { case: KEY, system: 'CRM' })
         const filters = filtersOf(page)
 
-        expect(filters.getByRole('button', { name: 'Apply filters' }).form).toHaveFormValues({ case: KEY })
+        expect(filters.getByRole('button', { name: 'Apply' }).form).toHaveFormValues({ case: KEY })
         expect(filters.getByRole('checkbox', { name: 'CRM (1)' })).toBeChecked()
-        expect(filters.getByRole('link', { name: 'Remove filter CRM' })).toHaveAttribute('href', NARROWED)
-        expect(filters.getByRole('link', { name: 'Remove filter Case: W1234567' })).toHaveAttribute('href', '/hub/bookmarked-guides?system=CRM')
+        expect(page.getByRole('link', { name: 'Remove filter CRM' })).toHaveAttribute('href', NARROWED)
+        expect(page.getByRole('link', { name: 'Remove filter Case: W1234567' })).toHaveAttribute('href', '/hub/bookmarked-guides?system=CRM')
         expect(filters.getByRole('link', { name: 'Clear filters' })).toHaveAttribute('href', '/hub/bookmarked-guides')
       })
 

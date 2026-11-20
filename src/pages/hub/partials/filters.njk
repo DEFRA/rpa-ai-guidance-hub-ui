@@ -2,31 +2,17 @@
 {% from "govuk/components/button/macro.njk" import govukButton %}
 
 {#
-  The filter panel beside a list of guides, as the prototype's hub has it
-  (playground/hub/page.njk): one GET form, so it works without JavaScript;
-  the chosen values as tags, each a link that takes it away; each option
-  with its count. Reads `filters` (hub/filters.js's filterPanel).
+  The filter panel beside a list of guides, as the prototype's hub has it:
+  one GET form, so it works without JavaScript; each filter a group that
+  opens like a folder, open when something in it is chosen; each option with
+  its count. The chosen values are tags in the toolbar above. Reads `filters`
+  (hub/filters.js's filterPanel).
 #}
-<aside class="app-hub-filters" aria-labelledby="hub-filters-heading">
-  <h2 class="govuk-heading-m app-hub-filters__title" id="hub-filters-heading">Filter results</h2>
-
-  {% if filters.selected.length %}
-    <div class="app-filter__selected app-hub-filters__selected">
-      <h3 class="govuk-visually-hidden">Selected filters</h3>
-      <ul class="app-filter__tags">
-        {% for tag in filters.selected %}
-          <li>
-            <a class="app-filter__tag" href="{{ tag.href }}">
-              <span class="govuk-visually-hidden">Remove filter</span>
-              {{ tag.text }}
-              <span class="app-filter__tag-remove" aria-hidden="true">&times;</span>
-            </a>
-          </li>
-        {% endfor %}
-      </ul>
-      <a class="govuk-link app-hub-filters__clear" href="{{ filters.clearHref }}">Clear filters</a>
-    </div>
-  {% endif %}
+<aside class="app-hub-filters" id="hub-filters-panel" aria-labelledby="hub-filters-heading">
+  <div class="app-hub-filters__header">
+    <h2 class="govuk-heading-s app-hub-filters__title" id="hub-filters-heading">Narrow down the list</h2>
+    <p class="govuk-body-s app-hub-filters__hint">Like opening a folder. Pick one or more.</p>
+  </div>
 
   <form id="hub-filters" method="get" action="{{ filters.action }}#guide-results">
     {# The list's own parameters: the words searched for, or the case it is narrowed to. #}
@@ -38,19 +24,30 @@
         {% set _ = items.push({ name: option.name, value: option.value, html: optionHtml, checked: option.checked, disabled: option.disabled }) %}
       {% endfor %}
 
-      {{ govukCheckboxes({
-        idPrefix: group.name,
-        name: group.name,
-        classes: "govuk-checkboxes--small",
-        formGroup: { classes: "app-hub-filters__group" },
-        fieldset: { legend: { text: group.legend, classes: "govuk-fieldset__legend--s" } },
-        items: items
-      }) }}
+      <details class="app-hub-filters__group"{% if group.selectedCount %} open{% endif %}>
+        <summary class="app-hub-filters__summary">
+          <span class="app-hub-filters__summary-text">{{ group.legend }}</span>
+          {% if group.selectedCount %}<span class="app-hub-filters__selected-count">&middot; {{ group.selectedCount }} selected</span>{% endif %}
+        </summary>
+        {{ govukCheckboxes({
+          idPrefix: group.name,
+          name: group.name,
+          classes: "govuk-checkboxes--small",
+          formGroup: { classes: "app-hub-filters__options" },
+          fieldset: { legend: { text: group.legend, classes: "govuk-visually-hidden" } },
+          items: items
+        }) }}
+      </details>
     {% endfor %}
 
-    {{ govukButton({
-      text: "Apply filters",
-      classes: "govuk-!-margin-bottom-0"
-    }) }}
+    <div class="app-hub-filters__actions">
+      {{ govukButton({
+        text: "Apply",
+        classes: "govuk-!-margin-bottom-0"
+      }) }}
+      {% if filters.selected.length %}
+        <a class="govuk-link app-hub-filters__clear" href="{{ filters.clearHref }}">Clear filters</a>
+      {% endif %}
+    </div>
   </form>
 </aside>

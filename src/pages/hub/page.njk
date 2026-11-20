@@ -62,6 +62,7 @@
           {% include "hub/partials/search-results.njk" %}
         {% else %}
           {# The filters beside the list, as the prototype's hub has them. #}
+          {% if filters %}{% include "hub/partials/filters-toolbar.njk" %}{% endif %}
           <div class="app-hub-columns">
             {% if filters %}{% include "hub/partials/filters.njk" %}{% endif %}
 
