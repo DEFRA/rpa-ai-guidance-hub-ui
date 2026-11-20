@@ -1,0 +1,17 @@
+{#
+  The chosen filters as tags, each a link that takes it away. Reads
+  `filters.selected`. Delete the include to drop them.
+#}
+{% if filters.selected.length %}
+  <ul class="app-filter__tags">
+    {% for tag in filters.selected %}
+      <li>
+        <a class="app-filter__tag" href="{{ tag.href }}">
+          <span class="govuk-visually-hidden">Remove filter</span>
+          {{ tag.text }}
+          <span class="app-filter__tag-remove" aria-hidden="true">&times;</span>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}

@@ -157,10 +157,13 @@ function _option (option, filters, name) {
  * @returns {{name: string, legend: string, options: Array<object>}}
  */
 function _group (name, counted, filters) {
+  const options = counted.map((option) => _option(option, filters, name))
+
   return {
     name,
     legend: LEGENDS[name],
-    options: counted.map((option) => _option(option, filters, name))
+    selectedCount: options.filter((option) => option.checked).length,
+    options
   }
 }
 
@@ -193,6 +196,7 @@ function filterPanel ({ path, filters, counts, sort, total, withSort, words = ''
     {
       name: 'year',
       legend: 'Scheme year',
+      selectedCount: 1,
       // The only scheme year there is, for now: shown, checked and fixed,
       // filtering nothing.
       options: [{ value: String(SCHEME_YEAR), text: String(SCHEME_YEAR), count: total, checked: true, disabled: true }]
@@ -219,6 +223,9 @@ function filterPanel ({ path, filters, counts, sort, total, withSort, words = ''
     kept: _given(kept),
     groups,
     selected,
+    // The fixed scheme year is always applied, beside the chosen tags.
+    applied: selected.length + 1,
+    fixedSummary: `scheme year: ${SCHEME_YEAR}`,
     clearHref: listHref(path, filtersFrom(), sort, { q: words }),
     sort: withSort
       ? { options: SORTS.map((option) => ({ ...option, selected: option.value === sort, disabled: Boolean(option.disabled) })) }
