@@ -9,7 +9,7 @@ import { HubViewModel } from '../../../../src/pages/hub/view-models.js'
 import * as searchApi from '../../../fixtures/search-api.js'
 import { bookmarkedGuidesResponse, caseResponse, guidePageResponse, guideResponse, guideSummaryResponse, pinnedGuidesResponse, pinnedSummaryResponse, pinResponse, recentlyOpenedResponse, refusalResponse, userResponse, versionResponse } from '../../../fixtures/guidance-api.js'
 import { loginAsDevUser } from '../../helpers/login.js'
-import { errorSummaryOf, pageOf, sideNavOf, textOf } from '../../helpers/page.js'
+import { errorSummaryOf, filterGroupOf, filtersToggleOf, pageOf, sideNavOf, textOf } from '../../helpers/page.js'
 import { BOOKMARK_MESSAGES, HUB_MESSAGES } from '../../../fixtures/messages.js'
 
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
@@ -647,8 +647,7 @@ describe('#hubController', () => {
 
     test('say in a toolbar what the list is filtered by, with a button to hide the filters', async () => {
       const { page } = await hubWith({})
-      // Hidden until JavaScript shows it, so a role query would not find it.
-      const toggle = page.document.querySelector('[data-filters-toggle]')
+      const toggle = filtersToggleOf(page)
 
       expect(toggle).toHaveTextContent('Hide filters (1 applied)')
       expect(toggle).toHaveAttribute('aria-controls', 'hub-filters-panel')
@@ -659,12 +658,11 @@ describe('#hubController', () => {
 
     test('open the filters that have something chosen, saying how many, and leave the others closed', async () => {
       const { page } = await hubWith({ audience: 'Checker' })
-      const open = (name) => [...page.document.querySelectorAll('.app-hub-filters__summary-text')].find((summary) => summary.textContent === name).closest('details').open
 
-      expect(page.document.querySelector('[data-filters-toggle]')).toHaveTextContent('Hide filters (2 applied)')
-      expect(open('Who it\'s for')).toBe(true)
+      expect(filtersToggleOf(page)).toHaveTextContent('Hide filters (2 applied)')
+      expect(filterGroupOf(page, 'Who it\'s for')).toHaveProperty('open', true)
       expect(page.getAllByText('· 1 selected')).toHaveLength(2)
-      expect(open('System used')).toBe(false)
+      expect(filterGroupOf(page, 'System used')).toHaveProperty('open', false)
     })
 
     test('pass the chosen values to the API, check them, and show each as a tag that takes it away', async () => {
