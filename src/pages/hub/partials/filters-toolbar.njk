@@ -1,0 +1,15 @@
+{% from "common/icon.njk" import icon %}
+
+{#
+  Above the list and its filters: the button that hides the panel (only with
+  JavaScript, so it starts hidden), what the list is filtered by, and the
+  chosen filters as tags. Reads `filters`.
+#}
+<div class="app-hub-filters-toolbar">
+  <button type="button" class="app-hub-filters-toggle" aria-controls="hub-filters-panel" aria-expanded="true" hidden data-filters-toggle>
+    {{ icon("filter") }}
+    <span><span data-filters-toggle-label>Hide filters</span> ({{ filters.applied }} applied)</span>
+  </button>
+  <p class="govuk-body-s app-hub-filters-toolbar__summary">Filtered by {{ filters.fixedSummary }}</p>
+  {% include "hub/partials/selected-tags.njk" %}
+</div>

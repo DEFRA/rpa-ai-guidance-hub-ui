@@ -1,5 +1,5 @@
 /**
- * Sends the hub's sort as soon as it changes. Without this, "Apply filters"
+ * Sends the hub's sort as soon as it changes. Without this, "Apply"
  * sends it, since the sort belongs to the filter form.
  *
  * @param {HTMLSelectElement} select - In the form it sends (`form="…"`)

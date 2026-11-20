@@ -6,6 +6,7 @@ import { initGuideInfo } from './guide-info.js'
 import { initGuidePages } from './guide-pages.js'
 import { initGuidePlace } from './guide-place.js'
 import { initGuideSearch } from './guide-search.js'
+import { initFiltersToggle } from './hub-filters.js'
 import { initSortSelect } from './hub-sort.js'
 import { initSideNavLists } from './side-nav-lists.js'
 import { initReorder } from './side-nav-reorder.js'
@@ -24,6 +25,7 @@ initGuideContents()
 initGuideInfo()
 initGuideSearch()
 initSortSelect()
+initFiltersToggle()
 initReorder()
 initSideNavLists()
 initResizeHandles()
