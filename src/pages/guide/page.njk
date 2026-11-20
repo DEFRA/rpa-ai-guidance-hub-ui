@@ -7,12 +7,19 @@
 {% from "govuk/components/input/macro.njk" import govukInput %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
 
-{# A contents entry's count of the search's matches under it; nothing while
-   not searching, or for an entry with none. #}
+{# A contents entry's count of the search's matches under it, with the number
+   of the first, which guide-search.js goes to when the count is clicked;
+   nothing while not searching, or for an entry with none. #}
 {% macro matchCount(entry) %}
   {%- if entry.count -%}
-    <span class="app-guide-contents__count">{{ entry.count }}<span class="govuk-visually-hidden"> {{ "match" if entry.count == 1 else "matches" }}</span></span>
+    <span class="app-guide-contents__count" data-guide-search-first="{{ entry.first }}">{{ entry.count }}<span class="govuk-visually-hidden"> {{ "match" if entry.count == 1 else "matches" }}</span></span>
   {%- endif -%}
+{% endmacro %}
+
+{# What guide-search.js needs to mark the search's matches on the page:
+   nothing while not searching, or when there are none. #}
+{% macro searchData(search) %}
+  {%- if search.matches %} data-guide-search-q="{{ search.q }}" data-guide-search-matches="{{ search.matches | dump }}" data-guide-search-sections="{{ search.sectionStarts | dump }}"{% endif -%}
 {% endmacro %}
 
 {# A search reloads the page: what it found comes first in the title, which a
@@ -150,7 +157,7 @@
             {# Search in this guide: a form that reloads the page with the words
                in its address; then how many matches there are, and a count at
                each contents entry. The API finds them. #}
-            <form class="app-guide-keyword-search" role="search" aria-label="Search this guide" method="get" action="{{ searchAction }}">
+            <form class="app-guide-keyword-search" role="search" aria-label="Search this guide" method="get" action="{{ searchAction }}" data-guide-search{{ searchData(search) }}>
               {% if searchSection %}<input type="hidden" name="section" value="{{ searchSection }}">{% endif %}
               <div class="app-guide-keyword-search__bar">
                 {{ govukInput({
@@ -167,7 +174,15 @@
               {% if search %}
                 <div class="app-guide-keyword-search__results">
                   <p class="govuk-body-s govuk-!-font-weight-bold app-guide-keyword-search__status" role="status">{{ search.status }}</p>
-                  <a class="govuk-link app-guide-keyword-search__clear" href="{{ search.clearHref }}">Clear search</a>
+                  {# Shown by guide-search.js, which marks the matches and steps between them. #}
+                  {% if search.matches %}
+                    <div class="app-guide-keyword-search__controls" data-guide-search-controls hidden>
+                      <button type="button" class="govuk-button govuk-button--secondary app-guide-keyword-search__step" data-guide-search-step="previous" aria-label="Previous match" aria-keyshortcuts="Shift+Enter"><span aria-hidden="true">&lsaquo;</span> Previous</button>
+                      <button type="button" class="govuk-button govuk-button--secondary app-guide-keyword-search__step" data-guide-search-step="next" aria-label="Next match" aria-keyshortcuts="Enter">Next <span aria-hidden="true">&rsaquo;</span></button>
+                      <span class="govuk-body-s app-guide-keyword-search__position" aria-live="polite" data-guide-search-position></span>
+                    </div>
+                  {% endif %}
+                  <a class="govuk-link app-guide-keyword-search__clear" href="{{ search.clearHref }}" data-guide-search-clear>Clear search</a>
                 </div>
               {% endif %}
             </form>
@@ -205,7 +220,7 @@
              handed to the viewer: swapping a hidden one's HTML would lose the
              match. #}
           {% for item in pages %}
-            <div class="app-guide-page" data-guide-page="{{ item.pageNumber }}"{% if not item.isShown %} hidden="until-found"{% endif %} data-guide-page-href="{{ item.href }}">
+            <div class="app-guide-page" data-guide-page="{{ item.pageNumber }}" data-guide-page-section="{{ item.section.slug or '' }}"{% if not item.isShown %} hidden="until-found"{% endif %} data-guide-page-href="{{ item.href }}">
               {% if format == 'stepper' %}
                 <p class="app-guide-section__eyebrow">Page {{ item.pageNumber }} of {{ totalPages }}</p>
                 <div class="app-progress__track app-guide-progress" role="presentation">

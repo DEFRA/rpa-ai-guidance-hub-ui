@@ -177,4 +177,76 @@ describe('Search in a guide', () => {
 
     expect(contentsOf(page).getByRole('link', { name: 'Close case' })).toHaveAttribute('href', `${GUIDE_URL}?section=close-case&q=pay`)
   })
+
+  describe('for the page\'s script, which marks the matches and steps between them', () => {
+    // "## Claims" is "claims" to the hub, but "claims-1" on the page, which
+    // numbers the title's heading too. The heading in the quote starts no
+    // section, so its text is in the one before it.
+    const NAMED_TWICE = '# Claims\n\nPay first.\n\n## Claims\n\nPay the claim.\n\n> ### Note\n>\n> Pay late.\n\n### Checks\n\nPay twice.'
+    const FOUND_IN_IT = guideSearchResponse({
+      sections: [
+        { anchor: null, matches: [{ start: 0, end: 3, text: 'Pay' }] },
+        { anchor: 'claims', matches: [{ start: 7, end: 10, text: 'Pay' }, { start: 27, end: 30, text: 'Pay' }] },
+        { anchor: 'checks', matches: [{ start: 7, end: 10, text: 'Pay' }] }
+      ]
+    })
+    const handedOver = form => ({
+      q: form.dataset.guideSearchQ,
+      matches: JSON.parse(form.dataset.guideSearchMatches),
+      sections: JSON.parse(form.dataset.guideSearchSections)
+    })
+
+    test('hands over each match by the id its section\'s heading has on the page, and the headings that start a section', async () => {
+      const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND_IN_IT], markdown: NAMED_TWICE })
+
+      expect(handedOver(searchBoxOf(page).form)).toEqual({
+        q: 'pay',
+        matches: [
+          { anchor: '', start: 0, end: 3, text: 'Pay' },
+          { anchor: 'claims-1', start: 7, end: 10, text: 'Pay' },
+          { anchor: 'claims-1', start: 27, end: 30, text: 'Pay' },
+          { anchor: 'checks', start: 7, end: 10, text: 'Pay' }
+        ],
+        sections: ['claims-1', 'checks']
+      })
+    })
+
+    test('says which section each page holds, none for an Introduction', async () => {
+      const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND_IN_IT], markdown: NAMED_TWICE })
+      const pages = Array.from(page.document.querySelectorAll('[data-guide-page]'))
+
+      expect(pages.map(each => each.dataset.guidePageSection)).toEqual(['', 'claims-1'])
+    })
+
+    test('offers Previous and Next match, and where the reader is among the matches, hidden until the script shows them', async () => {
+      const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND] })
+      const controls = page.document.querySelector('[data-guide-search-controls]')
+
+      expect(controls).toHaveAttribute('hidden')
+      // As the page's script shows them.
+      controls.removeAttribute('hidden')
+
+      const previous = within(controls).getByRole('button', { name: 'Previous match' })
+      const next = within(controls).getByRole('button', { name: 'Next match' })
+
+      expect([previous, next].map(button => button.getAttribute('type'))).toEqual(['button', 'button'])
+      expect([previous, next].map(button => button.getAttribute('aria-keyshortcuts'))).toEqual(['Shift+Enter', 'Enter'])
+      expect(controls.querySelector('[aria-live="polite"]')).toBeInTheDocument()
+    })
+
+    test('gives each contents count the number of the first match under it, for the script to go to', async () => {
+      const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, FOUND] })
+      const firstOf = title => entryOf(page, title).querySelector('.app-guide-contents__count').dataset.guideSearchFirst
+
+      expect([firstOf('Introduction'), firstOf('Check payment')]).toEqual(['1', '2'])
+    })
+
+    test('hands over nothing, and offers no stepping, when nothing matches', async () => {
+      const none = guideSearchResponse({ title: [], sections: [] })
+      const page = await guidePage({ query: '?q=pay', search: [statusCodes.HTTP_STATUS_OK, none] })
+
+      expect(searchBoxOf(page).form.dataset.guideSearchMatches).toBeUndefined()
+      expect(page.queryByRole('button', { name: /Next match/, hidden: true })).not.toBeInTheDocument()
+    })
+  })
 })
