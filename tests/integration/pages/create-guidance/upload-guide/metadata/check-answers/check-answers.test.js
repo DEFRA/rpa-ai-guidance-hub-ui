@@ -30,6 +30,23 @@ const CONVERTED_URL = '/create-guidance/upload-guide/converted'
 const CHOICE_URL = '/create-guidance/upload-guide/new-or-update'
 const GUIDE_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
 
+// What converting sends for the answers `completeAllMetadata` gives.
+const CONVERSION_REQUEST = {
+  source: { uploadId: 'u-check', fileId: 'file-1' },
+  metadata: {
+    guideTitle: 'Complete Guide Title',
+    schemes: ['Sustainable Farming Incentive (SFI)'],
+    owner: 'designer@example.com',
+    goal: 'Clear guidance purpose',
+    requirements: 'Standard training required',
+    systems: ['CRM'],
+    audience: ['Processor'],
+    schemeYear: 2026
+  },
+  versionNumber: '1.0',
+  createdBy: { id: 'dev-user-123', displayName: 'Dev User' }
+}
+
 function cardTitled (page, title) {
   return within(page.getByRole('heading', { name: title }).closest('.govuk-summary-card'))
 }
@@ -167,6 +184,24 @@ describe('#checkAnswersController Integration', () => {
         expect(main).toHaveTextContent('When you convert this document, the new version goes live in the hub at once. Everyone who uses the hub can see it.')
         expect(main).not.toHaveTextContent(/draft/)
       })
+
+      test('POST asks the API to save the upload as a new version of the guide, then follows the save', async () => {
+        const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
+        mockReferenceData()
+        const createVersion = nock(GUIDANCE_API_BASE_URL)
+          .post(`/guides/${GUIDE_ID}/versions`, CONVERSION_REQUEST)
+          .reply(
+            statusCodes.HTTP_STATUS_ACCEPTED,
+            stagedDocumentResponse({ parsingStatus: 'complete', documentId: GUIDE_ID, savingStatus: 'in_progress' }),
+            { location: '/guides/staging/file-1' }
+          )
+
+        const response = await server.inject({ method: 'POST', url: CHECK_ANSWERS_URL, payload: {}, headers: { cookie } })
+
+        createVersion.done()
+        expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+        expect(response.headers.location).toBe('/create-guidance/upload-guide/converting')
+      })
     })
 
     test('Change action returns to check-answers when continuing from metadata screen', async () => {
@@ -209,21 +244,7 @@ describe('#checkAnswersController Integration', () => {
       mockReferenceData()
 
       const createGuide = nock(GUIDANCE_API_BASE_URL)
-        .post('/guides', {
-          source: { uploadId: 'u-check', fileId: 'file-1' },
-          metadata: {
-            guideTitle: 'Complete Guide Title',
-            schemes: ['Sustainable Farming Incentive (SFI)'],
-            owner: 'designer@example.com',
-            goal: 'Clear guidance purpose',
-            requirements: 'Standard training required',
-            systems: ['CRM'],
-            audience: ['Processor'],
-            schemeYear: 2026
-          },
-          versionNumber: '1.0',
-          createdBy: { id: 'dev-user-123', displayName: 'Dev User' }
-        })
+        .post('/guides', CONVERSION_REQUEST)
         .reply(statusCodes.HTTP_STATUS_CREATED, createdGuideResponse())
 
       const response = await server.inject({

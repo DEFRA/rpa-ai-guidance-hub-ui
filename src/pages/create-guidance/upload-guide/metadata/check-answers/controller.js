@@ -1,6 +1,6 @@
 import { statusCodes } from '../../../../../constants/status-codes.js'
 import { clearGuideUpload, flashConvertedGuide, getGuideUpload } from '../../../session.js'
-import { createGuide, getGuideById, RESULTS as GUIDE_RESULTS } from '../../../../../services/guides.js'
+import { createGuide, createVersion, getGuideById, RESULTS as GUIDE_RESULTS } from '../../../../../services/guides.js'
 import * as referenceData from '../../../../../services/reference-data.js'
 import { getStagedDocumentById } from '../../../../../services/staged-documents.js'
 import { buildCheckAnswersSchema } from './schemas/check-answers-schema.js'
@@ -122,10 +122,11 @@ async function getCheckAnswers (request, h) {
 
 /**
  * Once the answers are valid, asks the guidance API to convert the upload
- * into a guide. The API saves it in the background, so the user follows
- * the save on the converting page, which keeps the upload in the session
- * until the save is complete. If the API refuses, the answers are shown
- * again with what went wrong and what to do about it.
+ * into a guide, or into a new version of the guide it updates. The API saves
+ * it in the background, so the user follows the save on the converting page,
+ * which keeps the upload in the session until the save is complete. If the
+ * API refuses, the answers are shown again with what went wrong and what to
+ * do about it.
  */
 async function convertDocument (request, h) {
   const upload = getGuideUpload(request)
@@ -147,12 +148,15 @@ async function convertDocument (request, h) {
       .code(statusCodes.HTTP_STATUS_BAD_REQUEST)
   }
 
-  const { code } = await createGuide({
+  const conversion = {
     uploadId: upload.activeUploadId,
     fileId: upload.fileId,
     metadata: upload.metadata,
     user: request.auth.credentials.profile
-  })
+  }
+  const { code } = upload.updatesGuideId
+    ? await createVersion(upload.updatesGuideId, conversion)
+    : await createGuide(conversion)
 
   if (code === GUIDE_RESULTS.SAVE_STARTED) {
     return h.redirect(CONVERTING_URL)

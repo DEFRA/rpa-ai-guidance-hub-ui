@@ -87,11 +87,34 @@ const ALLOWED_ASSET_CONTENT_TYPES = new Set([
  *   user's profile
  * @returns {Promise<{code: string}>} One of `RESULTS`
  */
-async function createGuide ({ uploadId, fileId, metadata, user }) {
+async function createGuide (guide) {
+  return _convert(guide, guidesApi.createGuide)
+}
+
+/**
+ * Convert an upload into a new version of a guide: the same request as
+ * `createGuide` makes, answered the same way.
+ *
+ * @param {string} guideId - The guide the upload is a new version of
+ * @param {Object} version - As `createGuide` takes a guide
+ * @returns {Promise<{code: string}>} One of `RESULTS`
+ */
+async function createVersion (guideId, version) {
+  return _convert(version, (request) => guidesApi.createVersion(guideId, request))
+}
+
+/**
+ * @private
+ * @param {Object} upload - As `createGuide` takes it
+ * @param {(request: Object) => Promise<{status: number}>} send - The API
+ *   call that converts it
+ * @returns {Promise<{code: string}>} One of `RESULTS`
+ */
+async function _convert ({ uploadId, fileId, metadata, user }, send) {
   const { versionNumber, ...details } = metadata
   const kept = details.schemes ? { ...details, schemes: schemesAsKept(details.schemes) } : details
 
-  const res = await guidesApi.createGuide({
+  const res = await send({
     source: { uploadId, fileId },
     // The scheme year is fixed, so the form does not send it.
     metadata: { ...kept, schemeYear: SCHEME_YEAR },
@@ -374,6 +397,7 @@ export {
   answersOf,
   guidesTitledLike,
   createGuide,
+  createVersion,
   getGuideAsset,
   getGuideById,
   getGuideContent,
