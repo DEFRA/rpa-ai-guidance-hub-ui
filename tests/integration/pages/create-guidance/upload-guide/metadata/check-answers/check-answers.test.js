@@ -202,6 +202,59 @@ describe('#checkAnswersController Integration', () => {
         expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
         expect(response.headers.location).toBe('/create-guidance/upload-guide/converting')
       })
+
+      describe('The Guidance converted page', () => {
+        const LIVE = 'The new version is live in the hub. Everyone who uses the hub can see it.'
+
+        /**
+         * Convert the new version, with the API's answer given.
+         */
+        async function convert (status, body, headers) {
+          const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
+          mockReferenceData()
+          nock(GUIDANCE_API_BASE_URL).post(`/guides/${GUIDE_ID}/versions`).reply(status, body, headers)
+
+          const response = await server.inject({ method: 'POST', url: CHECK_ANSWERS_URL, payload: {}, headers: { cookie } })
+
+          return { response, cookie: mergeCookies(cookie, response.headers['set-cookie']) }
+        }
+
+        async function confirmation (cookie) {
+          const response = await server.inject({ method: 'GET', url: CONVERTED_URL, headers: { cookie } })
+
+          expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+
+          return pageOf(response.payload).document.querySelector('main')
+        }
+
+        test('says the new version is live for everyone, and not a draft, when the API made it before', async () => {
+          const { response, cookie } = await convert(statusCodes.HTTP_STATUS_OK, createdGuideResponse({ id: GUIDE_ID }))
+          expect(response.headers.location).toBe(CONVERTED_URL)
+
+          const main = await confirmation(cookie)
+
+          expect(main).toHaveTextContent(LIVE)
+          expect(main).not.toHaveTextContent(/draft/)
+        })
+
+        test('says the new version is live for everyone, and not a draft, once its save in the background is complete', async () => {
+          const { response, cookie } = await convert(
+            statusCodes.HTTP_STATUS_ACCEPTED,
+            stagedDocumentResponse({ parsingStatus: 'complete', documentId: GUIDE_ID, savingStatus: 'in_progress' }),
+            { location: '/guides/staging/file-1' }
+          )
+          nock(GUIDANCE_API_BASE_URL)
+            .get('/guides/staging/file-1')
+            .reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'complete', documentId: GUIDE_ID, savingStatus: 'complete' }))
+          const converting = await server.inject({ method: 'GET', url: response.headers.location, headers: { cookie } })
+          expect(converting.headers.location).toBe(CONVERTED_URL)
+
+          const main = await confirmation(mergeCookies(cookie, converting.headers['set-cookie']))
+
+          expect(main).toHaveTextContent(LIVE)
+          expect(main).not.toHaveTextContent(/draft/)
+        })
+      })
     })
 
     test('Change action returns to check-answers when continuing from metadata screen', async () => {

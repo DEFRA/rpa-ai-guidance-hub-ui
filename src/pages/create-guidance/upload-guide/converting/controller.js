@@ -27,7 +27,7 @@ async function getConvertingPage (request, h) {
 
   if (progress.isComplete) {
     clearGuideUpload(request)
-    flashConvertedGuide(request, upload.metadata?.guideTitle)
+    flashConvertedGuide(request, upload)
 
     return h.redirect(CONVERTED_URL)
   }

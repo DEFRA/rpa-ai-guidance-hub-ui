@@ -175,7 +175,7 @@ async function convertDocument (request, h) {
 
   // The upload is now a guide, so the next guide starts with a new upload.
   clearGuideUpload(request)
-  flashConvertedGuide(request, upload.metadata.guideTitle)
+  flashConvertedGuide(request, upload)
 
   return h.redirect(CONVERTED_URL)
 }

@@ -68,14 +68,14 @@ describe('converting controller', () => {
     })
 
     test('when the save is complete, confirms the guide on the Guidance converted page and starts the next guide afresh', async () => {
-      mockUpload()
+      const upload = mockUpload()
       mockProgress({ percentage: 100, isComplete: true })
       const flashSpy = vi.spyOn(session, 'flashConvertedGuide').mockReturnValue()
       const clearSpy = vi.spyOn(session, 'clearGuideUpload').mockReturnValue()
 
       await getConvertingPage(request, h)
 
-      expect(flashSpy).toHaveBeenCalledWith(request, 'A title')
+      expect(flashSpy).toHaveBeenCalledWith(request, upload)
       expect(clearSpy).toHaveBeenCalledWith(request)
       expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/converted')
     })

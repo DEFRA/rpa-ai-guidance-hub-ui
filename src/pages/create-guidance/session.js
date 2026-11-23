@@ -308,7 +308,8 @@ function getGuideUploadMetadata (request) {
 }
 
 /**
- * Remember the guide just converted, for its confirmation page only. The
+ * Remember the guide just converted from the upload - its title, and whether
+ * it is a new version of a guide - for its confirmation page only. The
  * upload itself is cleared, so this is all that survives the redirect.
  *
  * Flash queues values, so a guide converted before an earlier one's
@@ -316,24 +317,27 @@ function getGuideUploadMetadata (request) {
  * leaves only the latest to confirm.
  *
  * @param {import('@hapi/hapi').Request} request - Hapi request object with yar
- * @param {string} guideTitle
+ * @param {GuideUpload} upload - The upload just converted
  */
-function flashConvertedGuide (request, guideTitle) {
+function flashConvertedGuide (request, upload) {
   request.yar.flash(CONVERTED_GUIDE_KEY)
-  request.yar.flash(CONVERTED_GUIDE_KEY, guideTitle)
+  request.yar.flash(CONVERTED_GUIDE_KEY, {
+    guideTitle: upload.metadata?.guideTitle,
+    isNewVersion: Boolean(upload.updatesGuideId)
+  })
 }
 
 /**
  * Take the guide just converted, which can be taken once.
  *
  * @param {import('@hapi/hapi').Request} request - Hapi request object with yar
- * @returns {{guideTitle: string}|null} null when nothing has been converted
- *   or it was already taken
+ * @returns {{guideTitle: string, isNewVersion: boolean}|null} null when
+ *   nothing has been converted or it was already taken
  */
 function takeConvertedGuide (request) {
-  const [guideTitle] = request.yar.flash(CONVERTED_GUIDE_KEY)
+  const [convertedGuide] = request.yar.flash(CONVERTED_GUIDE_KEY)
 
-  return guideTitle ? { guideTitle } : null
+  return convertedGuide ?? null
 }
 
 export {

@@ -12,10 +12,16 @@
 
       <h2 class="govuk-heading-m">What happens next</h2>
 
-      <p class="govuk-body">
-        Your document is now markdown in the hub, saved as a draft. Only you can
-        see it until it is reviewed and published.
-      </p>
+      {% if isNewVersion %}
+        <p class="govuk-body">
+          The new version is live in the hub. Everyone who uses the hub can see it.
+        </p>
+      {% else %}
+        <p class="govuk-body">
+          Your document is now markdown in the hub, saved as a draft. Only you can
+          see it until it is reviewed and published.
+        </p>
+      {% endif %}
 
       <p class="govuk-body">
         Have a look at how it converted before you take it any further.
