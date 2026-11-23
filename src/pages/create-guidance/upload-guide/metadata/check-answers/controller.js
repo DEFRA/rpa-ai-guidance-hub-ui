@@ -1,5 +1,5 @@
 import { statusCodes } from '../../../../../constants/status-codes.js'
-import { clearGuideUpload, flashConvertedGuide, getGuideUpload } from '../../../session.js'
+import { clearGuideUpload, flashConvertedGuide, getGuideUpload, setGuideUploadSubmitted } from '../../../session.js'
 import { createGuide, createVersion, getGuideById, RESULTS as GUIDE_RESULTS } from '../../../../../services/guides.js'
 import * as referenceData from '../../../../../services/reference-data.js'
 import { getStagedDocumentById } from '../../../../../services/staged-documents.js'
@@ -159,6 +159,9 @@ async function convertDocument (request, h) {
     : await createGuide(conversion)
 
   if (code === GUIDE_RESULTS.SAVE_STARTED) {
+    // The API saves the upload with these answers now, so they stay as they are.
+    setGuideUploadSubmitted(request)
+
     return h.redirect(CONVERTING_URL)
   }
 

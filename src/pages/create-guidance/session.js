@@ -41,6 +41,17 @@ class GuideUpload {
   }
 
   /**
+   * The active upload while its answers can change - null once the API has
+   * accepted its conversion, as the API saves the answers it was given then
+   * whatever they say later; null too if there is no upload
+   *
+   * @returns {Object|null}
+   */
+  get #answerableUpload () {
+    return this.#activeUpload?.submitted ? null : this.#activeUpload
+  }
+
+  /**
    * The active (most recent) upload id - null if none
    *
    * @returns {string|null}
@@ -128,15 +139,18 @@ class GuideUpload {
    * Make the active upload a new version of a guide, or (null) a new guide.
    * A different choice starts the details again with the answers given: the
    * guide's own for a new version, none for a new guide. The same choice
-   * again keeps the details, with any changes made to them since.
+   * again keeps the details, with any changes made to them since. Once the
+   * conversion is submitted, nothing changes.
    * @param {string|null} guideId
    * @param {Object} answers - What the details start with
    * @returns {void}
    */
   setUpdatesGuideId (guideId, answers) {
-    if (this.#activeUpload && guideId !== this.updatesGuideId) {
-      this.#activeUpload.updatesGuideId = guideId
-      this.#activeUpload.metadata = { ...answers }
+    const upload = this.#answerableUpload
+
+    if (upload && guideId !== this.updatesGuideId) {
+      upload.updatesGuideId = guideId
+      upload.metadata = { ...answers }
     }
   }
 
@@ -150,21 +164,34 @@ class GuideUpload {
    * a step can't accidentally null out a key set by an earlier step. Note
    * this merge is shallow: an object-valued key is replaced wholesale, not
    * deep-merged, so two screens should not both write into the same
-   * nested key.
+   * nested key. Once the conversion is submitted, nothing changes.
    *
    * @param {Object} metadata
    * @returns {void}
    */
   setMetadata (metadata) {
-    if (this.#activeUpload) {
+    const upload = this.#answerableUpload
+
+    if (upload) {
       const providedEntries = Object.entries(metadata).filter(
         ([, value]) => value !== undefined
       )
 
-      this.#activeUpload.metadata = {
-        ...(this.#activeUpload.metadata),
+      upload.metadata = {
+        ...(upload.metadata),
         ...Object.fromEntries(providedEntries)
       }
+    }
+  }
+
+  /**
+   * Fix the active upload's answers - the guide it updates, if any, and its
+   * details - once the API has accepted them for conversion
+   * @returns {void}
+   */
+  setSubmitted () {
+    if (this.#activeUpload) {
+      this.#activeUpload.submitted = true
     }
   }
 
@@ -280,6 +307,21 @@ function setGuideUploadUpdates (request, guideId, answers) {
 }
 
 /**
+ * Fix the answers of the active upload in session, once the API has accepted
+ * its conversion; see `GuideUpload#setSubmitted`
+ * @param {import('@hapi/hapi').Request} request
+ * @returns {void}
+ */
+function setGuideUploadSubmitted (request) {
+  const upload = getGuideUpload(request)
+
+  if (upload) {
+    upload.setSubmitted()
+    request.yar.set(SESSION_KEY, upload.toPlainObject())
+  }
+}
+
+/**
  * Update the metadata of the active upload in session
  *
  * @param {import('@hapi/hapi').Request} request
@@ -350,6 +392,7 @@ export {
   setGuideUploadCompletedSteps,
   setGuideUploadFileId,
   setGuideUploadMetadata,
+  setGuideUploadSubmitted,
   setGuideUploadUpdates,
   getGuideUploadMetadata,
   flashConvertedGuide,
