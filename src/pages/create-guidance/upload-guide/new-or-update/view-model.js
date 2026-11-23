@@ -12,15 +12,16 @@ class ChoiceViewModel {
    * @param {string} [data.kind] - `new` or `update`, as chosen so far
    * @param {string} [data.guideId] - The guide chosen so far
    * @param {string} data.q - The words the guides were found by
-   * @param {Array<{guideId: string, title: string}>} data.guides - The guides
-   *   titled like them
+   * @param {Array<{guideId: string, title: string}>|null} data.guides - The
+   *   guides titled like them; null when the search cannot answer
    * @param {Object<string, string>} [data.errors]
    * @param {Array<{text: string, href: string}>} [data.errorList]
    */
   constructor ({ kind, guideId, q, guides, errors = {}, errorList = [] }) {
     this.kind = kind ?? null
     this.q = q
-    this.guides = guides.map(guide => ({
+    this.searchUnavailable = guides === null
+    this.guides = (guides ?? []).map(guide => ({
       value: guide.guideId,
       text: guide.title,
       checked: guide.guideId === guideId

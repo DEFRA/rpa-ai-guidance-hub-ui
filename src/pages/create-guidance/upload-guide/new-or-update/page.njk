@@ -34,7 +34,9 @@
             classes: "govuk-button--secondary",
             attributes: { formmethod: "get", formaction: pageHref, formnovalidate: true }
           }) }}
-          {% if guides.length %}
+          {% if searchUnavailable %}
+            <p class="govuk-body" id="guideId">Search is not available at the moment. Try again later.</p>
+          {% elif guides.length %}
             {{ govukRadios({
               idPrefix: "guideId",
               name: "guideId",

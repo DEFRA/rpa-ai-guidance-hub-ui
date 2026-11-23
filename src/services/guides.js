@@ -2,6 +2,8 @@ import { SCHEME_YEAR } from '../constants/scheme-year.js'
 import { statusCodes } from '../constants/status-codes.js'
 
 import * as guidesApi from '../infra/guidance-api/guides.js'
+import { createLogger } from '../infra/logging/logger.js'
+import { buildErrorLog } from '../infra/logging/utils/build-error-log.js'
 import { findHeading, splitIntoSections } from './guide-sections.js'
 import { NOT_SCHEME_SPECIFIC, schemesAsKept } from './reference-data.js'
 import * as stagedDocumentsService from './staged-documents.js'
@@ -49,6 +51,8 @@ import * as stagedDocumentsService from './staged-documents.js'
  * @property {GuideVersion|null} latestVersion
  * @property {string|null} lastUpdated
  */
+
+const logger = createLogger()
 
 const RESULTS = {
   SAVE_STARTED: 'saveStarted', // accepted: the guide is saving in the background
@@ -379,18 +383,29 @@ function answersOf ({ title, metadata }) {
 
 /**
  * The guides with titles like the words, the likest first: none for no words.
+ * Null when the search cannot answer, which is logged: a choice that needs no
+ * search can still be made.
  *
  * @param {string} words
- * @returns {Promise<Array<{guideId: string, title: string}>>}
+ * @returns {Promise<Array<{guideId: string, title: string}>|null>}
  */
 async function guidesTitledLike (words) {
   if (!words) {
     return []
   }
 
-  const res = await guidesApi.findGuidesByTitle(words)
+  try {
+    const res = await guidesApi.findGuidesByTitle(words)
 
-  return res.data.items
+    return res.data.items
+  } catch (err) {
+    logger.warn(
+      buildErrorLog(err, { type: 'guide_title_search_unavailable' }),
+      `Could not search the guides' titles: ${err.message}`
+    )
+
+    return null
+  }
 }
 
 export {

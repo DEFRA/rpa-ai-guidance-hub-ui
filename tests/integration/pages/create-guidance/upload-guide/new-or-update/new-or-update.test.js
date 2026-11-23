@@ -13,6 +13,7 @@ import {
   audiencesResponse,
   guideResponse,
   guideTitlesResponse,
+  refusalResponse,
   schemesResponse,
   stagedDocumentResponse,
   systemsResponse,
@@ -39,6 +40,16 @@ function mockGuidesLike (words, items) {
     .query({ q: words })
     .reply(statusCodes.HTTP_STATUS_OK, guideTitlesResponse({ items }))
 }
+
+// What the API answers when the search service it asks fails.
+function mockSearchFails (words) {
+  nock(GUIDANCE_API_URL)
+    .get('/search/titles')
+    .query({ q: words })
+    .reply(statusCodes.HTTP_STATUS_BAD_GATEWAY, refusalResponse({ detail: 'The search service is not available' }))
+}
+
+const SEARCH_UNAVAILABLE = 'Search is not available at the moment. Try again later.'
 
 const LIKE_THE_FILE = [
   { guideId: GUIDE_ID, title: 'Claiming the SFI payment' },
@@ -91,6 +102,14 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
 
   async function processed () {
     return completeParse(server, await loginAsDevUser(server))
+  }
+
+  /**
+   * What the Update an existing guide choice shows when chosen: the search,
+   * and where the guides are.
+   */
+  function updateChoiceOf (page) {
+    return within(page.getByRole('searchbox', { name: 'Search for a guide by its title' }).closest('.govuk-radios__conditional'))
   }
 
   function guidesOffered (page) {
@@ -219,6 +238,24 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
     expect(pageOf(response.payload).getByText('No guides found for ‘Nothing like it’')).toBeInTheDocument()
   })
 
+  test('offers both choices, and says search is not available where the guides would be, when the search fails', async () => {
+    const cookie = await processed()
+    mockFileTitle()
+    mockSearchFails(FILE_TITLE)
+
+    const response = await server.inject({ method: 'GET', url: CHOICE_URL, headers: { cookie } })
+
+    const page = pageOf(response.payload)
+    const question = within(page.getByRole('group', { name: 'Is this a new guide, or a new version of one we already have?' }))
+    const updateChoice = updateChoiceOf(page)
+    expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+    expect(question.getByRole('radio', { name: 'New guide' })).not.toBeChecked()
+    expect(question.getByRole('radio', { name: 'Update an existing guide' })).not.toBeChecked()
+    expect(updateChoice.getByText(SEARCH_UNAVAILABLE)).toBeInTheDocument()
+    expect(updateChoice.getByRole('searchbox')).toHaveValue(FILE_TITLE)
+    expect(updateChoice.getByRole('button', { name: 'Search' })).toBeInTheDocument()
+  })
+
   test('goes on to the details of a new guide', async () => {
     const cookie = await processed()
 
@@ -263,6 +300,24 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
     expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
     expect(errorSummaryOf(page).getByRole('link', { name: 'Select whether this is a new guide or a new version of one' }))
       .toHaveAttribute('href', '#kind')
+  })
+
+  test('asks again when nothing is chosen, saying search is not available where the guides would be, when the search fails', async () => {
+    const cookie = await processed()
+    mockSearchFails(FILE_TITLE)
+
+    const response = await server.inject({
+      method: 'POST',
+      url: CHOICE_URL,
+      payload: { q: FILE_TITLE },
+      headers: { cookie }
+    })
+
+    const page = pageOf(response.payload)
+    expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
+    expect(errorSummaryOf(page).getByRole('link', { name: 'Select whether this is a new guide or a new version of one' }))
+      .toHaveAttribute('href', '#kind')
+    expect(updateChoiceOf(page).getByText(SEARCH_UNAVAILABLE)).toBeInTheDocument()
   })
 
   test('asks again when an update names no guide, with the guides like the words searched', async () => {
