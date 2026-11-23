@@ -9,13 +9,13 @@ import { UploadProcessingViewModel } from './view-models.js'
 
 const PROCESSING_VIEW = 'create-guidance/upload-guide/processing/page.njk'
 const UPLOAD_GUIDE_URL = '/create-guidance/upload-guide'
-const METADATA_URL = '/create-guidance/upload-guide/metadata'
+const CHOICE_URL = '/create-guidance/upload-guide/new-or-update'
 
 /**
  * Render the document upload processing page while an upload is being checked.
  *
  * Sends the user back to the upload form when there is nothing to check yet,
- * and straight on to metadata when every step, including parsing,
+ * and straight on to whether it is a new guide when every step, including parsing,
  * has completed, so neither depends on client-side JavaScript.
  *
  * @param {import('@hapi/hapi').Request} request
@@ -32,7 +32,7 @@ async function getStatusPage (request, h) {
   const progress = await getGuideUploadProgress(request, { status: outcome.status })
 
   if (progress.isComplete) {
-    return h.redirect(METADATA_URL)
+    return h.redirect(CHOICE_URL)
   }
 
   const viewModel = new UploadProcessingViewModel(progress)

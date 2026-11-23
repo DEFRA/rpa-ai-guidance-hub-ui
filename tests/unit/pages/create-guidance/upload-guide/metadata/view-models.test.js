@@ -159,7 +159,7 @@ describe('#GuideDetailsViewModel', () => {
     expect(viewModel.errorList).toEqual([])
     expect(viewModel.lastModifiedDate).toBe('Not available')
     expect(viewModel.schemeOptions).toEqual([])
-    expect(viewModel.backUrl).toBe('/create-guidance/upload-guide')
+    expect(viewModel.backUrl).toBe('/create-guidance/upload-guide/new-or-update')
     expect(viewModel.notification).toBeNull()
   })
 })

@@ -5,7 +5,7 @@ import { UploadGuidanceViewModel } from './view-models.js'
 
 const UPLOAD_GUIDANCE_VIEW = 'create-guidance/upload-guide/page.njk'
 const PROCESSING_URL = '/create-guidance/upload-guide/processing'
-const METADATA_URL = '/create-guidance/upload-guide/metadata'
+const CHOICE_URL = '/create-guidance/upload-guide/new-or-update'
 
 /**
  * What the upload page says, named once, so that one test holds the words and
@@ -43,7 +43,7 @@ async function getUploadForm (request, h) {
 
     request.yar.flash('uploadNotification', UPLOAD_MESSAGES.alreadyUploaded)
 
-    return h.redirect(METADATA_URL)
+    return h.redirect(CHOICE_URL)
   }
 
   if (result.code === RESULTS.MIGRATION_STARTED) {

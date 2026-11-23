@@ -99,7 +99,7 @@ describe('upload guide processing page', () => {
       expect(page.getByRole('heading', { level: 1, name: 'Document upload' })).toBeInTheDocument()
       expect(page.getByRole('progressbar', { name: 'Scanning for viruses' })).toHaveAttribute('aria-valuenow', '50')
       expect(progress).toHaveAttribute('data-poll-url', STATUS_URL)
-      expect(progress).toHaveAttribute('data-redirect-url', '/create-guidance/upload-guide/metadata')
+      expect(progress).toHaveAttribute('data-redirect-url', '/create-guidance/upload-guide/new-or-update')
       // The bar's width comes from the nonced style, as the CSP allows no inline style.
       expect(page.document.querySelector('style[data-progress-style]')).toHaveTextContent('--progress-width: 50%')
       expect(page.document.querySelector('[style*="width"]')).not.toBeInTheDocument()
@@ -107,7 +107,7 @@ describe('upload guide processing page', () => {
       expect(nock.pendingMocks()).toEqual([])
     })
 
-    test('shows the parsing stage once scanning is clean, then redirects to metadata once parsing completes', async () => {
+    test('shows the parsing stage once scanning is clean, then redirects to the new-or-update question once parsing completes', async () => {
       const { uploadId, cookie } = await startMigration(server, await loginAsDevUser(server))
 
       nock(CDP_UPLOADER_URL)
@@ -136,7 +136,7 @@ describe('upload guide processing page', () => {
       })
 
       expect(second.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(second.headers.location).toBe('/create-guidance/upload-guide/metadata')
+      expect(second.headers.location).toBe('/create-guidance/upload-guide/new-or-update')
       expect(nock.pendingMocks()).toEqual([])
     })
 

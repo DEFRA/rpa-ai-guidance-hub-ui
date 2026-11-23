@@ -137,6 +137,18 @@ async function searchGuide (guideId, words) {
 }
 
 /**
+ * The guides with titles like the words, the likest first.
+ *
+ * @param {string} words
+ * @returns {Promise<{ok: boolean, status: number, data: any}>} - data is
+ *   `{items: [{guideId, title}]}`
+ * @throws {GuidanceApiError} - When response is not ok
+ */
+async function findGuidesByTitle (words) {
+  return guidanceApiClient.request('/search/titles', { query: { q: words } })
+}
+
+/**
  * @private
  * @param {string} guideId
  * @returns {string} The guide's path
@@ -147,6 +159,7 @@ function _guidePath (guideId) {
 
 export {
   createGuide,
+  findGuidesByTitle,
   getGuide,
   getGuideAsset,
   getGuideContent,

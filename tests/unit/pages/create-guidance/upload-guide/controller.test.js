@@ -85,10 +85,10 @@ describe('uploadGuideController', () => {
         expect(request.yar.flash).toHaveBeenCalledWith('uploadNotification', UPLOAD_MESSAGES.alreadyUploaded)
       })
 
-      test('redirects to metadata', async () => {
+      test('redirects to the new-or-update question', async () => {
         const result = await getUploadForm(request, h)
 
-        expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/metadata')
+        expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/new-or-update')
         expect(result).toEqual(h.redirect())
       })
 

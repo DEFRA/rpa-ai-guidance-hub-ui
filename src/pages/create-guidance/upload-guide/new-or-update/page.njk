@@ -1,0 +1,72 @@
+{#
+  Whether an upload is a new guide or a new version of one, and if so which.
+  The guides it could update are found by their titles: the search is this
+  form's Search button, which asks for this page again (a GET) with the
+  answers so far, so it works without JavaScript.
+#}
+{% extends "common/layout.njk" %}
+
+{% from "govuk/components/button/macro.njk" import govukButton %}
+{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/input/macro.njk" import govukInput %}
+{% from "govuk/components/radios/macro.njk" import govukRadios %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds app-content">
+
+      {% if errorList.length %}
+        {{ govukErrorSummary({ titleText: "There is a problem", errorList: errorList }) }}
+      {% endif %}
+
+      <form method="post" action="{{ pageHref }}" novalidate>
+        {% set guidesHtml %}
+          {{ govukInput({
+            id: "guide-search",
+            name: "q",
+            type: "search",
+            value: q,
+            label: { text: "Search for a guide by its title" },
+            attributes: { autocomplete: "off" }
+          }) }}
+          {{ govukButton({
+            text: "Search",
+            classes: "govuk-button--secondary",
+            attributes: { formmethod: "get", formaction: pageHref, formnovalidate: true }
+          }) }}
+          {% if guides.length %}
+            {{ govukRadios({
+              idPrefix: "guideId",
+              name: "guideId",
+              fieldset: { legend: { text: "Guides like ‘" + q + "’", classes: "govuk-fieldset__legend--s" } },
+              items: guides,
+              errorMessage: { text: errors.guideId } if errors.guideId
+            }) }}
+          {% elif q %}
+            <p class="govuk-body" id="guideId">No guides found for ‘{{ q }}’</p>
+          {% endif %}
+        {% endset %}
+
+        {{ govukRadios({
+          idPrefix: "kind",
+          name: "kind",
+          fieldset: { legend: { text: pageTitle, isPageHeading: true, classes: "govuk-fieldset__legend--l" } },
+          errorMessage: { text: errors.kind } if errors.kind,
+          items: [
+            { value: "new", text: "New guide", checked: kind == "new" },
+            {
+              value: "update",
+              text: "Update an existing guide",
+              checked: kind == "update",
+              conditional: { html: guidesHtml }
+            }
+          ]
+        }) }}
+
+        {{ govukButton({ text: "Continue" }) }}
+      </form>
+
+      {% include "create-guidance/common/start-over-link.njk" %}
+    </div>
+  </div>
+{% endblock %}

@@ -67,7 +67,7 @@ async function completeParse (server, cookie, uploadId = 'u-metadata') {
   })
 
   expect(second.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-  expect(second.headers.location).toBe('/create-guidance/upload-guide/metadata')
+  expect(second.headers.location).toBe('/create-guidance/upload-guide/new-or-update')
 
   return mergeCookies(sessionCookie, second.headers['set-cookie'])
 }

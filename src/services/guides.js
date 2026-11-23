@@ -335,7 +335,24 @@ function _titleOf (version, metadata) {
   return version?.title ?? metadata?.guideTitle ?? null
 }
 
+/**
+ * The guides with titles like the words, the likest first: none for no words.
+ *
+ * @param {string} words
+ * @returns {Promise<Array<{guideId: string, title: string}>>}
+ */
+async function guidesTitledLike (words) {
+  if (!words) {
+    return []
+  }
+
+  const res = await guidesApi.findGuidesByTitle(words)
+
+  return res.data.items
+}
+
 export {
+  guidesTitledLike,
   createGuide,
   getGuideAsset,
   getGuideById,

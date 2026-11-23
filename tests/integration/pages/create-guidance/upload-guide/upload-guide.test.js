@@ -127,7 +127,7 @@ describe('#uploadGuideController', () => {
       expect(headers.location).toBe('/create-guidance/upload-guide/processing')
     })
 
-    test('redirects to metadata once the upload has scanned clean and parsing is complete', async () => {
+    test('redirects to the new-or-update question once the upload has scanned clean and parsing is complete', async () => {
       const { uploadId, cookie } = await startMigration(server, await loginAsDevUser(server))
 
       nock(CDP_UPLOADER_URL).persist().get(`/status/${uploadId}`).reply(statusCodes.HTTP_STATUS_OK, uploadStatusResponse({ uploadStatus: 'ready' }))
@@ -161,7 +161,7 @@ describe('#uploadGuideController', () => {
       })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(headers.location).toBe('/create-guidance/upload-guide/metadata')
+      expect(headers.location).toBe('/create-guidance/upload-guide/new-or-update')
 
       nock.cleanAll()
     })

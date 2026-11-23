@@ -7,10 +7,10 @@ describe('UploadProcessingViewModel', () => {
     expect(viewModel.pollUrl).toBe('/create-guidance/upload-guide/processing/status')
   })
 
-  test('points at the metadata page as the redirect target and the upload form for retries', () => {
+  test('points at the new-or-update page as the redirect target and the upload form for retries', () => {
     const viewModel = new UploadProcessingViewModel()
 
-    expect(viewModel.redirectUrl).toBe('/create-guidance/upload-guide/metadata')
+    expect(viewModel.redirectUrl).toBe('/create-guidance/upload-guide/new-or-update')
     expect(viewModel.retryUrl).toBe('/create-guidance/upload-guide')
   })
 

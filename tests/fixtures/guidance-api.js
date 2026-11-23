@@ -205,6 +205,23 @@ function guideSearchResponse (overrides = {}) {
 }
 
 /**
+ * Body of `GET /search/titles?q=…` on 200: the guides with titles like the
+ * words, the likest first, each by its id and its latest version's title.
+ *
+ * Verified against the guidance API's `GuideTitles` schema on 2026-11-23:
+ * items as `GuideTitle` (guideId, title).
+ *
+ * @param {Object} [overrides]
+ * @returns {{items: Array<{guideId: string, title: string}>}}
+ */
+function guideTitlesResponse (overrides = {}) {
+  return {
+    items: [{ guideId: '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90', title: 'Claiming the SFI payment' }],
+    ...overrides
+  }
+}
+
+/**
  * Body of `POST /users` (201, or 200 for a user signed in before) and of
  * `GET /users/{id}` on 200: the hub's user, with the guides and sections they
  * have pinned (`pinResponse`), in their order, and their cases
@@ -397,6 +414,7 @@ export {
   guidePageResponse,
   guideResponse,
   guideSearchResponse,
+  guideTitlesResponse,
   guideSummaryResponse,
   pinnedGuidesResponse,
   pinnedSummaryResponse,

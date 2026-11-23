@@ -3,7 +3,7 @@ import { NOT_SCHEME_SPECIFIC } from '../../../../services/reference-data.js'
 import { mapValidationError } from '../../form-errors.js'
 import { formatStagedDocumentDate, toCheckboxOptions, toOptionValue, toOptionValues } from './view-helpers.js'
 
-const BACK_URL = '/create-guidance/upload-guide'
+const BACK_URL = '/create-guidance/upload-guide/new-or-update'
 const NOT_AVAILABLE = 'Not available'
 
 const FIELD_HREF_MAP = {

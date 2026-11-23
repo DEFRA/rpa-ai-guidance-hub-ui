@@ -77,6 +77,15 @@ class GuideUpload {
   }
 
   /**
+   * The guide the active upload is a new version of - null for a new guide,
+   * or before it is chosen
+   * @returns {string|null}
+   */
+  get updatesGuideId () {
+    return this.#activeUpload?.updatesGuideId ?? null
+  }
+
+  /**
    * Does the session wrapper contain at least one upload
    * @returns {boolean}
    */
@@ -112,6 +121,17 @@ class GuideUpload {
   setFileId (fileId) {
     if (this.#activeUpload) {
       this.#activeUpload.fileId = fileId
+    }
+  }
+
+  /**
+   * Make the active upload a new version of a guide, or (null) a new guide
+   * @param {string|null} guideId
+   * @returns {void}
+   */
+  setUpdatesGuideId (guideId) {
+    if (this.#activeUpload) {
+      this.#activeUpload.updatesGuideId = guideId
     }
   }
 
@@ -238,6 +258,22 @@ function setGuideUploadFileId (request, fileId) {
 }
 
 /**
+ * Make the active upload a new version of a guide, or (null) a new guide, in
+ * session
+ * @param {import('@hapi/hapi').Request} request
+ * @param {string|null} guideId
+ * @returns {void}
+ */
+function setGuideUploadUpdates (request, guideId) {
+  const upload = getGuideUpload(request)
+
+  if (upload) {
+    upload.setUpdatesGuideId(guideId)
+    request.yar.set(SESSION_KEY, upload.toPlainObject())
+  }
+}
+
+/**
  * Update the metadata of the active upload in session
  *
  * @param {import('@hapi/hapi').Request} request
@@ -304,6 +340,7 @@ export {
   setGuideUploadCompletedSteps,
   setGuideUploadFileId,
   setGuideUploadMetadata,
+  setGuideUploadUpdates,
   getGuideUploadMetadata,
   flashConvertedGuide,
   takeConvertedGuide
