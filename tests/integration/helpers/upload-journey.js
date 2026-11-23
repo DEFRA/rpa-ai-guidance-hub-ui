@@ -23,6 +23,8 @@ import {
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const CDP_UPLOADER_URL = config.get('cdpUploader.baseUrl')
 const PROCESSING_URL = '/create-guidance/upload-guide/processing'
+const CHOICE_URL = '/create-guidance/upload-guide/new-or-update'
+const METADATA_URL = '/create-guidance/upload-guide/metadata'
 const CHECK_ANSWERS_URL = '/create-guidance/upload-guide/metadata/check-answers'
 
 function mockReferenceData () {
@@ -94,8 +96,47 @@ async function completeParse (server, cookie, uploadId = 'u-check') {
   return mergeCookies(sessionCookie, second.headers['set-cookie'])
 }
 
-async function completeAllMetadata (server, cookie) {
+/**
+ * Choose to make the upload a new version of a guide.
+ *
+ * @param {Object} server
+ * @param {string} cookie
+ * @param {Object} guide - The guide, as `GET /guides/{id}` sends it
+ * @returns {Promise<string>} The session's cookie
+ */
+async function chooseToUpdate (server, cookie, guide) {
+  nock(GUIDANCE_API_BASE_URL)
+    .get(`/guides/${guide.id}`)
+    .reply(statusCodes.HTTP_STATUS_OK, guide)
+
+  const response = await server.inject({
+    method: 'POST',
+    url: CHOICE_URL,
+    payload: { kind: 'update', guideId: guide.id, q: '' },
+    headers: { cookie }
+  })
+
+  expect(response.headers.location).toBe(METADATA_URL)
+
+  return mergeCookies(cookie, response.headers['set-cookie'])
+}
+
+/**
+ * Upload a file and answer every question, up to the check page.
+ *
+ * @param {Object} server
+ * @param {string} cookie
+ * @param {Object} [options]
+ * @param {Object} [options.updates] - The guide the upload is a new version
+ *   of, as `GET /guides/{id}` sends it; a new guide when not given
+ * @returns {Promise<string>} The session's cookie
+ */
+async function completeAllMetadata (server, cookie, { updates } = {}) {
   let sessionCookie = await completeParse(server, cookie)
+
+  if (updates) {
+    sessionCookie = await chooseToUpdate(server, sessionCookie, updates)
+  }
 
   nock(GUIDANCE_API_BASE_URL)
     .get('/reference/schemes')

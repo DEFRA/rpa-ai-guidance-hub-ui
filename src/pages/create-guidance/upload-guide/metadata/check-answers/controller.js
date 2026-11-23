@@ -1,6 +1,6 @@
 import { statusCodes } from '../../../../../constants/status-codes.js'
 import { clearGuideUpload, flashConvertedGuide, getGuideUpload } from '../../../session.js'
-import { createGuide, RESULTS as GUIDE_RESULTS } from '../../../../../services/guides.js'
+import { createGuide, getGuideById, RESULTS as GUIDE_RESULTS } from '../../../../../services/guides.js'
 import * as referenceData from '../../../../../services/reference-data.js'
 import { getStagedDocumentById } from '../../../../../services/staged-documents.js'
 import { buildCheckAnswersSchema } from './schemas/check-answers-schema.js'
@@ -78,7 +78,8 @@ function _getIncompleteScreenUrl (error) {
 
 /**
  * What the summary cards are built from: the answers, the staged
- * document's parse details and the reference options (for short labels).
+ * document's parse details, the reference options (for short labels) and
+ * the title of the guide the upload is a new version of, if it is one.
  *
  * @private
  * @param {import('../../../session.js').GuideUpload} upload
@@ -90,7 +91,11 @@ async function _summaryData (upload, referenceOptions) {
     ? await getStagedDocumentById(upload.fileId)
     : null
 
-  return { metadata: upload.metadata, stagedDocument, referenceOptions }
+  const newVersionOf = upload.updatesGuideId
+    ? (await getGuideById(upload.updatesGuideId)).title
+    : null
+
+  return { metadata: upload.metadata, stagedDocument, referenceOptions, newVersionOf }
 }
 
 async function getCheckAnswers (request, h) {

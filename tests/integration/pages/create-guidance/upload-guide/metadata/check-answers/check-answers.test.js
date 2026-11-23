@@ -16,6 +16,7 @@ import { guidanceApiClient } from '../../../../../../../src/infra/guidance-api/c
 import {
   audiencesResponse,
   createdGuideResponse,
+  guideResponse,
   schemesResponse,
   stagedDocumentResponse,
   systemsResponse
@@ -26,6 +27,12 @@ import { CONVERSION_MESSAGES, METADATA_MESSAGES, REFUSAL_MESSAGES } from '../../
 const GUIDANCE_API_BASE_URL = config.get('guidanceApi.baseUrl')
 const CHECK_ANSWERS_URL = '/create-guidance/upload-guide/metadata/check-answers'
 const CONVERTED_URL = '/create-guidance/upload-guide/converted'
+const CHOICE_URL = '/create-guidance/upload-guide/new-or-update'
+const GUIDE_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
+
+function cardTitled (page, title) {
+  return within(page.getByRole('heading', { name: title }).closest('.govuk-summary-card'))
+}
 
 describe('#checkAnswersController Integration', () => {
   let server
@@ -117,6 +124,49 @@ describe('#checkAnswersController Integration', () => {
       expect(summaryValueOf(purpose, 'Who is this guidance for?')).toHaveTextContent('Processor')
       expect(details.getByRole('link', { name: /^Change/ })).toHaveAttribute('href', '/create-guidance/upload-guide/metadata?from=check')
       expect(purpose.getByRole('link', { name: /^Change/ })).toHaveAttribute('href', '/create-guidance/upload-guide/metadata/purpose?from=check')
+    })
+
+    test('GET says in a card that the upload is a new guide, with a Change link to choose again', async () => {
+      const cookie = await completeAllMetadata(server, await loginAsDevUser(server))
+      mockReferenceData()
+      nock(GUIDANCE_API_BASE_URL).get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse())
+
+      const response = await server.inject({ method: 'GET', url: CHECK_ANSWERS_URL, headers: { cookie } })
+
+      const card = cardTitled(pageOf(response.payload), 'New guide or new version')
+      expect(summaryValueOf(card, 'This document is')).toHaveTextContent(/^A new guide$/)
+      expect(card.getByRole('link', { name: /^Change/ })).toHaveAttribute('href', CHOICE_URL)
+    })
+
+    describe('For a new version of a guide', () => {
+      const guide = guideResponse({ id: GUIDE_ID })
+
+      async function checkPage () {
+        const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
+        mockReferenceData()
+        nock(GUIDANCE_API_BASE_URL).get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse())
+        nock(GUIDANCE_API_BASE_URL).get(`/guides/${GUIDE_ID}`).reply(statusCodes.HTTP_STATUS_OK, guide)
+
+        const response = await server.inject({ method: 'GET', url: CHECK_ANSWERS_URL, headers: { cookie } })
+
+        expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+
+        return pageOf(response.payload)
+      }
+
+      test('GET names the guide in a card, with a Change link to choose again', async () => {
+        const card = cardTitled(await checkPage(), 'New guide or new version')
+
+        expect(summaryValueOf(card, 'This document is')).toHaveTextContent(/^A new version of ‘Claiming the SFI payment’$/)
+        expect(card.getByRole('link', { name: /^Change/ })).toHaveAttribute('href', CHOICE_URL)
+      })
+
+      test('GET says that the new version goes live in the hub at once, for everyone who uses it', async () => {
+        const main = (await checkPage()).document.querySelector('main')
+
+        expect(main).toHaveTextContent('When you convert this document, the new version goes live in the hub at once. Everyone who uses the hub can see it.')
+        expect(main).not.toHaveTextContent(/draft/)
+      })
     })
 
     test('Change action returns to check-answers when continuing from metadata screen', async () => {

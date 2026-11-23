@@ -8,6 +8,7 @@ import {
 
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
 const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
+const CHOICE_URL = '/create-guidance/upload-guide/new-or-update'
 const NOT_PROVIDED = 'Not provided'
 
 function _valueOrNotProvided (value) {
@@ -129,8 +130,27 @@ function buildGuideSummaryCards ({
   }
 }
 
+/**
+ * Build the "new guide or new version" summary card: what converting the
+ * upload makes, with a Change link to the page that asks.
+ *
+ * @param {string|null} newVersionOf - The title of the guide the upload is a
+ *   new version of; null for a new guide
+ */
+function buildNewOrUpdateCard (newVersionOf) {
+  return buildSummaryCard({
+    title: 'New guide or new version',
+    changeHref: CHOICE_URL,
+    changeVisuallyHiddenText: 'whether this is a new guide or a new version',
+    rows: [
+      buildSummaryRow('This document is', newVersionOf ? `A new version of ‘${newVersionOf}’` : 'A new guide')
+    ]
+  })
+}
+
 export {
   buildGuideDetailsCard,
+  buildNewOrUpdateCard,
   buildOwnerPurposeCard,
   buildGuideSummaryCards
 }
