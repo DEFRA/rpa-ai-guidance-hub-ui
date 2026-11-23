@@ -125,13 +125,18 @@ class GuideUpload {
   }
 
   /**
-   * Make the active upload a new version of a guide, or (null) a new guide
+   * Make the active upload a new version of a guide, or (null) a new guide.
+   * A different choice starts the details again with the answers given: the
+   * guide's own for a new version, none for a new guide. The same choice
+   * again keeps the details, with any changes made to them since.
    * @param {string|null} guideId
+   * @param {Object} answers - What the details start with
    * @returns {void}
    */
-  setUpdatesGuideId (guideId) {
-    if (this.#activeUpload) {
+  setUpdatesGuideId (guideId, answers) {
+    if (this.#activeUpload && guideId !== this.updatesGuideId) {
       this.#activeUpload.updatesGuideId = guideId
+      this.#activeUpload.metadata = { ...answers }
     }
   }
 
@@ -259,16 +264,17 @@ function setGuideUploadFileId (request, fileId) {
 
 /**
  * Make the active upload a new version of a guide, or (null) a new guide, in
- * session
+ * session; see `GuideUpload#setUpdatesGuideId`
  * @param {import('@hapi/hapi').Request} request
  * @param {string|null} guideId
+ * @param {Object} answers - What the details start with
  * @returns {void}
  */
-function setGuideUploadUpdates (request, guideId) {
+function setGuideUploadUpdates (request, guideId, answers) {
   const upload = getGuideUpload(request)
 
   if (upload) {
-    upload.setUpdatesGuideId(guideId)
+    upload.setUpdatesGuideId(guideId, answers)
     request.yar.set(SESSION_KEY, upload.toPlainObject())
   }
 }

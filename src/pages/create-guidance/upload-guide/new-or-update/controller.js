@@ -1,5 +1,5 @@
 import { statusCodes } from '../../../../constants/status-codes.js'
-import { guidesTitledLike } from '../../../../services/guides.js'
+import { answersOf, getGuideById, guidesTitledLike } from '../../../../services/guides.js'
 import { getStagedDocumentById } from '../../../../services/staged-documents.js'
 import { mapValidationError } from '../../form-errors.js'
 import { getGuideUpload, setGuideUploadUpdates } from '../../session.js'
@@ -56,15 +56,18 @@ async function choiceFailAction (request, h, err) {
 }
 
 /**
- * Keep the choice, then go on to the details.
+ * Keep the choice, then go on to the details, which start with the chosen
+ * guide's.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
  */
-function postChoice (request, h) {
+async function postChoice (request, h) {
   const { kind, guideId } = request.payload
+  const updates = kind === 'update' ? guideId : null
+  const answers = updates ? answersOf(await getGuideById(updates)) : {}
 
-  setGuideUploadUpdates(request, kind === 'update' ? guideId : null)
+  setGuideUploadUpdates(request, updates, answers)
 
   return h.redirect(METADATA_URL)
 }

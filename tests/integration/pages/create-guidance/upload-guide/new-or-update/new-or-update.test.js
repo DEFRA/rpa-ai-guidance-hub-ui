@@ -5,14 +5,24 @@ import nock from 'nock'
 
 import { createServer } from '../../../../../../src/server/server.js'
 import { config } from '../../../../../../src/config/config.js'
+import { mergeCookies } from '../../../../helpers/cookies.js'
 import { loginAsDevUser } from '../../../../helpers/login.js'
 import { errorSummaryOf, pageOf } from '../../../../helpers/page.js'
 import { completeParse } from '../../../../helpers/upload-journey.js'
-import { guideTitlesResponse, stagedDocumentResponse } from '../../../../../fixtures/guidance-api.js'
+import {
+  audiencesResponse,
+  guideResponse,
+  guideTitlesResponse,
+  schemesResponse,
+  stagedDocumentResponse,
+  systemsResponse,
+  versionResponse
+} from '../../../../../fixtures/guidance-api.js'
 
 const GUIDANCE_API_URL = config.get('guidanceApi.baseUrl')
 const CHOICE_URL = '/create-guidance/upload-guide/new-or-update'
 const METADATA_URL = '/create-guidance/upload-guide/metadata'
+const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
 const FILE_TITLE = 'Claiming the SFI payment'
 const GUIDE_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
 const OTHER_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
@@ -34,6 +44,32 @@ const LIKE_THE_FILE = [
   { guideId: GUIDE_ID, title: 'Claiming the SFI payment' },
   { guideId: OTHER_ID, title: 'Claiming the CS payment' }
 ]
+
+function aGuide ({ id, title, schemes = ['Sustainable Farming Incentive (SFI)'] }) {
+  return guideResponse({
+    id,
+    metadata: {
+      guideTitle: title,
+      schemeYear: 2026,
+      schemes,
+      owner: 'owner@example.com',
+      goal: 'Explains how to claim the payment',
+      requirements: 'CRM access',
+      systems: ['CRM'],
+      audience: ['Processor']
+    },
+    versions: [versionResponse({ title, versionNumber: '1.0' })]
+  })
+}
+
+const CHOSEN_GUIDE = aGuide({ id: GUIDE_ID, title: 'Claiming the SFI payment, 2025' })
+const OTHER_GUIDE = aGuide({ id: OTHER_ID, title: 'Claiming the CS payment' })
+
+function mockGuide (guide) {
+  nock(GUIDANCE_API_URL)
+    .get(`/guides/${guide.id}`)
+    .reply(statusCodes.HTTP_STATUS_OK, guide)
+}
 
 describe('Choosing whether an upload is a new guide or a new version of one', () => {
   let server
@@ -59,6 +95,42 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
 
   function guidesOffered (page) {
     return within(page.getByRole('group', { name: `Guides like ‘${FILE_TITLE}’` }))
+  }
+
+  async function choose (cookie, payload) {
+    const response = await server.inject({ method: 'POST', url: CHOICE_URL, payload, headers: { cookie } })
+
+    expect(response.headers.location).toBe(METADATA_URL)
+
+    return mergeCookies(cookie, response.headers['set-cookie'])
+  }
+
+  async function chooseGuide (cookie, guide) {
+    mockGuide(guide)
+
+    return choose(cookie, { kind: 'update', guideId: guide.id, q: FILE_TITLE })
+  }
+
+  async function detailsPage (cookie) {
+    mockFileTitle()
+    nock(GUIDANCE_API_URL).get('/reference/schemes').reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
+
+    const response = await server.inject({ method: 'GET', url: METADATA_URL, headers: { cookie } })
+
+    expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+
+    return pageOf(response.payload)
+  }
+
+  async function purposePage (cookie) {
+    nock(GUIDANCE_API_URL).get('/reference/systems').reply(statusCodes.HTTP_STATUS_OK, systemsResponse())
+    nock(GUIDANCE_API_URL).get('/reference/audiences').reply(statusCodes.HTTP_STATUS_OK, audiencesResponse())
+
+    const response = await server.inject({ method: 'GET', url: PURPOSE_URL, headers: { cookie } })
+
+    expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+
+    return pageOf(response.payload)
   }
 
   test('sends a request with no upload back to the upload page', async () => {
@@ -163,6 +235,7 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
 
   test('goes on to the details of an update once a guide is chosen', async () => {
     const cookie = await processed()
+    mockGuide(CHOSEN_GUIDE)
 
     const response = await server.inject({
       method: 'POST',
@@ -209,5 +282,74 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
       .toHaveAttribute('href', '#guideId')
     expect(page.getByRole('radio', { name: 'Update an existing guide' })).toBeChecked()
     expect(guidesOffered(page).getAllByRole('radio')).toHaveLength(2)
+  })
+
+  test('starts the guide details with the chosen guide\'s, all but the version number', async () => {
+    const cookie = await chooseGuide(await processed(), CHOSEN_GUIDE)
+
+    const page = await detailsPage(cookie)
+
+    expect(page.getByLabelText('Guidance title')).toHaveValue('Claiming the SFI payment, 2025')
+    expect(page.getByLabelText('Version number')).toHaveValue('')
+    expect(page.getByRole('checkbox', { name: /Sustainable Farming Incentive/ })).toBeChecked()
+    expect(page.getByRole('checkbox', { name: /Countryside Stewardship/ })).not.toBeChecked()
+  })
+
+  test('starts the owner and purpose with the chosen guide\'s', async () => {
+    const cookie = await chooseGuide(await processed(), CHOSEN_GUIDE)
+
+    const page = await purposePage(cookie)
+
+    expect(page.getByLabelText('Owner email')).toHaveValue('owner@example.com')
+    expect(page.getByLabelText('What is the purpose of this guidance?')).toHaveValue('Explains how to claim the payment')
+    expect(page.getByLabelText('Required knowledge and training')).toHaveValue('CRM access')
+    expect(page.getByRole('checkbox', { name: 'CRM' })).toBeChecked()
+    expect(page.getByRole('checkbox', { name: 'SITI Agri' })).not.toBeChecked()
+    expect(page.getByRole('checkbox', { name: 'Processor' })).toBeChecked()
+    expect(page.getByRole('checkbox', { name: 'Team leader' })).not.toBeChecked()
+  })
+
+  test('starts a guide kept with no scheme as not scheme-specific', async () => {
+    const guide = aGuide({ id: GUIDE_ID, title: 'Claiming any payment', schemes: [] })
+    const cookie = await chooseGuide(await processed(), guide)
+
+    const page = await detailsPage(cookie)
+
+    expect(page.getByRole('checkbox', { name: 'Not scheme-specific' })).toBeChecked()
+  })
+
+  test('starts the details again with another guide\'s when another guide is chosen', async () => {
+    const cookie = await chooseGuide(await chooseGuide(await processed(), CHOSEN_GUIDE), OTHER_GUIDE)
+
+    const page = await detailsPage(cookie)
+
+    expect(page.getByLabelText('Guidance title')).toHaveValue('Claiming the CS payment')
+  })
+
+  test('starts the details again from the file when New guide is chosen after a guide', async () => {
+    const cookie = await choose(await chooseGuide(await processed(), CHOSEN_GUIDE), { kind: 'new', q: FILE_TITLE })
+
+    const page = await detailsPage(cookie)
+
+    expect(page.getByLabelText('Guidance title')).toHaveValue(FILE_TITLE)
+    expect(page.getByRole('checkbox', { name: /Sustainable Farming Incentive/ })).not.toBeChecked()
+  })
+
+  test('keeps changes to the details when the same guide is chosen again', async () => {
+    let cookie = await chooseGuide(await processed(), CHOSEN_GUIDE)
+    nock(GUIDANCE_API_URL).get('/reference/schemes').reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
+    const changed = await server.inject({
+      method: 'POST',
+      url: METADATA_URL,
+      payload: { guideTitle: 'Claiming the SFI payment, 2026', versionNumber: '2.0', schemes: ['sustainable-farming-incentive-sfi'] },
+      headers: { cookie }
+    })
+    expect(changed.headers.location).toBe(PURPOSE_URL)
+    cookie = await chooseGuide(mergeCookies(cookie, changed.headers['set-cookie']), CHOSEN_GUIDE)
+
+    const page = await detailsPage(cookie)
+
+    expect(page.getByLabelText('Guidance title')).toHaveValue('Claiming the SFI payment, 2026')
+    expect(page.getByLabelText('Version number')).toHaveValue('2.0')
   })
 })

@@ -3,7 +3,7 @@ import { statusCodes } from '../constants/status-codes.js'
 
 import * as guidesApi from '../infra/guidance-api/guides.js'
 import { findHeading, splitIntoSections } from './guide-sections.js'
-import { schemesAsKept } from './reference-data.js'
+import { NOT_SCHEME_SPECIFIC, schemesAsKept } from './reference-data.js'
 import * as stagedDocumentsService from './staged-documents.js'
 
 /**
@@ -336,6 +336,25 @@ function _titleOf (version, metadata) {
 }
 
 /**
+ * A guide's details as the upload journey's answers, for a new version of it
+ * to start with: all but the version number, which each version's author
+ * gives. A guide kept with no scheme is not scheme-specific; the scheme year
+ * is fixed, so the journey does not ask it.
+ *
+ * @param {Guide} guide
+ * @returns {Object}
+ */
+function answersOf ({ title, metadata }) {
+  const { schemeYear, schemes, ...details } = metadata
+
+  return {
+    ...details,
+    guideTitle: title,
+    schemes: schemes?.length === 0 ? [NOT_SCHEME_SPECIFIC] : schemes
+  }
+}
+
+/**
  * The guides with titles like the words, the likest first: none for no words.
  *
  * @param {string} words
@@ -352,6 +371,7 @@ async function guidesTitledLike (words) {
 }
 
 export {
+  answersOf,
   guidesTitledLike,
   createGuide,
   getGuideAsset,
