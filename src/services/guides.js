@@ -59,7 +59,8 @@ const RESULTS = {
   GUIDE_CREATED: 'guideCreated', // the one this upload made before
   UPLOAD_EXPIRED: 'uploadExpired', // the API has no staged file for the upload
   PARSE_PENDING: 'parsePending', // the staged file has not finished parsing
-  PARSE_FAILED: 'parseFailed' // the staged file could not be parsed
+  PARSE_FAILED: 'parseFailed', // the staged file could not be parsed
+  REPLACED_FIRST: 'replacedFirst' // the guide has a newer version than the one replaced
 }
 
 // The most guides the API lists on one page.
@@ -92,19 +93,27 @@ const ALLOWED_ASSET_CONTENT_TYPES = new Set([
  * @returns {Promise<{code: string}>} One of `RESULTS`
  */
 async function createGuide (guide) {
-  return _convert(guide, guidesApi.createGuide)
+  return _convert(guide, guidesApi.createGuide, () => _whyNotParsed(guide.fileId))
 }
 
 /**
- * Convert an upload into a new version of a guide: the same request as
- * `createGuide` makes, answered the same way.
+ * Convert an upload into a new version of a guide, which replaces the version
+ * named: the same request as `createGuide` makes, answered the same way, but
+ * refused when the guide has a newer version than the one it replaces.
  *
  * @param {string} guideId - The guide the upload is a new version of
- * @param {Object} version - As `createGuide` takes a guide
+ * @param {Object} version - As `createGuide` takes a guide, with
+ *   `replacesVersionId`: the guide's latest version when it was chosen
  * @returns {Promise<{code: string}>} One of `RESULTS`
  */
 async function createVersion (guideId, version) {
-  return _convert(version, (request) => guidesApi.createVersion(guideId, request))
+  const { replacesVersionId } = version
+
+  return _convert(
+    version,
+    (request) => guidesApi.createVersion(guideId, { ...request, replacesVersionId }),
+    () => _whyVersionRefused(guideId, replacesVersionId, version.fileId)
+  )
 }
 
 /**
@@ -112,9 +121,11 @@ async function createVersion (guideId, version) {
  * @param {Object} upload - As `createGuide` takes it
  * @param {(request: Object) => Promise<{status: number}>} send - The API
  *   call that converts it
+ * @param {() => Promise<{code: string}>} whyConflict - Which of the API's
+ *   reasons for a conflict it was
  * @returns {Promise<{code: string}>} One of `RESULTS`
  */
-async function _convert ({ uploadId, fileId, metadata, user }, send) {
+async function _convert ({ uploadId, fileId, metadata, user }, send, whyConflict) {
   const { versionNumber, ...details } = metadata
   const kept = details.schemes ? { ...details, schemes: schemesAsKept(details.schemes) } : details
 
@@ -131,7 +142,7 @@ async function _convert ({ uploadId, fileId, metadata, user }, send) {
   }
 
   if (res.status === statusCodes.HTTP_STATUS_CONFLICT) {
-    return _whyNotParsed(fileId)
+    return whyConflict()
   }
 
   if (res.status === statusCodes.HTTP_STATUS_ACCEPTED) {
@@ -139,6 +150,27 @@ async function _convert ({ uploadId, fileId, metadata, user }, send) {
   }
 
   return { code: RESULTS.GUIDE_CREATED }
+}
+
+/**
+ * The API refuses a new version with one status whether the guide has a newer
+ * version than the one it replaces or the file is not parsed, so ask the
+ * guide which.
+ *
+ * @private
+ * @param {string} guideId
+ * @param {string} replacesVersionId
+ * @param {string} fileId
+ * @returns {Promise<{code: string}>}
+ */
+async function _whyVersionRefused (guideId, replacesVersionId, fileId) {
+  const guide = await getGuideById(guideId)
+
+  if (guide?.latestVersion?.id !== replacesVersionId) {
+    return { code: RESULTS.REPLACED_FIRST }
+  }
+
+  return _whyNotParsed(fileId)
 }
 
 /**

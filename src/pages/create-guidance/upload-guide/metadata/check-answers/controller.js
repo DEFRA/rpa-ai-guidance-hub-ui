@@ -13,13 +13,14 @@ const PURPOSE_URL = '/create-guidance/upload-guide/metadata/purpose'
 const CONVERTED_URL = '/create-guidance/upload-guide/converted'
 const CONVERTING_URL = '/create-guidance/upload-guide/converting'
 
-// Why the API would not convert the upload, as the user is told it: named
-// once, by the API's answer, so that one test holds the words and the rest
-// name them.
+// Why the API would not convert the upload, as the user is told it, given the
+// title of the guide it is a new version of: named once, by the API's answer,
+// so that one test holds the words and the rest name them.
 const REFUSAL_MESSAGES = Object.freeze({
-  [GUIDE_RESULTS.UPLOAD_EXPIRED]: 'The uploaded document has expired. Start again and upload it again',
-  [GUIDE_RESULTS.PARSE_PENDING]: 'The uploaded document is still being processed. Wait a few seconds, then select Convert document again',
-  [GUIDE_RESULTS.PARSE_FAILED]: 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team'
+  [GUIDE_RESULTS.UPLOAD_EXPIRED]: () => 'The uploaded document has expired. Start again and upload it again',
+  [GUIDE_RESULTS.PARSE_PENDING]: () => 'The uploaded document is still being processed. Wait a few seconds, then select Convert document again',
+  [GUIDE_RESULTS.PARSE_FAILED]: () => 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team',
+  [GUIDE_RESULTS.REPLACED_FIRST]: (guideTitle) => `Someone saved a newer version of ‘${guideTitle}’ after you chose it. Check the newer version, then upload your file again`
 })
 
 // Which screen owns each field, so an incomplete/invalid answer sends the
@@ -155,7 +156,7 @@ async function convertDocument (request, h) {
     user: request.auth.credentials.profile
   }
   const { code } = upload.updatesGuideId
-    ? await createVersion(upload.updatesGuideId, conversion)
+    ? await createVersion(upload.updatesGuideId, { ...conversion, replacesVersionId: upload.replacesVersionId })
     : await createGuide(conversion)
 
   if (code === GUIDE_RESULTS.SAVE_STARTED) {
@@ -166,9 +167,10 @@ async function convertDocument (request, h) {
   }
 
   if (code !== GUIDE_RESULTS.GUIDE_CREATED) {
+    const summary = await _summaryData(upload, referenceOptions)
     const viewModel = CheckAnswersViewModel.fromSubmissionError(
-      CheckAnswersViewModel.fromSession(await _summaryData(upload, referenceOptions)),
-      REFUSAL_MESSAGES[code]
+      CheckAnswersViewModel.fromSession(summary),
+      REFUSAL_MESSAGES[code](summary.newVersionOf)
     )
 
     return h

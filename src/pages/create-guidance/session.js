@@ -97,6 +97,15 @@ class GuideUpload {
   }
 
   /**
+   * The version of that guide the new version replaces: its latest when it
+   * was chosen - null for a new guide, or before it is chosen
+   * @returns {string|null}
+   */
+  get replacesVersionId () {
+    return this.#activeUpload?.replacesVersionId ?? null
+  }
+
+  /**
    * Does the session wrapper contain at least one upload
    * @returns {boolean}
    */
@@ -138,18 +147,21 @@ class GuideUpload {
   /**
    * Make the active upload a new version of a guide, or (null) a new guide.
    * A different choice starts the details again with the answers given: the
-   * guide's own for a new version, none for a new guide. The same choice
-   * again keeps the details, with any changes made to them since. Once the
-   * conversion is submitted, nothing changes.
+   * guide's own for a new version, none for a new guide, and the version
+   * they came from, which the new version replaces. The same choice again
+   * keeps the details, with any changes made to them since, and the version
+   * they came from. Once the conversion is submitted, nothing changes.
    * @param {string|null} guideId
    * @param {Object} answers - What the details start with
+   * @param {string|null} [replacesVersionId] - The guide's latest version
    * @returns {void}
    */
-  setUpdatesGuideId (guideId, answers) {
+  setUpdatesGuideId (guideId, answers, replacesVersionId = null) {
     const upload = this.#answerableUpload
 
     if (upload && guideId !== this.updatesGuideId) {
       upload.updatesGuideId = guideId
+      upload.replacesVersionId = replacesVersionId
       upload.metadata = { ...answers }
     }
   }
@@ -295,13 +307,14 @@ function setGuideUploadFileId (request, fileId) {
  * @param {import('@hapi/hapi').Request} request
  * @param {string|null} guideId
  * @param {Object} answers - What the details start with
+ * @param {string|null} [replacesVersionId] - The guide's latest version
  * @returns {void}
  */
-function setGuideUploadUpdates (request, guideId, answers) {
+function setGuideUploadUpdates (request, guideId, answers, replacesVersionId) {
   const upload = getGuideUpload(request)
 
   if (upload) {
-    upload.setUpdatesGuideId(guideId, answers)
+    upload.setUpdatesGuideId(guideId, answers, replacesVersionId)
     request.yar.set(SESSION_KEY, upload.toPlainObject())
   }
 }

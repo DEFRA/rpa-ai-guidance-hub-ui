@@ -57,7 +57,7 @@ async function choiceFailAction (request, h, err) {
 
 /**
  * Keep the choice, then go on to the details, which start with the chosen
- * guide's.
+ * guide's. A new version replaces the guide's latest version as it is now.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -65,9 +65,9 @@ async function choiceFailAction (request, h, err) {
 async function postChoice (request, h) {
   const { kind, guideId } = request.payload
   const updates = kind === 'update' ? guideId : null
-  const answers = updates ? answersOf(await getGuideById(updates)) : {}
+  const guide = updates ? await getGuideById(updates) : null
 
-  setGuideUploadUpdates(request, updates, answers)
+  setGuideUploadUpdates(request, updates, guide ? answersOf(guide) : {}, guide?.latestVersion?.id ?? null)
 
   return h.redirect(METADATA_URL)
 }

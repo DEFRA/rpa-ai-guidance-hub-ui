@@ -17,9 +17,11 @@ import {
   audiencesResponse,
   createdGuideResponse,
   guideResponse,
+  refusalResponse,
   schemesResponse,
   stagedDocumentResponse,
-  systemsResponse
+  systemsResponse,
+  versionResponse
 } from '../../../../../../fixtures/guidance-api.js'
 import { RESULTS } from '../../../../../../../src/services/guides.js'
 import { CONVERSION_MESSAGES, METADATA_MESSAGES, REFUSAL_MESSAGES } from '../../../../../../fixtures/messages.js'
@@ -157,6 +159,8 @@ describe('#checkAnswersController Integration', () => {
 
     describe('For a new version of a guide', () => {
       const guide = guideResponse({ id: GUIDE_ID })
+      // What converting sends for a new version: the version chosen to replace too.
+      const VERSION_REQUEST = { ...CONVERSION_REQUEST, replacesVersionId: guide.versions[0].id }
 
       async function checkPage () {
         const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
@@ -217,11 +221,11 @@ describe('#checkAnswersController Integration', () => {
         expect(main).not.toHaveTextContent(/draft/)
       })
 
-      test('POST asks the API to save the upload as a new version of the guide, then follows the save', async () => {
+      test('POST asks the API to save the upload as a new version of the guide, replacing the version chosen, then follows the save', async () => {
         const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
         mockReferenceData()
         const createVersion = nock(GUIDANCE_API_BASE_URL)
-          .post(`/guides/${GUIDE_ID}/versions`, CONVERSION_REQUEST)
+          .post(`/guides/${GUIDE_ID}/versions`, VERSION_REQUEST)
           .reply(
             statusCodes.HTTP_STATUS_ACCEPTED,
             stagedDocumentResponse({ parsingStatus: 'complete', documentId: GUIDE_ID, savingStatus: 'in_progress' }),
@@ -248,7 +252,7 @@ describe('#checkAnswersController Integration', () => {
         cookie = mergeCookies(cookie, changed.headers['set-cookie'])
         mockReferenceData()
         const createVersion = nock(GUIDANCE_API_BASE_URL)
-          .post(`/guides/${GUIDE_ID}/versions`, CONVERSION_REQUEST)
+          .post(`/guides/${GUIDE_ID}/versions`, VERSION_REQUEST)
           .reply(
             statusCodes.HTTP_STATUS_ACCEPTED,
             stagedDocumentResponse({ parsingStatus: 'complete', documentId: GUIDE_ID, savingStatus: 'in_progress' }),
@@ -259,6 +263,40 @@ describe('#checkAnswersController Integration', () => {
 
         createVersion.done()
         expect(response.headers.location).toBe('/create-guidance/upload-guide/converting')
+      })
+
+      test('POST redisplays check answers saying that someone saved a newer version first, when the guide has one', async () => {
+        const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
+        const newer = guideResponse({ id: GUIDE_ID, versions: [versionResponse({ id: 'version-2' }), ...guide.versions] })
+        mockReferenceData()
+        nock(GUIDANCE_API_BASE_URL)
+          .post(`/guides/${GUIDE_ID}/versions`)
+          .reply(statusCodes.HTTP_STATUS_CONFLICT, { detail: { message: 'Version version-1 is not the latest', latestVersionId: 'version-2' } })
+        nock(GUIDANCE_API_BASE_URL).get(`/guides/${GUIDE_ID}`).times(2).reply(statusCodes.HTTP_STATUS_OK, newer)
+        nock(GUIDANCE_API_BASE_URL).get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse())
+
+        const response = await server.inject({ method: 'POST', url: CHECK_ANSWERS_URL, payload: {}, headers: { cookie } })
+
+        expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
+        expect(pageOf(response.payload).getByRole('alert')).toHaveTextContent(REFUSAL_MESSAGES.replacedFirst('Claiming the SFI payment'))
+      })
+
+      test('POST still explains an unfinished parse, when the guide has no newer version', async () => {
+        const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
+        mockReferenceData()
+        nock(GUIDANCE_API_BASE_URL)
+          .post(`/guides/${GUIDE_ID}/versions`)
+          .reply(statusCodes.HTTP_STATUS_CONFLICT, refusalResponse({ detail: 'File file-1 is in_progress, not parsed' }))
+        nock(GUIDANCE_API_BASE_URL).get(`/guides/${GUIDE_ID}`).times(2).reply(statusCodes.HTTP_STATUS_OK, guide)
+        nock(GUIDANCE_API_BASE_URL)
+          .get('/guides/staging/file-1')
+          .times(2)
+          .reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'in_progress' }))
+
+        const response = await server.inject({ method: 'POST', url: CHECK_ANSWERS_URL, payload: {}, headers: { cookie } })
+
+        expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
+        expect(pageOf(response.payload).getByRole('alert')).toHaveTextContent(REFUSAL_MESSAGES[RESULTS.PARSE_PENDING])
       })
 
       describe('The Guidance converted page', () => {

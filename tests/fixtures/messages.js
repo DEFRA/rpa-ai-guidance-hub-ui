@@ -74,7 +74,8 @@ const PURPOSE_MESSAGES = Object.freeze({
 const REFUSAL_MESSAGES = Object.freeze({
   uploadExpired: 'The uploaded document has expired. Start again and upload it again',
   parsePending: 'The uploaded document is still being processed. Wait a few seconds, then select Convert document again',
-  parseFailed: 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team'
+  parseFailed: 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team',
+  replacedFirst: (guideTitle) => `Someone saved a newer version of ‘${guideTitle}’ after you chose it. Check the newer version, then upload your file again`
 })
 
 const CONVERSION_MESSAGES = Object.freeze({
