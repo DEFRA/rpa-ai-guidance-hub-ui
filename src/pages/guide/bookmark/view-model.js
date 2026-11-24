@@ -100,7 +100,7 @@ function chosenCase (answer, cases, sbiBookmarks) {
  * @returns {string}
  */
 function sectionHref (guideId, heading) {
-  return guideSectionHref(guideId, heading.anchor, heading.slug)
+  return guideSectionHref(guideId, heading.anchor, { slug: heading.slug })
 }
 
 class BookmarkViewModel {

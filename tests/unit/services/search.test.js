@@ -33,7 +33,7 @@ describe('#searchGuides', () => {
     expect(found.results.map((guide) => guide.title)).toEqual(['Countryside Stewardship final payments'])
   })
 
-  test('gives each guide as a link to it, with its sections as links to them', async () => {
+  test('gives each guide as a link to it, and its sections as links to them, each with the words searched in it', async () => {
     const document = searchApi.documentResult({ sectionTotal: 25, documentId: 'g/1' })
     nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(200, searchApi.documentSearchResponse({ results: [document], total: 4, sectionTotal: 40 }))
 
@@ -49,12 +49,12 @@ describe('#searchGuides', () => {
       results: [{
         id: 'g/1',
         title: 'Countryside Stewardship final payments',
-        href: '/guides/g%2F1',
+        href: '/guides/g%2F1?q=claim',
         titleSnippet: null,
         sectionTotal: 25,
         sections: [{
           title: '4.2 Claim rules',
-          href: '/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7?section=claim-rules#claim-rules',
+          href: '/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7?section=claim-rules&q=claim#claim-rules',
           documentTitle: 'Countryside Stewardship final payments',
           matches: 2,
           snippet: [
@@ -77,7 +77,7 @@ describe('#searchGuides', () => {
     expect(found.titles).toEqual([{
       id: '9b2f4c1a-5d3e-4a6b-8c7d-0e1f2a3b4c5d',
       title: 'CS MA Claim - AB12 or OP3 Maximum Eligible Weight',
-      href: '/guides/9b2f4c1a-5d3e-4a6b-8c7d-0e1f2a3b4c5d',
+      href: '/guides/9b2f4c1a-5d3e-4a6b-8c7d-0e1f2a3b4c5d?q=CS%20MA%20Claim',
       titleSnippet: [
         { text: 'CS MA Claim', match: true },
         { text: ' - AB12 or OP3 Maximum Eligible Weight', match: false }
@@ -93,7 +93,7 @@ describe('#searchGuides', () => {
 
     const { results } = await searchGuides({ words: 'claim', page: 1, perPage: 10 })
 
-    expect(results[0].href).toBe('/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7')
+    expect(results[0].href).toBe('/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7?q=claim')
   })
 
   test('says when there are too many matches to give', async () => {
@@ -127,7 +127,7 @@ describe('#searchGuide', () => {
     expect(found.results.map((result) => result.title)).toEqual(['4.2 Claim rules'])
   })
 
-  test('gives each section as a link to it in its guide, numbered where it has a number', async () => {
+  test('gives each section as a link to it in its guide, with the words searched in it, numbered where it has a number', async () => {
     nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(200, searchApi.searchResponse({ total: 25 }))
 
     const found = await searchGuide({ guideId: 'g-1', words: 'claim', page: 1, perPage: 10 })
@@ -138,7 +138,7 @@ describe('#searchGuide', () => {
       tooManyMatches: false,
       results: [{
         title: '4.2 Claim rules',
-        href: '/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7?section=claim-rules#claim-rules',
+        href: '/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7?section=claim-rules&q=claim#claim-rules',
         documentTitle: 'Countryside Stewardship final payments',
         matches: 2,
         snippet: [
@@ -157,7 +157,7 @@ describe('#searchGuide', () => {
     const { results } = await searchGuide({ guideId: 'g-1', words: 'claim', page: 1, perPage: 10 })
 
     expect(results[0].title).toBe('Introduction')
-    expect(results[0].href).toBe('/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7')
+    expect(results[0].href).toBe('/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7?q=claim')
   })
 
   test('links within the hub, whatever the search service says the section\'s url is', async () => {
@@ -166,7 +166,7 @@ describe('#searchGuide', () => {
 
     const { results } = await searchGuide({ guideId: 'g-1', words: 'claim', page: 1, perPage: 10 })
 
-    expect(results[0].href).toBe('/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7?section=claim-rules#claim-rules')
+    expect(results[0].href).toBe('/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7?section=claim-rules&q=claim#claim-rules')
   })
 
   test('says when there are too many matches to give', async () => {

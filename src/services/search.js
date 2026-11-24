@@ -73,42 +73,47 @@ function _title (section) {
 }
 
 /**
- * The guide's own page in the UI. Made here, not taken from the search
- * service's `url`, so a result can only ever link within the hub.
+ * The guide's own page in the UI, with the words searched in it. Made here,
+ * not taken from the search service's `url`, so a result can only ever link
+ * within the hub.
  *
  * @private
  * @param {string} documentId
+ * @param {string} words
  * @returns {string}
  */
-function _guideHref (documentId) {
-  return `/guides/${encodeURIComponent(documentId)}`
+function _guideHref (documentId, words) {
+  return `/guides/${encodeURIComponent(documentId)}?q=${encodeURIComponent(words)}`
 }
 
 /**
- * The section in its guide: named as `section` too, as pins and the side
- * navigation link to one, so a stepper guide opens on the page that has it.
+ * The section in its guide, with the words searched in it: named as
+ * `section` too, as pins and the side navigation link to one, so a stepper
+ * guide opens on the page that has it.
  *
  * @private
  * @param {{documentId: string, anchor: string}} section
+ * @param {string} words
  * @returns {string}
  */
-function _href (section) {
+function _href (section, words) {
   if (!section.anchor) {
-    return _guideHref(section.documentId)
+    return _guideHref(section.documentId, words)
   }
 
-  return guideSectionHref(section.documentId, section.anchor)
+  return guideSectionHref(section.documentId, section.anchor, { words })
 }
 
 /**
  * @private
  * @param {Object} section - The search service's
+ * @param {string} words
  * @returns {SearchResult}
  */
-function _toResult (section) {
+function _toResult (section, words) {
   return {
     title: _title(section),
-    href: _href(section),
+    href: _href(section, words),
     documentTitle: section.documentTitle,
     matches: section.matches,
     snippet: section.snippet
@@ -118,16 +123,17 @@ function _toResult (section) {
 /**
  * @private
  * @param {Object} document - The search service's
+ * @param {string} words
  * @returns {GuideResult}
  */
-function _toGuideResult (document) {
+function _toGuideResult (document, words) {
   return {
     id: document.documentId,
     title: document.documentTitle,
-    href: _guideHref(document.documentId),
+    href: _guideHref(document.documentId, words),
     titleSnippet: document.titleMatch?.snippet ?? null,
     sectionTotal: document.sectionTotal,
-    sections: document.sections.map(_toResult)
+    sections: document.sections.map((section) => _toResult(section, words))
   }
 }
 
@@ -157,8 +163,8 @@ async function searchGuides (options) {
       documentTotal: data.documentTotal,
       sectionTotal: data.sectionTotal,
       tooManyMatches: Boolean(data.tooManyMatches),
-      results: data.results.map(_toGuideResult),
-      titles: data.titles.map(_toGuideResult)
+      results: data.results.map((document) => _toGuideResult(document, options.words)),
+      titles: data.titles.map((document) => _toGuideResult(document, options.words))
     }
   } catch (err) {
     logger.error({ err }, 'Search is unavailable')
@@ -191,7 +197,7 @@ async function searchGuide (options) {
       unavailable: false,
       total: data.total,
       tooManyMatches: Boolean(data.tooManyMatches),
-      results: data.results.map(_toResult)
+      results: data.results.map((section) => _toResult(section, options.words))
     }
   } catch (err) {
     logger.error({ err }, 'Search is unavailable')

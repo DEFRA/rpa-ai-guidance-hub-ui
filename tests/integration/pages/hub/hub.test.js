@@ -291,7 +291,7 @@ describe('#hubController', () => {
       const { page } = await searchAt('/hub?q=claim+rules')
 
       expect(search.isDone()).toBe(true)
-      expect(page.getByRole('link', { name: 'Countryside Stewardship final payments' })).toHaveAttribute('href', `/guides/${GUIDE}`)
+      expect(page.getByRole('link', { name: 'Countryside Stewardship final payments' })).toHaveAttribute('href', `/guides/${GUIDE}?q=claim%20rules`)
     })
 
     test('asks for the page of guides the address asks for', async () => {
@@ -303,7 +303,7 @@ describe('#hubController', () => {
       const { page } = await searchAt('/hub?q=claim&page=3')
 
       expect(search.isDone()).toBe(true)
-      expect(page.getByRole('link', { name: 'Countryside Stewardship final payments' })).toHaveAttribute('href', `/guides/${GUIDE}`)
+      expect(page.getByRole('link', { name: 'Countryside Stewardship final payments' })).toHaveAttribute('href', `/guides/${GUIDE}?q=claim`)
     })
 
     test('shows each guide found with its sections, linked to them, their words marked, instead of the list and filters', async () => {
@@ -313,9 +313,9 @@ describe('#hubController', () => {
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(page.getByRole('heading', { level: 2, name: '1 guide' })).toBeInTheDocument()
-      expect(page.getByRole('link', { name: 'Countryside Stewardship final payments' })).toHaveAttribute('href', `/guides/${GUIDE}`)
+      expect(page.getByRole('link', { name: 'Countryside Stewardship final payments' })).toHaveAttribute('href', `/guides/${GUIDE}?q=claim`)
       expect(page.getAllByText('1 match')).toHaveLength(2)
-      expect(page.getByRole('link', { name: '4.2 Claim rules' })).toHaveAttribute('href', `/guides/${GUIDE}?section=claim-rules#claim-rules`)
+      expect(page.getByRole('link', { name: '4.2 Claim rules' })).toHaveAttribute('href', `/guides/${GUIDE}?section=claim-rules&q=claim#claim-rules`)
       expect(page.getByText('2 matches')).toBeInTheDocument()
       expect(page.getByText('claim', { selector: 'mark' }).parentElement).toHaveTextContent('Check the claim was made on time.')
       expect(page.getByRole('link', { name: 'Clear search' })).toHaveAttribute('href', '/hub')
@@ -345,7 +345,7 @@ describe('#hubController', () => {
       expect(page.getByRole('heading', { level: 2, name: '25 sections' })).toBeInTheDocument()
       expect(page.getByText('In Countryside Stewardship final payments')).toBeInTheDocument()
       expect(page.getByRole('link', { name: 'All guides with these words' })).toHaveAttribute('href', '/hub?q=claim+rules')
-      expect(page.getByRole('link', { name: '4.2 Claim rules' })).toHaveAttribute('href', `/guides/${GUIDE}?section=claim-rules#claim-rules`)
+      expect(page.getByRole('link', { name: '4.2 Claim rules' })).toHaveAttribute('href', `/guides/${GUIDE}?section=claim-rules&q=claim%20rules#claim-rules`)
       expect(page.getByRole('link', { name: 'Page 3' })).toHaveAttribute('href', `/hub?q=claim+rules&guide=${GUIDE}&page=3`)
     })
 
@@ -387,12 +387,12 @@ describe('#hubController', () => {
         expect(page.getByRole('heading', { level: 2, name: '2 guides' })).toBeInTheDocument()
         expect(panel.getByText('Is this the guide you’re looking for?')).toBeInTheDocument()
         expect(panel.getByRole('heading', { level: 3, name: PROMOTED_TITLE })).toBeInTheDocument()
-        expect(panel.getByRole('link', { name: PROMOTED_TITLE })).toHaveAttribute('href', `/guides/${PROMOTED}`)
+        expect(panel.getByRole('link', { name: PROMOTED_TITLE })).toHaveAttribute('href', `/guides/${PROMOTED}?q=CS%20MA%20Claim%20AB12%20maximum%20eligible%20weight`)
         expect(panel.getByText('CS MA Claim', { selector: 'mark' })).toBeInTheDocument()
         expect(panel.getByText('Decide a claim over the maximum eligible weight.')).toBeInTheDocument()
-        expect(panel.getByRole('button', { name: `Open guide: ${PROMOTED_TITLE}` })).toHaveAttribute('href', `/guides/${PROMOTED}`)
+        expect(panel.getByRole('button', { name: `Open guide: ${PROMOTED_TITLE}` })).toHaveAttribute('href', `/guides/${PROMOTED}?q=CS%20MA%20Claim%20AB12%20maximum%20eligible%20weight`)
         expect(panel.getByText(/Words also found in/)).toContainElement(panel.getByRole('link', { name: '1 Introduction' }))
-        expect(panel.getByRole('link', { name: '1 Introduction' })).toHaveAttribute('href', `/guides/${PROMOTED}?section=introduction#introduction`)
+        expect(panel.getByRole('link', { name: '1 Introduction' })).toHaveAttribute('href', `/guides/${PROMOTED}?section=introduction&q=CS%20MA%20Claim%20AB12%20maximum%20eligible%20weight#introduction`)
         expect(page.getByRole('heading', { level: 3, name: 'Sections that mention ‘CS MA Claim AB12 maximum eligible weight’' })).toBeInTheDocument()
         expect(page.getByRole('heading', { level: 4, name: 'Countryside Stewardship final payments' })).toBeInTheDocument()
         expect(page.getByRole('heading', { level: 4, name: PROMOTED_TITLE })).toBeInTheDocument()
@@ -425,7 +425,7 @@ describe('#hubController', () => {
         const list = within(region)
 
         expect(list.getByRole('heading', { level: 3, name: '6 guides have ‘CS MA Claim’ in their title' })).toBeInTheDocument()
-        expect(list.getByRole('link', { name: 'CS MA Claim - Case 1' })).toHaveAttribute('href', '/guides/00000000-0000-4000-8000-000000000001')
+        expect(list.getByRole('link', { name: 'CS MA Claim - Case 1' })).toHaveAttribute('href', '/guides/00000000-0000-4000-8000-000000000001?q=CS%20MA%20Claim')
         expect(list.getByRole('link', { name: 'CS MA Claim - Case 1' }).querySelector('mark')).toHaveTextContent('CS MA Claim')
         expect(list.getByText('2 sections')).toBeInTheDocument()
         expect(list.getAllByRole('link', { name: /^CS MA Claim - Case/ })).toHaveLength(5)
