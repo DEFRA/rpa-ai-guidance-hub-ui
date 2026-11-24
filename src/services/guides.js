@@ -408,17 +408,17 @@ function _titleOf (version, metadata) {
 /**
  * A guide's details as the upload journey's answers, for a new version of it
  * to start with: only the details the journey asks, as check answers refuses
- * any other, and all but the version number, which each version's author
- * gives. A guide kept with no scheme is not scheme-specific.
+ * any other, and all but the title, which starts as the uploaded file's, and
+ * the version number, which each version's author gives. A guide kept with no
+ * scheme is not scheme-specific.
  *
  * @param {Guide} guide
  * @returns {Object}
  */
-function answersOf ({ title, metadata }) {
+function answersOf ({ metadata }) {
   const { schemes, owner, goal, requirements, systems, audience } = metadata
 
   return {
-    guideTitle: title,
     schemes: schemes?.length === 0 ? [NOT_SCHEME_SPECIFIC] : schemes,
     owner,
     goal,
