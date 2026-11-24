@@ -154,20 +154,22 @@
         {% for pin in pins %}
           {# What a screen reader calls it: a section's heading may be another
              guide's too, so a section is named with its guide. #}
-          {% set pinName = pin.label + (", in " + pin.guideTitle if pin.guideTitle else "") %}
+          {% set pinName = pin.label + (", in " + pin.guideTitle if pin.guideTitle else "") + (", " + pin.removed if pin.removed else "") %}
+          {# A section that a later version removed has nowhere to go, so it is no link. #}
+          {% set pinTag = "a" if pin.href else "span" %}
           <li class="app-side-nav__row" data-reorder-id="{{ pin.key }}" data-reorder-label="{{ pinName }}">
-            <a class="app-side-nav__link" href="{{ pin.href }}" draggable="false" data-reorder-handle>
+            <{{ pinTag }} class="app-side-nav__link{% if not pin.href %} app-side-nav__link--removed{% endif %}"{% if pin.href %} href="{{ pin.href }}" draggable="false"{% endif %} data-reorder-handle>
               {{ icon("star-filled", "app-side-nav__star") }}
               {# A section's guide on a line of its own, wrapping with the heading. #}
-              <span class="app-side-nav__text">{{ pin.label }}{% if pin.guideTitle %}<span class="govuk-visually-hidden">, in </span><span class="app-side-nav__in-guide">{{ pin.guideTitle }}</span>{% endif %}</span>
-            </a>
+              <span class="app-side-nav__text">{{ pin.label }}{% if pin.guideTitle %}<span class="govuk-visually-hidden">, in </span><span class="app-side-nav__in-guide">{{ pin.guideTitle }}</span>{% endif %}{% if pin.removed %}<span class="govuk-visually-hidden">, </span><span class="app-side-nav__removed">{{ pin.removed }}</span>{% endif %}</span>
+            </{{ pinTag }}>
             <details class="app-side-nav__more">
               <summary class="app-side-nav__icon-button app-side-nav__more-button">
                 {{ icon("more") }}
                 <span class="govuk-visually-hidden">More actions for {{ pinName }}</span>
               </summary>
               <div class="app-side-nav__popover">
-                <a class="app-side-nav__menu-item" href="{{ pin.href }}">Open</a>
+                {% if pin.href %}<a class="app-side-nav__menu-item" href="{{ pin.href }}">Open</a>{% endif %}
                 <form method="post" action="/pin-toggle" data-reorder-follows="{{ pin.key }}">
                   <input type="hidden" name="guideId" value="{{ pin.id }}">
                   <input type="hidden" name="pin" value="false">
@@ -279,9 +281,13 @@
                     <ul class="app-side-nav__section-list" aria-label="Bookmarked sections of {{ guide.title }}">
                       {% for section in guide.sections %}
                         {# Named with its guide, as two guides may share a heading. #}
-                        {% set sectionName = section.label + ", in " + guide.title %}
+                        {% set sectionName = section.label + ", in " + guide.title + (", " + section.removed if section.removed else "") %}
                         <li class="app-side-nav__row">
-                          <a class="app-side-nav__sublink app-side-nav__section-link" href="{{ section.href }}">{{ section.label }}</a>
+                          {% if section.href %}
+                            <a class="app-side-nav__sublink app-side-nav__section-link" href="{{ section.href }}">{{ section.label }}</a>
+                          {% else %}
+                            <span class="app-side-nav__sublink app-side-nav__section-link app-side-nav__section-link--removed">{{ section.label }}<span class="govuk-visually-hidden">, </span><span class="app-side-nav__removed">{{ section.removed }}</span></span>
+                          {% endif %}
                           <details class="app-side-nav__more">
                             <summary class="app-side-nav__icon-button app-side-nav__more-button">
                               {{ icon("more") }}

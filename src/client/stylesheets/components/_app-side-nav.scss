@@ -963,6 +963,23 @@ details:not([open]) > summary .app-side-nav__chevron {
   font-weight: 400;
 }
 
+// A pin or a bookmark on a section that a later version removed: no link, so
+// nothing to hover over, and the version that removed it on a line of its own.
+.app-side-nav__link--removed,
+.app-side-nav__section-link--removed {
+  &:hover {
+    background-color: transparent;
+    text-decoration: none;
+  }
+}
+
+.app-side-nav__removed {
+  display: block;
+  color: $app-side-nav-muted;
+  font-size: 13px;
+  font-weight: 400;
+}
+
 .app-side-nav__sublist {
   margin: 0 0 govuk-spacing(1) 21px;
   padding: 0 0 0 govuk-spacing(2);

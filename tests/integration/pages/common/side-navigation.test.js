@@ -226,6 +226,19 @@ describe('Side navigation', () => {
       expect(formOf(first, 'Move down')).toSendInOrder('order', [FIRST, `${SECOND}/${SECTION}`])
     })
 
+    test('list a pinned section a later version removed by its last heading and that version, with no link, and unpin it as any other', async () => {
+      const section = await pinnedSection([pinResponse({ id: SECOND, title: 'Closing a case', sectionId: SECTION, section: null, heading: '2 Close it', removedInVersion: '2.0' })])
+      const [removed] = itemsOf(within(section).getByRole('list'))
+      const unpin = formOf(removed, 'Unpin')
+
+      expect(within(removed).queryAllByRole('link')).toEqual([])
+      expect(removed.firstElementChild).toHaveTextContent('2 Close it, in Closing a case, Removed in version 2.0')
+      expect(removed).toHaveAttribute('data-reorder-label', '2 Close it, in Closing a case, Removed in version 2.0')
+      expect(within(removed).getByText('More actions for 2 Close it, in Closing a case, Removed in version 2.0')).toBeInTheDocument()
+      expect(within(unpin).getByRole('button')).toHaveTextContent('Unpin 2 Close it, in Closing a case, Removed in version 2.0')
+      expect(unpin).toHaveFormValues({ pin: 'false', position: '0', sectionId: SECTION })
+    })
+
     test('move a pinned section by its key, testing its guide and its section', async () => {
       nock(GUIDANCE_API_BASE_URL).post('/users').reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
       const moving = nock(GUIDANCE_API_BASE_URL)
@@ -386,6 +399,19 @@ describe('Side navigation', () => {
       const hrefs = caseRowsOf(section).map((row) => within(row).getByRole('link', { name: /^(Case|SBI)\b/ }).getAttribute('href'))
 
       expect(hrefs).toEqual([`/hub/bookmarked-guides?case=${caseResponse().key}`, `/hub/bookmarked-guides?case=${OTHER}`])
+    })
+
+    test('list a bookmarked section a later version removed by its last heading and that version, with no link, and remove it as any other', async () => {
+      const GONE = { sectionId: '019a0000-0000-7000-8000-000000000004', section: null, heading: '4 Appeal', removedInVersion: '2.0', position: 1 }
+      const section = await bookmarksSection([caseResponse({ guides: [{ id: GUIDE, title: 'Claiming a payment', bookmarks: [ASSIGN, GONE] }] })])
+      const [, gone] = itemsOf(within(section).getByRole('list', { name: 'Bookmarked sections of Claiming a payment' }))
+      const remove = formOf(gone, 'Remove')
+
+      expect(within(gone).queryAllByRole('link')).toEqual([])
+      expect(gone.firstElementChild).toHaveTextContent('4 Appeal, Removed in version 2.0')
+      expect(within(gone).getByText('More actions for 4 Appeal, in Claiming a payment, Removed in version 2.0')).toBeInTheDocument()
+      expect(within(remove).getByRole('button')).toHaveTextContent('Remove 4 Appeal, in Claiming a payment, Removed in version 2.0, from Case W1234567')
+      expect(remove).toHaveFormValues({ key: caseResponse().key, guideId: GUIDE, sectionId: GONE.sectionId })
     })
 
     describe('changed from their menus', () => {
