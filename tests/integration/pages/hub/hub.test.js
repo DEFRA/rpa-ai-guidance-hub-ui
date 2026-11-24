@@ -236,17 +236,17 @@ describe('#hubController', () => {
       return { page, search: within(page.getByRole('search')) }
     }
 
-    test('sits in the hero beside the side navigation, asking for words or a question', async () => {
+    test('sits in the hero beside the side navigation, to search all guides', async () => {
       const { page, search } = await hubAt('/hub')
 
       const form = page.getByRole('search')
-      const box = search.getByRole('searchbox', { name: 'Search or ask question' })
+      const box = search.getByRole('searchbox', { name: 'Search all guides' })
       expect(page.getByRole('heading', { level: 1, name: 'RPA Guidance hub' }).parentElement).toContainElement(form)
       expect(form).toHaveAttribute('action', '/hub')
       expect(form).toHaveAttribute('method', 'get')
       expect(box).toHaveAttribute('name', 'q')
       expect(box).toHaveAttribute('maxlength', '500')
-      expect(box).toHaveAttribute('placeholder', 'Search or ask a question about all guidance')
+      expect(box).toHaveAttribute('placeholder', 'Search all guides')
       expect(search.getByRole('button', { name: 'Search' })).toHaveAttribute('type', 'submit')
       expect(page.document.body).not.toHaveTextContent('Search guidance')
     })
@@ -257,7 +257,7 @@ describe('#hubController', () => {
       const { page, search } = await hubAt('/hub?q=claim+rules')
 
       expect(page.document.getElementById('search-results')).toBeInTheDocument()
-      expect(search.getByRole('searchbox', { name: 'Search or ask question' })).toHaveValue('claim rules')
+      expect(search.getByRole('searchbox', { name: 'Search all guides' })).toHaveValue('claim rules')
     })
 
     test('escapes the words searched for', async () => {
@@ -266,7 +266,7 @@ describe('#hubController', () => {
       const { page, search } = await hubAt('/hub?q=%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E')
 
       expect(page.document.getElementById('search-results')).toBeInTheDocument()
-      expect(search.getByRole('searchbox', { name: 'Search or ask question' })).toHaveValue('"><script>alert(1)</script>')
+      expect(search.getByRole('searchbox', { name: 'Search all guides' })).toHaveValue('"><script>alert(1)</script>')
       expect(page.document.querySelector('main script')).toBeNull()
     })
   })

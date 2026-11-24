@@ -620,14 +620,16 @@ describe('Side navigation', () => {
       return sideNavOf(await pageAt(url))
     }
 
-    test('has a search box that searches from the hub', async () => {
+    test('has a search box that searches all guides from the hub', async () => {
       const nav = await navOf('/create-guidance/upload-guide')
       const search = nav.getByRole('search')
 
       expect(search).toHaveAttribute('action', '/hub')
       expect(search).toHaveAttribute('method', 'get')
-      expect(within(search).getByRole('searchbox', { name: 'Search or ask question' })).toHaveAttribute('name', 'q')
-      expect(within(search).getByRole('searchbox', { name: 'Search or ask question' })).toHaveAttribute('maxlength', '500')
+      const box = within(search).getByRole('searchbox', { name: 'Search all guides' })
+      expect(box).toHaveAttribute('name', 'q')
+      expect(box).toHaveAttribute('maxlength', '500')
+      expect(box).toHaveAttribute('placeholder', 'Search all guides')
     })
 
     test('leaves the search to the hub\'s own search box on the hub', async () => {
