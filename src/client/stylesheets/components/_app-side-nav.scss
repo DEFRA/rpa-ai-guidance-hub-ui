@@ -252,6 +252,11 @@ $app-side-nav-muted: #505a5f;
     width: auto;
     padding: 0 govuk-spacing(3);
   }
+
+  .app-side-nav__rail-dot {
+    position: static;
+    margin-left: auto;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -275,6 +280,8 @@ $app-side-nav-muted: #505a5f;
   max-width: $app-side-nav-max-width;
   height: 100vh;
   overflow-y: auto;
+  // Keeps a focused item scrolled clear of the sticky footer (WCAG 2.4.11).
+  scroll-padding-bottom: 120px;
   border-right: 1px solid $app-side-nav-divider;
   background-color: $govuk-light-grey;
 
@@ -349,10 +356,170 @@ $app-side-nav-muted: #505a5f;
   }
 }
 
-// Resizing is a desktop affordance.
+// The bar above the page on a narrow window (common/layout.njk), as the
+// prototype's (app-shell__toolbar): its button opens the navigation.
+.app-layout__toolbar {
+  display: flex;
+  align-items: center;
+  gap: govuk-spacing(3);
+  min-height: 56px;
+  padding: 0 govuk-spacing(4);
+  border-bottom: 1px solid $app-side-nav-divider;
+
+  @include govuk-media-query($from: tablet) {
+    padding: 0 govuk-spacing(5);
+  }
+
+  // Only narrow screens need it, to open the drawer: wider ones collapse and
+  // expand from the nav's own button and the rail's "Expand navigation".
+  @include govuk-media-query($from: desktop) {
+    display: none;
+  }
+}
+
+.app-layout__toolbar-toggle {
+  display: inline-flex;
+  // Keeps its 44px target however long the title beside it is.
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: $govuk-black;
+  cursor: pointer;
+
+  &:hover {
+    background-color: $govuk-light-grey;
+  }
+
+  &:focus {
+    @include app-side-nav-focus;
+  }
+}
+
+.app-layout__toolbar-divider {
+  flex: none;
+  width: 1px;
+  height: 24px;
+  background-color: $app-side-nav-divider;
+}
+
+.app-layout__toolbar-title {
+  @include govuk-font($size: 16);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ---------------------------------------------------------------------------
+// Narrow screens, and wider ones zoomed in until they are as narrow: the nav
+// moves behind the toolbar's button (side-nav-drawer.js). Without JavaScript
+// it simply stacks above the content instead. As the prototype's, so that a
+// page reflows at 320px and at 400% zoom (WCAG 1.4.10).
+// ---------------------------------------------------------------------------
+
 @include govuk-media-query($until: desktop) {
+  .app-layout {
+    display: block;
+  }
+
+  // Resizing is a desktop affordance; the drawer has its own fixed width.
   .app-layout__resize {
     display: none;
+  }
+
+  .app-layout__nav {
+    min-width: 0;
+    max-width: none;
+  }
+
+  .app-layout__nav,
+  .app-layout--collapsed .app-layout__nav {
+    position: static;
+    width: auto;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid $app-side-nav-divider;
+  }
+
+  // Not the prototype's. Stacked above the page, the strip's last list would
+  // stick to the foot of the window, over the items scrolled under it, one of
+  // which may have focus (WCAG 2.4.11). In the drawer it sticks to the
+  // drawer's foot, which scrolls a focused item clear of it.
+  .app-side-nav__rail-footer {
+    position: static;
+  }
+
+  .govuk-frontend-supported {
+    .app-side-nav__rail-footer {
+      position: sticky;
+    }
+
+    .app-layout__nav,
+    .app-layout--collapsed .app-layout__nav {
+      position: fixed;
+      z-index: 1000;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: min(320px, 85vw);
+      overflow-y: auto;
+      border-right: 1px solid $app-side-nav-divider;
+      border-bottom: 0;
+      box-shadow: 4px 0 16px rgba($govuk-black, 0.2);
+      transform: translateX(-105%);
+      visibility: hidden;
+      transition:
+        transform 0.2s ease,
+        visibility 0s linear 0.2s;
+    }
+
+    .app-layout--drawer-open .app-layout__nav {
+      transform: none;
+      visibility: visible;
+      transition: transform 0.2s ease;
+    }
+
+    .app-layout--drawer-open .app-layout__backdrop {
+      display: block;
+    }
+  }
+}
+
+// Behind the open drawer, over the page; a click on it closes the drawer.
+.app-layout__backdrop {
+  position: fixed;
+  z-index: 999;
+  inset: 0;
+  display: none;
+  background-color: rgba($govuk-black, 0.4);
+}
+
+// As specific as the drawer's own rules above, and after them, where the
+// prototype has `!important`.
+@media (prefers-reduced-motion: reduce) {
+  .govuk-frontend-supported .app-layout .app-layout__nav {
+    transition: none;
+  }
+}
+
+// Not the prototype's. Folded away, the column does not scroll, so its
+// tooltips can show beside it; in a wide window too short for its icons (one
+// zoomed far in) those at the bottom would take focus off screen. There it
+// stops following the page down, and the page scrolls to whichever has focus
+// (WCAG 2.4.11).
+@include govuk-media-query($from: desktop, $and: "(max-height: 480px)") {
+  .app-layout--collapsed .app-layout__nav {
+    position: static;
+    align-self: stretch;
+    height: auto;
+  }
+
+  .app-side-nav__rail-footer {
+    position: static;
   }
 }
 

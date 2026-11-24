@@ -67,3 +67,22 @@ $app-guide-gutter-top: govuk-spacing(6);
     max-height: none;
   }
 }
+
+// A narrow or zoomed window never scrolls sideways for a guide's content
+// (WCAG 1.4.10). A table wider than the column scrolls on its own, in the
+// wrapper the viewer gives it, or as a block where the page is shown without
+// the viewer; a code block's long lines wrap.
+// stylelint-disable-next-line scss/selector-class-pattern
+.app-guide-markdown .tableWrapper {
+  overflow-x: auto;
+}
+
+.app-guide-markdown__fallback table {
+  display: block;
+  overflow-x: auto;
+}
+
+.app-guide-markdown pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

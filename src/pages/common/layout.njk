@@ -1,5 +1,6 @@
 {% extends "govuk/template.njk" %}
 {% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+{% from "common/icon.njk" import icon %}
 
 {% if mainClasses is not defined %}
   {% set mainClasses = "app-main-wrapper" %}
@@ -47,7 +48,7 @@
       <input type="hidden" name="collapsed" value="{{ 'false' if sideNavCollapsed else 'true' }}">
       <input type="hidden" name="returnTo" value="{{ currentUrl }}">
     </form>
-    <div class="app-layout{% if sideNavCollapsed %} app-layout--collapsed{% endif %}">
+    <div class="app-layout{% if sideNavCollapsed %} app-layout--collapsed{% endif %}" data-side-nav-drawer>
       <div class="app-layout__nav" id="app:layout:nav">
         {% include "common/side-nav.njk" %}
       </div>
@@ -60,7 +61,22 @@
           aria-valuenow="{{ sideNavWidth }}" aria-valuetext="{{ sideNavWidth }} pixels wide"
           data-side-nav-resize data-default-width="{{ sideNavWidthLimits.default }}" tabindex="0" hidden></div>
       {% endif %}
-      <div class="app-layout__main">{{ super() }}</div>
+      <div class="app-layout__main">
+        {# Only on a narrow or zoomed window (_app-side-nav.scss), where the
+           navigation is a drawer this button opens (side-nav-drawer.js).
+           Without that script the navigation is above the page, and the
+           button folds it away or opens it out as its own button does. #}
+        <div class="app-layout__toolbar">
+          <button type="submit" form="side-nav-toggle-form" class="app-layout__toolbar-toggle" aria-controls="app:layout:nav" data-side-nav-toolbar-toggle>
+            {{ icon("sidebar") }}
+            <span class="govuk-visually-hidden" data-side-nav-toolbar-label>{{ "Expand navigation" if sideNavCollapsed else "Collapse navigation" }}</span>
+          </button>
+          <span class="app-layout__toolbar-divider" aria-hidden="true"></span>
+          {# The page's title again, for the eye: its <title> and h1 name it. #}
+          <span class="app-layout__toolbar-title" aria-hidden="true">{{ pageTitle or serviceName }}</span>
+        </div>
+        {{ super() }}
+      </div>
     </div>
   {% else %}
     {{ super() }}

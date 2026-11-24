@@ -803,6 +803,42 @@ describe('Side navigation', () => {
 
       expect(response.headers.location).toBe('/hub')
     })
+
+    describe('from above the page, where a narrow window opens it', () => {
+      /** The button with this name that is not one of the navigation's own. */
+      function buttonAbovePage (page, name) {
+        const body = within(page.document.body)
+        const nav = body.getByRole('navigation', { name: 'Guidance hub' })
+
+        return body.queryAllByRole('button', { name })
+          .find((button) => !nav.contains(button))
+      }
+
+      test('has a button for the navigation, which folds it away without a script', async () => {
+        const page = await pageAt('/hub', await loginAsDevUser(server))
+        const button = buttonAbovePage(page, 'Collapse navigation')
+        const controlled = page.document
+          .getElementById(button.getAttribute('aria-controls'))
+
+        expect(controlled).toContainElement(within(page.document.body)
+          .getByRole('navigation', { name: 'Guidance hub' }))
+        expect(button.compareDocumentPosition(page.document.querySelector('main')))
+          .toBe(page.document.DOCUMENT_POSITION_FOLLOWING)
+        expect(button.form).toHaveAttribute('action', '/side-nav/toggle')
+        expect(button.form)
+          .toHaveFormValues({ collapsed: 'true', returnTo: '/hub' })
+      })
+
+      test('opens the navigation out when it is folded away', async () => {
+        const { cookie } = await fold(await loginAsDevUser(server), true, '/hub')
+
+        const page = await pageAt('/hub', cookie)
+
+        expect(buttonAbovePage(page, 'Expand navigation').form)
+          .toHaveFormValues({ collapsed: 'false', returnTo: '/hub' })
+        expect(buttonAbovePage(page, 'Collapse navigation')).toBeUndefined()
+      })
+    })
   })
 
   test('leaves the header on the sign-in page', async () => {
@@ -817,5 +853,6 @@ describe('Side navigation', () => {
     const body = within(pageOf(payload).document.body)
     expect(body.getAllByText(/Sign in/).length).toBeGreaterThan(0)
     expect(body.queryByRole('navigation', { name: 'Guidance hub' })).not.toBeInTheDocument()
+    expect(body.queryByRole('button', { name: /navigation/ })).not.toBeInTheDocument()
   })
 })
