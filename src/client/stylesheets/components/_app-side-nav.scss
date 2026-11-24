@@ -965,8 +965,10 @@ details:not([open]) > summary .app-side-nav__chevron {
 
 // A pin or a bookmark on a section that a later version removed: no link, so
 // nothing to hover over, and the version that removed it on a line of its own.
-.app-side-nav__link--removed,
-.app-side-nav__section-link--removed {
+// Each is paired with the class it modifies, so it outranks that class's hover
+// wherever that comes in the file.
+.app-side-nav__link.app-side-nav__link--removed,
+.app-side-nav__sublink.app-side-nav__section-link--removed {
   &:hover {
     background-color: transparent;
     text-decoration: none;
