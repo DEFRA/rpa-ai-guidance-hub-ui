@@ -280,6 +280,19 @@ describe('stepping between the matches', () => {
       expect(positionText()).toBe(position)
     })
 
+    test('stays after the last match, at a section after it, when the viewer draws the guide anew', async () => {
+      openedAt('checks')
+      searchAt(placedPage(), MATCHES.slice(0, 3))
+      const paintedFirst = painted.get('guide-keyword-match')
+      const text = document.querySelector('[data-guide-page="2"] .app-guide-markdown')
+
+      text.replaceChildren(...text.cloneNode(true).childNodes)
+      await vi.waitFor(() => expect(painted.get('guide-keyword-match')).not.toBe(paintedFirst))
+
+      expect(positionText()).toBe('')
+      expect(currentText()).toEqual([])
+    })
+
     test('starts at the first match on a page that is shown, when no section starts at that heading', () => {
       openedAt('note')
 

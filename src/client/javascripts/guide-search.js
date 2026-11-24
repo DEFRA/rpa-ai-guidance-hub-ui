@@ -291,7 +291,6 @@ class GuideSearch {
   /** Place the matches again, once the page's text has changed under them. */
   _refind () {
     this.matches = placeMatches(this.found, this.starts)
-    this.current = Math.min(this.current, this.matches.length)
     this._paint()
     this._bringIntoView()
   }
