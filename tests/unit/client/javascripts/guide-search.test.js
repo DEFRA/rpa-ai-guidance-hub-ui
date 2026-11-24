@@ -30,6 +30,15 @@ describe('steppedMatch', () => {
   ])('from match %i of %i, back %s, steps to %i, round at either end', (current, total, back, stepped) => {
     expect(steppedMatch(current, total, back)).toBe(stepped)
   })
+
+  test.each([
+    [2.5, 5, false, 3],
+    [2.5, 5, true, 2],
+    [0.5, 5, true, 5],
+    [5.5, 5, false, 1]
+  ])('from between two matches (%s of %i), back %s, steps to the one on that side, %i', (current, total, back, stepped) => {
+    expect(steppedMatch(current, total, back)).toBe(stepped)
+  })
 })
 
 describe('isFindShortcut', () => {
@@ -224,6 +233,7 @@ describe('stepping between the matches', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     delete window.Range.prototype.getBoundingClientRect
+    window.history.replaceState(null, '', window.location.pathname)
   })
 
   const positionText = () => document.querySelector('[data-guide-search-position]').textContent
@@ -251,6 +261,54 @@ describe('stepping between the matches', () => {
 
     expect(positionText()).toBe('Match 1 of 3')
     expect(shown.mock.calls.map(([event]) => event.target.dataset.guidePage)).toEqual(['2'])
+  })
+
+  describe('on a page opened at a section\'s heading, as a result in the hub links to one', () => {
+    const openedAt = (id) => window.history.replaceState(null, '', `#${id}`)
+
+    test('starts at the first match in that section, showing its page, and steps on from it', () => {
+      const shown = vi.fn()
+      document.addEventListener('guide-pages:show', shown, { capture: true })
+      openedAt('claims-1')
+
+      searchAt(placedPage())
+      document.removeEventListener('guide-pages:show', shown, { capture: true })
+
+      expect(positionText()).toBe('Match 2 of 4')
+      expect(shown.mock.calls.map(([event]) => event.target.dataset.guidePage)).toEqual(['2'])
+      document.querySelector('[data-guide-search-step="next"]').click()
+      expect(positionText()).toBe('Match 3 of 4')
+    })
+
+    test('stays at the start of a section that holds no match, every match marked but none current', () => {
+      openedAt('claims-1')
+
+      searchAt(placedPage(), [MATCHES[0], MATCHES[3]])
+
+      expect(painted.get('guide-keyword-match').ranges).toHaveLength(2)
+      expect(currentText()).toEqual([])
+      expect(positionText()).toBe('')
+    })
+
+    test.each([
+      ['next', 'Match 2 of 2'],
+      ['previous', 'Match 1 of 2']
+    ])('steps with %s from a section that holds no match to the match on that side of it', (step, position) => {
+      openedAt('claims-1')
+      searchAt(placedPage(), [MATCHES[0], MATCHES[3]])
+
+      document.querySelector(`[data-guide-search-step="${step}"]`).click()
+
+      expect(positionText()).toBe(position)
+    })
+
+    test('starts at the first match on a page that is shown, when no section starts at that heading', () => {
+      openedAt('note')
+
+      searchAt(placedPage())
+
+      expect(positionText()).toBe('Match 1 of 4')
+    })
   })
 
   test('goes to the next match with Next, and round from the last to the first', () => {

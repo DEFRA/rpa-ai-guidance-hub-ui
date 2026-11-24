@@ -1,10 +1,12 @@
 /**
  * @module Search in a guide, in the browser: the matches the API found are
- * painted in the guide's text, one of them current; Previous and Next, and
- * Enter and Shift+Enter in the search box (with the same words), step between
- * them, showing the page that holds one in the stepper, and a contents
- * entry's count goes to the first match under it; Ctrl+F (Cmd+F) comes
- * to the search box, and a second press is the browser's own find.
+ * painted in the guide's text, one of them current; a page opened at a
+ * section's heading, as a result in the hub links to one, starts at the first
+ * match in that section, or between matches when it holds none; Previous and
+ * Next, and Enter and Shift+Enter in the search box (with the same words),
+ * step between them, showing the page that holds one in the stepper, and a
+ * contents entry's count goes to the first match under it; Ctrl+F (Cmd+F)
+ * comes to the search box, and a second press is the browser's own find.
  *
  * The server hands over the matches in order, each by the id its section's
  * heading has on the page (empty for an Introduction), and the ids of the headings that start a section as the
@@ -38,13 +40,51 @@ const STEPS_CLASS = 'app-guide-contents__count--steps'
 const READ = '[data-guide-page] .app-guide-heading-1, [data-guide-page] .app-guide-markdown'
 
 /**
- * @param {number} current - The current match's number, from 1
+ * @param {number} current - The current match's number, from 1; or, before
+ *   the reader goes to one, half way between the matches either side
  * @param {number} total
  * @param {boolean} back
  * @returns {number} The match before or after, round at either end
  */
 function steppedMatch (current, total, back) {
-  return back ? (current - 2 + total) % total + 1 : current % total + 1
+  const stepped = back ? Math.ceil(current) - 1 : Math.floor(current) + 1
+
+  return (stepped + total - 1) % total + 1
+}
+
+/**
+ * @private
+ * @param {Array<{anchor: string}>} found - Every match, in order
+ * @param {Array<string>} starts - The ids of the headings that start a
+ *   section, in order
+ * @param {string} id - The heading the page's address goes to
+ * @returns {number|null} The number of the first match in the section that
+ *   starts there; half way between the matches either side of it when it
+ *   holds none; null when no section starts there
+ */
+function _openedAt (found, starts, id) {
+  const at = starts.indexOf(id)
+
+  if (at === -1) {
+    return null
+  }
+
+  const first = found.findIndex(match => match.anchor === id)
+
+  return first === -1 ? found.filter(match => starts.indexOf(match.anchor) < at).length + 0.5 : first + 1
+}
+
+/**
+ * @private
+ * @returns {string} The id the page's address goes to; empty for none, or
+ *   for one that is not a well-formed address
+ */
+function _addressedId () {
+  try {
+    return decodeURIComponent(window.location.hash.slice(1))
+  } catch {
+    return ''
+  }
 }
 
 /**
@@ -226,6 +266,7 @@ class GuideSearch {
     this.words = form.dataset.guideSearchQ
     this.found = JSON.parse(form.dataset.guideSearchMatches)
     this.starts = new Set(JSON.parse(form.dataset.guideSearchSections))
+    // A match's number; half way between two before the reader goes to one.
     this.current = 1
     this.matches = []
     this.moved = false
@@ -235,10 +276,24 @@ class GuideSearch {
   start () {
     this.form.querySelector('[data-guide-search-controls]')?.removeAttribute('hidden')
     this.matches = placeMatches(this.found, this.starts)
-    // As every later match is shown: its page too, in the stepper.
-    this.show(this._firstShown())
+    this._open(_openedAt(this.found, [...this.starts], _addressedId()) ?? this._firstShown())
     this._listen()
     this._watch()
+  }
+
+  /**
+   * Go to the match the page opens at, as every later match is shown: its
+   * page too, in the stepper. Between two, mark them all and stay.
+   *
+   * @param {number} number
+   */
+  _open (number) {
+    if (Number.isInteger(number)) {
+      this.show(number)
+    } else {
+      this.current = number
+      this._paint()
+    }
   }
 
   /** The first match on a page that is shown, else the first. */
@@ -257,10 +312,12 @@ class GuideSearch {
   }
 
   _paint () {
+    const atOne = Number.isInteger(this.current)
+
     window.CSS.highlights.set(MATCHES, new window.Highlight(...this.matches.filter(Boolean)))
-    window.CSS.highlights.set(CURRENT, new window.Highlight(...this.matches.slice(this.current - 1, this.current).filter(Boolean)))
+    window.CSS.highlights.set(CURRENT, new window.Highlight(...(atOne ? this.matches.slice(this.current - 1, this.current) : []).filter(Boolean)))
     if (this.position) {
-      this.position.textContent = `Match ${this.current} of ${this.matches.length}`
+      this.position.textContent = atOne ? `Match ${this.current} of ${this.matches.length}` : ''
     }
   }
 
