@@ -38,7 +38,6 @@ const GUIDE_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
 const CONVERSION_REQUEST = {
   source: { uploadId: 'u-check', fileId: 'file-1' },
   metadata: {
-    guideTitle: 'Complete Guide Title',
     schemes: ['Sustainable Farming Incentive (SFI)'],
     owner: 'designer@example.com',
     goal: 'Clear guidance purpose',
@@ -47,6 +46,7 @@ const CONVERSION_REQUEST = {
     audience: ['Processor'],
     schemeYear: 2026
   },
+  title: 'Complete Guide Title',
   versionNumber: '1.0',
   createdBy: { id: 'dev-user-123', displayName: 'Dev User' }
 }

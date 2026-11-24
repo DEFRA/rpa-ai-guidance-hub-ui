@@ -127,13 +127,15 @@ async function createVersion (guideId, version) {
  * @returns {Promise<{code: string}>} One of `RESULTS`
  */
 async function _convert ({ uploadId, fileId, metadata, user }, send, whyConflict) {
-  const { versionNumber, ...details } = metadata
+  const { versionNumber, guideTitle, ...details } = metadata
   const kept = details.schemes ? { ...details, schemes: schemesAsKept(details.schemes) } : details
 
   const res = await send({
     source: { uploadId, fileId },
     // The scheme year is fixed, so the form does not send it.
     metadata: { ...kept, schemeYear: SCHEME_YEAR },
+    // Each version keeps its own title, outside the guide's details.
+    title: guideTitle,
     versionNumber,
     createdBy: { id: user.id, displayName: user.displayName }
   })
