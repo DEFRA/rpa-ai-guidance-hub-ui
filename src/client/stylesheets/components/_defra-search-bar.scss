@@ -11,7 +11,13 @@ $defra-search-button-tint: #cce7d6;
 
 .defra-search-bar {
   display: flex;
+  position: relative;
   max-width: 40em;
+}
+
+// Its shortcut, inside the input, before the button.
+.defra-search-bar .app-search-kbd {
+  right: 58px;
 }
 
 .defra-search-bar__input.govuk-input {

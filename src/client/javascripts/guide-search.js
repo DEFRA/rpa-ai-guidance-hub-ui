@@ -18,6 +18,7 @@
  */
 
 import { isBlock, isSkipped, SectionReader } from '../../constants/search-places.js'
+import { isShortcut, showShortcut } from './search-shortcuts.js'
 
 const MATCHES = 'guide-keyword-match'
 const CURRENT = 'guide-keyword-current'
@@ -85,22 +86,6 @@ function _addressedId () {
   } catch {
     return ''
   }
-}
-
-/**
- * @param {{key: string, ctrlKey: boolean, metaKey: boolean, altKey: boolean}} event
- * @returns {boolean} Whether it is Ctrl+F, or Cmd+F on a Mac
- */
-function isFindShortcut (event) {
-  return (event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'f'
-}
-
-/**
- * @param {string} platform - `navigator.platform`
- * @returns {string} The find shortcut as the reader's keyboard has it
- */
-function shortcutLabel (platform) {
-  return ['Mac', 'iPhone', 'iPad'].some(name => platform.includes(name)) ? '⌘ F' : 'Ctrl F'
 }
 
 /**
@@ -423,18 +408,10 @@ class GuideSearch {
  */
 function _bringFindHere (form) {
   const input = form.querySelector(WORDS_INPUT)
-  const kbd = document.createElement('kbd')
 
-  input.setAttribute('aria-keyshortcuts', 'Control+F Meta+F')
-  kbd.className = 'app-search-kbd'
-  kbd.setAttribute('aria-hidden', 'true')
-  kbd.textContent = shortcutLabel(navigator.platform)
-  kbd.hidden = Boolean(input.value)
-  input.after(kbd)
-  input.addEventListener('input', () => { kbd.hidden = Boolean(input.value) })
-
+  showShortcut(input, 'f')
   document.addEventListener('keydown', (event) => {
-    if (isFindShortcut(event) && !_isSelected(input)) {
+    if (isShortcut(event, 'f') && !_isSelected(input)) {
       event.preventDefault()
       input.focus()
       input.select()
@@ -498,9 +475,7 @@ function initGuideSearch () {
 export {
   holdFocus,
   initGuideSearch,
-  isFindShortcut,
   placeMatches,
   sameWords,
-  shortcutLabel,
   steppedMatch
 }

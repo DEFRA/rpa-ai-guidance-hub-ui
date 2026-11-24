@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { within } from '@testing-library/dom'
 
-import { holdFocus, initGuideSearch, isFindShortcut, placeMatches, sameWords, shortcutLabel, steppedMatch } from '../../../../src/client/javascripts/guide-search.js'
+import { holdFocus, initGuideSearch, placeMatches, sameWords, steppedMatch } from '../../../../src/client/javascripts/guide-search.js'
 
 // The script listens on the document, which outlives each test: take off
 // what each test added, so one test's page does not answer another's keys.
@@ -38,29 +38,6 @@ describe('steppedMatch', () => {
     [5.5, 5, false, 1]
   ])('from between two matches (%s of %i), back %s, steps to the one on that side, %i', (current, total, back, stepped) => {
     expect(steppedMatch(current, total, back)).toBe(stepped)
-  })
-})
-
-describe('isFindShortcut', () => {
-  test.each([
-    [{ key: 'f', ctrlKey: true }, true],
-    [{ key: 'F', metaKey: true }, true],
-    [{ key: 'f', ctrlKey: true, altKey: true }, false],
-    [{ key: 'f' }, false],
-    [{ key: 'g', ctrlKey: true }, false]
-  ])('takes %o as the find shortcut: %s', (event, expected) => {
-    expect(isFindShortcut({ ctrlKey: false, metaKey: false, altKey: false, ...event })).toBe(expected)
-  })
-})
-
-describe('shortcutLabel', () => {
-  test.each([
-    ['MacIntel', '⌘ F'],
-    ['iPhone', '⌘ F'],
-    ['Win32', 'Ctrl F'],
-    ['Linux x86_64', 'Ctrl F']
-  ])('shows the shortcut on %s as %s', (platform, label) => {
-    expect(shortcutLabel(platform)).toBe(label)
   })
 })
 
@@ -122,6 +99,7 @@ describe('the find shortcut', () => {
     expect(input).toHaveFocus()
     expect(input.value.slice(input.selectionStart, input.selectionEnd)).toBe('pay claims')
     expect(event).toHaveProperty('defaultPrevented', true)
+    expect(input).toHaveAttribute('aria-keyshortcuts', 'Control+F Meta+F')
   })
 
   test('leaves a second Ctrl+F, pressed with the search box\'s words selected, to the browser\'s own find', () => {

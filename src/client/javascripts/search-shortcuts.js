@@ -1,0 +1,79 @@
+/**
+ * @module The keys that bring the focus to a search box, each shown in its
+ * box: Ctrl+K (Cmd+K on a Mac) to the box that searches all guides, here, and
+ * Ctrl+F to the search in a guide (guide-search.js).
+ */
+
+// The boxes that search all guides: the hub's own, which takes the side
+// navigation's place on the hub, else the side navigation's.
+const ALL_GUIDES_BOXES = ['hub-search', 'side-nav-search']
+
+/**
+ * @param {{key: string, ctrlKey: boolean, metaKey: boolean, altKey: boolean}} event
+ * @param {string} key - In lower case
+ * @returns {boolean} Whether it is Ctrl with that key, or Cmd on a Mac
+ */
+function isShortcut (event, key) {
+  return (event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === key
+}
+
+/**
+ * @param {string} platform - `navigator.platform`
+ * @param {string} key - In lower case
+ * @returns {string} The shortcut as the reader's keyboard has it
+ */
+function shortcutLabel (platform, key) {
+  const modifier = ['Mac', 'iPhone', 'iPad'].some(name => platform.includes(name)) ? '⌘' : 'Ctrl'
+
+  return `${modifier} ${key.toUpperCase()}`
+}
+
+/**
+ * Show a box's shortcut in it while it is empty. A screen reader is told it
+ * by the box instead.
+ *
+ * @param {HTMLInputElement} input
+ * @param {string} key - In lower case
+ */
+function showShortcut (input, key) {
+  const kbd = document.createElement('kbd')
+
+  input.setAttribute('aria-keyshortcuts', `Control+${key.toUpperCase()} Meta+${key.toUpperCase()}`)
+  kbd.className = 'app-search-kbd'
+  kbd.setAttribute('aria-hidden', 'true')
+  kbd.textContent = shortcutLabel(navigator.platform, key)
+  kbd.hidden = Boolean(input.value)
+  input.after(kbd)
+  input.addEventListener('input', () => { kbd.hidden = Boolean(input.value) })
+}
+
+/**
+ * Ctrl+K comes to the box that searches all guides and selects its words,
+ * instead of the browser's own search. A page with no such box, as with the
+ * side navigation folded, leaves Ctrl+K to the browser.
+ *
+ * @returns {void}
+ */
+function initSearchAllGuides () {
+  const input = ALL_GUIDES_BOXES.map(id => document.getElementById(id)).find(Boolean)
+
+  if (!input) {
+    return
+  }
+
+  showShortcut(input, 'k')
+  document.addEventListener('keydown', (event) => {
+    if (isShortcut(event, 'k')) {
+      event.preventDefault()
+      input.focus()
+      input.select()
+    }
+  })
+}
+
+export {
+  initSearchAllGuides,
+  isShortcut,
+  shortcutLabel,
+  showShortcut
+}
