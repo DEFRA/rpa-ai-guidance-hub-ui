@@ -345,7 +345,7 @@ describe('HubViewModel search', () => {
       expect(viewModel.search).toEqual({
         words: 'claim',
         heading: '1 guide',
-        summary: '1 section with these words',
+        summary: '1 match',
         backLink: null,
         emptyMessage: null,
         noResults: null,
@@ -357,7 +357,7 @@ describe('HubViewModel search', () => {
           title: 'CS final payments',
           titleSnippet: null,
           href: `/guides/${GUIDE}`,
-          hint: '1 section with these words',
+          hint: '1 match',
           sections: [{ title: '4.2 Claim rules', href: '/guides/g-1#claim-rules', hint: '1 match', snippet: [{ text: 'claim', match: true }] }],
           more: null
         }],
@@ -370,7 +370,7 @@ describe('HubViewModel search', () => {
       const viewModel = searched({ total: 12, sectionTotal: 40, results: [{ ...guide, sectionTotal: 3, sections: [{ ...result, matches: 3 }] }] })
 
       expect(viewModel.search.heading).toBe('12 guides')
-      expect(viewModel.search.summary).toBe('40 sections with these words')
+      expect(viewModel.search.summary).toBe('40 matches')
       expect(viewModel.search.guides[0].sections[0].hint).toBe('3 matches')
       expect(viewModel.search.pagination.next).toEqual({ href: '/hub?q=claim&page=2' })
     })
@@ -380,7 +380,7 @@ describe('HubViewModel search', () => {
 
       expect(viewModel.search.guides[0].more).toEqual({
         href: `/hub?q=claim&guide=${GUIDE}`,
-        text: 'See all 25 sections in this guide'
+        text: 'See all 25 matches in this guide'
       })
     })
 
@@ -448,7 +448,7 @@ describe('HubViewModel search', () => {
 
       expect(viewModel.search.titleBlock.kind).toBe('strong')
       expect(viewModel.search.guides.map((group) => group.title)).toEqual(['CS MA Claim - Case 1'])
-      expect(viewModel.search.guides[0].more).toEqual({ href: '/hub?q=claim&guide=t-1', text: 'See all 5 sections in this guide' })
+      expect(viewModel.search.guides[0].more).toEqual({ href: '/hub?q=claim&guide=t-1', text: 'See all 5 matches in this guide' })
       expect(viewModel.search.listEmpty).toBeNull()
     })
 

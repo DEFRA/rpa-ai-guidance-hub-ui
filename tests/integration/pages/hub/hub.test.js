@@ -314,7 +314,7 @@ describe('#hubController', () => {
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(page.getByRole('heading', { level: 2, name: '1 guide' })).toBeInTheDocument()
       expect(page.getByRole('link', { name: 'Countryside Stewardship final payments' })).toHaveAttribute('href', `/guides/${GUIDE}`)
-      expect(page.getAllByText('1 section with these words')).toHaveLength(2)
+      expect(page.getAllByText('1 match')).toHaveLength(2)
       expect(page.getByRole('link', { name: '4.2 Claim rules' })).toHaveAttribute('href', `/guides/${GUIDE}?section=claim-rules#claim-rules`)
       expect(page.getByText('2 matches')).toBeInTheDocument()
       expect(page.getByText('claim', { selector: 'mark' }).parentElement).toHaveTextContent('Check the claim was made on time.')
@@ -330,7 +330,7 @@ describe('#hubController', () => {
 
       const { page } = await searchAt('/hub?q=claim+rules')
 
-      expect(page.getByRole('link', { name: 'See all 25 sections in this guide: Countryside Stewardship final payments' })).toHaveAttribute('href', `/hub?q=claim+rules&guide=${GUIDE}`)
+      expect(page.getByRole('link', { name: 'See all 25 matches in this guide: Countryside Stewardship final payments' })).toHaveAttribute('href', `/hub?q=claim+rules&guide=${GUIDE}`)
     })
 
     test('searches inside one guide, a page of its sections at a time, with a way back to every guide', async () => {
@@ -505,7 +505,7 @@ describe('#hubController', () => {
         'browse all guides'
       ])
       expect(suggestions.getByRole('link', { name: 'browse all guides' })).toHaveAttribute('href', '/hub')
-      expect(page.queryByText(/sections with these words/)).not.toBeInTheDocument()
+      expect(page.queryByText(/^\d+ match(es)?$/)).not.toBeInTheDocument()
       expect(page.queryByRole('region')).not.toBeInTheDocument()
       expect(page.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument()
     })
