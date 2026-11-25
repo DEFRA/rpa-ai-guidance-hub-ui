@@ -19,8 +19,9 @@ This guide is an extension to the [Defra JavaScript Standards](https://defra.git
   - [1.3 Testing](#13-testing)
     - [1.3.1 Mocking](#131-mocking)
   - [1.4 Dependency Management](#14-dependency-management)
-    - [1.4.1 .npmrc Configuration](#141-npmrc-configuration)
-    - [1.4.2 Security Scanning](#142-security-scanning)
+    - [1.4.1 Dependency Updates](#141-dependency-updates)
+    - [1.4.2 .npmrc Configuration](#142-npmrc-configuration)
+    - [1.4.3 Security Scanning](#143-security-scanning)
   - [1.5 Documentation](#15-documentation)
 - [2 JavaScript Style Guide](#2-javascript-style-guide)
   - [2.1 Source Files](#21-source-files)
@@ -110,6 +111,18 @@ When mocking dependencies in tests, if not using dependency injection, you shoul
 
 You should also only mock dependencies that the team owns or has control over. If a dependency is an external library, you should not mock it unless absolutely necessary. In these cases, you should consider using a integration test instead of a unit test.
 
+### 1.4 Node.js Version
+All new JavaScript projects should target the current active LTS version of Node.js (currently Node 24) to ensure compatibility with the latest features and security updates. If you are maintaining an existing project that targets an older version of Node.js, you should consider upgrading to the latest LTS version as soon as possible.
+
+We recommend using [Node Version Manager (nvm)](https://github.com/nvm-sh/nvm) to manage Node.js versions on development machines. This allows developers to easily switch between different versions of Node.js for different projects.
+
+#### 1.4.1 .nvmrc Configuration
+All projects should include a `.nvmrc` file at the root of the project with the Node.js version specified. This helps to ensure that all developers are using the same version of Node.js and can help to avoid compatibility issues.
+
+```
+v24.14.1
+```
+
 ### 1.4 Dependency Management
 All project dependencies must be managed using the `package.json` file. Use `npm` commands to add, update, or remove dependencies to ensure that the `package.json` file is kept up to date.
 
@@ -137,23 +150,133 @@ Ensure that you pin dependencies to specific versions to avoid unexpected issues
 }
 ```
 
-#### 1.4.1 .npmrc Configuration
-All projects must include an `.npmrc` file at the root of the project with the following configuration:
+#### 1.4.1 Dependency Updates
+Do not update to the latest cutting edge version of a dependency unless absolutely necessary (e.g. to fix a critical security vulnerability). Always prefer updating to a stable version that has been available for a reasonable amount of time.
+
+You must use the `min-release-age` option in npm to prevent newly released versions from being automatically considered. This is required for projects targeting Node.js v24+ and npm v11.11.0+. If your project targets an older version of Node.js, you should upgrade to Node.js v24+ where possible to take advantage of this feature. See [1.4.2 .npmrc Configuration](#142-npmrc-configuration) for the required configuration.
+
+Dependabot must be configured in `.github/dependabot.yml`. This is a complete example, adapted from [rpa-ai-guidance-hub-ui](https://github.com/DEFRA/rpa-ai-guidance-hub-ui/blob/main/.github/dependabot.yml), with a `cooldown` matching `min-release-age`.
+
+**Use PR groups for every ecosystem entry.** Each `groups` entry bundles all routine updates into a single PR per Dependabot run, keeping steady upkeep rather than one pull request per dependency. This is essential for the `docker` ecosystem, where every opened Docker PR triggers CI that rebuilds and publishes an image — grouping means one standard upgrade produces a single PR and a single image rebuild rather than many near-identical pull requests and Docker images.
+
+```yaml
+version: 2
+
+updates:
+  # Update npm packages
+  - package-ecosystem: npm
+    directory: /
+    open-pull-requests-limit: 10
+
+    # Wait 7 days after release before raising an update
+    cooldown:
+      default-days: 7
+
+    # Group all npm package updates into one PR per run
+    groups:
+      npm:
+        patterns:
+          - '*'
+
+    # Schedule run every Monday, local time
+    schedule:
+      interval: weekly
+      time: '10:00'
+      timezone: 'Europe/London'
+
+    versioning-strategy: increase
+
+    allow:
+      # Include direct package.json updates
+      - dependency-type: direct
+
+  # Update GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+
+    # Wait 7 days after release before raising an update
+    cooldown:
+      default-days: 7
+
+    # Group all GitHub Actions updates into one PR per run
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+
+    # Schedule run every Monday, local time
+    schedule:
+      interval: weekly
+      time: '10:00'
+      timezone: 'Europe/London'
+
+  # Update Dockerfile base images
+  - package-ecosystem: docker
+    directory: /
+
+    # Wait 7 days after release before raising an update
+    cooldown:
+      default-days: 7
+
+    # Group all updates into one PR per run
+    groups:
+      docker:
+        patterns:
+          - '*'
+
+    # Schedule run every Monday, local time
+    schedule:
+      interval: weekly
+      time: '10:00'
+      timezone: 'Europe/London'
+
+  # Update Docker Compose images
+  - package-ecosystem: docker-compose
+    directory: /
+
+    # Wait 7 days after release before raising an update
+    cooldown:
+      default-days: 7
+
+    # Group all updates into one PR per run
+    groups:
+      docker-compose:
+        patterns:
+          - '*'
+
+    # Schedule run every Monday, local time
+    schedule:
+      interval: weekly
+      time: '10:00'
+      timezone: 'Europe/London'
+```
+
+The `github-actions`, `docker` and `docker-compose` entries are covered in the [GitHub Actions](./github-actions.md#13-third-party-actions) and [Docker](./docker.md#14-dependabot) style guides. Omit the Docker entries only if the project has no Dockerfile or Compose file. Use `ignore` entries only for a documented project-specific reason.
+
+#### 1.4.2 .npmrc Configuration
+All projects must include an `.npmrc` file at the root of the project. All projects regardless of Node.js version should include the following configuration:
 ```
 save-exact=true
 ignore-scripts=true
 ```
 
+> [!IMPORTANT]
+> The `min-release-age` option is only supported in npm v11.11.0 and later, which requires Node.js v24 or later. If your project meets these requirements, you **must** also include the following configuration in your `.npmrc` file:
+```
+min-release-age=7
+```
+> If your project does not yet target Node.js v24+, you should upgrade where possible to enable `min-release-age` support.
+
 `save-exact=true` ensures that all dependencies are pinned to exact versions when added to the `package.json` file.
 `ignore-scripts=true` prevents the execution of lifecycle scripts when running npm commands. Lifecycle scripts have been exploited in recent supply chain attacks, so this setting helps to mitigate that risk.
+`min-release-age=7` prevents newly released versions of dependencies from being resolved for 7 days after their release date, giving time for any critical issues to be identified and/or supply chain attacks to be mitigated.
 
-#### 1.4.2 Security Scanning
-All projects must regularly run `npm audit` and preferably other security scanning tools to identify and flag any known vulnerabilities in project dependencies and source code. Any vulnerabilities found should be addressed promptly by updating or replacing the affected dependencies.
+#### 1.4.3 Security Scanning
+All projects must regularly run `npm audit` and preferably other security scanning tools to identify and flag any known vulnerabilities in project dependencies. Any vulnerabilities found should be addressed promptly by updating or replacing the affected dependencies.
 
 These audits should also be automated as part of our CI pipelines and nightly scheduled scans. See the following GitHub actions for an example of how to set this up:
 - [scan.yml](https://github.com/DEFRA/ai-defra-search-frontend/blob/main/.github/workflows/scan.yml)
 - [check-pull-request.yml](https://github.com/DEFRA/ai-defra-search-frontend/blob/main/.github/workflows/check-pull-request.yml)
-- [publish.yml](https://github.com/DEFRA/ai-defra-search-frontend/blob/main/.github/workflows/publish.yml)
 
 ### 1.5 Documentation
 All functions, classes, and modules should be documented using JSDoc comments. However, you should take a pragmatic approach to using JSDocs. Only document what is necessary to understand the code, and avoid over-documenting.
@@ -239,7 +362,6 @@ function myFunction() {
 The maximum line length is 80 characters. Lines should be wrapped or refactored to fit within this limit.
 
 ### 2.2 Variable Declarations
-
 All variables should be declared using `const` by default. If a variable needs to be reassigned, use `let`. Using var is not allowed.
 
 Do this:
@@ -259,9 +381,139 @@ var myVariable = 'Hello, world!'
 
 ### 2.3 Functions
 
+#### 2.3.1 Function Declarations
+
+In general, function declarations should be used instead of function expressions (aka anonymous or arrow functions).
+
+Essentially, if the function needs to be called by name, use a function declaration.
+
+If the function is only used as a callback, use an arrow function.
+
+Do this:
+```javascript
+function myFunction() {
+  // function code
+}
+```
+
+Don't do this:
+```javascript
+const myFunction = function() {
+  // function code
+}
+
+// or this
+const myFunction = () => {
+  // function code
+}
+```
+
+#### 2.3.2 Function Expressions
+An exception to the rule of using function declarations is when the function is only being used as a callback or to handle an event, in which case a function expression is acceptable.
+
+Essentially, if a function needs to be called by name, use a function declaration. If the function is only used as a callback, use a function expression.
+
+Acceptable use of an arrow function:
+```javascript
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error)
+})
+
+// or
+test('my test', () => {
+  // test code
+})
+```
+
+#### 2.3.3 Parameters
+When using arrow functions, parentheses are required around the parameters, even if there is only one parameter.
+
+Do this:
+```javascript
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error)
+})
+```
+
+Don't do this:
+```javascript
+process.on('uncaughtException', error => {
+  console.error('Uncaught Exception:', error)
+})
+```
+
+#### 2.3.4 Object Method Definition
+
+When defining methods inside objects, use the method definition syntax.
+
+Do this:
+```javascript
+const entity = {
+  test: 'hello world',
+  register () {
+    // method code
+  }
+}
+```
+
+Don't do this:
+```javascript
+const entity = {
+  test: 'hello world',
+  register: function () {
+    // method code
+  },
+  another: () => {
+    // method code
+  }
+}
+```
+
 ### 2.4 Strings
 
+#### 2.4.1 String Literals
+All strings should use single quotes (`'`) for string literals. Double quotes (`"`) are not allowed.
+
+#### 2.4.2 Template Literals
+Template literals should be used for multi-line strings or when string interpolation is required. For simple strings, use single quotes.
+
 ### 2.5 Classes
+In general, classes are not used in AICE JavaScript code as they are not necessary for most use cases and result in more boilerplate for no added benefit. Instead, export standalone functions from modules or use factory functions to create objects.
+
+If a class is necessary, e.g. you need to encapsulate state or share a dependency instance across methods, then you should use ES6 style classes. The class name should be in PascalCase, and the file name should match the class name in kebab-case.
+
+Do this:
+```javascript
+class MyClass {
+  constructor() {
+    this.myProperty = 'Hello, world!'
+  }
+
+  myMethod() {
+    console.log(this.myProperty)
+  }
+}
+```
+
+Don't do this:
+```javascript
+class myClass {
+  constructor() {
+    this.myProperty = 'Hello, world!'
+  }
+
+  myMethod() {
+    console.log(this.myProperty)
+  }
+}
+
+// or this
+class MyClass {
+    static myStaticMethod() {
+      console.log('This is a static method')
+    }
+}
+```
 
 ## Contributions
 If you would like to contribute to this style guide, please open a pull request on the [Defra AICE Team GitHub](https://github.com/DEFRA/aice-team) repository.

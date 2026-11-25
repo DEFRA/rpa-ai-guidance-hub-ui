@@ -4,7 +4,7 @@ metadata:
     github-path: plugins/javascript/skills/javascript-style-guide
     github-ref: refs/heads/main
     github-repo: https://github.com/DEFRA/aice-team
-    github-tree-sha: 5af9d58b2e8882bd20ee4a461741b3f600d6bb37
+    github-tree-sha: 5547da5f09fa494e8b241e7aa005b28aae1bc3ea
 name: javascript-style-guide
 ---
 Read the full [AICE JavaScript Style Guide](references/javascript-style-guide.md) before writing or reviewing any JavaScript code.
@@ -16,7 +16,7 @@ Apply the style guide to all aspects of the task, including but not limited to:
 - Linting and formatting (ESLint + neostandard)
 - Module system (ES modules, import/export conventions)
 - Testing (Vitest, mocking rules)
-- Dependency management and version pinning
+- Dependency management, version pinning and Dependabot configuration
 - Source file conventions (naming, indentation, semicolons, line length)
 - Variable declarations, functions, strings, and classes
 - JSDoc documentation
