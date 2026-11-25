@@ -1,4 +1,5 @@
 import { CASE_TYPES } from '../../constants/case-types.js'
+import { TOP_OF_GUIDE } from '../../constants/top-of-guide.js'
 import { bookmarkedSections } from '../../services/case-bookmarks.js'
 import { NOT_SCHEME_SPECIFIC } from '../../services/reference-data.js'
 import { caseGuidesHref } from '../common/case-guides-href.js'
@@ -12,10 +13,6 @@ import { countMatches } from './search-counts.js'
 const UNTITLED = 'Untitled guide'
 const NOT_PROVIDED = 'Not provided'
 const TRADITIONAL = 'traditional'
-
-// The top of the page's own content (the GOV.UK template's `main`), where a
-// section without a heading of its own begins.
-const TOP_OF_GUIDE = '#main-content'
 
 /**
  * @typedef {Object} InfoRow
@@ -135,7 +132,7 @@ function _contents (sections, pageNumber, isTraditional, href) {
  *   guide for a section without one
  */
 function _headingHref (slug) {
-  return slug ? `#${slug}` : TOP_OF_GUIDE
+  return `#${slug || TOP_OF_GUIDE}`
 }
 
 /**

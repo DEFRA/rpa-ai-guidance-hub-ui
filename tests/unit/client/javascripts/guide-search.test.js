@@ -293,6 +293,15 @@ describe('stepping between the matches', () => {
       expect(currentText()).toEqual([])
     })
 
+    test('stays at the top of the guide, opened there for its Introduction, when the Introduction holds no match', () => {
+      openedAt('main-content')
+      searchAt(placedPage(), MATCHES.slice(1))
+
+      expect(positionText()).toBe('')
+      document.querySelector('[data-guide-search-step="next"]').click()
+      expect(positionText()).toBe('Match 1 of 3')
+    })
+
     test('starts at the first match on a page that is shown, when no section starts at that heading', () => {
       openedAt('note')
 

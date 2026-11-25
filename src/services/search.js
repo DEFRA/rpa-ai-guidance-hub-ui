@@ -1,5 +1,6 @@
 import * as searchApi from '../infra/search-api/search.js'
 import { createLogger } from '../infra/logging/logger.js'
+import { TOP_OF_GUIDE } from '../constants/top-of-guide.js'
 import { guideSectionHref } from '../pages/common/guide-section-href.js'
 
 const logger = createLogger()
@@ -89,7 +90,8 @@ function _guideHref (documentId, words) {
 /**
  * The section in its guide, with the words searched in it: named as
  * `section` too, as pins and the side navigation link to one, so a stepper
- * guide opens on the page that has it.
+ * guide opens on the page that has it. A section without an anchor, an
+ * Introduction, goes to the top of the guide, where its search starts.
  *
  * @private
  * @param {{documentId: string, anchor: string}} section
@@ -98,7 +100,7 @@ function _guideHref (documentId, words) {
  */
 function _href (section, words) {
   if (!section.anchor) {
-    return _guideHref(section.documentId, words)
+    return `${_guideHref(section.documentId, words)}#${TOP_OF_GUIDE}`
   }
 
   return guideSectionHref(section.documentId, section.anchor, { words })

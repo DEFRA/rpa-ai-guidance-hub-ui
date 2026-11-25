@@ -150,14 +150,14 @@ describe('#searchGuide', () => {
     })
   })
 
-  test('gives a section with no number its heading alone, and one with no anchor its guide', async () => {
+  test('gives a section with no number its heading alone, and one with no anchor the top of its guide', async () => {
     const section = searchApi.sectionResult({ sectionNumber: null, heading: 'Introduction', anchor: '' })
     nock(SEARCH_API_BASE_URL).get('/v1/search').query(true).reply(200, searchApi.searchResponse({ results: [section] }))
 
     const { results } = await searchGuide({ guideId: 'g-1', words: 'claim', page: 1, perPage: 10 })
 
     expect(results[0].title).toBe('Introduction')
-    expect(results[0].href).toBe('/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7?q=claim')
+    expect(results[0].href).toBe('/guides/7c9e6679-7425-40de-944b-e07fc1f90ae7?q=claim#main-content')
   })
 
   test('links within the hub, whatever the search service says the section\'s url is', async () => {

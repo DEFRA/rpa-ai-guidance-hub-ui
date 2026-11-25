@@ -18,6 +18,7 @@
  */
 
 import { isBlock, isSkipped, SectionReader } from '../../constants/search-places.js'
+import { TOP_OF_GUIDE } from '../../constants/top-of-guide.js'
 import { isShortcut, showShortcut } from './search-shortcuts.js'
 
 const MATCHES = 'guide-keyword-match'
@@ -58,21 +59,24 @@ function steppedMatch (current, total, back) {
  * @param {Array<{anchor: string}>} found - Every match, in order
  * @param {Array<string>} starts - The ids of the headings that start a
  *   section, in order
- * @param {string} id - The heading the page's address goes to
+ * @param {string} id - Where the page's address goes: a heading, or the top
+ *   of the guide for its Introduction
  * @returns {number|null} The number of the first match in the section that
  *   starts there; half way between the matches either side of it when it
  *   holds none; null when no section starts there
  */
 function _openedAt (found, starts, id) {
-  const at = starts.indexOf(id)
+  const order = [TOP_OF_GUIDE, ...starts]
+  const sectionOf = match => match.anchor || TOP_OF_GUIDE
+  const at = order.indexOf(id)
 
   if (at === -1) {
     return null
   }
 
-  const first = found.findIndex(match => match.anchor === id)
+  const first = found.findIndex(match => sectionOf(match) === id)
 
-  return first === -1 ? found.filter(match => starts.indexOf(match.anchor) < at).length + 0.5 : first + 1
+  return first === -1 ? found.filter(match => order.indexOf(sectionOf(match)) < at).length + 0.5 : first + 1
 }
 
 /**
