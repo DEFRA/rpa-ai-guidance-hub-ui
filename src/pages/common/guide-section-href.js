@@ -15,9 +15,11 @@
  * @returns {string}
  */
 function guideSectionHref (guideId, anchor, { slug = anchor, words } = {}) {
+  const path = `/guides/${encodeURIComponent(guideId)}`
   const searched = words ? `&q=${encodeURIComponent(words)}` : ''
+  const fragment = `#${encodeURIComponent(slug)}`
 
-  return `/guides/${encodeURIComponent(guideId)}?section=${encodeURIComponent(anchor)}${searched}#${encodeURIComponent(slug)}`
+  return `${path}?section=${encodeURIComponent(anchor)}${searched}${fragment}`
 }
 
 export {

@@ -123,7 +123,10 @@ function _guideGroup (guide, words) {
     hint: _counted(guide.sectionTotal, 'match', 'matches'),
     sections: guide.sections.map((section) => _searchRow(section, false)),
     more: more
-      ? { href: searchHref({ words, guide: guide.id }), text: `See all ${guide.sectionTotal} matches in this guide` }
+      ? {
+          href: searchHref({ words, guide: guide.id }),
+          text: `See all ${guide.sectionTotal} matches in this guide`
+        }
       : null
   }
 }

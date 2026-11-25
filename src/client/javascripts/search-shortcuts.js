@@ -9,6 +9,9 @@
 // guide's heading called "Hub search" has the same id.
 const ALL_GUIDES_BOXES = ['input#hub-search', 'input#side-nav-search']
 
+// The platforms whose keyboards have Cmd.
+const APPLE = ['Mac', 'iPhone', 'iPad']
+
 /**
  * @param {KeyboardEvent} event
  * @param {string} key - In lower case
@@ -28,9 +31,9 @@ function isShortcut (event, key) {
  * @returns {string} The shortcut as the reader's keyboard has it
  */
 function shortcutLabel (platform, key) {
-  const modifier = ['Mac', 'iPhone', 'iPad'].some(name => platform.includes(name)) ? '⌘' : 'Ctrl'
+  const apple = APPLE.some(name => platform.includes(name))
 
-  return `${modifier} ${key.toUpperCase()}`
+  return `${apple ? '⌘' : 'Ctrl'} ${key.toUpperCase()}`
 }
 
 /**
@@ -42,8 +45,9 @@ function shortcutLabel (platform, key) {
  */
 function showShortcut (input, key) {
   const kbd = document.createElement('kbd')
+  const letter = key.toUpperCase()
 
-  input.setAttribute('aria-keyshortcuts', `Control+${key.toUpperCase()} Meta+${key.toUpperCase()}`)
+  input.setAttribute('aria-keyshortcuts', `Control+${letter} Meta+${letter}`)
   kbd.className = 'app-search-kbd'
   kbd.setAttribute('aria-hidden', 'true')
   kbd.textContent = shortcutLabel(navigator.platform, key)

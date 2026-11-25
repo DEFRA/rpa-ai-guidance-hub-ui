@@ -76,7 +76,13 @@ function _openedAt (found, starts, id) {
 
   const first = found.findIndex(match => sectionOf(match) === id)
 
-  return first === -1 ? found.filter(match => order.indexOf(sectionOf(match)) < at).length + 0.5 : first + 1
+  if (first !== -1) {
+    return first + 1
+  }
+
+  const before = found.filter(match => order.indexOf(sectionOf(match)) < at)
+
+  return before.length + 0.5
 }
 
 /**
@@ -265,7 +271,9 @@ class GuideSearch {
   start () {
     this.form.querySelector('[data-guide-search-controls]')?.removeAttribute('hidden')
     this.matches = placeMatches(this.found, this.starts)
-    this._open(_openedAt(this.found, [...this.starts], _addressedId()) ?? this._firstShown())
+    const opened = _openedAt(this.found, [...this.starts], _addressedId())
+
+    this._open(opened ?? this._firstShown())
     this._listen()
     this._watch()
   }
@@ -301,11 +309,16 @@ class GuideSearch {
 
   _paint () {
     const atOne = Number.isInteger(this.current)
+    const current = atOne ? [this.matches[this.current - 1]] : []
 
     window.CSS.highlights.set(MATCHES, new window.Highlight(...this.matches.filter(Boolean)))
-    window.CSS.highlights.set(CURRENT, new window.Highlight(...(atOne ? this.matches.slice(this.current - 1, this.current) : []).filter(Boolean)))
+    window.CSS.highlights.set(
+      CURRENT, new window.Highlight(...current.filter(Boolean))
+    )
     if (this.position) {
-      this.position.textContent = atOne ? `Match ${this.current} of ${this.matches.length}` : ''
+      this.position.textContent = atOne
+        ? `Match ${this.current} of ${this.matches.length}`
+        : ''
     }
   }
 

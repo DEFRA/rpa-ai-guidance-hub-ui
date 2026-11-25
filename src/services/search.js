@@ -84,7 +84,9 @@ function _title (section) {
  * @returns {string}
  */
 function _guideHref (documentId, words) {
-  return `/guides/${encodeURIComponent(documentId)}?q=${encodeURIComponent(words)}`
+  const guide = encodeURIComponent(documentId)
+
+  return `/guides/${guide}?q=${encodeURIComponent(words)}`
 }
 
 /**
@@ -158,6 +160,7 @@ async function searchGuides (options) {
       limit: options.perPage,
       offset: (options.page - 1) * options.perPage
     })
+    const toGuide = (document) => _toGuideResult(document, options.words)
 
     return {
       unavailable: false,
@@ -165,8 +168,8 @@ async function searchGuides (options) {
       documentTotal: data.documentTotal,
       sectionTotal: data.sectionTotal,
       tooManyMatches: Boolean(data.tooManyMatches),
-      results: data.results.map((document) => _toGuideResult(document, options.words)),
-      titles: data.titles.map((document) => _toGuideResult(document, options.words))
+      results: data.results.map(toGuide),
+      titles: data.titles.map(toGuide)
     }
   } catch (err) {
     logger.error({ err }, 'Search is unavailable')
