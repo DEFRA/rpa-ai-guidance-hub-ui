@@ -24,10 +24,11 @@ describe('isShortcut', () => {
     [{ key: 'k', ctrlKey: true }, true],
     [{ key: 'K', metaKey: true }, true],
     [{ key: 'k', ctrlKey: true, altKey: true }, false],
+    [{ key: 'K', ctrlKey: true, shiftKey: true }, false],
     [{ key: 'k' }, false],
     [{ key: 'f', ctrlKey: true }, false]
-  ])('takes %o as Ctrl+K: %s', (event, expected) => {
-    expect(isShortcut({ ctrlKey: false, metaKey: false, altKey: false, ...event }, 'k')).toBe(expected)
+  ])('takes %o as Ctrl+K: %s, leaving Alt and Shift with it to the browser', (event, expected) => {
+    expect(isShortcut({ ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, ...event }, 'k')).toBe(expected)
   })
 })
 

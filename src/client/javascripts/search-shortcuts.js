@@ -9,12 +9,16 @@
 const ALL_GUIDES_BOXES = ['hub-search', 'side-nav-search']
 
 /**
- * @param {{key: string, ctrlKey: boolean, metaKey: boolean, altKey: boolean}} event
+ * @param {KeyboardEvent} event
  * @param {string} key - In lower case
- * @returns {boolean} Whether it is Ctrl with that key, or Cmd on a Mac
+ * @returns {boolean} Whether it is Ctrl with that key, or Cmd on a Mac, with
+ *   no Alt or Shift: those, such as Ctrl+Shift+K, stay the browser's
  */
 function isShortcut (event, key) {
-  return (event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === key
+  const modified = event.ctrlKey || event.metaKey
+
+  return modified && !event.altKey && !event.shiftKey &&
+    event.key.toLowerCase() === key
 }
 
 /**
