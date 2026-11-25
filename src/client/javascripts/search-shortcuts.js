@@ -5,8 +5,9 @@
  */
 
 // The boxes that search all guides: the hub's own, which takes the side
-// navigation's place on the hub, else the side navigation's.
-const ALL_GUIDES_BOXES = ['hub-search', 'side-nav-search']
+// navigation's place on the hub, else the side navigation's. Inputs only: a
+// guide's heading called "Hub search" has the same id.
+const ALL_GUIDES_BOXES = ['input#hub-search', 'input#side-nav-search']
 
 /**
  * @param {KeyboardEvent} event
@@ -59,7 +60,9 @@ function showShortcut (input, key) {
  * @returns {void}
  */
 function initSearchAllGuides () {
-  const input = ALL_GUIDES_BOXES.map(id => document.getElementById(id)).find(Boolean)
+  const input = ALL_GUIDES_BOXES
+    .map(box => document.querySelector(box))
+    .find(Boolean)
 
   if (!input) {
     return

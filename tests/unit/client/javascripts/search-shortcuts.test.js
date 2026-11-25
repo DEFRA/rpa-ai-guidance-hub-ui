@@ -100,6 +100,22 @@ describe('Ctrl+K', () => {
     expect(input.nextElementSibling).toHaveTextContent('Ctrl K')
   })
 
+  test('comes to the side navigation\'s search box, not to a guide\'s heading called "Hub search"', () => {
+    document.body.innerHTML = '<input id="side-nav-search" name="q"><h2 id="hub-search">Hub search</h2>'
+    initSearchAllGuides()
+
+    pressCtrlK()
+
+    expect(document.querySelector('input')).toHaveFocus()
+  })
+
+  test('is left to the browser when only a guide\'s heading has a box\'s id, as with the side navigation folded', () => {
+    document.body.innerHTML = '<h2 id="side-nav-search">Side nav search</h2>'
+    initSearchAllGuides()
+
+    expect(pressCtrlK()).toHaveProperty('defaultPrevented', false)
+  })
+
   test('is left to the browser on a page with no box that searches all guides, as with the side navigation folded', () => {
     document.body.innerHTML = '<form data-guide-search><input name="q"></form>'
     initSearchAllGuides()
