@@ -244,7 +244,7 @@ describe('stepping between the matches', () => {
   describe('on a page opened at a section\'s heading, as a result in the hub links to one', () => {
     const openedAt = (id) => window.history.replaceState(null, '', `#${id}`)
 
-    test('starts at the first match in that section, showing its page, and steps on from it', () => {
+    test('starts at the first match in that section, showing its page', () => {
       const shown = vi.fn()
       document.addEventListener('guide-pages:show', shown, { capture: true })
       openedAt('claims-1')
@@ -254,8 +254,25 @@ describe('stepping between the matches', () => {
 
       expect(positionText()).toBe('Match 2 of 4')
       expect(shown.mock.calls.map(([event]) => event.target.dataset.guidePage)).toEqual(['2'])
-      document.querySelector('[data-guide-search-step="next"]').click()
-      expect(positionText()).toBe('Match 3 of 4')
+    })
+
+    const stepButton = (name) => () => document.querySelector(`[data-guide-search-step="${name}"]`).click()
+    const enter = (shiftKey) => () => document.querySelector('input[name="q"]').dispatchEvent(
+      new window.KeyboardEvent('keydown', { key: 'Enter', shiftKey, bubbles: true, cancelable: true })
+    )
+
+    test.each([
+      ['Next', stepButton('next'), 'Match 3 of 4'],
+      ['Previous', stepButton('previous'), 'Match 1 of 4'],
+      ['Enter', enter(false), 'Match 3 of 4'],
+      ['Shift+Enter', enter(true), 'Match 1 of 4']
+    ])('steps on from that match with %s', (_, step, position) => {
+      openedAt('claims-1')
+      searchAt(placedPage())
+
+      step()
+
+      expect(positionText()).toBe(position)
     })
 
     test('stays at the start of a section that holds no match, every match marked but none current', () => {

@@ -36,6 +36,7 @@ describe('shortcutLabel', () => {
   test.each([
     ['MacIntel', 'f', '⌘ F'],
     ['iPhone', 'k', '⌘ K'],
+    ['iPad', 'f', '⌘ F'],
     ['Win32', 'f', 'Ctrl F'],
     ['Linux x86_64', 'k', 'Ctrl K']
   ])('shows the shortcut on %s with %s as %s', (platform, key, label) => {
@@ -85,7 +86,7 @@ describe('Ctrl+K', () => {
   test.each([
     ['the hub\'s search box, on the hub', 'hub-search'],
     ['the side navigation\'s search box, on any other page', 'side-nav-search']
-  ])('comes to %s, its words selected, instead of the browser\'s own search, and is shown in it', (_, id) => {
+  ])('comes to %s, its words selected, instead of the browser\'s own search, and is named in it', (_, id) => {
     document.body.innerHTML = `<input id="${id}" name="q" value="claim rules">`
     initSearchAllGuides()
     const input = document.getElementById(id)
@@ -96,6 +97,7 @@ describe('Ctrl+K', () => {
     expect(input.value.slice(input.selectionStart, input.selectionEnd)).toBe('claim rules')
     expect(event).toHaveProperty('defaultPrevented', true)
     expect(input).toHaveAttribute('aria-keyshortcuts', 'Control+K Meta+K')
+    expect(input.nextElementSibling).toHaveTextContent('Ctrl K')
   })
 
   test('is left to the browser on a page with no box that searches all guides, as with the side navigation folded', () => {
