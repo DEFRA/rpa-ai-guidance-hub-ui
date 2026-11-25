@@ -342,7 +342,7 @@ describe('#hubController', () => {
       const { page } = await searchAt(`/hub?q=claim+rules&guide=${GUIDE}&page=2`)
 
       expect(search.isDone()).toBe(true)
-      expect(page.getByRole('heading', { level: 2, name: '25 sections' })).toBeInTheDocument()
+      expect(page.getByRole('heading', { level: 2, name: '25 matches' })).toBeInTheDocument()
       expect(page.getByText('In Countryside Stewardship final payments')).toBeInTheDocument()
       expect(page.getByRole('link', { name: 'All guides with these words' })).toHaveAttribute('href', '/hub?q=claim+rules')
       expect(page.getByRole('link', { name: '4.2 Claim rules' })).toHaveAttribute('href', `/guides/${GUIDE}?section=claim-rules&q=claim%20rules#claim-rules`)
@@ -427,7 +427,7 @@ describe('#hubController', () => {
         expect(list.getByRole('heading', { level: 3, name: '6 guides have ‘CS MA Claim’ in their title' })).toBeInTheDocument()
         expect(list.getByRole('link', { name: 'CS MA Claim - Case 1' })).toHaveAttribute('href', '/guides/00000000-0000-4000-8000-000000000001?q=CS%20MA%20Claim')
         expect(list.getByRole('link', { name: 'CS MA Claim - Case 1' }).querySelector('mark')).toHaveTextContent('CS MA Claim')
-        expect(list.getByText('2 sections')).toBeInTheDocument()
+        expect(list.getByText('2 matches')).toBeInTheDocument()
         expect(list.getAllByRole('link', { name: /^CS MA Claim - Case/ })).toHaveLength(5)
         // Found by how it starts: jsdom drops the space before its visually hidden words, which browsers keep.
         expect(list.getByRole('link', { name: /^Show all 6 guides/ })).toHaveTextContent('Show all 6 guides with ‘CS MA Claim’ in their title')

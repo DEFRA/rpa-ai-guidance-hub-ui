@@ -16,8 +16,8 @@
     {% for row in list.rows %}
       <li class="app-title-match__row">
         <a class="govuk-link app-title-match__row-title" href="{{ row.href }}">{{ marked(row.titleSnippet, row.title) }}</a>
-        {% if row.sectionsText %}
-          <span class="govuk-body-s app-title-match__meta">{{ row.sectionsText }}</span>
+        {% if row.matchesText %}
+          <span class="govuk-body-s app-title-match__meta">{{ row.matchesText }}</span>
         {% endif %}
       </li>
     {% endfor %}

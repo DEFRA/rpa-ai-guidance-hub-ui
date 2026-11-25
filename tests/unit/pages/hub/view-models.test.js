@@ -498,8 +498,8 @@ describe('HubViewModel search', () => {
         kind: 'several',
         label: '2 guides have ‘claim’ in their title',
         rows: [
-          { title: 'CS MA Claim - Case 1', titleSnippet: titled(1).titleSnippet, href: '/guides/t-1', sectionsText: null },
-          { title: 'CS MA Claim - Case 2', titleSnippet: listed.titleSnippet, href: '/guides/t-2', sectionsText: '2 sections' }
+          { title: 'CS MA Claim - Case 1', titleSnippet: titled(1).titleSnippet, href: '/guides/t-1', matchesText: null },
+          { title: 'CS MA Claim - Case 2', titleSnippet: listed.titleSnippet, href: '/guides/t-2', matchesText: '2 matches' }
         ],
         showAll: null
       })
@@ -554,7 +554,7 @@ describe('HubViewModel search', () => {
 
       expect(viewModel.search).toEqual({
         words: 'claim',
-        heading: '1 section',
+        heading: '1 match',
         summary: 'In CS final payments',
         backLink: { href: '/hub?q=claim', text: 'All guides with these words' },
         emptyMessage: null,
@@ -572,7 +572,7 @@ describe('HubViewModel search', () => {
     test('pages its sections, keeping the guide', () => {
       const viewModel = searched({ total: 25, results: [result] }, 1, GUIDE)
 
-      expect(viewModel.search.heading).toBe('25 sections')
+      expect(viewModel.search.heading).toBe('25 matches')
       expect(viewModel.search.pagination.next).toEqual({ href: `/hub?q=claim&guide=${GUIDE}&page=2` })
     })
 
