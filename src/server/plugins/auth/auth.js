@@ -74,6 +74,10 @@ function _getDefaultAuth () {
  * Options for the short-lived cookie holding the OIDC `state`, `nonce` and
  * PKCE verifier between `/login` and `/login/callback`.
  *
+ * `SameSite=None` is what lets the browser send it on Entra's cross-site
+ * `form_post` to the callback - `Lax` or `Strict` would drop it and fail every
+ * sign-in. `None` requires `Secure`, which browsers allow on http://localhost.
+ *
  * @returns {import('@hapi/hapi').ServerStateCookieOptions}
  */
 function _getOidcStateCookieOptions () {
