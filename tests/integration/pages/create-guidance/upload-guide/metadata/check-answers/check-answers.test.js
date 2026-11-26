@@ -162,11 +162,11 @@ describe('#checkAnswersController Integration', () => {
       // What converting sends for a new version: the version chosen to replace too.
       const VERSION_REQUEST = { ...CONVERSION_REQUEST, replacesVersionId: guide.versions[0].id }
 
-      async function checkPage () {
-        const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
+      async function checkPage (chosen = guide) {
+        const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: chosen })
         mockReferenceData()
         nock(GUIDANCE_API_BASE_URL).get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse())
-        nock(GUIDANCE_API_BASE_URL).get(`/guides/${GUIDE_ID}`).reply(statusCodes.HTTP_STATUS_OK, guide)
+        nock(GUIDANCE_API_BASE_URL).get(`/guides/${GUIDE_ID}`).reply(statusCodes.HTTP_STATUS_OK, chosen)
 
         const response = await server.inject({ method: 'GET', url: CHECK_ANSWERS_URL, headers: { cookie } })
 
@@ -212,6 +212,14 @@ describe('#checkAnswersController Integration', () => {
 
         expect(summaryValueOf(card, 'This document is')).toHaveTextContent(/^A new version of ‘Claiming the SFI payment’$/)
         expect(card.getByRole('link', { name: /^Change/ })).toHaveAttribute('href', CHOICE_URL)
+      })
+
+      test('GET shows the details of a guide kept with a detail that the journey does not ask', async () => {
+        const keptWithMore = guideResponse({ id: GUIDE_ID, metadata: { ...guide.metadata, guidanceType: 'process' } })
+
+        const page = await checkPage(keptWithMore)
+
+        expect(page.getByRole('heading', { level: 1 })).toHaveTextContent('Check the details before you convert')
       })
 
       test('GET says that the new version goes live in the hub at once, for everyone who uses it', async () => {
