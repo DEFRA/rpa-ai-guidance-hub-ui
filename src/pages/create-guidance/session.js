@@ -106,6 +106,14 @@ class GuideUpload {
   }
 
   /**
+   * Whether the API has accepted the active upload's answers, which fixes them
+   * @returns {boolean}
+   */
+  get isSubmitted () {
+    return Boolean(this.#activeUpload?.submitted)
+  }
+
+  /**
    * Does the session wrapper contain at least one upload
    * @returns {boolean}
    */

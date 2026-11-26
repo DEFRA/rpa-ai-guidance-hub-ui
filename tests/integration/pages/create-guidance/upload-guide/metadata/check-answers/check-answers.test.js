@@ -248,6 +248,21 @@ describe('#checkAnswersController Integration', () => {
         return mergeCookies(cookie, response.headers['set-cookie'])
       }
 
+      /**
+       * The reference data with CRM, the system the answers name, retired.
+       */
+      function mockReferenceDataWithCrmRetired () {
+        nock(GUIDANCE_API_BASE_URL)
+          .get('/reference/schemes')
+          .reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
+        nock(GUIDANCE_API_BASE_URL)
+          .get('/reference/systems')
+          .reply(statusCodes.HTTP_STATUS_OK, systemsResponse([{ label: 'SITI Agri' }]))
+        nock(GUIDANCE_API_BASE_URL)
+          .get('/reference/audiences')
+          .reply(statusCodes.HTTP_STATUS_OK, audiencesResponse())
+      }
+
       test('GET names the guide in a card, with a Change link to choose again', async () => {
         const card = cardTitled(await checkPage(), 'New guide or new version')
 
@@ -318,6 +333,41 @@ describe('#checkAnswersController Integration', () => {
 
         createVersion.done()
         expect(response.headers.location).toBe('/create-guidance/upload-guide/converting')
+      })
+
+      test('POST again asks for the new version as submitted, though an option its answers name is retired since', async () => {
+        const { cookie: submittedCookie } = await convertInBackground()
+
+        mockReferenceDataWithCrmRetired()
+        const createVersion = nock(GUIDANCE_API_BASE_URL)
+          .post(`/guides/${GUIDE_ID}/versions`, VERSION_REQUEST)
+          .reply(statusCodes.HTTP_STATUS_ACCEPTED, SAVE_STARTED, SAVE_STARTED_AT)
+
+        const response = await submit(submittedCookie)
+
+        createVersion.done()
+        expect(response.headers.location).toBe('/create-guidance/upload-guide/converting')
+      })
+
+      test('GET shows the answers as submitted, though an option they name is retired since', async () => {
+        const { cookie: submittedCookie } = await convertInBackground()
+
+        mockReferenceDataWithCrmRetired()
+        nock(GUIDANCE_API_BASE_URL)
+          .get('/guides/staging/file-1')
+          .reply(statusCodes.HTTP_STATUS_OK, SAVE_STARTED)
+        nock(GUIDANCE_API_BASE_URL)
+          .get(`/guides/${GUIDE_ID}`)
+          .reply(statusCodes.HTTP_STATUS_OK, guide)
+
+        const response = await server.inject({
+          method: 'GET',
+          url: CHECK_ANSWERS_URL,
+          headers: { cookie: submittedCookie }
+        })
+
+        expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
+        expect(pageOf(response.payload).getByRole('heading', { level: 1 })).toHaveTextContent('Check the details before you convert')
       })
 
       test('POST redisplays check answers saying that someone saved a newer version first, when the guide has one', async () => {

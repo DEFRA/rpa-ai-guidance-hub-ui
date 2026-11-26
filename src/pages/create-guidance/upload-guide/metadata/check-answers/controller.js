@@ -43,28 +43,35 @@ const FIELD_PAGE_MAP = {
  * The screens validate on submission, but the reference options they
  * validate against can change afterwards (see `buildMetadataSchema`), so
  * this is checked again here from whatever options are current rather
- * than trusting that a screen was ever completed at all.
+ * than trusting that a screen was ever completed at all. Not once the API
+ * has accepted the answers: they are fixed then, so an option retired since
+ * is one the user could not change.
  *
  * @private
- * @param {Object} metadata
+ * @param {import('../../../session.js').GuideUpload} upload
  * @returns {Promise<{error: Object|null, referenceOptions: Object}>} The
  *   options validated against, for the summary to show short labels from
  */
-async function _validateMetadata (metadata) {
+async function _validateMetadata (upload) {
   const [schemes, systems, audience] = await Promise.all([
     referenceData.getSchemes(),
     referenceData.getSystems(),
     referenceData.getAudiences()
   ])
+  const referenceOptions = { schemes, systems, audience }
+
+  if (upload.isSubmitted) {
+    return { error: null, referenceOptions }
+  }
 
   const schema = buildCheckAnswersSchema({
     schemeOptions: schemes,
     systemOptions: systems,
     audienceOptions: audience
   })
-  const { error } = schema.validate(metadata, { abortEarly: false })
+  const { error } = schema.validate(upload.metadata, { abortEarly: false })
 
-  return { error, referenceOptions: { schemes, systems, audience } }
+  return { error, referenceOptions }
 }
 
 /**
@@ -107,7 +114,7 @@ async function getCheckAnswers (request, h) {
     return h.redirect(UPLOAD_GUIDE_URL)
   }
 
-  const { error, referenceOptions } = await _validateMetadata(upload.metadata)
+  const { error, referenceOptions } = await _validateMetadata(upload)
 
   if (error) {
     return h.redirect(_getIncompleteScreenUrl(error))
@@ -137,7 +144,7 @@ async function convertDocument (request, h) {
     return h.redirect(UPLOAD_GUIDE_URL)
   }
 
-  const { error, referenceOptions } = await _validateMetadata(upload.metadata)
+  const { error, referenceOptions } = await _validateMetadata(upload)
 
   if (error) {
     const viewModel = CheckAnswersViewModel.fromValidationError(
