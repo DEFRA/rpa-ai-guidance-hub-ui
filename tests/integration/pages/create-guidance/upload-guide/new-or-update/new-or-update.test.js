@@ -74,7 +74,7 @@ function aGuide ({ id, title, schemes = ['Sustainable Farming Incentive (SFI)'] 
 }
 
 const CHOSEN_GUIDE = aGuide({ id: GUIDE_ID, title: 'Claiming the SFI payment, 2025' })
-const OTHER_GUIDE = aGuide({ id: OTHER_ID, title: 'Claiming the CS payment' })
+const OTHER_GUIDE = aGuide({ id: OTHER_ID, title: 'Claiming the CS payment', schemes: ['Countryside Stewardship (CS)'] })
 
 function mockGuide (guide) {
   nock(GUIDANCE_API_URL)
@@ -177,6 +177,31 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
     expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
 
     return pageOf(response.payload)
+  }
+
+  /**
+   * Send the guide details as the maintainer would, with the file's title, so
+   * the owner and purpose can be asked next.
+   */
+  async function confirmDetails (cookie) {
+    nock(GUIDANCE_API_URL)
+      .get('/reference/schemes')
+      .reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
+
+    const response = await server.inject({
+      method: 'POST',
+      url: METADATA_URL,
+      payload: {
+        guideTitle: FILE_TITLE,
+        versionNumber: '2.0',
+        schemes: ['sustainable-farming-incentive-sfi']
+      },
+      headers: { cookie }
+    })
+
+    expect(response.headers.location).toBe(PURPOSE_URL)
+
+    return mergeCookies(cookie, response.headers['set-cookie'])
   }
 
   test('sends a request with no upload back to the upload page', async () => {
@@ -384,21 +409,22 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
       .toHaveAccessibleDescription(/Select the guide this document updates/)
   })
 
-  test('starts the guide details with the chosen guide\'s, all but the version number', async () => {
+  test('starts the guide details with the chosen guide\'s, all but the title, which is the file\'s, and the version number', async () => {
     const cookie = await uploadWithGuideChosen(CHOSEN_GUIDE)
 
     const page = await detailsPage(cookie)
 
-    expect(page.getByLabelText('Guidance title')).toHaveValue('Claiming the SFI payment, 2025')
+    expect(page.getByLabelText('Guidance title')).toHaveValue(FILE_TITLE)
     expect(page.getByLabelText('Version number')).toHaveValue('')
     expect(page.getByRole('checkbox', { name: /Sustainable Farming Incentive/ })).toBeChecked()
     expect(page.getByRole('checkbox', { name: /Countryside Stewardship/ })).not.toBeChecked()
   })
 
   test('starts the owner and purpose with the chosen guide\'s', async () => {
-    const cookie = await uploadWithGuideChosen(CHOSEN_GUIDE)
+    const guideChosen = await uploadWithGuideChosen(CHOSEN_GUIDE)
+    const detailsConfirmed = await confirmDetails(guideChosen)
 
-    const page = await purposePage(cookie)
+    const page = await purposePage(detailsConfirmed)
 
     expect(page.getByLabelText('Owner email')).toHaveValue('owner@example.com')
     expect(page.getByLabelText('What is the purpose of this guidance?')).toHaveValue('Explains how to claim the payment')
@@ -424,7 +450,8 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
 
     const page = await detailsPage(otherGuideChosen)
 
-    expect(page.getByLabelText('Guidance title')).toHaveValue('Claiming the CS payment')
+    expect(page.getByRole('checkbox', { name: /Countryside Stewardship/ })).toBeChecked()
+    expect(page.getByRole('checkbox', { name: /Sustainable Farming Incentive/ })).not.toBeChecked()
   })
 
   test('starts the details again from the file when New guide is chosen after a guide', async () => {

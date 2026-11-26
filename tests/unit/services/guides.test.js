@@ -32,14 +32,15 @@ describe('guides service', () => {
     vi.resetAllMocks()
   })
 
-  test('sends the upload, its answers, its version number beside them, and who made it to the API', async () => {
+  test('sends the upload, its answers, its title and version number beside them, and who made it to the API', async () => {
     const createGuideSpy = mockApiResponse(statusCodes.HTTP_STATUS_CREATED)
 
     await guideService.createGuide(guide)
 
     expect(createGuideSpy).toHaveBeenCalledWith({
       source: { uploadId: 'upload-1', fileId: 'file-1' },
-      metadata: { guideTitle: 'A title', schemeYear: 2026 },
+      metadata: { schemeYear: 2026 },
+      title: 'A title',
       versionNumber: '1.0',
       createdBy: { id: 'user-1', displayName: 'A User' }
     })
@@ -51,7 +52,7 @@ describe('guides service', () => {
     await guideService.createGuide({ ...guide, metadata: { ...guide.metadata, schemes: ['Not scheme-specific'] } })
 
     expect(createGuideSpy).toHaveBeenCalledWith(expect.objectContaining({
-      metadata: { guideTitle: 'A title', schemes: [], schemeYear: 2026 }
+      metadata: { schemes: [], schemeYear: 2026 }
     }))
   })
 
