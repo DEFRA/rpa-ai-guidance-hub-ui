@@ -60,7 +60,8 @@ const RESULTS = {
   UPLOAD_EXPIRED: 'uploadExpired', // the API has no staged file for the upload
   PARSE_PENDING: 'parsePending', // the staged file has not finished parsing
   PARSE_FAILED: 'parseFailed', // the staged file could not be parsed
-  REPLACED_FIRST: 'replacedFirst' // the guide has a newer version than the one replaced
+  REPLACED_FIRST: 'replacedFirst', // the guide has a newer version than the one replaced
+  KEPT_FOR_ANOTHER: 'keptForAnother' // the staged file is kept for what was chosen first
 }
 
 // The most guides the API lists on one page.
@@ -93,7 +94,7 @@ const ALLOWED_ASSET_CONTENT_TYPES = new Set([
  * @returns {Promise<{code: string}>} One of `RESULTS`
  */
 async function createGuide (guide) {
-  return _convert(guide, guidesApi.createGuide, () => _whyNotParsed(guide.fileId))
+  return _convert(guide, guidesApi.createGuide, () => _whyFileRefused(guide.fileId))
 }
 
 /**
@@ -154,8 +155,8 @@ async function _convert ({ uploadId, fileId, metadata, user }, send, whyConflict
 
 /**
  * The API refuses a new version with one status whether the guide has a newer
- * version than the one it replaces or the file is not parsed, so ask the
- * guide which.
+ * version than the one it replaces or the file cannot be made into it, so ask
+ * the guide which.
  *
  * @private
  * @param {string} guideId
@@ -170,22 +171,30 @@ async function _whyVersionRefused (guideId, replacesVersionId, fileId) {
     return { code: RESULTS.REPLACED_FIRST }
   }
 
-  return _whyNotParsed(fileId)
+  return _whyFileRefused(fileId, guideId)
 }
 
 /**
- * The API refuses an unparsed file with one status whether its parse is
- * unfinished or failed, so ask the staged file which.
+ * The API refuses a file with one status whether its parse is unfinished or
+ * failed, or it is kept for another guide, so ask the staged file which. The
+ * API keeps a file for the guide first submitted, even when that submission
+ * failed, so a file kept for another guide cannot be made into this one.
  *
  * @private
  * @param {string} fileId
+ * @param {string|null} [guideId] - The guide it is a new version of; null for
+ *   a new guide
  * @returns {Promise<{code: string}>}
  */
-async function _whyNotParsed (fileId) {
+async function _whyFileRefused (fileId, guideId = null) {
   const stagedDocument = await stagedDocumentsService.getStagedDocumentById(fileId)
 
   if (!stagedDocument) {
     return { code: RESULTS.UPLOAD_EXPIRED }
+  }
+
+  if (stagedDocument.documentId && stagedDocument.documentId !== guideId) {
+    return { code: RESULTS.KEPT_FOR_ANOTHER }
   }
 
   if (stagedDocument.parsingStatus === 'failed') {

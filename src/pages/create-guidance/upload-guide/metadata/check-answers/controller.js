@@ -20,7 +20,8 @@ const REFUSAL_MESSAGES = Object.freeze({
   [GUIDE_RESULTS.UPLOAD_EXPIRED]: () => 'The uploaded document has expired. Start again and upload it again',
   [GUIDE_RESULTS.PARSE_PENDING]: () => 'The uploaded document is still being processed. Wait a few seconds, then select Convert document again',
   [GUIDE_RESULTS.PARSE_FAILED]: () => 'The uploaded document cannot be opened. Check you selected the correct file and that it has not been corrupted, then start over and upload it again. If this keeps happening, contact the support team',
-  [GUIDE_RESULTS.REPLACED_FIRST]: (guideTitle) => `Someone saved a newer version of ‘${guideTitle}’ after you chose it. Check the newer version, then upload your file again`
+  [GUIDE_RESULTS.REPLACED_FIRST]: (guideTitle) => `Someone saved a newer version of ‘${guideTitle}’ after you chose it. Check the newer version, then upload your file again`,
+  [GUIDE_RESULTS.KEPT_FOR_ANOTHER]: () => 'This document is already being converted into the guide you chose first. Choose that guide again, or start again and upload the document again'
 })
 
 // Which screen owns each field, so an incomplete/invalid answer sends the

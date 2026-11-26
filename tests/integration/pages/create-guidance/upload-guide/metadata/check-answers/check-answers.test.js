@@ -7,6 +7,7 @@ import { mergeCookies } from '../../../../../helpers/cookies.js'
 import { errorSummaryOf, pageOf, summaryValueOf } from '../../../../../helpers/page.js'
 import {
   completeAllMetadata,
+  completeDetails,
   expectFreshUploadForm,
   mockReferenceData,
   startMigration
@@ -305,6 +306,47 @@ describe('#checkAnswersController Integration', () => {
 
         expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
         expect(pageOf(response.payload).getByRole('alert')).toHaveTextContent(REFUSAL_MESSAGES[RESULTS.PARSE_PENDING])
+      })
+
+      test('POST says the document is kept for the guide chosen first, when its file is kept for another guide', async () => {
+        const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
+        mockReferenceData()
+        nock(GUIDANCE_API_BASE_URL)
+          .post(`/guides/${GUIDE_ID}/versions`)
+          .reply(statusCodes.HTTP_STATUS_CONFLICT, refusalResponse({ detail: 'File file-1 is being made into another-guide' }))
+        nock(GUIDANCE_API_BASE_URL).get(`/guides/${GUIDE_ID}`).times(2).reply(statusCodes.HTTP_STATUS_OK, guide)
+        nock(GUIDANCE_API_BASE_URL)
+          .get('/guides/staging/file-1')
+          .times(2)
+          .reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'complete', documentId: 'another-guide' }))
+
+        const response = await server.inject({ method: 'POST', url: CHECK_ANSWERS_URL, payload: {}, headers: { cookie } })
+
+        expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
+        expect(pageOf(response.payload).getByRole('alert')).toHaveTextContent(REFUSAL_MESSAGES[RESULTS.KEPT_FOR_ANOTHER])
+      })
+
+      test('POST says the document is kept for the guide chosen first, when New guide is chosen after a failed submission', async () => {
+        let cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
+        mockReferenceData()
+        nock(GUIDANCE_API_BASE_URL)
+          .post(`/guides/${GUIDE_ID}/versions`)
+          .reply(statusCodes.HTTP_STATUS_SERVICE_UNAVAILABLE, refusalResponse({ detail: 'The conversion could not be started; try again' }))
+        const failed = await server.inject({ method: 'POST', url: CHECK_ANSWERS_URL, payload: {}, headers: { cookie } })
+        cookie = await completeDetails(server, await chooseNewGuide(mergeCookies(cookie, failed.headers['set-cookie'])))
+        mockReferenceData()
+        nock(GUIDANCE_API_BASE_URL)
+          .post('/guides')
+          .reply(statusCodes.HTTP_STATUS_CONFLICT, refusalResponse({ detail: `File file-1 is being made into a version of ${GUIDE_ID}` }))
+        nock(GUIDANCE_API_BASE_URL)
+          .get('/guides/staging/file-1')
+          .times(2)
+          .reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'complete', documentId: GUIDE_ID }))
+
+        const response = await server.inject({ method: 'POST', url: CHECK_ANSWERS_URL, payload: {}, headers: { cookie } })
+
+        expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
+        expect(pageOf(response.payload).getByRole('alert')).toHaveTextContent(REFUSAL_MESSAGES[RESULTS.KEPT_FOR_ANOTHER])
       })
 
       describe('The Guidance converted page', () => {

@@ -138,6 +138,19 @@ async function completeAllMetadata (server, cookie, { updates } = {}) {
     sessionCookie = await chooseToUpdate(server, sessionCookie, updates)
   }
 
+  return completeDetails(server, sessionCookie)
+}
+
+/**
+ * Answer both details screens, up to the check page.
+ *
+ * @param {Object} server
+ * @param {string} cookie
+ * @returns {Promise<string>} The session's cookie
+ */
+async function completeDetails (server, cookie) {
+  let sessionCookie = cookie
+
   nock(GUIDANCE_API_BASE_URL)
     .get('/reference/schemes')
     .reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
@@ -200,6 +213,7 @@ async function expectFreshUploadForm (server, cookie) {
 
 export {
   completeAllMetadata,
+  completeDetails,
   completeParse,
   expectFreshUploadForm,
   mockReferenceData,
