@@ -247,7 +247,15 @@ describe('GuideUpload session helpers', () => {
    * a new guide.
    */
   function uploadTitled (guideTitle, updatesGuideId = null) {
-    return new GuideUpload({ uploads: [{ uploadId: 'u-1', metadata: { guideTitle }, updatesGuideId }] })
+    return new GuideUpload({
+      uploads: [
+        {
+          uploadId: 'u-1',
+          metadata: { guideTitle },
+          updatesGuideId
+        }
+      ]
+    })
   }
 
   test('takeConvertedGuide gives the flashed guide title once, then null', () => {
