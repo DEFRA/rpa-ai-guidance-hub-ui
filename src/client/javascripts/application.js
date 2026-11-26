@@ -8,6 +8,7 @@ import { initGuidePlace } from './guide-place.js'
 import { initGuideSearch } from './guide-search.js'
 import { initFiltersToggle } from './hub-filters.js'
 import { initSortSelect } from './hub-sort.js'
+import { initSideNavDrawer } from './side-nav-drawer.js'
 import { initSideNavLists } from './side-nav-lists.js'
 import { initReorder } from './side-nav-reorder.js'
 import { initResizeHandles } from './resize-handle.js'
@@ -28,6 +29,7 @@ initSortSelect()
 initFiltersToggle()
 initReorder()
 initSideNavLists()
+initSideNavDrawer()
 initResizeHandles()
 initCookieBanner()
 initCookiesPage()

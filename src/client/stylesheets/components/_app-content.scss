@@ -7,3 +7,10 @@
 .app-content {
   max-width: 800px;
 }
+
+// A name with nowhere to break (a cookie's, in the cookies page's tables),
+// which would otherwise hold its column, and so the page, wider than a narrow
+// or zoomed window (WCAG 1.4.10).
+.app-break-anywhere {
+  overflow-wrap: anywhere;
+}
