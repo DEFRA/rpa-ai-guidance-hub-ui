@@ -334,7 +334,7 @@ describe('Side navigation', () => {
   describe('the user\'s case bookmarks', () => {
     const { id: USER_ID } = userResponse()
     const GUIDE = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
-    const BEFORE = { sectionId: '019a0000-0000-7000-8000-000000000011', section: '11-before-you-begin', heading: '1.1 Before you begin', position: 1 }
+    const BEFORE = { sectionId: '019a0000-0000-7000-8000-000000000011', section: '1-1-before-you-begin', heading: '1.1 Before you begin', position: 1 }
     const ASSIGN = { sectionId: '019a0000-0000-7000-8000-000000000002', section: '2-assign-case', heading: '2 Assign case', position: 0 }
 
     /** The side navigation's Case bookmarks section, for a user with `cases`. */
@@ -387,7 +387,7 @@ describe('Side navigation', () => {
       expect(shown).toEqual([['Case', 'W7654321', '1 guide'], ['SBI', '123456789', '0 guides']])
       expect(links).toEqual([
         ['Claiming a payment', `/guides/${GUIDE}`],
-        ['1.1 Before you begin', `/guides/${GUIDE}?section=11-before-you-begin#11-before-you-begin`],
+        ['1.1 Before you begin', `/guides/${GUIDE}?section=1-1-before-you-begin#1-1-before-you-begin`],
         ['2 Assign case', `/guides/${GUIDE}?section=2-assign-case#2-assign-case`]
       ])
     })
