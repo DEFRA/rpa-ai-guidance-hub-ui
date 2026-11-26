@@ -294,8 +294,13 @@ $app-side-nav-muted: #505a5f;
 }
 
 .app-layout__main {
+  display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
   min-width: 0;
+  // At least the window's height, so its footer is at the foot of a short
+  // page; the page's own container takes the space above it (core/_main).
+  min-height: 100vh;
 }
 
 // Folded away to its icons (side-nav.njk), the column is the rail's width,
@@ -539,7 +544,8 @@ $app-content-gutter: govuk-spacing(4);
   margin-left: 0;
 }
 
-.app-layout__main > .govuk-width-container:not(.app-width-container--bleed) {
+.app-layout__main > .govuk-width-container:not(.app-width-container--bleed),
+.app-layout__main .defra-footer__inner {
   padding-right: $app-content-gutter;
   padding-left: $app-content-gutter;
 }

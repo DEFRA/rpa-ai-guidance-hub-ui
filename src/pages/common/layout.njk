@@ -76,6 +76,7 @@
           <span class="app-layout__toolbar-title" aria-hidden="true">{{ pageTitle or serviceName }}</span>
         </div>
         {{ super() }}
+        {% include "common/footer.njk" %}
       </div>
     </div>
   {% else %}
@@ -98,16 +99,12 @@
 {% block content %}
 {% endblock %}
 
+{# Signed in, the footer is in the main column (above), so it starts where
+   the page's content does, beside the side navigation however wide it is. #}
 {% block footer %}
-  <footer class="defra-footer" role="contentinfo">
-    <div class="govuk-width-container{% if containerClasses %} {{ containerClasses }}{% endif %}">
-      {% if aceSlackChannel %}
-        <p class="govuk-body-s govuk-!-margin-top-3 govuk-!-margin-bottom-0">
-          Questions? Contact the AICE team on Slack <a class="defra-footer__link" href="{{ aceSlackChannel }}">#ask-ace</a>
-        </p>
-      {% endif %}
-    </div>
-  </footer>
+  {% if not isAuthenticated or hideSideNav %}
+    {% include "common/footer.njk" %}
+  {% endif %}
 {% endblock %}
 
 {% block bodyEnd %}
