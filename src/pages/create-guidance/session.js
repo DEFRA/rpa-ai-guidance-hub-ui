@@ -41,6 +41,17 @@ class GuideUpload {
   }
 
   /**
+   * The active upload while its answers can change - null once the API has
+   * accepted its conversion, as the API saves the answers it was given then
+   * whatever they say later; null too if there is no upload
+   *
+   * @returns {Object|null}
+   */
+  get #answerableUpload () {
+    return this.#activeUpload?.submitted ? null : this.#activeUpload
+  }
+
+  /**
    * The active (most recent) upload id - null if none
    *
    * @returns {string|null}
@@ -74,6 +85,32 @@ class GuideUpload {
    */
   get fileId () {
     return this.#activeUpload?.fileId ?? null
+  }
+
+  /**
+   * The guide the active upload is a new version of - null for a new guide,
+   * or before it is chosen
+   * @returns {string|null}
+   */
+  get updatesGuideId () {
+    return this.#activeUpload?.updatesGuideId ?? null
+  }
+
+  /**
+   * The version of that guide the new version replaces: its latest when it
+   * was chosen - null for a new guide, or before it is chosen
+   * @returns {string|null}
+   */
+  get replacesVersionId () {
+    return this.#activeUpload?.replacesVersionId ?? null
+  }
+
+  /**
+   * Whether the API has accepted the active upload's answers, which fixes them
+   * @returns {boolean}
+   */
+  get isSubmitted () {
+    return Boolean(this.#activeUpload?.submitted)
   }
 
   /**
@@ -116,6 +153,28 @@ class GuideUpload {
   }
 
   /**
+   * Make the active upload a new version of a guide, or (null) a new guide.
+   * A different choice starts the details again with the answers given: the
+   * guide's own for a new version, none for a new guide, and the version
+   * they came from, which the new version replaces. The same choice again
+   * keeps the details, with any changes made to them since, and the version
+   * they came from. Once the conversion is submitted, nothing changes.
+   * @param {string|null} guideId
+   * @param {Object} answers - What the details start with
+   * @param {string|null} [replacesVersionId] - The guide's latest version
+   * @returns {void}
+   */
+  setUpdatesGuideId (guideId, answers, replacesVersionId = null) {
+    const upload = this.#answerableUpload
+
+    if (upload && guideId !== this.updatesGuideId) {
+      upload.updatesGuideId = guideId
+      upload.replacesVersionId = replacesVersionId
+      upload.metadata = { ...answers }
+    }
+  }
+
+  /**
    * Update or set metadata for the active upload
    *
    * Performs a shallow merge onto any metadata already captured, so
@@ -125,21 +184,34 @@ class GuideUpload {
    * a step can't accidentally null out a key set by an earlier step. Note
    * this merge is shallow: an object-valued key is replaced wholesale, not
    * deep-merged, so two screens should not both write into the same
-   * nested key.
+   * nested key. Once the conversion is submitted, nothing changes.
    *
    * @param {Object} metadata
    * @returns {void}
    */
   setMetadata (metadata) {
-    if (this.#activeUpload) {
+    const upload = this.#answerableUpload
+
+    if (upload) {
       const providedEntries = Object.entries(metadata).filter(
         ([, value]) => value !== undefined
       )
 
-      this.#activeUpload.metadata = {
-        ...(this.#activeUpload.metadata),
+      upload.metadata = {
+        ...(upload.metadata),
         ...Object.fromEntries(providedEntries)
       }
+    }
+  }
+
+  /**
+   * Fix the active upload's answers - the guide it updates, if any, and its
+   * details - once the API has accepted them for conversion
+   * @returns {void}
+   */
+  setSubmitted () {
+    if (this.#activeUpload) {
+      this.#activeUpload.submitted = true
     }
   }
 
@@ -238,6 +310,39 @@ function setGuideUploadFileId (request, fileId) {
 }
 
 /**
+ * Make the active upload a new version of a guide, or (null) a new guide, in
+ * session; see `GuideUpload#setUpdatesGuideId`
+ * @param {import('@hapi/hapi').Request} request
+ * @param {string|null} guideId
+ * @param {Object} answers - What the details start with
+ * @param {string|null} [replacesVersionId] - The guide's latest version
+ * @returns {void}
+ */
+function setGuideUploadUpdates (request, guideId, answers, replacesVersionId) {
+  const upload = getGuideUpload(request)
+
+  if (upload) {
+    upload.setUpdatesGuideId(guideId, answers, replacesVersionId)
+    request.yar.set(SESSION_KEY, upload.toPlainObject())
+  }
+}
+
+/**
+ * Fix the answers of the active upload in session, once the API has accepted
+ * its conversion; see `GuideUpload#setSubmitted`
+ * @param {import('@hapi/hapi').Request} request
+ * @returns {void}
+ */
+function setGuideUploadSubmitted (request) {
+  const upload = getGuideUpload(request)
+
+  if (upload) {
+    upload.setSubmitted()
+    request.yar.set(SESSION_KEY, upload.toPlainObject())
+  }
+}
+
+/**
  * Update the metadata of the active upload in session
  *
  * @param {import('@hapi/hapi').Request} request
@@ -266,7 +371,8 @@ function getGuideUploadMetadata (request) {
 }
 
 /**
- * Remember the guide just converted, for its confirmation page only. The
+ * Remember the guide just converted from the upload - its title, and whether
+ * it is a new version of a guide - for its confirmation page only. The
  * upload itself is cleared, so this is all that survives the redirect.
  *
  * Flash queues values, so a guide converted before an earlier one's
@@ -274,24 +380,27 @@ function getGuideUploadMetadata (request) {
  * leaves only the latest to confirm.
  *
  * @param {import('@hapi/hapi').Request} request - Hapi request object with yar
- * @param {string} guideTitle
+ * @param {GuideUpload} upload - The upload just converted
  */
-function flashConvertedGuide (request, guideTitle) {
+function flashConvertedGuide (request, upload) {
   request.yar.flash(CONVERTED_GUIDE_KEY)
-  request.yar.flash(CONVERTED_GUIDE_KEY, guideTitle)
+  request.yar.flash(CONVERTED_GUIDE_KEY, {
+    guideTitle: upload.metadata?.guideTitle,
+    isNewVersion: Boolean(upload.updatesGuideId)
+  })
 }
 
 /**
  * Take the guide just converted, which can be taken once.
  *
  * @param {import('@hapi/hapi').Request} request - Hapi request object with yar
- * @returns {{guideTitle: string}|null} null when nothing has been converted
- *   or it was already taken
+ * @returns {{guideTitle: string, isNewVersion: boolean}|null} null when
+ *   nothing has been converted or it was already taken
  */
 function takeConvertedGuide (request) {
-  const [guideTitle] = request.yar.flash(CONVERTED_GUIDE_KEY)
+  const [convertedGuide] = request.yar.flash(CONVERTED_GUIDE_KEY)
 
-  return guideTitle ? { guideTitle } : null
+  return convertedGuide ?? null
 }
 
 export {
@@ -304,6 +413,8 @@ export {
   setGuideUploadCompletedSteps,
   setGuideUploadFileId,
   setGuideUploadMetadata,
+  setGuideUploadSubmitted,
+  setGuideUploadUpdates,
   getGuideUploadMetadata,
   flashConvertedGuide,
   takeConvertedGuide

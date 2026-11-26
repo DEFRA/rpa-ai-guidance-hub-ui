@@ -1,6 +1,7 @@
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 
 import {
+  GuideUpload,
   getGuideUpload,
   createGuideUpload,
   clearGuideUpload,
@@ -241,22 +242,46 @@ describe('GuideUpload session helpers', () => {
     })
   }
 
+  /**
+   * An upload with its title given, a new version of the guide given or (null)
+   * a new guide.
+   */
+  function uploadTitled (guideTitle, updatesGuideId = null) {
+    return new GuideUpload({
+      uploads: [
+        {
+          uploadId: 'u-1',
+          metadata: { guideTitle },
+          updatesGuideId
+        }
+      ]
+    })
+  }
+
   test('takeConvertedGuide gives the flashed guide title once, then null', () => {
     flashLikeYar()
 
-    flashConvertedGuide(request, 'Converted Guide')
+    flashConvertedGuide(request, uploadTitled('Converted Guide'))
 
-    expect(takeConvertedGuide(request)).toEqual({ guideTitle: 'Converted Guide' })
+    expect(takeConvertedGuide(request)).toEqual({ guideTitle: 'Converted Guide', isNewVersion: false })
     expect(takeConvertedGuide(request)).toBeNull()
+  })
+
+  test('takeConvertedGuide says when the guide converted is a new version of a guide', () => {
+    flashLikeYar()
+
+    flashConvertedGuide(request, uploadTitled('Converted Guide', 'guide-1'))
+
+    expect(takeConvertedGuide(request)).toEqual({ guideTitle: 'Converted Guide', isNewVersion: true })
   })
 
   test('takeConvertedGuide gives the latest guide when a second is converted before the first confirmation is seen', () => {
     flashLikeYar()
 
-    flashConvertedGuide(request, 'First Guide')
-    flashConvertedGuide(request, 'Second Guide')
+    flashConvertedGuide(request, uploadTitled('First Guide'))
+    flashConvertedGuide(request, uploadTitled('Second Guide'))
 
-    expect(takeConvertedGuide(request)).toEqual({ guideTitle: 'Second Guide' })
+    expect(takeConvertedGuide(request)).toEqual({ guideTitle: 'Second Guide', isNewVersion: false })
     expect(takeConvertedGuide(request)).toBeNull()
   })
 })

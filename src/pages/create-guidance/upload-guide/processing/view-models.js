@@ -1,6 +1,6 @@
 const POLL_URL = '/create-guidance/upload-guide/processing/status'
 const PROCESSING_URL = '/create-guidance/upload-guide/processing'
-const REDIRECT_URL = '/create-guidance/upload-guide/metadata'
+const REDIRECT_URL = '/create-guidance/upload-guide/new-or-update'
 const RETRY_URL = '/create-guidance/upload-guide'
 
 /**

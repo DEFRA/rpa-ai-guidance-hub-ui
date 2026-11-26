@@ -5,9 +5,12 @@ class ConvertedViewModel {
   /**
    * @param {Object} data
    * @param {string} data.guideTitle - The title the user gave the guide
+   * @param {boolean} data.isNewVersion - Whether it is a new version of a
+   *   guide, which is live at once, rather than a new guide's draft
    */
-  constructor ({ guideTitle }) {
+  constructor ({ guideTitle, isNewVersion }) {
     this.guideTitle = guideTitle
+    this.isNewVersion = isNewVersion
   }
 
   pageTitle = 'Guidance converted'

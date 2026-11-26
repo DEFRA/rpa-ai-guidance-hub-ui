@@ -34,6 +34,29 @@ async function createGuide (newGuide) {
 }
 
 /**
+ * Convert an upload into a new version of a guide, recording what its author
+ * said about it. The API answers as it does for `createGuide`, but always at
+ * once (202) for a save it starts.
+ *
+ * @param {string} guideId
+ * @param {Object} newVersion - As `createGuide` takes a new guide
+ * @returns {Promise<{ok: boolean, status: number, data: any}>} - not ok
+ *   with 404 when the upload was never delivered or has expired, or 409
+ *   when it has not finished parsing
+ * @throws {GuidanceApiError} - When response is not ok and not a 404 or 409
+ */
+async function createVersion (guideId, newVersion) {
+  return guidanceApiClient.request(`${_guidePath(guideId)}/versions`, {
+    method: 'POST',
+    body: newVersion,
+    expected: [
+      statusCodes.HTTP_STATUS_NOT_FOUND,
+      statusCodes.HTTP_STATUS_CONFLICT
+    ]
+  })
+}
+
+/**
  * List guides, newest first, a page at a time.
  *
  * Values within one filter match any of them; different filters must all
@@ -137,6 +160,18 @@ async function searchGuide (guideId, words) {
 }
 
 /**
+ * The guides with titles like the words, the likest first.
+ *
+ * @param {string} words
+ * @returns {Promise<{ok: boolean, status: number, data: any}>} - data is
+ *   `{items: [{guideId, title}]}`
+ * @throws {GuidanceApiError} - When response is not ok
+ */
+async function findGuidesByTitle (words) {
+  return guidanceApiClient.request('/search/titles', { query: { q: words } })
+}
+
+/**
  * @private
  * @param {string} guideId
  * @returns {string} The guide's path
@@ -147,6 +182,8 @@ function _guidePath (guideId) {
 
 export {
   createGuide,
+  createVersion,
+  findGuidesByTitle,
   getGuide,
   getGuideAsset,
   getGuideContent,

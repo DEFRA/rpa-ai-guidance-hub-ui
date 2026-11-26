@@ -2,6 +2,7 @@
 {% from "govuk/components/back-link/macro.njk" import govukBackLink %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
+{% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
 
 {% block beforeContent %}
   {{ govukBackLink({ href: backUrl }) }}
@@ -20,12 +21,21 @@
 
       <h1 class="govuk-heading-l">Check the details before you convert</h1>
 
+      {{ govukSummaryList({ card: newOrUpdateCard, rows: newOrUpdateCard.rows }) }}
+
       {% include "create-guidance/common/guide-summary-cards.njk" %}
 
-      <p class="govuk-body">
-        When you convert this document, it is saved as a draft that only you
-        can see until it is reviewed and published.
-      </p>
+      {% if newVersionOf %}
+        <p class="govuk-body">
+          When you convert this document, the new version goes live in the hub
+          at once. Everyone who uses the hub can see it.
+        </p>
+      {% else %}
+        <p class="govuk-body">
+          When you convert this document, it is saved as a draft that only you
+          can see until it is reviewed and published.
+        </p>
+      {% endif %}
 
       <form method="post">
         <span id="conversion-error"></span>

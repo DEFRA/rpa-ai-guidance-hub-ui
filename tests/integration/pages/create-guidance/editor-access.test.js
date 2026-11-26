@@ -12,6 +12,8 @@ const EDITOR_ROUTES = [
   ['GET', '/create-guidance/upload-guide'],
   ['GET', '/create-guidance/upload-guide/processing'],
   ['GET', '/create-guidance/upload-guide/processing/status'],
+  ['GET', '/create-guidance/upload-guide/new-or-update'],
+  ['POST', '/create-guidance/upload-guide/new-or-update'],
   ['GET', '/create-guidance/upload-guide/metadata'],
   ['POST', '/create-guidance/upload-guide/metadata'],
   ['GET', '/create-guidance/upload-guide/metadata/purpose'],

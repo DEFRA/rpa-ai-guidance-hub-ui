@@ -3,7 +3,7 @@ import { NOT_SCHEME_SPECIFIC } from '../../../../services/reference-data.js'
 import { mapValidationError } from '../../form-errors.js'
 import { formatStagedDocumentDate, toCheckboxOptions, toOptionValue, toOptionValues } from './view-helpers.js'
 
-const BACK_URL = '/create-guidance/upload-guide'
+const BACK_URL = '/create-guidance/upload-guide/new-or-update'
 const NOT_AVAILABLE = 'Not available'
 
 const FIELD_HREF_MAP = {
@@ -47,11 +47,11 @@ class GuideDetailsViewModel {
    * Create a view model from session data and reference schemes
    *
    * When a staged document's parsed items are supplied, they are used
-   * to populate the title and last modified date - but a title the
-   * user has already saved to session (`values.guideTitle`) always takes
-   * precedence over the parsed title, since it reflects a deliberate
-   * user edit. The version number is the user's to enter: it is never
-   * filled in from the document.
+   * to populate the title and last modified date - but a title already in
+   * the session (`values.guideTitle`) always takes precedence over the
+   * parsed title: the user's own edit, or the chosen guide's title for a
+   * new version of it. The version number is the user's to enter: it is
+   * never filled in from the document.
    *
    * @param {Object} [options]
    * @param {Object} [options.values={}] - Session-saved metadata

@@ -64,13 +64,13 @@ describe('processingController', () => {
       expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide')
     })
 
-    test('redirects straight to metadata when all steps are complete', async () => {
+    test('redirects straight to the new-or-update page when all steps are complete', async () => {
       getUploadOutcome.mockResolvedValue({ code: RESULTS.UPLOAD_COMPLETE, status: null })
       getGuideUploadProgress.mockResolvedValue({ isComplete: true })
 
       await getStatusPage(request, h)
 
-      expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/metadata')
+      expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/new-or-update')
       expect(h.view).not.toHaveBeenCalled()
     })
 
@@ -104,7 +104,7 @@ describe('processingController', () => {
 
       expect(h.view).toHaveBeenCalledWith(PROCESSING_VIEW, expect.objectContaining({
         pollUrl: '/create-guidance/upload-guide/processing/status',
-        redirectUrl: '/create-guidance/upload-guide/metadata',
+        redirectUrl: '/create-guidance/upload-guide/new-or-update',
         label: 'Scanning for viruses',
         percentage: 50,
         isError: false,

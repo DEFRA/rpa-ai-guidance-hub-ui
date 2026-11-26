@@ -149,7 +149,7 @@ describe('start-over', () => {
 
       const stillThere = await server.inject({ method: 'GET', url: UPLOAD_GUIDE_URL, headers: { cookie } })
       expect(stillThere.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(stillThere.headers.location).toBe('/create-guidance/upload-guide/metadata')
+      expect(stillThere.headers.location).toBe('/create-guidance/upload-guide/new-or-update')
     })
 
     test('sends "cancel" back to the page the link was followed from', async () => {

@@ -2,8 +2,10 @@ import { SCHEME_YEAR } from '../constants/scheme-year.js'
 import { statusCodes } from '../constants/status-codes.js'
 
 import * as guidesApi from '../infra/guidance-api/guides.js'
+import { createLogger } from '../infra/logging/logger.js'
+import { buildErrorLog } from '../infra/logging/utils/build-error-log.js'
 import { findHeading, splitIntoSections } from './guide-sections.js'
-import { schemesAsKept } from './reference-data.js'
+import { NOT_SCHEME_SPECIFIC, schemesAsKept } from './reference-data.js'
 import * as stagedDocumentsService from './staged-documents.js'
 
 /**
@@ -50,12 +52,16 @@ import * as stagedDocumentsService from './staged-documents.js'
  * @property {string|null} lastUpdated
  */
 
+const logger = createLogger()
+
 const RESULTS = {
   SAVE_STARTED: 'saveStarted', // accepted: the guide is saving in the background
   GUIDE_CREATED: 'guideCreated', // the one this upload made before
   UPLOAD_EXPIRED: 'uploadExpired', // the API has no staged file for the upload
   PARSE_PENDING: 'parsePending', // the staged file has not finished parsing
-  PARSE_FAILED: 'parseFailed' // the staged file could not be parsed
+  PARSE_FAILED: 'parseFailed', // the staged file could not be parsed
+  REPLACED_FIRST: 'replacedFirst', // the guide has a newer version than the one replaced
+  KEPT_FOR_ANOTHER: 'keptForAnother' // the staged file is kept for what was chosen first
 }
 
 // The most guides the API lists on one page.
@@ -87,11 +93,44 @@ const ALLOWED_ASSET_CONTENT_TYPES = new Set([
  *   user's profile
  * @returns {Promise<{code: string}>} One of `RESULTS`
  */
-async function createGuide ({ uploadId, fileId, metadata, user }) {
+async function createGuide (guide) {
+  return _convert(guide, guidesApi.createGuide, () => _whyFileRefused(guide.fileId))
+}
+
+/**
+ * Convert an upload into a new version of a guide, which replaces the version
+ * named: the same request as `createGuide` makes, answered the same way, but
+ * refused when the guide has a newer version than the one it replaces.
+ *
+ * @param {string} guideId - The guide the upload is a new version of
+ * @param {Object} version - As `createGuide` takes a guide, with
+ *   `replacesVersionId`: the guide's latest version when it was chosen
+ * @returns {Promise<{code: string}>} One of `RESULTS`
+ */
+async function createVersion (guideId, version) {
+  const { replacesVersionId } = version
+
+  return _convert(
+    version,
+    (request) => guidesApi.createVersion(guideId, { ...request, replacesVersionId }),
+    () => _whyVersionRefused(guideId, replacesVersionId, version.fileId)
+  )
+}
+
+/**
+ * @private
+ * @param {Object} upload - As `createGuide` takes it
+ * @param {(request: Object) => Promise<{status: number}>} send - The API
+ *   call that converts it
+ * @param {() => Promise<{code: string}>} whyConflict - Which of the API's
+ *   reasons for a conflict it was
+ * @returns {Promise<{code: string}>} One of `RESULTS`
+ */
+async function _convert ({ uploadId, fileId, metadata, user }, send, whyConflict) {
   const { versionNumber, ...details } = metadata
   const kept = details.schemes ? { ...details, schemes: schemesAsKept(details.schemes) } : details
 
-  const res = await guidesApi.createGuide({
+  const res = await send({
     source: { uploadId, fileId },
     // The scheme year is fixed, so the form does not send it.
     metadata: { ...kept, schemeYear: SCHEME_YEAR },
@@ -104,7 +143,7 @@ async function createGuide ({ uploadId, fileId, metadata, user }) {
   }
 
   if (res.status === statusCodes.HTTP_STATUS_CONFLICT) {
-    return _whyNotParsed(fileId)
+    return whyConflict()
   }
 
   if (res.status === statusCodes.HTTP_STATUS_ACCEPTED) {
@@ -115,18 +154,47 @@ async function createGuide ({ uploadId, fileId, metadata, user }) {
 }
 
 /**
- * The API refuses an unparsed file with one status whether its parse is
- * unfinished or failed, so ask the staged file which.
+ * The API refuses a new version with one status whether the guide has a newer
+ * version than the one it replaces or the file cannot be made into it, so ask
+ * the guide which.
  *
  * @private
+ * @param {string} guideId
+ * @param {string} replacesVersionId
  * @param {string} fileId
  * @returns {Promise<{code: string}>}
  */
-async function _whyNotParsed (fileId) {
+async function _whyVersionRefused (guideId, replacesVersionId, fileId) {
+  const guide = await getGuideById(guideId)
+
+  if (guide?.latestVersion?.id !== replacesVersionId) {
+    return { code: RESULTS.REPLACED_FIRST }
+  }
+
+  return _whyFileRefused(fileId, guideId)
+}
+
+/**
+ * The API refuses a file with one status whether its parse is unfinished or
+ * failed, or it is kept for another guide, so ask the staged file which. The
+ * API keeps a file for the guide first submitted, even when that submission
+ * failed, so a file kept for another guide cannot be made into this one.
+ *
+ * @private
+ * @param {string} fileId
+ * @param {string|null} [guideId] - The guide it is a new version of; null for
+ *   a new guide
+ * @returns {Promise<{code: string}>}
+ */
+async function _whyFileRefused (fileId, guideId = null) {
   const stagedDocument = await stagedDocumentsService.getStagedDocumentById(fileId)
 
   if (!stagedDocument) {
     return { code: RESULTS.UPLOAD_EXPIRED }
+  }
+
+  if (stagedDocument.documentId && stagedDocument.documentId !== guideId) {
+    return { code: RESULTS.KEPT_FOR_ANOTHER }
   }
 
   if (stagedDocument.parsingStatus === 'failed') {
@@ -335,8 +403,61 @@ function _titleOf (version, metadata) {
   return version?.title ?? metadata?.guideTitle ?? null
 }
 
+/**
+ * A guide's details as the upload journey's answers, for a new version of it
+ * to start with: only the details the journey asks, as check answers refuses
+ * any other, and all but the version number, which each version's author
+ * gives. A guide kept with no scheme is not scheme-specific.
+ *
+ * @param {Guide} guide
+ * @returns {Object}
+ */
+function answersOf ({ title, metadata }) {
+  const { schemes, owner, goal, requirements, systems, audience } = metadata
+
+  return {
+    guideTitle: title,
+    schemes: schemes?.length === 0 ? [NOT_SCHEME_SPECIFIC] : schemes,
+    owner,
+    goal,
+    requirements,
+    systems,
+    audience
+  }
+}
+
+/**
+ * The guides with titles like the words, the likest first: none for no words.
+ * Null when the search cannot answer, which is logged: a choice that needs no
+ * search can still be made.
+ *
+ * @param {string} words
+ * @returns {Promise<Array<{guideId: string, title: string}>|null>}
+ */
+async function guidesTitledLike (words) {
+  if (!words) {
+    return []
+  }
+
+  try {
+    const res = await guidesApi.findGuidesByTitle(words)
+
+    return res.data.items
+  } catch (err) {
+    logger.warn(
+      buildErrorLog(err, { type: 'guide_title_search_unavailable' }),
+      `Could not search the guides' titles: ${err.message}`
+    )
+
+    return null
+  }
+}
+
 export {
+  answersOf,
+  guidesTitledLike,
   createGuide,
+  createVersion,
   getGuideAsset,
   getGuideById,
   getGuideContent,

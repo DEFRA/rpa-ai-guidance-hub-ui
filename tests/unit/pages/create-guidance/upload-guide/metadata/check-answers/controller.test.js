@@ -192,8 +192,8 @@ describe('upload-guide metadata check-answers controller', () => {
       expect(clearSpy).not.toHaveBeenCalled()
     })
 
-    test('carries the guide title over to the confirmation', async () => {
-      mockUpload(validMetadata())
+    test('carries the converted upload over to the confirmation', async () => {
+      const upload = mockUpload(validMetadata())
       mockReferenceData()
       guidesService.createGuide
         .mockResolvedValue({ code: guidesService.RESULTS.GUIDE_CREATED })
@@ -202,7 +202,7 @@ describe('upload-guide metadata check-answers controller', () => {
 
       await convertDocument(request, h)
 
-      expect(session.flashConvertedGuide).toHaveBeenCalledWith(request, validMetadata().guideTitle)
+      expect(session.flashConvertedGuide).toHaveBeenCalledWith(request, upload)
     })
 
     test('clears the upload from the session once the guide is created, so the next guide starts afresh', async () => {

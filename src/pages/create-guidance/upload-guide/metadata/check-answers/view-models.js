@@ -1,5 +1,5 @@
 import { mapValidationError } from '../../../form-errors.js'
-import { buildGuideSummaryCards } from '../../../guide-summary.js'
+import { buildGuideSummaryCards, buildNewOrUpdateCard } from '../../../guide-summary.js'
 
 const BACK_URL = '/create-guidance/upload-guide/metadata/purpose'
 const HUB_URL = '/hub'
@@ -24,12 +24,16 @@ const FIELD_HREF_MAP = {
 class CheckAnswersViewModel {
   /**
    * @param {Object} [data={}]
+   * @param {string|null} [data.newVersionOf] - The title of the guide the
+   *   upload is a new version of; null for a new guide
    * @param {Object} [data.guideDetailsCard]
    * @param {Object} [data.ownerPurposeCard]
    * @param {string} [data.backUrl]
    * @param {Array<{text: string, href: string}>} [data.errorList]
    */
   constructor (data = {}) {
+    this.newVersionOf = data.newVersionOf ?? null
+    this.newOrUpdateCard = buildNewOrUpdateCard(this.newVersionOf)
     this.guideDetailsCard = data.guideDetailsCard || {}
     this.ownerPurposeCard = data.ownerPurposeCard || {}
     this.backUrl = data.backUrl || BACK_URL
@@ -40,8 +44,11 @@ class CheckAnswersViewModel {
   /**
    * Build the summary rows from session metadata and the staged document
    */
-  static fromSession (sessionData) {
-    return new CheckAnswersViewModel(buildGuideSummaryCards(sessionData))
+  static fromSession (sessionData = {}) {
+    return new CheckAnswersViewModel({
+      ...buildGuideSummaryCards(sessionData),
+      newVersionOf: sessionData.newVersionOf
+    })
   }
 
   static fromSubmissionError (data, message) {
@@ -61,9 +68,9 @@ class CheckAnswersViewModel {
    */
   static fromValidationError (sessionData, err) {
     const { errorList } = mapValidationError(err, FIELD_HREF_MAP)
-    const { guideDetailsCard, ownerPurposeCard } = CheckAnswersViewModel.fromSession(sessionData)
+    const { guideDetailsCard, ownerPurposeCard, newVersionOf } = CheckAnswersViewModel.fromSession(sessionData)
 
-    return new CheckAnswersViewModel({ guideDetailsCard, ownerPurposeCard, errorList })
+    return new CheckAnswersViewModel({ guideDetailsCard, ownerPurposeCard, newVersionOf, errorList })
   }
 
   pageTitle = 'Check the details before you convert'
