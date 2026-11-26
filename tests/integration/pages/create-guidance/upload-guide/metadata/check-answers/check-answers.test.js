@@ -10,6 +10,7 @@ import {
   completeDetails,
   expectFreshUploadForm,
   mockReferenceData,
+  mockStagedFileRead,
   startMigration,
   uploadReadyToConvert
 } from '../../../../../helpers/upload-journey.js'
@@ -458,6 +459,8 @@ describe('#checkAnswersController Integration', () => {
         const failed = await submit(readyCookie)
         const failedCookie = mergeCookies(readyCookie, failed.headers['set-cookie'])
 
+        // Not submitted, so the new choice starts the details again, reading the file.
+        mockStagedFileRead()
         const afterChoiceCookie = await chooseNewGuide(failedCookie)
 
         const afterDetailsCookie = await completeDetails(server, afterChoiceCookie)

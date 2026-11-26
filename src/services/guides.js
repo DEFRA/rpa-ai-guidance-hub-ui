@@ -38,6 +38,8 @@ import * as stagedDocumentsService from './staged-documents.js'
  *   null for a version made before versions had numbers
  * @property {{id: string, displayName: string|null}|null} createdBy
  * @property {string} createdAt
+ * @property {string|null} sourceLink - Where the maintainer said its document
+ *   came from, as they gave it; null when they gave none
  */
 
 /**
@@ -392,7 +394,8 @@ function _toVersion (version) {
     title: version.title ?? null,
     versionNumber: version.versionNumber ?? null,
     createdBy: version.createdBy ?? null,
-    createdAt: version.createdAt
+    createdAt: version.createdAt,
+    sourceLink: version.sourceLink ?? null
   }
 }
 

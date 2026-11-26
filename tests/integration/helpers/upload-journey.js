@@ -98,6 +98,16 @@ async function completeParse (server, cookie, uploadId = 'u-check') {
 }
 
 /**
+ * The staged file, read when a choice is made, for the source link to start
+ * with its Document ID link: here it has none.
+ */
+function mockStagedFileRead () {
+  nock(GUIDANCE_API_BASE_URL)
+    .get('/guides/staging/file-1')
+    .reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'complete' }))
+}
+
+/**
  * Choose to make the upload a new version of a guide.
  *
  * @param {Object} server
@@ -109,6 +119,7 @@ async function chooseToUpdate (server, cookie, guide) {
   nock(GUIDANCE_API_BASE_URL)
     .get(`/guides/${guide.id}`)
     .reply(statusCodes.HTTP_STATUS_OK, guide)
+  mockStagedFileRead()
 
   const response = await server.inject({
     method: 'POST',
@@ -225,6 +236,7 @@ async function expectFreshUploadForm (server, cookie) {
 }
 
 export {
+  mockStagedFileRead,
   completeAllMetadata,
   completeDetails,
   completeParse,

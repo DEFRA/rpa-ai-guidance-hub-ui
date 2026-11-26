@@ -64,8 +64,12 @@ function audiencesResponse (overrides) {
  * 'pending' | 'in_progress' | 'complete' | 'failed' - not UI-style enum
  * strings.
  *
+ * Verified against the `StagedDocumentResponse` schema on 2026-11-26:
+ * documentIdLink, the file's link by its SharePoint Document ID, null for a
+ * file with none.
+ *
  * @param {Object} [overrides]
- * @returns {{fileId: string, parsingStatus: string, parsingError: string|null, title: string|null, version: string|null, lastModified: string|null}}
+ * @returns {{fileId: string, parsingStatus: string, parsingError: string|null, title: string|null, version: string|null, lastModified: string|null, documentIdLink: string|null}}
  */
 function stagedDocumentResponse (overrides = {}) {
   return {
@@ -75,6 +79,7 @@ function stagedDocumentResponse (overrides = {}) {
     title: null,
     version: null,
     lastModified: null,
+    documentIdLink: null,
     ...overrides
   }
 }
@@ -130,10 +135,12 @@ function createdGuideResponse (overrides = {}) {
  *
  * Verified against OpenAPI schema on 2026-10-12: contains id, contentUrl,
  * title, createdBy, and createdAt. The API adds versionNumber, as the author
- * gave it, null for a version made before versions had one.
+ * gave it, null for a version made before versions had one; and, verified
+ * against the `Version` schema on 2026-11-26, sourceLink, as the maintainer
+ * gave it, null for a version given none.
  *
  * @param {Object} [overrides]
- * @returns {{id: string, contentUrl: string, title: string|null, versionNumber: string|null, createdBy: Object|null, createdAt: string}}
+ * @returns {{id: string, contentUrl: string, title: string|null, versionNumber: string|null, createdBy: Object|null, createdAt: string, sourceLink: string|null}}
  */
 function versionResponse (overrides = {}) {
   return {
@@ -143,6 +150,7 @@ function versionResponse (overrides = {}) {
     versionNumber: '1.0',
     createdBy: { id: 'dev-user-123', displayName: 'Dev User' },
     createdAt: '2026-10-06T08:00:00Z',
+    sourceLink: null,
     ...overrides
   }
 }
