@@ -43,18 +43,18 @@ function startEntraLogin (_request, h) {
  * @returns {Promise<any>}
  */
 async function handleEntraCallback (request, h) {
-  const { code, state, error, error_description: errorDescription } = request.payload ?? {}
+  const payload = request.payload
   const oidcState = request.state[OIDC_STATE_COOKIE]
 
   h.unstate(OIDC_STATE_COOKIE)
 
-  if (error) {
-    _failLogin(new Error(`${error}: ${errorDescription}`), 'entra_callback_error', 'warn')
+  if (payload.error) {
+    _failLogin(new Error(`${payload.error}: ${payload.error_description}`), 'entra_callback_error', 'warn')
   }
 
-  if (!_isValidCallback({ code, state }, oidcState)) {
+  if (!_isValidCallback(payload, oidcState)) {
     _failLogin(
-      new Error(_invalidCallbackReason(request, { code, state }, oidcState)),
+      new Error(_invalidCallbackReason(request, payload, oidcState)),
       'entra_state_mismatch',
       'warn'
     )
@@ -63,7 +63,7 @@ async function handleEntraCallback (request, h) {
   let tokens
 
   try {
-    tokens = await oidc.exchangeCode({ code, codeVerifier: oidcState.codeVerifier })
+    tokens = await oidc.exchangeCode({ code: payload.code, codeVerifier: oidcState.codeVerifier })
   } catch (err) {
     _failLogin(err, 'entra_token_exchange_failed', 'error')
   }
@@ -83,6 +83,23 @@ async function handleEntraCallback (request, h) {
     token: tokens.access_token,
     refreshToken: tokens.refresh_token
   })
+}
+
+/**
+ * The `failAction` for `/login/callback`: a body that is not what Entra
+ * posts (none at all, or a field that is not a string) is rejected like
+ * any other bad callback - a logged, generic 401 - and the OIDC state
+ * cookie is cleared.
+ *
+ * @param {Hapi.Request} _request
+ * @param {Hapi.ResponseToolkit} h
+ * @param {Error} error - Joi's validation error
+ * @throws {Boom.Boom} always
+ */
+function rejectInvalidCallback (_request, h, error) {
+  h.unstate(OIDC_STATE_COOKIE)
+
+  _failLogin(error, 'entra_callback_invalid', 'warn')
 }
 
 /**
@@ -215,16 +232,16 @@ function _failLogin (error, type, level) {
  * @param {{ state?: string, nonce?: string } | undefined} oidcState
  * @returns {boolean}
  */
-function _isValidCallback ({ code, state }, oidcState) {
-  if (!code || !oidcState?.nonce) {
+function _isValidCallback (params, oidcState) {
+  if (!params.code || !oidcState?.nonce) {
     return false
   }
 
-  if (!state) {
+  if (!params.state) {
     return false
   }
 
-  return state === oidcState.state
+  return params.state === oidcState.state
 }
 
 /**
@@ -263,5 +280,6 @@ export {
   handleEntraCallback,
   loginAsDevUser,
   logout,
+  rejectInvalidCallback,
   startEntraLogin
 }

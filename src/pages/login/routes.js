@@ -1,3 +1,5 @@
+import Joi from 'joi'
+
 import { config } from '../../config/config.js'
 import * as controller from './controller.js'
 
@@ -20,7 +22,20 @@ const routes = [
         method: 'POST',
         path: '/login/callback',
         options: {
-          auth: false
+          auth: false,
+          validate: {
+            // What Entra posts: a code and state, or an error. Anything else
+            // it sends (e.g. `session_state`) is stripped. A missing body
+            // fails here, and is rejected and logged like any other bad
+            // callback.
+            payload: Joi.object({
+              code: Joi.string(),
+              state: Joi.string(),
+              error: Joi.string(),
+              error_description: Joi.string()
+            }).options({ stripUnknown: true }),
+            failAction: controller.rejectInvalidCallback
+          }
         },
         handler: controller.handleEntraCallback
       }]

@@ -375,6 +375,36 @@ describe('#loginController', () => {
       expect(logged).not.toContain(state)
     })
 
+    test('accepts the other fields Entra may post, such as session_state', async () => {
+      const { state, nonce, cookie } = await startLogin(server)
+
+      mockTokenEndpoint({
+        access_token: generateEntraJwt(),
+        id_token: generateEntraJwt({ nonce, oid: USER_OID })
+      })
+      mockJwks()
+
+      const callback = await postCallback(server, { cookie, params: { code: 'auth-code', state, session_state: 'entra-session' } })
+
+      expect(callback.statusCode).toBe(302)
+      expect(callback.headers.location).toBe('/hub')
+    })
+
+    test('rejects and logs a callback with no body, and clears the OIDC state cookie', async () => {
+      const { cookie } = await startLogin(server)
+      const tokenScope = mockTokenEndpoint({})
+
+      const callback = await server.inject({ method: 'POST', url: '/login/callback', headers: { cookie } })
+
+      expect(callback.statusCode).toBe(401)
+      expect(callback.result.message).toBe('Authentication failed. Please try again.')
+      expect(tokenScope.isDone()).toBe(false)
+      expect(callback.headers['set-cookie']).toEqual(
+        expect.arrayContaining([expect.stringMatching(/^entra-oidc=; Max-Age=0/)])
+      )
+      expectFailureLogged('entra_callback_invalid', 'warn')
+    })
+
     test('does not accept the authorization response on a query string', async () => {
       const { state, cookie } = await startLogin(server)
       const tokenScope = mockTokenEndpoint({})
