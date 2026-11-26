@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { initSearchAllGuides, isShortcut, shortcutLabel, showShortcut } from '../../../../src/client/javascripts/search-shortcuts.js'
+import { initSideNavDrawer } from '../../../../src/client/javascripts/side-nav-drawer.js'
 
 // The script listens on the document, which outlives each test: take off
 // what each test added, so one test's page does not answer another's keys.
@@ -121,5 +122,57 @@ describe('Ctrl+K', () => {
     initSearchAllGuides()
 
     expect(pressCtrlK()).toHaveProperty('defaultPrevented', false)
+  })
+
+  describe('with the side navigation a drawer', () => {
+    /**
+     * A page whose side navigation is a drawer on a narrow window, the window
+     * as narrow as given.
+     */
+    function drawerPage (narrow) {
+      window.matchMedia = vi.fn(() => ({ matches: narrow, addEventListener: () => {} }))
+      document.body.innerHTML = `
+        <div class="app-layout" data-side-nav-drawer>
+          <div class="app-layout__nav">
+            <nav aria-label="Guidance hub">
+              <a href="/hub">Guidance hub</a>
+              <input id="side-nav-search" name="q">
+            </nav>
+          </div>
+          <div class="app-layout__main">
+            <button type="submit" data-side-nav-toolbar-toggle>
+              <span data-side-nav-toolbar-label>Collapse navigation</span>
+            </button>
+          </div>
+        </div>`
+      initSideNavDrawer()
+      initSearchAllGuides()
+    }
+
+    const toggle = () => document.querySelector('[data-side-nav-toolbar-toggle]')
+
+    afterEach(() => {
+      delete window.matchMedia
+    })
+
+    test('opens the closed drawer on a narrow window, then comes to its search box, as the closed drawer is hidden', () => {
+      drawerPage(true)
+
+      pressCtrlK()
+
+      expect(toggle()).toHaveAttribute('aria-expanded', 'true')
+      expect(document.getElementById('side-nav-search')).toHaveFocus()
+    })
+
+    test('does not press the toolbar\'s button on a wide window, where it would fold the navigation', () => {
+      drawerPage(false)
+      const pressed = vi.fn()
+      toggle().addEventListener('click', pressed)
+
+      pressCtrlK()
+
+      expect(pressed).not.toHaveBeenCalled()
+      expect(document.getElementById('side-nav-search')).toHaveFocus()
+    })
   })
 })

@@ -9,6 +9,10 @@
 // guide's heading called "Hub search" has the same id.
 const ALL_GUIDES_BOXES = ['input#hub-search', 'input#side-nav-search']
 
+// The toolbar's button while the side navigation is a closed drawer: it says
+// whether the drawer is open only on a narrow window (side-nav-drawer.js).
+const CLOSED_DRAWER_TOGGLE = '[data-side-nav-toolbar-toggle][aria-expanded="false"]'
+
 // The platforms whose keyboards have Cmd.
 const APPLE = ['Mac', 'iPhone', 'iPad']
 
@@ -76,10 +80,26 @@ function initSearchAllGuides () {
   document.addEventListener('keydown', (event) => {
     if (isShortcut(event, 'k')) {
       event.preventDefault()
+      _openDrawerAround(input)
       input.focus()
       input.select()
     }
   })
+}
+
+/**
+ * Open the side navigation's drawer if the box is in it and it is closed, as
+ * its toolbar's button does: a closed drawer is hidden, and a hidden box
+ * cannot take the focus.
+ *
+ * @private
+ * @param {HTMLInputElement} input
+ * @returns {void}
+ */
+function _openDrawerAround (input) {
+  if (input.closest('.app-layout__nav')) {
+    document.querySelector(CLOSED_DRAWER_TOGGLE)?.click()
+  }
 }
 
 export {
