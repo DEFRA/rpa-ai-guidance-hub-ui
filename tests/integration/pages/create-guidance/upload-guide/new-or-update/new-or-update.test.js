@@ -366,6 +366,24 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
     expect(guidesOffered(page).getAllByRole('radio')).toHaveLength(2)
   })
 
+  test('asks again when an update names no guide and none is offered, with the error on the search box', async () => {
+    const cookie = await processed()
+
+    const response = await server.inject({
+      method: 'POST',
+      url: CHOICE_URL,
+      payload: { kind: 'update', q: '' },
+      headers: { cookie }
+    })
+
+    const page = pageOf(response.payload)
+    expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
+    expect(errorSummaryOf(page).getByRole('link', { name: 'Select the guide this document updates' }))
+      .toHaveAttribute('href', '#guide-search')
+    expect(page.getByRole('searchbox', { name: 'Search for a guide by its title' }))
+      .toHaveAccessibleDescription(/Select the guide this document updates/)
+  })
+
   test('starts the guide details with the chosen guide\'s, all but the version number', async () => {
     const cookie = await uploadWithGuideChosen(CHOSEN_GUIDE)
 

@@ -37,6 +37,8 @@ async function getChoicePage (request, h) {
 
 /**
  * Ask again, with what was missing, and the guides like the words searched.
+ * With no guide to choose, a missing guide is put right by searching, so its
+ * error goes to the search box.
  *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
@@ -44,12 +46,13 @@ async function getChoicePage (request, h) {
  */
 async function choiceFailAction (request, h, err) {
   const { kind, guideId, q = '' } = request.payload ?? {}
+  const guides = await guidesTitledLike(q)
   const viewModel = new ChoiceViewModel({
     kind,
     guideId,
     q,
-    guides: await guidesTitledLike(q),
-    ...mapValidationError(err)
+    guides,
+    ...mapValidationError(err, guides?.length ? {} : { guideId: '#guide-search' })
   })
 
   return h.view(CHOICE_VIEW, viewModel).code(statusCodes.HTTP_STATUS_BAD_REQUEST).takeover()

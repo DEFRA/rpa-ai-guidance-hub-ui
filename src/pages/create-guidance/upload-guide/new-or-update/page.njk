@@ -27,7 +27,8 @@
             type: "search",
             value: q,
             label: { text: "Search for a guide by its title" },
-            attributes: { autocomplete: "off" }
+            attributes: { autocomplete: "off" },
+            errorMessage: { text: errors.guideId } if errors.guideId and not guides.length
           }) }}
           {{ govukButton({
             text: "Search",
@@ -35,7 +36,7 @@
             attributes: { formmethod: "get", formaction: pageHref, formnovalidate: true }
           }) }}
           {% if searchUnavailable %}
-            <p class="govuk-body" id="guideId">Search is not available at the moment. Try again later.</p>
+            <p class="govuk-body">Search is not available at the moment. Try again later.</p>
           {% elif guides.length %}
             {{ govukRadios({
               idPrefix: "guideId",
@@ -45,7 +46,7 @@
               errorMessage: { text: errors.guideId } if errors.guideId
             }) }}
           {% elif q %}
-            <p class="govuk-body" id="guideId">No guides found for ‘{{ q }}’</p>
+            <p class="govuk-body">No guides found for ‘{{ q }}’</p>
           {% endif %}
         {% endset %}
 
