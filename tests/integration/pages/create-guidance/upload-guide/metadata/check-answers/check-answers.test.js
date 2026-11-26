@@ -10,7 +10,8 @@ import {
   completeDetails,
   expectFreshUploadForm,
   mockReferenceData,
-  startMigration
+  startMigration,
+  uploadReadyToConvert
 } from '../../../../../helpers/upload-journey.js'
 import { config } from '../../../../../../../src/config/config.js'
 import { guidanceApiClient } from '../../../../../../../src/infra/guidance-api/client.js'
@@ -147,7 +148,7 @@ describe('#checkAnswersController Integration', () => {
     })
 
     test('GET says in a card that the upload is a new guide, with a Change link to choose again', async () => {
-      const cookie = await completeAllMetadata(server, await loginAsDevUser(server))
+      const cookie = await uploadReadyToConvert(server)
       mockReferenceData()
       nock(GUIDANCE_API_BASE_URL).get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse())
 
@@ -164,7 +165,7 @@ describe('#checkAnswersController Integration', () => {
       const VERSION_REQUEST = { ...CONVERSION_REQUEST, replacesVersionId: guide.versions[0].id }
 
       async function checkPage (chosen = guide) {
-        const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: chosen })
+        const cookie = await uploadReadyToConvert(server, { updates: chosen })
         mockReferenceData()
         nock(GUIDANCE_API_BASE_URL).get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse())
         nock(GUIDANCE_API_BASE_URL).get(`/guides/${GUIDE_ID}`).reply(statusCodes.HTTP_STATUS_OK, chosen)
@@ -180,7 +181,7 @@ describe('#checkAnswersController Integration', () => {
        * Convert the new version, with the API's answer given.
        */
       async function convert (status, body, headers) {
-        const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
+        const cookie = await uploadReadyToConvert(server, { updates: guide })
         mockReferenceData()
         nock(GUIDANCE_API_BASE_URL).post(`/guides/${GUIDE_ID}/versions`).reply(status, body, headers)
 
@@ -231,7 +232,7 @@ describe('#checkAnswersController Integration', () => {
       })
 
       test('POST asks the API to save the upload as a new version of the guide, replacing the version chosen, then follows the save', async () => {
-        const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
+        const cookie = await uploadReadyToConvert(server, { updates: guide })
         mockReferenceData()
         const createVersion = nock(GUIDANCE_API_BASE_URL)
           .post(`/guides/${GUIDE_ID}/versions`, VERSION_REQUEST)
@@ -275,7 +276,7 @@ describe('#checkAnswersController Integration', () => {
       })
 
       test('POST redisplays check answers saying that someone saved a newer version first, when the guide has one', async () => {
-        const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
+        const cookie = await uploadReadyToConvert(server, { updates: guide })
         const newer = guideResponse({ id: GUIDE_ID, versions: [versionResponse({ id: 'version-2' }), ...guide.versions] })
         mockReferenceData()
         nock(GUIDANCE_API_BASE_URL)
@@ -291,7 +292,7 @@ describe('#checkAnswersController Integration', () => {
       })
 
       test('POST still explains an unfinished parse, when the guide has no newer version', async () => {
-        const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
+        const cookie = await uploadReadyToConvert(server, { updates: guide })
         mockReferenceData()
         nock(GUIDANCE_API_BASE_URL)
           .post(`/guides/${GUIDE_ID}/versions`)
@@ -309,7 +310,7 @@ describe('#checkAnswersController Integration', () => {
       })
 
       test('POST says the document is kept for the guide chosen first, when its file is kept for another guide', async () => {
-        const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
+        const cookie = await uploadReadyToConvert(server, { updates: guide })
         mockReferenceData()
         nock(GUIDANCE_API_BASE_URL)
           .post(`/guides/${GUIDE_ID}/versions`)
@@ -327,7 +328,7 @@ describe('#checkAnswersController Integration', () => {
       })
 
       test('POST says the document is kept for the guide chosen first, when New guide is chosen after a failed submission', async () => {
-        let cookie = await completeAllMetadata(server, await loginAsDevUser(server), { updates: guide })
+        let cookie = await uploadReadyToConvert(server, { updates: guide })
         mockReferenceData()
         nock(GUIDANCE_API_BASE_URL)
           .post(`/guides/${GUIDE_ID}/versions`)

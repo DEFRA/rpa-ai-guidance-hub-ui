@@ -3,6 +3,7 @@ import nock from 'nock'
 
 import { config } from '../../../src/config/config.js'
 import { mergeCookies } from './cookies.js'
+import { loginAsDevUser } from './login.js'
 import { pageOf } from './page.js'
 import {
   audiencesResponse,
@@ -142,6 +143,18 @@ async function completeAllMetadata (server, cookie, { updates } = {}) {
 }
 
 /**
+ * Sign in as the dev user, upload a file and answer every question: an upload
+ * ready to convert, on the check page.
+ *
+ * @param {Object} server
+ * @param {Object} [options] - As `completeAllMetadata` takes them
+ * @returns {Promise<string>} The session's cookie
+ */
+async function uploadReadyToConvert (server, options) {
+  return completeAllMetadata(server, await loginAsDevUser(server), options)
+}
+
+/**
  * Answer both details screens, up to the check page.
  *
  * @param {Object} server
@@ -217,5 +230,6 @@ export {
   completeParse,
   expectFreshUploadForm,
   mockReferenceData,
-  startMigration
+  startMigration,
+  uploadReadyToConvert
 }
