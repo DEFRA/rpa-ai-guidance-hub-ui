@@ -105,6 +105,14 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
   }
 
   /**
+   * An upload processed, with the guide given chosen as the one it is a new
+   * version of.
+   */
+  async function uploadWithGuideChosen (guide) {
+    return chooseGuide(await processed(), guide)
+  }
+
+  /**
    * What the Update an existing guide choice shows when chosen: the search,
    * and where the guides are.
    */
@@ -340,7 +348,7 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
   })
 
   test('starts the guide details with the chosen guide\'s, all but the version number', async () => {
-    const cookie = await chooseGuide(await processed(), CHOSEN_GUIDE)
+    const cookie = await uploadWithGuideChosen(CHOSEN_GUIDE)
 
     const page = await detailsPage(cookie)
 
@@ -351,7 +359,7 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
   })
 
   test('starts the owner and purpose with the chosen guide\'s', async () => {
-    const cookie = await chooseGuide(await processed(), CHOSEN_GUIDE)
+    const cookie = await uploadWithGuideChosen(CHOSEN_GUIDE)
 
     const page = await purposePage(cookie)
 
@@ -366,7 +374,7 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
 
   test('starts a guide kept with no scheme as not scheme-specific', async () => {
     const guide = aGuide({ id: GUIDE_ID, title: 'Claiming any payment', schemes: [] })
-    const cookie = await chooseGuide(await processed(), guide)
+    const cookie = await uploadWithGuideChosen(guide)
 
     const page = await detailsPage(cookie)
 
@@ -374,17 +382,19 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
   })
 
   test('starts the details again with another guide\'s when another guide is chosen', async () => {
-    const cookie = await chooseGuide(await chooseGuide(await processed(), CHOSEN_GUIDE), OTHER_GUIDE)
+    const firstGuideChosen = await uploadWithGuideChosen(CHOSEN_GUIDE)
+    const otherGuideChosen = await chooseGuide(firstGuideChosen, OTHER_GUIDE)
 
-    const page = await detailsPage(cookie)
+    const page = await detailsPage(otherGuideChosen)
 
     expect(page.getByLabelText('Guidance title')).toHaveValue('Claiming the CS payment')
   })
 
   test('starts the details again from the file when New guide is chosen after a guide', async () => {
-    const cookie = await choose(await chooseGuide(await processed(), CHOSEN_GUIDE), { kind: 'new', q: FILE_TITLE })
+    const guideChosen = await uploadWithGuideChosen(CHOSEN_GUIDE)
+    const newGuideChosen = await choose(guideChosen, { kind: 'new', q: FILE_TITLE })
 
-    const page = await detailsPage(cookie)
+    const page = await detailsPage(newGuideChosen)
 
     expect(page.getByLabelText('Guidance title')).toHaveValue(FILE_TITLE)
     expect(page.getByRole('checkbox', { name: /Sustainable Farming Incentive/ })).not.toBeChecked()
