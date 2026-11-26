@@ -557,7 +557,7 @@ describe('#guideController', () => {
 
       const contents = within((await guideInStepperAt()).getByRole('navigation', { name: 'Contents' }))
 
-      expect(contents.getByRole('link', { name: '2.1 Deep' })).toHaveAttribute('href', `${GUIDE_URL}?section=two#21-deep`)
+      expect(contents.getByRole('link', { name: '2.1 Deep' })).toHaveAttribute('href', `${GUIDE_URL}?section=two#2-1-deep`)
     })
   })
 

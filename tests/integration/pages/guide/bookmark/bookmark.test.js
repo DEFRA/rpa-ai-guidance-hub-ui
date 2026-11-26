@@ -19,7 +19,7 @@ const GUIDE_PAGE = `/guides/${GUIDE_ID}`
 const BOOKMARK_PAGE = `${GUIDE_PAGE}/bookmark`
 
 // Its sections are "1 Introduction" at `1-introduction`, with "1.1 Before you
-// begin" at `11-before-you-begin` inside it, and "2 Assign case" at
+// begin" at `1-1-before-you-begin` inside it, and "2 Assign case" at
 // `2-assign-case`, on the second page.
 const MARKDOWN = [
   '# Claiming the SFI payment',
@@ -37,7 +37,7 @@ const MARKDOWN = [
   'Assign it.'
 ].join('\n')
 
-const SECTION = { sectionId: '019a0000-0000-7000-8000-000000000011', section: '11-before-you-begin', heading: '1.1 Before you begin', position: 0 }
+const SECTION = { sectionId: '019a0000-0000-7000-8000-000000000011', section: '1-1-before-you-begin', heading: '1.1 Before you begin', position: 0 }
 
 function mockGuideAndUser (cases = [], markdown = MARKDOWN) {
   nock(GUIDANCE_API_BASE_URL)
@@ -108,13 +108,13 @@ describe('bookmarking a section of a guide to a case', () => {
     test('asks about the section the address names, with its heading', async () => {
       mockGuideAndUser()
 
-      const { statusCode, payload } = await get(`${BOOKMARK_PAGE}?section=11-before-you-begin`)
+      const { statusCode, payload } = await get(`${BOOKMARK_PAGE}?section=1-1-before-you-begin`)
 
       const page = pageOf(payload)
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_OK)
       expect(page.getByRole('heading', { level: 1, name: 'Bookmark this section to a case' })).toBeInTheDocument()
       expect(page.getByText('‘1.1 Before you begin’ in Claiming the SFI payment will show under that case in the side navigation.')).toBeInTheDocument()
-      expect(formOf(page)).toHaveFormValues({ section: '11-before-you-begin' })
+      expect(formOf(page)).toHaveFormValues({ section: '1-1-before-you-begin' })
     })
 
     test('goes back, or cancels, to the guide at the section, changing nothing', async () => {
@@ -141,7 +141,7 @@ describe('bookmarking a section of a guide to a case', () => {
     test('offers one choice of four, the SBI ones off until switched on, and existing ones only when there are some', async () => {
       mockGuideAndUser()
 
-      const { payload } = await get(`${BOOKMARK_PAGE}?section=11-before-you-begin`)
+      const { payload } = await get(`${BOOKMARK_PAGE}?section=1-1-before-you-begin`)
 
       const page = pageOf(payload)
       expect(choicesOf(page)).toEqual([
@@ -157,7 +157,7 @@ describe('bookmarking a section of a guide to a case', () => {
       config.set('featureFlags.sbiBookmarks', true)
       mockGuideAndUser([caseResponse(), caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', type: 'sbi', ref: '123456789' })])
 
-      const { payload } = await get(`${BOOKMARK_PAGE}?section=11-before-you-begin`)
+      const { payload } = await get(`${BOOKMARK_PAGE}?section=1-1-before-you-begin`)
 
       const page = pageOf(payload)
       expect(choicesOf(page)).toEqual([
@@ -174,7 +174,7 @@ describe('bookmarking a section of a guide to a case', () => {
       const second = caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', ref: 'W7654321' })
       mockGuideAndUser([caseResponse(), second])
 
-      const { payload } = await get(`${BOOKMARK_PAGE}?section=11-before-you-begin`)
+      const { payload } = await get(`${BOOKMARK_PAGE}?section=1-1-before-you-begin`)
 
       expect(formOf(pageOf(payload))).toSendInOrder('shown', [caseResponse().key, second.key])
     })
@@ -190,7 +190,7 @@ describe('bookmarking a section of a guide to a case', () => {
     ])('is checked: %j says "%s"', async (answer, message) => {
       mockGuideAndUser([caseResponse()])
 
-      const { statusCode, payload } = await post({ section: '11-before-you-begin', ...answer })
+      const { statusCode, payload } = await post({ section: '1-1-before-you-begin', ...answer })
 
       const errors = errorSummaryOf(pageOf(payload))
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
@@ -204,7 +204,7 @@ describe('bookmarking a section of a guide to a case', () => {
     ])('links the error for no choice to the first that can be made: %s', async (_name, cases, href) => {
       mockGuideAndUser(cases)
 
-      const { payload } = await post({ section: '11-before-you-begin' })
+      const { payload } = await post({ section: '1-1-before-you-begin' })
 
       expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: BOOKMARK_MESSAGES.noChoice })).toHaveAttribute('href', href)
     })
@@ -216,7 +216,7 @@ describe('bookmarking a section of a guide to a case', () => {
         .post('/users').optionally().reply(statusCodes.HTTP_STATUS_CREATED, userResponse())
         .get(`/users/${USER_ID}`).reply(statusCodes.HTTP_STATUS_SERVICE_UNAVAILABLE)
 
-      const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: 'W7654321' })
+      const { statusCode, payload } = await post({ section: '1-1-before-you-begin', choice: 'new-case', newCase: 'W7654321' })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_GATEWAY)
       expect(pageOf(payload).getByText(BOOKMARK_MESSAGES.casesUnreadable)).toBeInTheDocument()
@@ -225,7 +225,7 @@ describe('bookmarking a section of a guide to a case', () => {
     test('asks again with the cases as they are now, which the next save checks', async () => {
       mockGuideAndUser([caseResponse()])
 
-      const { payload } = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: '' })
+      const { payload } = await post({ section: '1-1-before-you-begin', choice: 'new-case', newCase: '' })
 
       expect(formOf(pageOf(payload))).toSendInOrder('shown', [caseResponse().key])
     })
@@ -234,7 +234,7 @@ describe('bookmarking a section of a guide to a case', () => {
       config.set('featureFlags.sbiBookmarks', true)
       mockGuideAndUser()
 
-      const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'new-sbi', newSbi: '104999999' })
+      const { statusCode, payload } = await post({ section: '1-1-before-you-begin', choice: 'new-sbi', newSbi: '104999999' })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
       expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: 'SBI application number must be 9 numbers, from 105000000 to 999999999' })).toBeInTheDocument()
@@ -264,30 +264,30 @@ describe('bookmarking a section of a guide to a case', () => {
         .patch(`/users/${USER_ID}/cases`, [
           { op: 'test', path: '/0/key', value: other.key },
           { op: 'test', path: '/1/key', value: existing.key },
-          { op: 'add', path: '/1/bookmarks/-', value: { guideId: GUIDE_ID, section: '11-before-you-begin', heading: '1.1 Before you begin' } }
+          { op: 'add', path: '/1/bookmarks/-', value: { guideId: GUIDE_ID, section: '1-1-before-you-begin', heading: '1.1 Before you begin' } }
         ])
         .reply(statusCodes.HTTP_STATUS_NO_CONTENT)
 
-      const { headers } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [other.key, existing.key] })
+      const { headers } = await post({ section: '1-1-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [other.key, existing.key] })
 
       expect(patching.isDone()).toBe(true)
-      expect(headers.location).toBe(`${GUIDE_PAGE}?section=11-before-you-begin#11-before-you-begin`)
+      expect(headers.location).toBe(`${GUIDE_PAGE}?section=1-1-before-you-begin#1-1-before-you-begin`)
     })
 
     test('does not bookmark a section to a case twice', async () => {
       mockGuideAndUser([caseResponse({ guides: [{ id: GUIDE_ID, title: 'Claiming the SFI payment', bookmarks: [SECTION] }] })])
 
-      const { statusCode, headers } = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: 'W1234567', shown: [caseResponse().key] })
+      const { statusCode, headers } = await post({ section: '1-1-before-you-begin', choice: 'new-case', newCase: 'W1234567', shown: [caseResponse().key] })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
-      expect(headers.location).toBe(`${GUIDE_PAGE}?section=11-before-you-begin#11-before-you-begin`)
+      expect(headers.location).toBe(`${GUIDE_PAGE}?section=1-1-before-you-begin#1-1-before-you-begin`)
     })
 
     test('asks again, saving nothing, when the cases changed while the page was open', async () => {
       mockGuideAndUser([caseResponse()])
       nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`).reply(statusCodes.HTTP_STATUS_CONFLICT)
 
-      const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [caseResponse().key] })
+      const { statusCode, payload } = await post({ section: '1-1-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [caseResponse().key] })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_CONFLICT)
       expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: BOOKMARK_MESSAGES.changedSince })).toBeInTheDocument()
@@ -296,7 +296,7 @@ describe('bookmarking a section of a guide to a case', () => {
     test('asks again, saving nothing, when the cases are not those the page offered, as when one was removed and made again', async () => {
       mockGuideAndUser([caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c' })])
 
-      const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [caseResponse().key] })
+      const { statusCode, payload } = await post({ section: '1-1-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [caseResponse().key] })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_CONFLICT)
       expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: BOOKMARK_MESSAGES.changedSince })).toBeInTheDocument()
@@ -306,7 +306,7 @@ describe('bookmarking a section of a guide to a case', () => {
       mockGuideAndUser([caseResponse()])
       nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`).reply(statusCodes.HTTP_STATUS_UNPROCESSABLE_ENTITY, refusalResponse({ detail: 'A section of a guide is bookmarked to W1234567 twice' }))
 
-      const { statusCode, payload } = await post({ section: '11-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [caseResponse().key] })
+      const { statusCode, payload } = await post({ section: '1-1-before-you-begin', choice: 'existing-case', existingCase: 'W1234567', shown: [caseResponse().key] })
 
       expect(statusCode).toBe(statusCodes.HTTP_STATUS_CONFLICT)
       expect(errorSummaryOf(pageOf(payload)).getByRole('link', { name: BOOKMARK_MESSAGES.changedSince })).toBeInTheDocument()
@@ -315,7 +315,7 @@ describe('bookmarking a section of a guide to a case', () => {
     test('is shown once on the guide', async () => {
       mockGuideAndUser()
       nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
-      const posted = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: 'W7654321' })
+      const posted = await post({ section: '1-1-before-you-begin', choice: 'new-case', newCase: 'W7654321' })
       cookie = mergeCookies(cookie, posted.headers['set-cookie'])
 
       mockGuideAndUser()
@@ -335,7 +335,7 @@ describe('bookmarking a section of a guide to a case', () => {
       const saved = caseResponse({ key: '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4c', ref: 'W7654321' })
       mockGuideAndUser([caseResponse()])
       nock(GUIDANCE_API_BASE_URL).patch(`/users/${USER_ID}/cases`).reply(statusCodes.HTTP_STATUS_NO_CONTENT)
-      const posted = await post({ section: '11-before-you-begin', choice: 'new-case', newCase: 'W7654321', shown: [caseResponse().key] })
+      const posted = await post({ section: '1-1-before-you-begin', choice: 'new-case', newCase: 'W7654321', shown: [caseResponse().key] })
       cookie = mergeCookies(cookie, posted.headers['set-cookie'])
 
       mockGuideAndUser([saved, caseResponse()])
@@ -388,16 +388,16 @@ describe('a guide\'s headings', () => {
 
     expect(all).toEqual([star, bookmark])
     expect(bookmark).toHaveAttribute('href', `${BOOKMARK_PAGE}?section=1-introduction`)
-    expect(page.getByRole('link', { name: 'Bookmark to a case: 1.1 Before you begin' })).toHaveAttribute('href', `${BOOKMARK_PAGE}?section=11-before-you-begin`)
+    expect(page.getByRole('link', { name: 'Bookmark to a case: 1.1 Before you begin' })).toHaveAttribute('href', `${BOOKMARK_PAGE}?section=1-1-before-you-begin`)
     expect(JSON.parse(page.document.querySelector('[data-tiptap-markdown]').dataset.headingBookmarks)).toEqual(
-      expect.arrayContaining([expect.objectContaining({ href: `${BOOKMARK_PAGE}?section=11-before-you-begin` })])
+      expect.arrayContaining([expect.objectContaining({ href: `${BOOKMARK_PAGE}?section=1-1-before-you-begin` })])
     )
   })
 
   test('have one only where the hub keeps a section ID for them, so not inside a quote or a list', async () => {
     const page = await guidePage([], [MARKDOWN, '', '> ### A quoted note', '', '- ### A listed note'].join('\n'))
 
-    expect(bookmarkedSections(page)).toEqual(['1-introduction', '11-before-you-begin', '2-assign-case'])
+    expect(bookmarkedSections(page)).toEqual(['1-introduction', '1-1-before-you-begin', '2-assign-case'])
     expect(page.document.getElementById('a-quoted-note')).toBeInTheDocument()
   })
 

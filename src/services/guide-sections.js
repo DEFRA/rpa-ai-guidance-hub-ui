@@ -355,8 +355,9 @@ function _build (parts) {
 }
 
 /**
- * The anchors each heading goes by: its text in lower case, without
- * punctuation, its spaces made hyphens, and a number added to repeats. Which
+ * The anchors each heading goes by: its text in lower case, a dot between
+ * two digits made a hyphen ("1.2" is not "12"), without other punctuation,
+ * its spaces made hyphens, and a number added to repeats. Which
  * headings a repeat counts differs, so after one they can differ too:
  *
  * - `onPage`, the anchor the page gives it, counts every heading, the title
@@ -389,6 +390,7 @@ function _numbered (headings) {
 
   for (const heading of headings) {
     const base = _plainText(heading)
+      .replaceAll(/(?<=\d)\.(?=\d)/g, '-')
       .toLowerCase()
       .replaceAll(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, '')
       .replaceAll(' ', '-')

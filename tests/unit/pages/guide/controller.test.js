@@ -143,7 +143,7 @@ describe('guide controller', () => {
     test('shows the page that has a heading inside one of its sections', async () => {
       guidesService.getGuideContent.mockResolvedValue({ markdown: '## One\n\nFirst.\n\n## Two\n\n### 2.1 Deep\n\nSecond.' })
 
-      await controller.getGuidePage(createRequest({ query: { section: '21-deep' } }), h)
+      await controller.getGuidePage(createRequest({ query: { section: '2-1-deep' } }), h)
 
       expect(h.view.mock.calls[0][1].pageNumber).toBe(2)
     })

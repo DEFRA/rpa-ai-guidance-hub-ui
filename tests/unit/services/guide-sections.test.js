@@ -25,10 +25,10 @@ describe('splitIntoSections', () => {
         title: '1 Overview',
         slug: '1-overview',
         sectionAnchor: '1-overview',
-        headingIds: ['11-detail'],
+        headingIds: ['1-1-detail'],
         headingTitles: ['1.1 Detail'],
-        headingSectionAnchors: ['11-detail'],
-        subheadings: [{ title: '1.1 Detail', slug: '11-detail' }],
+        headingSectionAnchors: ['1-1-detail'],
+        subheadings: [{ title: '1.1 Detail', slug: '1-1-detail' }],
         markdown: 'Overview text.\n\n### 1.1 Detail\n\n- one\n- two'
       },
       {
@@ -105,8 +105,8 @@ describe('splitIntoSections', () => {
       const [section] = splitIntoSections('## 3 Work\n\n### 3.1 First\n\ntext\n\n#### 3.1.1 Deeper\n\n### 3.2 **Second**')
 
       expect(section.subheadings).toEqual([
-        { title: '3.1 First', slug: '31-first' },
-        { title: '3.2 Second', slug: '32-second' }
+        { title: '3.1 First', slug: '3-1-first' },
+        { title: '3.2 Second', slug: '3-2-second' }
       ])
       expect(section.headingIds).toHaveLength(3)
     })
@@ -118,8 +118,15 @@ describe('splitIntoSections', () => {
         '## 3.3 Land is above (inside/within) or below (outside) the line.\n\n### Under_score & Ünïcode'
       )
 
-      expect(section.slug).toBe('33-land-is-above-insidewithin-or-below-outside-the-line')
+      expect(section.slug).toBe('3-3-land-is-above-insidewithin-or-below-outside-the-line')
       expect(section.headingIds).toEqual(['under_score--ünïcode'])
+    })
+
+    test('turn a dot between two digits into a hyphen, and drop any other', () => {
+      const [section] = splitIntoSections('## 1.2.3 Steps, e.g. these\n\n### 2024-25 Claims')
+
+      expect(section.slug).toBe('1-2-3-steps-eg-these')
+      expect(section.headingIds).toEqual(['2024-25-claims'])
     })
 
     test('number a repeated heading, counting the title that is dropped', () => {
@@ -157,9 +164,9 @@ describe('splitIntoSections', () => {
       ].join('\n'))
 
       expect(sections.map(section => section.slug)).toEqual(['1-intro', 'underlined'])
-      expect(sections[0].headingIds).toEqual(['11-own', 'quoted', 'listed'])
+      expect(sections[0].headingIds).toEqual(['1-1-own', 'quoted', 'listed'])
       expect(sections.map(section => [section.sectionAnchor, section.headingSectionAnchors])).toEqual([
-        ['1-intro', ['11-own', null, null]],
+        ['1-intro', ['1-1-own', null, null]],
         [null, []]
       ])
     })
@@ -180,7 +187,7 @@ describe('resolveAnchors', () => {
   const sections = splitIntoSections([
     '## 1 One',
     '',
-    'Go to [2 Two](#2-two), [2.1 Deep](#21-deep), [1 One](#1-one) or [elsewhere](#nowhere).',
+    'Go to [2 Two](#2-two), [2.1 Deep](#2-1-deep), [1 One](#1-one) or [elsewhere](#nowhere).',
     '',
     '## 2 Two',
     '',
@@ -193,7 +200,7 @@ describe('resolveAnchors', () => {
 
   test('point a link at the page with the heading', () => {
     expect(resolved[0].markdown).toContain('[2 Two](/guides/g?page=2#2-two)')
-    expect(resolved[0].markdown).toContain('[2.1 Deep](/guides/g?page=2#21-deep)')
+    expect(resolved[0].markdown).toContain('[2.1 Deep](/guides/g?page=2#2-1-deep)')
     expect(resolved[1].markdown).toContain('[1 One](/guides/g?page=1#1-one)')
   })
 
@@ -292,7 +299,7 @@ describe('findHeading', () => {
 
   test.each([
     ['a section\'s own heading', '2-assign-case', { anchor: '2-assign-case', slug: '2-assign-case', title: '2 Assign case', page: 2 }],
-    ['a heading inside a section, as plain text', '11-before-you-begin', { anchor: '11-before-you-begin', slug: '11-before-you-begin', title: '1.1 Before you begin', page: 1 }]
+    ['a heading inside a section, as plain text', '1-1-before-you-begin', { anchor: '1-1-before-you-begin', slug: '1-1-before-you-begin', title: '1.1 Before you begin', page: 1 }]
   ])('finds %s, with its page', (_case, anchor, found) => {
     expect(findHeading(sections, anchor)).toEqual(found)
   })
