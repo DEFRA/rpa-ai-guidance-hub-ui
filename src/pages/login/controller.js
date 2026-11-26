@@ -49,7 +49,7 @@ async function handleEntraCallback (request, h) {
   h.unstate(OIDC_STATE_COOKIE)
 
   if (payload.error) {
-    _failLogin(new Error(`${payload.error}: ${payload.error_description}`), 'entra_callback_error', 'warn')
+    _failLogin(new Error(`${payload.error}: ${payload.errorDescription}`), 'entra_callback_error', 'warn')
   }
 
   if (!_isValidCallback(payload, oidcState)) {

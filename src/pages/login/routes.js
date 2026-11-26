@@ -1,7 +1,6 @@
-import Joi from 'joi'
-
 import { config } from '../../config/config.js'
 import * as controller from './controller.js'
+import { callbackPayloadSchema } from './schemas.js'
 
 const isEntra = config.get('auth.provider') === 'entra'
 
@@ -24,16 +23,7 @@ const routes = [
         options: {
           auth: false,
           validate: {
-            // What Entra posts: a code and state, or an error. Anything else
-            // it sends (e.g. `session_state`) is stripped. A missing body
-            // fails here, and is rejected and logged like any other bad
-            // callback.
-            payload: Joi.object({
-              code: Joi.string(),
-              state: Joi.string(),
-              error: Joi.string(),
-              error_description: Joi.string()
-            }).options({ stripUnknown: true }),
+            payload: callbackPayloadSchema,
             failAction: controller.rejectInvalidCallback
           }
         },
