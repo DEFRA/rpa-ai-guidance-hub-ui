@@ -70,6 +70,10 @@ async function choiceFailAction (request, h, err) {
  * @param {import('@hapi/hapi').ResponseToolkit} h
  */
 async function postChoice (request, h) {
+  if (!getGuideUpload(request)?.hasUpload()) {
+    return h.redirect(UPLOAD_GUIDE_URL)
+  }
+
   const { kind, guideId } = request.payload
   const updates = kind === 'update' ? guideId : null
   const guide = updates ? await getGuideById(updates) : null

@@ -224,6 +224,18 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
     expect(response.headers.location).toBe('/create-guidance/upload-guide')
   })
 
+  test('sends a choice with no upload, as from a form left open once the session is cleared, back to the upload page', async () => {
+    const response = await server.inject({
+      method: 'POST',
+      url: CHOICE_URL,
+      payload: { kind: 'new', q: FILE_TITLE },
+      headers: { cookie: await loginAsDevUser(server) }
+    })
+
+    expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+    expect(response.headers.location).toBe('/create-guidance/upload-guide')
+  })
+
   test('offers New guide and Update an existing guide, neither chosen', async () => {
     const cookie = await processed()
     mockFileTitle()
