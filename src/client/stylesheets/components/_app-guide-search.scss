@@ -18,11 +18,6 @@
   position: relative;
   flex-grow: 1;
   margin-bottom: 0;
-
-  // Room for the shortcut the page's script shows in the box.
-  .govuk-input:has(~ .app-search-kbd:not([hidden])) {
-    padding-right: 64px;
-  }
 }
 
 .app-guide-keyword-search__button {
@@ -59,23 +54,6 @@
 
 .app-guide-keyword-search__clear {
   @include govuk-font($size: 16);
-}
-
-// A search box's keyboard shortcut, inside the box at its right, shown by
-// the page's script, so it never shows without the shortcut.
-.app-search-kbd {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  padding: 1px 6px;
-  transform: translateY(-50%);
-  border: 1px solid $govuk-border-colour;
-  border-radius: 4px;
-  color: $govuk-secondary-text-colour;
-  font-family: $govuk-font-family;
-  font-size: 13px;
-  line-height: 18px;
-  pointer-events: none;
 }
 
 // The matches, painted by the page's script over the viewer's text.
@@ -127,4 +105,3 @@
     @include govuk-focused-text;
   }
 }
-

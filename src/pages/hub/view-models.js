@@ -120,10 +120,13 @@ function _guideGroup (guide, words) {
     title: guide.title,
     titleSnippet: guide.titleSnippet,
     href: relativeHref(guide.href),
-    hint: `${_counted(guide.sectionTotal, 'section', 'sections')} with these words`,
+    hint: _counted(guide.sectionTotal, 'match', 'matches'),
     sections: guide.sections.map((section) => _searchRow(section, false)),
     more: more
-      ? { href: searchHref({ words, guide: guide.id }), text: `See all ${guide.sectionTotal} sections in this guide` }
+      ? {
+          href: searchHref({ words, guide: guide.id }),
+          text: `See all ${guide.sectionTotal} matches in this guide`
+        }
       : null
   }
 }
@@ -165,7 +168,9 @@ function _severalTitles (guides, words, allTitles) {
     title: guide.title,
     titleSnippet: guide.titleSnippet,
     href: relativeHref(guide.href),
-    sectionsText: guide.sectionTotal > 0 ? _counted(guide.sectionTotal, 'section', 'sections') : null
+    matchesText: guide.sectionTotal > 0
+      ? _counted(guide.sectionTotal, 'match', 'matches')
+      : null
   }))
 
   const showAll = _cutShort(rows.length, allTitles)
@@ -382,7 +387,7 @@ function _guidesSummary (found) {
     return 'No sections with these words'
   }
 
-  return `${_counted(found.sectionTotal, 'section', 'sections')} with these words`
+  return _counted(found.sectionTotal, 'match', 'matches')
 }
 
 /**
@@ -439,7 +444,7 @@ function _buildGuideSearch (search) {
 
   return {
     words: search.words,
-    heading: _counted(found.total, 'section', 'sections'),
+    heading: _counted(found.total, 'match', 'matches'),
     summary: guideTitle ? `In ${guideTitle}` : null,
     backLink: { href: searchHref({ words: search.words }), text: 'All guides with these words' },
     emptyMessage: _searchEmptyMessage(search),

@@ -6,12 +6,20 @@
  *
  * @param {string} guideId
  * @param {string} anchor - The section's, as the hub knows it
- * @param {string} [slug] - Its heading's anchor on the page, when known, if
- *   that is not the hub's: a repeated heading can be numbered differently
+ * @param {Object} [options]
+ * @param {string} [options.slug] - Its heading's anchor on the page, when
+ *   known, if that is not the hub's: a repeated heading can be numbered
+ *   differently
+ * @param {string} [options.words] - Words searched for, kept as `q` for the
+ *   guide to search them again
  * @returns {string}
  */
-function guideSectionHref (guideId, anchor, slug = anchor) {
-  return `/guides/${encodeURIComponent(guideId)}?section=${encodeURIComponent(anchor)}#${encodeURIComponent(slug)}`
+function guideSectionHref (guideId, anchor, { slug = anchor, words } = {}) {
+  const path = `/guides/${encodeURIComponent(guideId)}`
+  const searched = words ? `&q=${encodeURIComponent(words)}` : ''
+  const fragment = `#${encodeURIComponent(slug)}`
+
+  return `${path}?section=${encodeURIComponent(anchor)}${searched}${fragment}`
 }
 
 export {

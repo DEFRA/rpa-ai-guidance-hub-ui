@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { within } from '@testing-library/dom'
 
-import { holdFocus, initGuideSearch, isFindShortcut, placeMatches, sameWords, shortcutLabel, steppedMatch } from '../../../../src/client/javascripts/guide-search.js'
+import { holdFocus, initGuideSearch, placeMatches, sameWords, steppedMatch } from '../../../../src/client/javascripts/guide-search.js'
 
 // The script listens on the document, which outlives each test: take off
 // what each test added, so one test's page does not answer another's keys.
@@ -30,28 +30,14 @@ describe('steppedMatch', () => {
   ])('from match %i of %i, back %s, steps to %i, round at either end', (current, total, back, stepped) => {
     expect(steppedMatch(current, total, back)).toBe(stepped)
   })
-})
 
-describe('isFindShortcut', () => {
   test.each([
-    [{ key: 'f', ctrlKey: true }, true],
-    [{ key: 'F', metaKey: true }, true],
-    [{ key: 'f', ctrlKey: true, altKey: true }, false],
-    [{ key: 'f' }, false],
-    [{ key: 'g', ctrlKey: true }, false]
-  ])('takes %o as the find shortcut: %s', (event, expected) => {
-    expect(isFindShortcut({ ctrlKey: false, metaKey: false, altKey: false, ...event })).toBe(expected)
-  })
-})
-
-describe('shortcutLabel', () => {
-  test.each([
-    ['MacIntel', '⌘ F'],
-    ['iPhone', '⌘ F'],
-    ['Win32', 'Ctrl F'],
-    ['Linux x86_64', 'Ctrl F']
-  ])('shows the shortcut on %s as %s', (platform, label) => {
-    expect(shortcutLabel(platform)).toBe(label)
+    [2.5, 5, false, 3],
+    [2.5, 5, true, 2],
+    [0.5, 5, true, 5],
+    [5.5, 5, false, 1]
+  ])('from between two matches (%s of %i), back %s, steps to the one on that side, %i', (current, total, back, stepped) => {
+    expect(steppedMatch(current, total, back)).toBe(stepped)
   })
 })
 
@@ -113,6 +99,7 @@ describe('the find shortcut', () => {
     expect(input).toHaveFocus()
     expect(input.value.slice(input.selectionStart, input.selectionEnd)).toBe('pay claims')
     expect(event).toHaveProperty('defaultPrevented', true)
+    expect(input).toHaveAttribute('aria-keyshortcuts', 'Control+F Meta+F')
   })
 
   test('leaves a second Ctrl+F, pressed with the search box\'s words selected, to the browser\'s own find', () => {
@@ -224,6 +211,7 @@ describe('stepping between the matches', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     delete window.Range.prototype.getBoundingClientRect
+    window.history.replaceState(null, '', window.location.pathname)
   })
 
   const positionText = () => document.querySelector('[data-guide-search-position]').textContent
@@ -251,6 +239,93 @@ describe('stepping between the matches', () => {
 
     expect(positionText()).toBe('Match 1 of 3')
     expect(shown.mock.calls.map(([event]) => event.target.dataset.guidePage)).toEqual(['2'])
+  })
+
+  describe('on a page opened at a section\'s heading, as a result in the hub links to one', () => {
+    const openedAt = (id) => window.history.replaceState(null, '', `#${id}`)
+
+    test('starts at the first match in that section, showing its page', () => {
+      const shown = vi.fn()
+      document.addEventListener('guide-pages:show', shown, { capture: true })
+      openedAt('claims-1')
+
+      searchAt(placedPage())
+      document.removeEventListener('guide-pages:show', shown, { capture: true })
+
+      expect(positionText()).toBe('Match 2 of 4')
+      expect(shown.mock.calls.map(([event]) => event.target.dataset.guidePage)).toEqual(['2'])
+    })
+
+    const stepButton = (name) => () => document.querySelector(`[data-guide-search-step="${name}"]`).click()
+    const enter = (shiftKey) => () => document.querySelector('input[name="q"]').dispatchEvent(
+      new window.KeyboardEvent('keydown', { key: 'Enter', shiftKey, bubbles: true, cancelable: true })
+    )
+
+    test.each([
+      ['Next', stepButton('next'), 'Match 3 of 4'],
+      ['Previous', stepButton('previous'), 'Match 1 of 4'],
+      ['Enter', enter(false), 'Match 3 of 4'],
+      ['Shift+Enter', enter(true), 'Match 1 of 4']
+    ])('steps on from that match with %s', (_, step, position) => {
+      openedAt('claims-1')
+      searchAt(placedPage())
+
+      step()
+
+      expect(positionText()).toBe(position)
+    })
+
+    test('stays at the start of a section that holds no match, every match marked but none current', () => {
+      openedAt('claims-1')
+
+      searchAt(placedPage(), [MATCHES[0], MATCHES[3]])
+
+      expect(painted.get('guide-keyword-match').ranges).toHaveLength(2)
+      expect(currentText()).toEqual([])
+      expect(positionText()).toBe('')
+    })
+
+    test.each([
+      ['next', 'Match 2 of 2'],
+      ['previous', 'Match 1 of 2']
+    ])('steps with %s from a section that holds no match to the match on that side of it', (step, position) => {
+      openedAt('claims-1')
+      searchAt(placedPage(), [MATCHES[0], MATCHES[3]])
+
+      document.querySelector(`[data-guide-search-step="${step}"]`).click()
+
+      expect(positionText()).toBe(position)
+    })
+
+    test('stays after the last match, at a section after it, when the viewer draws the guide anew', async () => {
+      openedAt('checks')
+      searchAt(placedPage(), MATCHES.slice(0, 3))
+      const paintedFirst = painted.get('guide-keyword-match')
+      const text = document.querySelector('[data-guide-page="2"] .app-guide-markdown')
+
+      text.replaceChildren(...text.cloneNode(true).childNodes)
+      await vi.waitFor(() => expect(painted.get('guide-keyword-match')).not.toBe(paintedFirst))
+
+      expect(positionText()).toBe('')
+      expect(currentText()).toEqual([])
+    })
+
+    test('stays at the top of the guide, opened there for its Introduction, when the Introduction holds no match', () => {
+      openedAt('main-content')
+      searchAt(placedPage(), MATCHES.slice(1))
+
+      expect(positionText()).toBe('')
+      document.querySelector('[data-guide-search-step="next"]').click()
+      expect(positionText()).toBe('Match 1 of 3')
+    })
+
+    test('starts at the first match on a page that is shown, when no section starts at that heading', () => {
+      openedAt('note')
+
+      searchAt(placedPage())
+
+      expect(positionText()).toBe('Match 1 of 4')
+    })
   })
 
   test('goes to the next match with Next, and round from the last to the first', () => {

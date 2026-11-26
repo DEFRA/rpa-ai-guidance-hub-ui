@@ -12,6 +12,7 @@ import { initSideNavDrawer } from './side-nav-drawer.js'
 import { initSideNavLists } from './side-nav-lists.js'
 import { initReorder } from './side-nav-reorder.js'
 import { initResizeHandles } from './resize-handle.js'
+import { initSearchAllGuides } from './search-shortcuts.js'
 import { initPolling } from './status-poll.js'
 import { initCookieBanner, initCookiesPage } from './cookie-consent.js'
 
@@ -25,6 +26,7 @@ initGuidePlace()
 initGuideContents()
 initGuideInfo()
 initGuideSearch()
+initSearchAllGuides()
 initSortSelect()
 initFiltersToggle()
 initReorder()

@@ -1,0 +1,25 @@
+@use 'govuk-frontend' as *;
+
+// A search box's keyboard shortcut, inside the box at its right, shown by
+// the page's script (search-shortcuts.js), so it never shows without the
+// shortcut. The box's parent is positioned.
+.app-search-kbd {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  padding: 1px 6px;
+  transform: translateY(-50%);
+  border: 1px solid $govuk-border-colour;
+  border-radius: 4px;
+  color: $govuk-secondary-text-colour;
+  font-family: $govuk-font-family;
+  font-size: 13px;
+  line-height: 18px;
+  pointer-events: none;
+}
+
+// Room in the box for it, while it shows.
+.govuk-input:has(~ .app-search-kbd:not([hidden])),
+.app-side-nav__search-input:has(~ .app-search-kbd:not([hidden])) {
+  padding-right: 64px;
+}
