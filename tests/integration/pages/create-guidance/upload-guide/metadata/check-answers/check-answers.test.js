@@ -289,8 +289,9 @@ describe('#checkAnswersController Integration', () => {
       })
 
       test('POST again asks for the new version as submitted, though New guide and another title are chosen while it saves', async () => {
-        const { cookie: submitted } = await convertInBackground()
-        let cookie = await chooseNewGuide(submitted)
+        const { cookie: submittedCookie } = await convertInBackground()
+
+        const afterChoiceCookie = await chooseNewGuide(submittedCookie)
 
         nock(GUIDANCE_API_BASE_URL)
           .get('/reference/schemes')
@@ -304,16 +305,16 @@ describe('#checkAnswersController Integration', () => {
             versionNumber: '2.0',
             schemes: ['sustainable-farming-incentive-sfi']
           },
-          headers: { cookie }
+          headers: { cookie: afterChoiceCookie }
         })
-        cookie = mergeCookies(cookie, changed.headers['set-cookie'])
+        const afterMetadataCookie = mergeCookies(afterChoiceCookie, changed.headers['set-cookie'])
 
         mockReferenceData()
         const createVersion = nock(GUIDANCE_API_BASE_URL)
           .post(`/guides/${GUIDE_ID}/versions`, VERSION_REQUEST)
           .reply(statusCodes.HTTP_STATUS_ACCEPTED, SAVE_STARTED, SAVE_STARTED_AT)
 
-        const response = await submit(cookie)
+        const response = await submit(afterMetadataCookie)
 
         createVersion.done()
         expect(response.headers.location).toBe('/create-guidance/upload-guide/converting')
@@ -397,15 +398,19 @@ describe('#checkAnswersController Integration', () => {
       })
 
       test('POST says the document is kept for the guide chosen first, when New guide is chosen after a failed submission', async () => {
-        let cookie = await uploadReadyToConvert(server, { updates: guide })
+        const readyCookie = await uploadReadyToConvert(server, { updates: guide })
 
         mockReferenceData()
         nock(GUIDANCE_API_BASE_URL)
           .post(`/guides/${GUIDE_ID}/versions`)
           .reply(statusCodes.HTTP_STATUS_SERVICE_UNAVAILABLE, refusalResponse({ detail: 'The conversion could not be started; try again' }))
 
-        const failed = await submit(cookie)
-        cookie = await completeDetails(server, await chooseNewGuide(mergeCookies(cookie, failed.headers['set-cookie'])))
+        const failed = await submit(readyCookie)
+        const failedCookie = mergeCookies(readyCookie, failed.headers['set-cookie'])
+
+        const afterChoiceCookie = await chooseNewGuide(failedCookie)
+
+        const afterDetailsCookie = await completeDetails(server, afterChoiceCookie)
 
         mockReferenceData()
         nock(GUIDANCE_API_BASE_URL)
@@ -419,7 +424,7 @@ describe('#checkAnswersController Integration', () => {
             documentId: GUIDE_ID
           }))
 
-        const response = await submit(cookie)
+        const response = await submit(afterDetailsCookie)
 
         expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
         expect(pageOf(response.payload).getByRole('alert')).toHaveTextContent(REFUSAL_MESSAGES[RESULTS.KEPT_FOR_ANOTHER])
@@ -457,7 +462,7 @@ describe('#checkAnswersController Integration', () => {
         })
 
         test('says the new version is live for everyone, and not a draft, once its save in the background is complete', async () => {
-          const { response, cookie } = await convertInBackground()
+          const { response, cookie: submittedCookie } = await convertInBackground()
 
           nock(GUIDANCE_API_BASE_URL)
             .get('/guides/staging/file-1')
@@ -466,19 +471,21 @@ describe('#checkAnswersController Integration', () => {
           const converting = await server.inject({
             method: 'GET',
             url: response.headers.location,
-            headers: { cookie }
+            headers: { cookie: submittedCookie }
           })
           expect(converting.headers.location).toBe(CONVERTED_URL)
+          const savedCookie = mergeCookies(submittedCookie, converting.headers['set-cookie'])
 
-          const main = await confirmation(mergeCookies(cookie, converting.headers['set-cookie']))
+          const main = await confirmation(savedCookie)
 
           expect(main).toHaveTextContent(LIVE)
           expect(main).not.toHaveTextContent(/draft/)
         })
 
         test('confirms the new version with the title submitted, though New guide is chosen while it saves', async () => {
-          const { cookie: submitted } = await convertInBackground()
-          const cookie = await chooseNewGuide(submitted)
+          const { cookie: submittedCookie } = await convertInBackground()
+
+          const afterChoiceCookie = await chooseNewGuide(submittedCookie)
 
           nock(GUIDANCE_API_BASE_URL)
             .get('/guides/staging/file-1')
@@ -487,11 +494,12 @@ describe('#checkAnswersController Integration', () => {
           const converting = await server.inject({
             method: 'GET',
             url: '/create-guidance/upload-guide/converting',
-            headers: { cookie }
+            headers: { cookie: afterChoiceCookie }
           })
           expect(converting.headers.location).toBe(CONVERTED_URL)
+          const savedCookie = mergeCookies(afterChoiceCookie, converting.headers['set-cookie'])
 
-          const main = await confirmation(mergeCookies(cookie, converting.headers['set-cookie']))
+          const main = await confirmation(savedCookie)
 
           expect(main).toHaveTextContent(LIVE)
           expect(within(main).getByText('Complete Guide Title')).toHaveClass('govuk-panel__body')
