@@ -125,7 +125,12 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
   }
 
   async function choose (cookie, payload) {
-    const response = await server.inject({ method: 'POST', url: CHOICE_URL, payload, headers: { cookie } })
+    const response = await server.inject({
+      method: 'POST',
+      url: CHOICE_URL,
+      payload,
+      headers: { cookie }
+    })
 
     expect(response.headers.location).toBe(METADATA_URL)
 
@@ -140,9 +145,15 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
 
   async function detailsPage (cookie) {
     mockFileTitle()
-    nock(GUIDANCE_API_URL).get('/reference/schemes').reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
+    nock(GUIDANCE_API_URL)
+      .get('/reference/schemes')
+      .reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
 
-    const response = await server.inject({ method: 'GET', url: METADATA_URL, headers: { cookie } })
+    const response = await server.inject({
+      method: 'GET',
+      url: METADATA_URL,
+      headers: { cookie }
+    })
 
     expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
 
@@ -150,10 +161,18 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
   }
 
   async function purposePage (cookie) {
-    nock(GUIDANCE_API_URL).get('/reference/systems').reply(statusCodes.HTTP_STATUS_OK, systemsResponse())
-    nock(GUIDANCE_API_URL).get('/reference/audiences').reply(statusCodes.HTTP_STATUS_OK, audiencesResponse())
+    nock(GUIDANCE_API_URL)
+      .get('/reference/systems')
+      .reply(statusCodes.HTTP_STATUS_OK, systemsResponse())
+    nock(GUIDANCE_API_URL)
+      .get('/reference/audiences')
+      .reply(statusCodes.HTTP_STATUS_OK, audiencesResponse())
 
-    const response = await server.inject({ method: 'GET', url: PURPOSE_URL, headers: { cookie } })
+    const response = await server.inject({
+      method: 'GET',
+      url: PURPOSE_URL,
+      headers: { cookie }
+    })
 
     expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
 
@@ -401,18 +420,28 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
   })
 
   test('keeps changes to the details when the same guide is chosen again', async () => {
-    let cookie = await chooseGuide(await processed(), CHOSEN_GUIDE)
-    nock(GUIDANCE_API_URL).get('/reference/schemes').reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
+    const guideChosen = await uploadWithGuideChosen(CHOSEN_GUIDE)
+
+    nock(GUIDANCE_API_URL)
+      .get('/reference/schemes')
+      .reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
+
     const changed = await server.inject({
       method: 'POST',
       url: METADATA_URL,
-      payload: { guideTitle: 'Claiming the SFI payment, 2026', versionNumber: '2.0', schemes: ['sustainable-farming-incentive-sfi'] },
-      headers: { cookie }
+      payload: {
+        guideTitle: 'Claiming the SFI payment, 2026',
+        versionNumber: '2.0',
+        schemes: ['sustainable-farming-incentive-sfi']
+      },
+      headers: { cookie: guideChosen }
     })
     expect(changed.headers.location).toBe(PURPOSE_URL)
-    cookie = await chooseGuide(mergeCookies(cookie, changed.headers['set-cookie']), CHOSEN_GUIDE)
+    const detailsChanged = mergeCookies(guideChosen, changed.headers['set-cookie'])
 
-    const page = await detailsPage(cookie)
+    const sameGuideChosenAgain = await chooseGuide(detailsChanged, CHOSEN_GUIDE)
+
+    const page = await detailsPage(sameGuideChosenAgain)
 
     expect(page.getByLabelText('Guidance title')).toHaveValue('Claiming the SFI payment, 2026')
     expect(page.getByLabelText('Version number')).toHaveValue('2.0')
