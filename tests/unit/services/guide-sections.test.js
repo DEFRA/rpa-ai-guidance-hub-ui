@@ -29,8 +29,6 @@ describe('splitIntoSections', () => {
         headingTitles: ['1.1 Detail'],
         headingSectionAnchors: ['1-1-detail'],
         subheadings: [{ title: '1.1 Detail', slug: '1-1-detail' }],
-        formerSlugs: { '11-detail': '1-1-detail' },
-        formerSectionAnchors: { '11-detail': '1-1-detail' },
         markdown: 'Overview text.\n\n### 1.1 Detail\n\n- one\n- two'
       },
       {
@@ -42,8 +40,6 @@ describe('splitIntoSections', () => {
         headingTitles: [],
         headingSectionAnchors: [],
         subheadings: [],
-        formerSlugs: {},
-        formerSectionAnchors: {},
         markdown: 'Assign text.'
       }
     ])
@@ -64,14 +60,14 @@ describe('splitIntoSections', () => {
 
   test('keeps a section that has a heading but no text', () => {
     expect(splitIntoSections('## Empty\n\n## Next\n\nBody.')).toEqual([
-      { id: 'section-1', title: 'Empty', slug: 'empty', sectionAnchor: 'empty', headingIds: [], headingTitles: [], headingSectionAnchors: [], subheadings: [], formerSlugs: {}, formerSectionAnchors: {}, markdown: '' },
-      { id: 'section-2', title: 'Next', slug: 'next', sectionAnchor: 'next', headingIds: [], headingTitles: [], headingSectionAnchors: [], subheadings: [], formerSlugs: {}, formerSectionAnchors: {}, markdown: 'Body.' }
+      { id: 'section-1', title: 'Empty', slug: 'empty', sectionAnchor: 'empty', headingIds: [], headingTitles: [], headingSectionAnchors: [], subheadings: [], markdown: '' },
+      { id: 'section-2', title: 'Next', slug: 'next', sectionAnchor: 'next', headingIds: [], headingTitles: [], headingSectionAnchors: [], subheadings: [], markdown: 'Body.' }
     ])
   })
 
   test('is one Introduction section when there are no headings', () => {
     expect(splitIntoSections('Just text.')).toEqual([
-      { id: 'section-1', title: 'Introduction', slug: null, sectionAnchor: null, headingIds: [], headingTitles: [], headingSectionAnchors: [], subheadings: [], formerSlugs: {}, formerSectionAnchors: {}, markdown: 'Just text.' }
+      { id: 'section-1', title: 'Introduction', slug: null, sectionAnchor: null, headingIds: [], headingTitles: [], headingSectionAnchors: [], subheadings: [], markdown: 'Just text.' }
     ])
   })
 
@@ -133,13 +129,6 @@ describe('splitIntoSections', () => {
       expect(section.headingIds).toEqual(['2024-25-claims'])
     })
 
-    test('keep each heading\'s former anchor, which dropped every dot, against its anchor now', () => {
-      const [section] = splitIntoSections('## 1 One\n\n### 1.1 Deep\n\n### Same')
-
-      expect(section.formerSlugs).toEqual({ '11-deep': '1-1-deep' })
-      expect(section.formerSectionAnchors).toEqual({ '11-deep': '1-1-deep' })
-    })
-
     test('number a repeated heading, counting the title that is dropped', () => {
       const sections = splitIntoSections('# Same\n\n## Same\n\ntext\n\n## Same\n\nmore\n\n### Same')
 
@@ -198,7 +187,7 @@ describe('resolveAnchors', () => {
   const sections = splitIntoSections([
     '## 1 One',
     '',
-    'Go to [2 Two](#2-two), [2.1 Deep](#21-deep), [1 One](#1-one) or [elsewhere](#nowhere).',
+    'Go to [2 Two](#2-two), [2.1 Deep](#2-1-deep), [1 One](#1-one) or [elsewhere](#nowhere).',
     '',
     '## 2 Two',
     '',
@@ -227,12 +216,6 @@ describe('resolveAnchors', () => {
 
   test('do not change the sections it is given', () => {
     expect(sections[0].markdown).toContain('[2 Two](#2-two)')
-  })
-
-  test('point a link by a heading\'s former anchor on the same page at its anchor now', () => {
-    const [one] = resolveAnchors(splitIntoSections('## 1 One\n\nSee [1.1 Deep](#11-deep).\n\n### 1.1 Deep'), page => `/g?page=${page}`)
-
-    expect(one.markdown).toContain('[1.1 Deep](#1-1-deep)')
   })
 
   describe('leave text that is not a link as it is', () => {
@@ -316,8 +299,7 @@ describe('findHeading', () => {
 
   test.each([
     ['a section\'s own heading', '2-assign-case', { anchor: '2-assign-case', slug: '2-assign-case', title: '2 Assign case', page: 2 }],
-    ['a heading inside a section, as plain text', '1-1-before-you-begin', { anchor: '1-1-before-you-begin', slug: '1-1-before-you-begin', title: '1.1 Before you begin', page: 1 }],
-    ['a heading by the anchor it had before dots became hyphens, with its anchor now', '11-before-you-begin', { anchor: '1-1-before-you-begin', slug: '1-1-before-you-begin', title: '1.1 Before you begin', page: 1 }]
+    ['a heading inside a section, as plain text', '1-1-before-you-begin', { anchor: '1-1-before-you-begin', slug: '1-1-before-you-begin', title: '1.1 Before you begin', page: 1 }]
   ])('finds %s, with its page', (_case, anchor, found) => {
     expect(findHeading(sections, anchor)).toEqual(found)
   })
@@ -329,13 +311,6 @@ describe('findHeading', () => {
     const repeated = splitIntoSections('# Help\n\n## Help\n\nFirst.\n\n## Help\n\nSecond.')
 
     expect(findHeading(repeated, anchor)).toEqual(found)
-  })
-
-  test('finds the heading an anchor names now before one it named before', () => {
-    const fees = splitIntoSections('## 1.2 Fees\n\nA.\n\n## 12 Fees\n\nB.')
-
-    expect(findHeading(fees, '12-fees')).toMatchObject({ title: '12 Fees', page: 2 })
-    expect(findHeading(fees, '1-2-fees')).toMatchObject({ title: '1.2 Fees', page: 1 })
   })
 
   test.each([

@@ -23,12 +23,6 @@ const INTRODUCTION_TITLE = 'Introduction'
  *   it gives no section ID
  * @property {Array<{title: string, slug: string}>} subheadings - The
  *   headings one level below the section's own
- * @property {Object<string, string>} formerSlugs - The anchor on the page
- *   each of its headings had before dots between digits became hyphens,
- *   against its anchor now, where they differ; a guide converted before
- *   links by them
- * @property {Object<string, string>} formerSectionAnchors - The same for the
- *   anchors the hub knows them by
  * @property {string} markdown - Everything up to the next section, without
  *   the section's own heading
  */
@@ -93,7 +87,6 @@ function _addToken (part, token, anchors, depth) {
     part.headingIds.push(anchors.onPage.get(heading))
     part.headingTitles.push(_plainText(heading))
     part.headingSectionAnchors.push(anchors.ofSection.get(heading) ?? null)
-    _keepFormer(part, heading, anchors)
   }
 
   if (token.type === 'heading' && token.depth === depth + 1) {
@@ -117,15 +110,11 @@ function _headingsIn (tokens) {
  * inside it.
  *
  * @param {GuideSection[]} sections
- * @param {string} anchor - The hub's (`sectionAnchor`), now or before dots
- *   between digits became hyphens
+ * @param {string} anchor - The hub's (`sectionAnchor`)
  * @returns {{anchor: string, slug: string, title: string, page: number}|null}
- *   With the anchor now; null when the hub knows no heading of the guide by
- *   it
+ *   Null when the hub knows no heading of the guide by it
  */
 function findHeading (sections, anchor) {
-  anchor = _now(anchor, sections, section => [section.sectionAnchor, ...section.headingSectionAnchors], section => section.formerSectionAnchors)
-
   for (const [index, section] of sections.entries()) {
     if (section.sectionAnchor === anchor) {
       return { anchor, slug: section.slug, title: section.title, page: index + 1 }
@@ -142,24 +131,11 @@ function findHeading (sections, anchor) {
 }
 
 /**
- * A heading's anchor on the page now, from the one it has now or had before
- * dots between digits became hyphens; any other anchor as it is.
- *
- * @param {GuideSection[]} sections
- * @param {string} slug
- * @returns {string}
- */
-function slugNow (sections, slug) {
-  return _now(slug, sections, section => [section.slug, ...section.headingIds], section => section.formerSlugs)
-}
-
-/**
  * Point each link to a heading at the page that has the heading. The
  * guide's own links name a heading by its anchor, but the reader sees one
  * section at a time, so the heading may be on another page.
  *
- * A link by a heading's former anchor is pointed at its anchor now. Other
- * links to a heading on the same page, and links to anything that is not a
+ * Links to a heading on the same page, and links to anything that is not a
  * heading of the guide, are left as they are.
  *
  * @param {GuideSection[]} sections
@@ -180,15 +156,10 @@ function resolveAnchors (sections, hrefForPage) {
   return sections.map((section, index) => ({
     ...section,
     markdown: _rewrite(section.markdown, (token, start) => token.type === 'link'
-      ? _linkEdit(token, start, written => {
-        const slug = slugNow(sections, written)
+      ? _linkEdit(token, start, slug => {
         const page = pageOf.get(slug)
 
-        if (page && page !== index + 1) {
-          return `${hrefForPage(page)}#${slug}`
-        }
-
-        return page && slug !== written ? `#${slug}` : null
+        return page && page !== index + 1 ? `${hrefForPage(page)}#${slug}` : null
       })
       : null)
   }))
@@ -350,7 +321,7 @@ function _hasSectionId (heading) {
  * @returns {{title: string, slug: string|null, sectionAnchor: string|null, raw: string[], headingIds: string[], headingTitles: string[], headingSectionAnchors: Array<string|null>, subheadings: Array<{title: string, slug: string}>}}
  */
 function _part (title, anchors, heading) {
-  const part = {
+  return {
     title,
     slug: anchors?.onPage.get(heading) ?? null,
     sectionAnchor: anchors?.ofSection.get(heading) ?? null,
@@ -358,52 +329,8 @@ function _part (title, anchors, heading) {
     headingIds: [],
     headingTitles: [],
     headingSectionAnchors: [],
-    subheadings: [],
-    formerSlugs: {},
-    formerSectionAnchors: {}
+    subheadings: []
   }
-
-  if (heading) {
-    _keepFormer(part, heading, anchors)
-  }
-
-  return part
-}
-
-/**
- * @private
- * @param {ReturnType<typeof _part>} part
- * @param {import('marked').Tokens.Heading} heading
- * @param {ReturnType<typeof _anchorsOf>} anchors
- */
-function _keepFormer (part, heading, anchors) {
-  for (const [now, former, kept] of [
-    [anchors.onPage, anchors.formerOnPage, part.formerSlugs],
-    [anchors.ofSection, anchors.formerOfSection, part.formerSectionAnchors]
-  ]) {
-    if (now.has(heading) && now.get(heading) !== former.get(heading)) {
-      kept[former.get(heading)] = now.get(heading)
-    }
-  }
-}
-
-/**
- * @private
- * @param {string} anchor
- * @param {GuideSection[]} sections
- * @param {(section: GuideSection) => Array<string|null>} anchorsNow
- * @param {(section: GuideSection) => Object<string, string>} formerOf
- * @returns {string} `anchor` if a heading has it now, else the anchor now of
- *   the heading that had it before; else `anchor`
- */
-function _now (anchor, sections, anchorsNow, formerOf) {
-  if (sections.some(section => anchorsNow(section).includes(anchor))) {
-    return anchor
-  }
-
-  const former = sections.map(formerOf).find(kept => Object.hasOwn(kept, anchor))
-
-  return former ? former[anchor] : anchor
 }
 
 /**
@@ -413,7 +340,7 @@ function _now (anchor, sections, anchorsNow, formerOf) {
  */
 function _build (parts) {
   return parts
-    .map(({ title, slug, sectionAnchor, raw, headingIds, headingTitles, headingSectionAnchors, subheadings, formerSlugs, formerSectionAnchors }) => ({
+    .map(({ title, slug, sectionAnchor, raw, headingIds, headingTitles, headingSectionAnchors, subheadings }) => ({
       title,
       slug,
       sectionAnchor,
@@ -421,8 +348,6 @@ function _build (parts) {
       headingTitles,
       headingSectionAnchors,
       subheadings,
-      formerSlugs,
-      formerSectionAnchors,
       markdown: raw.join('').trim()
     }))
     .filter(part => part.markdown || part.slug !== null)
@@ -431,9 +356,8 @@ function _build (parts) {
 
 /**
  * The anchors each heading goes by: its text in lower case, a dot between
- * two digits made a hyphen, without other punctuation, its spaces made
- * hyphens, and a number added to repeats; and as they were before dots
- * between digits became hyphens, when every dot was dropped. Which
+ * two digits made a hyphen ("1.2" is not "12"), without other punctuation,
+ * its spaces made hyphens, and a number added to repeats. Which
  * headings a repeat counts differs, so after one they can differ too:
  *
  * - `onPage`, the anchor the page gives it, counts every heading, the title
@@ -445,33 +369,31 @@ function _build (parts) {
  *
  * @private
  * @param {import('marked').Token[]} tokens
- * @returns {{onPage: Map<import('marked').Token, string>, ofSection: Map<import('marked').Token, string>, formerOnPage: Map<import('marked').Token, string>, formerOfSection: Map<import('marked').Token, string>}}
+ * @returns {{onPage: Map<import('marked').Token, string>, ofSection: Map<import('marked').Token, string>}}
  */
 function _anchorsOf (tokens) {
-  const onPage = _headingsIn(tokens)
-  const ofSection = tokens.filter(token => token.type === 'heading' && _hasSectionId(token))
-
   return {
-    onPage: _numbered(onPage, _slugOf),
-    ofSection: _numbered(ofSection, _slugOf),
-    formerOnPage: _numbered(onPage, _formerSlugOf),
-    formerOfSection: _numbered(ofSection, _formerSlugOf)
+    onPage: _numbered(_headingsIn(tokens)),
+    ofSection: _numbered(tokens.filter(token => token.type === 'heading' && _hasSectionId(token)))
   }
 }
 
 /**
  * @private
  * @param {import('marked').Tokens.Heading[]} headings - In source order
- * @param {(text: string) => string} slugOf
  * @returns {Map<import('marked').Token, string>} Each heading's slug, a
  *   number added to each repeat among `headings`
  */
-function _numbered (headings, slugOf) {
+function _numbered (headings) {
   const slugs = new Map()
   const seen = new Map()
 
   for (const heading of headings) {
-    const base = slugOf(_plainText(heading))
+    const base = _plainText(heading)
+      .replaceAll(/(?<=\d)\.(?=\d)/g, '-')
+      .toLowerCase()
+      .replaceAll(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, '')
+      .replaceAll(' ', '-')
     const count = seen.get(base) ?? 0
 
     seen.set(base, count + 1)
@@ -479,27 +401,6 @@ function _numbered (headings, slugOf) {
   }
 
   return slugs
-}
-
-/**
- * @private
- * @param {string} text - A heading, as plain text
- * @returns {string} Its anchor, before a repeat is numbered
- */
-function _slugOf (text) {
-  return _formerSlugOf(text.replaceAll(/(?<=\d)\.(?=\d)/g, '-'))
-}
-
-/**
- * @private
- * @param {string} text - A heading, as plain text
- * @returns {string} Its anchor before dots between digits became hyphens
- */
-function _formerSlugOf (text) {
-  return text
-    .toLowerCase()
-    .replaceAll(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, '')
-    .replaceAll(' ', '-')
 }
 
 /**
@@ -558,6 +459,5 @@ export {
   findHeading,
   resolveAnchors,
   resolveImages,
-  slugNow,
   splitIntoSections
 }
