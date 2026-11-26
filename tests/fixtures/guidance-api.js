@@ -252,11 +252,12 @@ function userResponse (overrides = {}) {
  * one, with the guide's title. By default the whole guide `guideResponse`
  * makes, with no section.
  *
- * Verified against the guidance API's `PinInBrief` schema on 2026-11-08: id,
- * title, and sectionId, section and heading, each null for a whole guide.
+ * Verified against the guidance API's `PinInBrief` schema on 2026-11-24: id,
+ * title, and sectionId, section, heading and removedInVersion, each null for a
+ * whole guide; removedInVersion is null too for a section the guide still has.
  *
  * @param {Object} [overrides]
- * @returns {{id: string, title: string|null, sectionId: string|null, section: string|null, heading: string|null}}
+ * @returns {{id: string, title: string|null, sectionId: string|null, section: string|null, heading: string|null, removedInVersion: string|null}}
  */
 function pinResponse (overrides = {}) {
   return {
@@ -265,6 +266,7 @@ function pinResponse (overrides = {}) {
     sectionId: null,
     section: null,
     heading: null,
+    removedInVersion: null,
     ...overrides
   }
 }

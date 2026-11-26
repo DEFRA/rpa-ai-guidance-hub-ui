@@ -21,18 +21,33 @@ function _placed (position, count) {
 
 /**
  * @private
+ * What the side navigation says of a pin or a bookmark on a section that a
+ * later version of its guide removed; null for one it still has.
+ *
+ * @param {string|null|undefined} removedInVersion
+ * @returns {string|null}
+ */
+function _removed (removedInVersion) {
+  return removedInVersion ? `Removed in version ${removedInVersion}` : null
+}
+
+/**
+ * @private
  * The user's pins as the side navigation lists them: a guide by its title, a
  * section by its heading, with its guide's title. Each is named by its key,
- * with its address, and its position, which its menu's forms send back.
+ * with its address, and its position, which its menu's forms send back. A
+ * section that a later version removed has its last heading, says so, and has
+ * no address.
  *
- * @param {Array<{id: string, title: string|null, sectionId: string|null, section: string|null, heading: string|null}>} pinned
+ * @param {Array<{id: string, title: string|null, sectionId: string|null, section: string|null, heading: string|null, removedInVersion: string|null}>} pinned
  *   - In the user's order
  * @returns {Array<object>}
  */
 function _pins (pinned) {
   return pinned.map((pin, position) => {
     const title = pin.title ?? UNTITLED
-    const href = `/guides/${encodeURIComponent(pin.id)}`
+    const removed = _removed(pin.removedInVersion)
+    const href = pin.section ? guideSectionHref(pin.id, pin.section) : `/guides/${encodeURIComponent(pin.id)}`
 
     return {
       key: usersService.pinKey(pin),
@@ -40,7 +55,8 @@ function _pins (pinned) {
       sectionId: pin.sectionId,
       label: pin.sectionId ? pin.heading ?? pin.section ?? title : title,
       guideTitle: pin.sectionId ? title : null,
-      href: pin.section ? guideSectionHref(pin.id, pin.section) : href,
+      removed,
+      href: removed ? null : href,
       ..._placed(position, pinned.length)
     }
   })
@@ -51,10 +67,11 @@ function _pins (pinned) {
  * The user's cases as the side navigation lists them: each named by its type
  * and reference, kept by its key, and linking to the Bookmarked guides page
  * narrowed to it, with its guides, each linking to the guide, and each guide's
- * bookmarked sections, each linking to its place in the guide. Each list
- * carries the ids it shows, which its moves send back.
+ * bookmarked sections, each linking to its place in the guide, or, for one a
+ * later version removed, saying so with no link. Each list carries the ids it
+ * shows, which its moves send back.
  *
- * @param {Array<{key: string, type: string, ref: string, guides: Array<{id: string, title: string|null, bookmarks: Array<{sectionId: string, section: string, heading: string|null}>}>}>} cases
+ * @param {Array<{key: string, type: string, ref: string, guides: Array<{id: string, title: string|null, bookmarks: Array<{sectionId: string, section: string|null, heading: string|null, removedInVersion: string|null}>}>}>} cases
  *   - In the user's order
  * @returns {{cases: Array<object>, order: string[]}}
  */
@@ -77,11 +94,16 @@ function _caseBookmarks (cases) {
           title: guide.title ?? UNTITLED,
           href,
           ..._placed(at, guides.length),
-          sections: guide.bookmarks.map(({ sectionId, section, heading }) => ({
-            sectionId,
-            label: heading ?? section,
-            href: guideSectionHref(guide.id, section)
-          }))
+          sections: guide.bookmarks.map(({ sectionId, section, heading, removedInVersion }) => {
+            const removed = _removed(removedInVersion)
+
+            return {
+              sectionId,
+              label: heading ?? section,
+              removed,
+              href: removed ? null : guideSectionHref(guide.id, section)
+            }
+          })
         }
       })
     }))
