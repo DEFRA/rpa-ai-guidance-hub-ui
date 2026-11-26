@@ -111,9 +111,14 @@
   margin-left: calc(50% - 50vw);
 }
 
-// The header's logo starts where the hero's content does, as on the design's
-// full-width sign-in page, not in the centred column of other pages.
-.app-sign-in-page .defra-header__inner {
+// The header's logo, and the footer's links under it, start where the hero's
+// content does, as on the design's full-width sign-in page, not in the
+// centred column of other pages.
+.app-sign-in-page .defra-header__inner,
+.app-sign-in-page .defra-footer__inner {
+  // The footer's is a width container, which core/_main sets to 100% wide;
+  // with these margins added that would scroll the page sideways.
+  width: auto;
   max-width: none;
   margin: 0 govuk-spacing(4);
   padding-right: 0;

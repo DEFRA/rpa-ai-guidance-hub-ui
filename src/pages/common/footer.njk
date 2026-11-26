@@ -1,0 +1,18 @@
+<footer class="defra-footer" role="contentinfo">
+  <div class="govuk-width-container defra-footer__inner{% if containerClasses %} {{ containerClasses }}{% endif %}">
+    {# On every page, signed in or not, so the cookie policy can always be
+       found, not only from the banner. #}
+    <nav aria-label="Footer">
+      <ul class="defra-footer__inline-list">
+        <li class="defra-footer__inline-list-item">
+          <a class="defra-footer__link" href="/cookies">Cookies</a>
+        </li>
+      </ul>
+    </nav>
+    {% if aceSlackChannel %}
+      <p class="govuk-body-s govuk-!-margin-top-3 govuk-!-margin-bottom-0">
+        Questions? Contact the AICE team on Slack <a class="defra-footer__link" href="{{ aceSlackChannel }}">#ask-ace</a>
+      </p>
+    {% endif %}
+  </div>
+</footer>

@@ -1,8 +1,21 @@
+import { within } from '@testing-library/dom'
+
 import { createServer } from '../../../../src/server/server.js'
+import { loginAsDevUser } from '../../helpers/login.js'
 import { pageOf } from '../../helpers/page.js'
 
 function setCookies (response) {
   return [response.headers['set-cookie']].flat()
+}
+
+function sideNavIn (page) {
+  return within(page.document.body)
+    .queryByRole('navigation', { name: 'Guidance hub' })
+}
+
+function footerOf (page) {
+  return within(within(page.document.body)
+    .getByRole('navigation', { name: 'Footer' }))
 }
 
 function postBanner (server, action, payload, headers) {
@@ -48,6 +61,30 @@ describe('cookies', () => {
       expect(page.getByRole('radio', { name: 'No' })).toBeChecked()
     })
 
+    test('GET /cookies is in the sign-in page\'s frame, with a way back',
+      async () => {
+        const { payload } = await server.inject({
+          method: 'GET',
+          url: '/cookies'
+        })
+        const page = pageOf(payload)
+
+        expect(page.document.body).toHaveClass('app-sign-in-page')
+        expect(sideNavIn(page)).not.toBeInTheDocument()
+        expect(within(page.document.body)
+          .queryByRole('navigation', { name: 'Breadcrumb' }))
+          .not.toBeInTheDocument()
+        expect(within(page.document.body).getByRole('link', { name: 'Back' }))
+          .toHaveAttribute('href', '/')
+      })
+
+    test('the sign-in page\'s footer links to the cookies page', async () => {
+      const { payload } = await server.inject({ method: 'GET', url: '/' })
+
+      expect(footerOf(pageOf(payload)).getByRole('link', { name: 'Cookies' }))
+        .toHaveAttribute('href', '/cookies')
+    })
+
     test('GET /cookies shows Yes selected once analytics is accepted',
       async () => {
         const { payload } = await server.inject({
@@ -81,6 +118,67 @@ describe('cookies', () => {
       expect(pageOf(payload).document.querySelector('.govuk-cookie-banner'))
         .toHaveAttribute('hidden')
     })
+  })
+
+  describe('when signed in', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs()
+      vi.stubEnv('GTM_CONTAINER_ID', 'GTM-TEST123')
+    })
+
+    test('GET /cookies keeps the side navigation, with no breadcrumbs',
+      async () => {
+        const cookie = await loginAsDevUser(server)
+
+        const { statusCode, payload } = await server.inject({
+          method: 'GET',
+          url: '/cookies',
+          headers: { cookie }
+        })
+        const page = pageOf(payload)
+
+        expect(statusCode).toBe(200)
+        expect(page.document.body).not.toHaveClass('app-sign-in-page')
+        expect(sideNavIn(page)).toBeInTheDocument()
+        expect(within(page.document.body)
+          .queryByRole('navigation', { name: 'Breadcrumb' }))
+          .not.toBeInTheDocument()
+        expect(footerOf(page).getByRole('link', { name: 'Cookies' }))
+          .toHaveAttribute('href', '/cookies')
+      })
+
+    test('the footer is in the main column, beside the side navigation',
+      async () => {
+        const cookie = await loginAsDevUser(server)
+
+        const { payload } = await server.inject({
+          method: 'GET',
+          url: '/cookies',
+          headers: { cookie }
+        })
+        const footers = within(pageOf(payload).document.body)
+          .getAllByRole('contentinfo')
+
+        expect(footers).toHaveLength(1)
+        expect(footers[0].closest('.app-layout__main')).not.toBeNull()
+      })
+
+    test('GET /cookies is open to a user without Hub.Viewer, outside the hub',
+      async () => {
+        vi.stubEnv('DEV_USER_ROLES', '')
+        const cookie = await loginAsDevUser(server)
+
+        const { statusCode, payload } = await server.inject({
+          method: 'GET',
+          url: '/cookies',
+          headers: { cookie }
+        })
+        const page = pageOf(payload)
+
+        expect(statusCode).toBe(200)
+        expect(page.document.body).toHaveClass('app-sign-in-page')
+        expect(sideNavIn(page)).not.toBeInTheDocument()
+      })
   })
 
   describe('accepting from the banner', () => {

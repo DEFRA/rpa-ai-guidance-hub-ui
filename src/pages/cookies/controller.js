@@ -1,23 +1,30 @@
 import { config } from '../../config/config.js'
+import { canUseHub } from '../../server/access-control/hub-access.js'
 import { safeReturnPath } from '../../server/cookie-consent.js'
 
 /**
  * Shows /cookies, where a user can change their analytics choice. Public: the
  * banner that links here renders on signed-out pages too.
  *
+ * Someone who can use the hub sees it beside the side navigation, as every
+ * other page they visit. Anyone else - signed out, or signed in without
+ * access - sees it in the sign-in page's frame, as the access-denied page is.
+ *
  * @type {import('@hapi/hapi').Lifecycle.Method}
  */
 function cookiesGetController (request, h) {
-  return h.view('cookies/page', {
+  const context = {
     pageTitle: 'Cookies',
     saved: request.query.saved === 'true',
     currentAnalytics: request.getConsent(),
-    gtmContainerId: config.get('googleTagManager.containerId'),
-    breadcrumbs: [
-      { text: 'Home', href: '/' },
-      { text: 'Cookies' }
-    ]
-  })
+    gtmContainerId: config.get('googleTagManager.containerId')
+  }
+
+  if (!request.auth.isAuthenticated || !canUseHub(request.auth.credentials)) {
+    return h.view('cookies/page', { ...context, outsideHub: true, hideSideNav: true })
+  }
+
+  return h.view('cookies/page', context)
 }
 
 /**

@@ -76,7 +76,7 @@ describe('#hubController', () => {
       expect(page.getByRole('heading', { level: 2, name: '1 guide' })).toBeInTheDocument()
       expect(page.document.body).not.toHaveTextContent('Editing')
       expect(page.document.body).not.toHaveTextContent('Saved guidance')
-      expect(within(page.document.body).getAllByRole('navigation').map((nav) => nav.getAttribute('aria-label'))).toEqual(['Guidance hub'])
+      expect(within(page.document.body).getAllByRole('navigation').map((nav) => nav.getAttribute('aria-label'))).toEqual(['Guidance hub', 'Footer'])
     })
 
     test('shows one list at a time, not tabs', async () => {

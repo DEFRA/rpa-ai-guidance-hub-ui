@@ -1,19 +1,23 @@
 import * as controller from './controller.js'
 
-// Cookie consent routes. Public (no auth): the banner is rendered on signed-out
-// pages too, so accept/reject and the settings page must work without a
-// session. They only store the choice, so no user context is needed.
+// Reads the session if there is one, but never requires it.
+const pageAuth = {
+  mode: 'try',
+  strategy: 'session',
+  access: { scope: false }
+}
+
 const routes = [
   {
     method: 'GET',
     path: '/cookies',
-    options: { auth: false },
+    options: { auth: pageAuth },
     handler: controller.cookiesGetController
   },
   {
     method: 'POST',
     path: '/cookies',
-    options: { auth: false },
+    options: { auth: pageAuth },
     handler: controller.cookiesPostController
   },
   {
