@@ -372,6 +372,7 @@ describe('upload-guide metadata controller', () => {
       expect(session.setGuideUploadMetadata).toHaveBeenCalledWith(request, {
         guideTitle: 'Updated Guide Title',
         versionNumber: '2.1',
+        sourceLink: null,
         schemes: ['sfi']
       })
       expect(h.redirect).toHaveBeenCalledWith('/create-guidance/upload-guide/metadata/purpose')
@@ -399,6 +400,7 @@ describe('upload-guide metadata controller', () => {
       expect(session.setGuideUploadMetadata).toHaveBeenCalledWith(request, {
         guideTitle: 'Updated Guide Title',
         versionNumber: '2.1',
+        sourceLink: null,
         schemes: ['Sustainable Farming Incentive']
       })
     })

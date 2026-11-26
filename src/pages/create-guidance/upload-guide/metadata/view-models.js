@@ -9,6 +9,7 @@ const NOT_AVAILABLE = 'Not available'
 const FIELD_HREF_MAP = {
   guideTitle: '#guide-title',
   versionNumber: '#version-number',
+  sourceLink: '#source-link',
   schemes: '#schemes'
 }
 
@@ -75,6 +76,7 @@ class GuideDetailsViewModel {
       values: {
         guideTitle: values.guideTitle ?? stagedDocument?.title ?? '',
         versionNumber: values.versionNumber ?? '',
+        sourceLink: values.sourceLink ?? '',
         schemes: values.schemes ? toOptionValues(values.schemes) : ''
       },
       lastModifiedDate: values.lastModifiedDate ||

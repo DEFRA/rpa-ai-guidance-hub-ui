@@ -82,6 +82,25 @@ function stagedDocumentResponse (overrides = {}) {
 const draftResponse = stagedDocumentResponse
 
 /**
+ * Body of `POST /guides/source-link-checks` on 200: the link's canonical link
+ * when the hub takes it, or why it does not.
+ *
+ * Verified against the guidance API's `CheckedSourceLink` schema on
+ * 2026-11-26: canonicalLink, refusal ('not-sharepoint' |
+ * 'not-a-word-document'), each null when the other is set.
+ *
+ * @param {Object} [overrides]
+ * @returns {{canonicalLink: string|null, refusal: string|null}}
+ */
+function checkedSourceLinkResponse (overrides = {}) {
+  return {
+    canonicalLink: 'https://example.sharepoint.com/teams/team1234/claims/claims%20guide.docx',
+    refusal: null,
+    ...overrides
+  }
+}
+
+/**
  * Builds a mock guidance API `POST /guides` response: the document an
  * upload became, with its one version.
  *
@@ -413,6 +432,7 @@ function refusalResponse (overrides = {}) {
 export {
   bookmarkedGuidesResponse,
   caseResponse,
+  checkedSourceLinkResponse,
   guidePageResponse,
   guideResponse,
   guideSearchResponse,

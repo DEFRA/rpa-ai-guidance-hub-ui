@@ -5,7 +5,7 @@ import { loginAsDevUser } from '../../../../helpers/login.js'
 import { mergeCookies } from '../../../../helpers/cookies.js'
 import { errorSummaryOf, pageOf, summaryValueOf } from '../../../../helpers/page.js'
 import { config } from '../../../../../../src/config/config.js'
-import { schemesResponse, stagedDocumentResponse } from '../../../../../fixtures/guidance-api.js'
+import { checkedSourceLinkResponse, schemesResponse, stagedDocumentResponse } from '../../../../../fixtures/guidance-api.js'
 import { initiateUploadResponse, uploadStatusResponse } from '../../../../../fixtures/cdp-uploader.js'
 import { METADATA_MESSAGES } from '../../../../../fixtures/messages.js'
 
@@ -192,6 +192,68 @@ describe('#metadataController Integration', () => {
       expect(errorSummaryOf(page).getByRole('link', { name: message })).toHaveAttribute('href', '#version-number')
       expect(field).toHaveAccessibleDescription(`For example, 1.0 Error: ${message}`)
       expect(field).toHaveAttribute('value', versionNumber)
+    })
+
+    test('GET /create-guidance/upload-guide/metadata asks for the SharePoint link of the document, saying how to get it', async () => {
+      const devCookie = await loginAsDevUser(server)
+      const cookie = await completeParse(server, devCookie)
+      mockSchemes()
+      nock(GUIDANCE_API_BASE_URL).get('/guides/staging/file-1').reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'complete' }))
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/create-guidance/upload-guide/metadata',
+        headers: { cookie }
+      })
+
+      const field = pageOf(response.payload).getByLabelText('SharePoint link to the document (optional)')
+      expect(field).toHaveAttribute('name', 'sourceLink')
+      expect(field).toHaveAccessibleDescription('Open the document in Word for the web, then copy the address from your browser.')
+    })
+
+    test.each([
+      ['not-sharepoint', 'https://www.gov.uk/claims', METADATA_MESSAGES.sourceLinkNotSharepoint],
+      ['not-a-word-document', 'https://example.sharepoint.com/:f:/r/teams/Team1234/Claims', METADATA_MESSAGES.sourceLinkNotAWordDocument]
+    ])('POST /create-guidance/upload-guide/metadata re-renders 400 for a source link the hub refuses as %s, saying why and how to get the right one', async (refusal, sourceLink, message) => {
+      const cookie = await loginAsDevUser(server)
+      mockSchemes()
+      mockSchemes()
+      nock(GUIDANCE_API_BASE_URL)
+        .post('/guides/source-link-checks', { link: sourceLink })
+        .reply(statusCodes.HTTP_STATUS_OK, checkedSourceLinkResponse({ canonicalLink: null, refusal }))
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/create-guidance/upload-guide/metadata',
+        payload: { guideTitle: 'A valid title', versionNumber: '1.0', schemes: ['sustainable-farming-incentive-sfi'], sourceLink },
+        headers: { cookie }
+      })
+
+      const page = pageOf(response.payload)
+      expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_BAD_REQUEST)
+      expect(errorSummaryOf(page).getByRole('link', { name: message })).toHaveAttribute('href', '#source-link')
+      expect(page.getByLabelText('SharePoint link to the document (optional)')).toHaveAttribute('value', sourceLink)
+    })
+
+    test('POST /create-guidance/upload-guide/metadata goes on with a source link the hub takes', async () => {
+      const devCookie = await loginAsDevUser(server)
+      const cookie = await startMigration(server, devCookie)
+      const sourceLink = 'https://example.sharepoint.com/:w:/r/teams/Team1234/Claims/Claims%20guide.docx?web=1'
+      mockSchemes()
+      const check = nock(GUIDANCE_API_BASE_URL)
+        .post('/guides/source-link-checks', { link: sourceLink })
+        .reply(statusCodes.HTTP_STATUS_OK, checkedSourceLinkResponse())
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/create-guidance/upload-guide/metadata',
+        payload: { guideTitle: 'A valid title', versionNumber: '1.0', schemes: ['sustainable-farming-incentive-sfi'], sourceLink },
+        headers: { cookie }
+      })
+
+      expect(check.isDone()).toBe(true)
+      expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+      expect(response.headers.location).toBe('/create-guidance/upload-guide/metadata/purpose')
     })
 
     test('GET /create-guidance/upload-guide/metadata shows the scheme year, 2026, chosen and fixed', async () => {

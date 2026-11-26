@@ -11,7 +11,15 @@ const METADATA_MESSAGES = Object.freeze({
   titleTooLong: 'Guidance title must be 200 characters or fewer',
   versionNumberRequired: 'Enter the version number',
   versionNumberFormat: 'Enter the version number as 2 whole numbers with a full stop between them, for example 1.0',
-  schemeRequired: 'Select at least one scheme this guidance relates to'
+  schemeRequired: 'Select at least one scheme this guidance relates to',
+  sourceLinkNotSharepoint: 'Enter a SharePoint link to the Word document. Open the document in Word for the web and copy the address from your browser',
+  sourceLinkNotAWordDocument: 'Enter a link to a Word document, not to a folder, a page or another kind of file. Open the document in Word for the web and copy the address from your browser'
+})
+
+// What the form says for each reason the guidance API gives for refusing a source link.
+const SOURCE_LINK_REFUSED = Object.freeze({
+  'not-sharepoint': METADATA_MESSAGES.sourceLinkNotSharepoint,
+  'not-a-word-document': METADATA_MESSAGES.sourceLinkNotAWordDocument
 })
 
 // ASCII digits only: a version number is typed as SharePoint shows it.
@@ -52,10 +60,16 @@ function _majorMinor (value, helpers) {
  * this schema just trusts whatever valid values it's given, same as any
  * other scheme.
  *
+ * The source link, when given, is checked by the guidance API (`refusalOf`), so
+ * this is a schema to validate with `validateAsync`. Joi asks only once every
+ * other answer is valid.
+ *
  * @param {Array<{label: string}>} schemeOptions - Valid scheme options
+ * @param {(link: string) => Promise<string|null>} [refusalOf] - Why the hub
+ *   refuses a source link, or null when it takes it
  * @returns {Joi.ObjectSchema}
  */
-function buildMetadataSchema (schemeOptions) {
+function buildMetadataSchema (schemeOptions, refusalOf) {
   const schemeLabels = schemeOptions.map((option) => option.label)
 
   if (schemeLabels.length === 0) {
@@ -80,6 +94,14 @@ function buildMetadataSchema (schemeOptions) {
         'any.required': METADATA_MESSAGES.versionNumberRequired,
         'string.empty': METADATA_MESSAGES.versionNumberRequired,
         'string.majorMinor': METADATA_MESSAGES.versionNumberFormat
+      }),
+    sourceLink: Joi.string()
+      .trim()
+      .allow('', null)
+      .external(async (link, helpers) => {
+        const refusal = link ? await refusalOf(link) : null
+
+        return refusal ? helpers.message(SOURCE_LINK_REFUSED[refusal]) : undefined
       }),
     schemes: Joi.array()
       .items(Joi.string().valid(...schemeLabels))
