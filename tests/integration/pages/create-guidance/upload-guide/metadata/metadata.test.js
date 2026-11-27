@@ -235,7 +235,7 @@ describe('#metadataController Integration', () => {
       expect(page.getByLabelText('SharePoint link to the document (optional)')).toHaveAttribute('value', sourceLink)
     })
 
-    test('POST /create-guidance/upload-guide/metadata goes on with a source link the hub takes', async () => {
+    test('POST /create-guidance/upload-guide/metadata goes on with a source link the hub takes, keeping it as given', async () => {
       const devCookie = await loginAsDevUser(server)
       const cookie = await startMigration(server, devCookie)
       const sourceLink = 'https://example.sharepoint.com/:w:/r/teams/Team1234/Claims/Claims%20guide.docx?web=1'
@@ -254,6 +254,16 @@ describe('#metadataController Integration', () => {
       expect(check.isDone()).toBe(true)
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(response.headers.location).toBe('/create-guidance/upload-guide/metadata/purpose')
+
+      mockSchemes()
+      const again = await server.inject({
+        method: 'GET',
+        url: '/create-guidance/upload-guide/metadata',
+        headers: { cookie: mergeCookies(cookie, response.headers['set-cookie']) }
+      })
+
+      // As the maintainer gave it, not the canonical link the API answered.
+      expect(pageOf(again.payload).getByLabelText('SharePoint link to the document (optional)')).toHaveValue(sourceLink)
     })
 
     test('GET /create-guidance/upload-guide/metadata shows the scheme year, 2026, chosen and fixed', async () => {
