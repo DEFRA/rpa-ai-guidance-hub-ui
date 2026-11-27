@@ -410,6 +410,19 @@ function refusalResponse (overrides = {}) {
   return { detail: 'Refused', ...overrides }
 }
 
+/**
+ * Body of DELETE /admin/search-index on 200.
+ *
+ * Verified against the guidance API plan (admin-search-index-rebuild/api.md)
+ * on 2026-11-27: how many objects and state records the delete removed.
+ *
+ * @param {Object} [overrides]
+ * @returns {{deletedObjects: number, deletedStateRecords: number}}
+ */
+function searchIndexDeletedResponse (overrides = {}) {
+  return { deletedObjects: 12, deletedStateRecords: 12, ...overrides }
+}
+
 export {
   bookmarkedGuidesResponse,
   caseResponse,
@@ -431,5 +444,6 @@ export {
   stagedDocumentResponse,
   draftResponse,
   createdGuideResponse,
-  userResponse
+  userResponse,
+  searchIndexDeletedResponse
 }

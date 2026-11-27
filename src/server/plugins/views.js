@@ -130,6 +130,8 @@ const viewPlugin = {
         // The editor's functions are not rendered at all for anyone else, unless
         // roles are not enforced, when everyone gets them.
         isEditor: !roleEnforcementEnabled() || roles.includes(ROLES.EDITOR),
+        // The same goes for the administrator's.
+        isAdmin: !roleEnforcementEnabled() || roles.includes(ROLES.ADMIN),
         roles,
         userRolesCaption: _formatRolesCaption(roles),
         // The open navigation's width, which its handle can change, and the

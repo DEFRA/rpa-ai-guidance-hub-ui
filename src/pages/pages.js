@@ -23,15 +23,30 @@ async function loadRouteModules (routeFiles) {
   return Promise.all(routeFiles.map((routeFile) => import(routeFile)))
 }
 
-// Every page and form under it is an editor's, including any added later.
-const EDITOR_PATH_PREFIX = '/create-guidance/'
+// Every page and form under a prefix needs its role, including any added
+// later. The administrator's area is its own page as well as what is under it.
+const ROLE_PATHS = [
+  {
+    role: ROLES.EDITOR,
+    matches: (path) => path.startsWith('/create-guidance/')
+  },
+  {
+    role: ROLES.ADMIN,
+    matches: (path) => path === '/admin' || path.startsWith('/admin/')
+  }
+]
 
 function withRequiredRoles (route) {
-  if (!route.path.startsWith(EDITOR_PATH_PREFIX)) {
+  const rolePath = ROLE_PATHS.find((entry) => entry.matches(route.path))
+
+  if (!rolePath) {
     return route
   }
 
-  return { ...route, options: { ...route.options, auth: requireRoles(ROLES.EDITOR) } }
+  return {
+    ...route,
+    options: { ...route.options, auth: requireRoles(rolePath.role) }
+  }
 }
 
 function registerRoutes (server, routeModules) {
