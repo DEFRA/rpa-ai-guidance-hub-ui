@@ -7,6 +7,7 @@ import { loginAsDevUser } from './login.js'
 import { pageOf } from './page.js'
 import {
   audiencesResponse,
+  checkedSourceLinkResponse,
   schemesResponse,
   stagedDocumentResponse,
   systemsResponse
@@ -141,16 +142,18 @@ async function chooseToUpdate (server, cookie, guide) {
  * @param {Object} [options]
  * @param {Object} [options.updates] - The guide the upload is a new version
  *   of, as `GET /guides/{id}` sends it; a new guide when not given
+ * @param {string} [options.sourceLink] - The SharePoint link given on the
+ *   guide details screen, which the API takes; none when not given
  * @returns {Promise<string>} The session's cookie
  */
-async function completeAllMetadata (server, cookie, { updates } = {}) {
+async function completeAllMetadata (server, cookie, { updates, sourceLink } = {}) {
   let sessionCookie = await completeParse(server, cookie)
 
   if (updates) {
     sessionCookie = await chooseToUpdate(server, sessionCookie, updates)
   }
 
-  return completeDetails(server, sessionCookie)
+  return completeDetails(server, sessionCookie, { sourceLink })
 }
 
 /**
@@ -170,19 +173,31 @@ async function uploadReadyToConvert (server, options) {
  *
  * @param {Object} server
  * @param {string} cookie
+ * @param {Object} [options]
+ * @param {string} [options.sourceLink] - As `completeAllMetadata` takes it
  * @returns {Promise<string>} The session's cookie
  */
-async function completeDetails (server, cookie) {
+async function completeDetails (server, cookie, { sourceLink } = {}) {
   let sessionCookie = cookie
 
   nock(GUIDANCE_API_BASE_URL)
     .get('/reference/schemes')
     .reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
+  if (sourceLink) {
+    nock(GUIDANCE_API_BASE_URL)
+      .post('/guides/source-link-checks', { link: sourceLink })
+      .reply(statusCodes.HTTP_STATUS_OK, checkedSourceLinkResponse())
+  }
 
   const guideDetailsResponse = await server.inject({
     method: 'POST',
     url: '/create-guidance/upload-guide/metadata',
-    payload: { guideTitle: 'Complete Guide Title', versionNumber: '1.0', schemes: ['sustainable-farming-incentive-sfi'] },
+    payload: {
+      guideTitle: 'Complete Guide Title',
+      versionNumber: '1.0',
+      schemes: ['sustainable-farming-incentive-sfi'],
+      ...(sourceLink ? { sourceLink } : {})
+    },
     headers: { cookie: sessionCookie }
   })
 

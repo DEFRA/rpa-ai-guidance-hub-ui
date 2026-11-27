@@ -626,6 +626,25 @@ describe('#checkAnswersController Integration', () => {
       await expectFreshUploadForm(server, mergeCookies(convertedCookie, converted.headers['set-cookie']))
     })
 
+    test('POST sends the SharePoint link the maintainer gave, as given, beside the title', async () => {
+      const sourceLink = 'https://example.sharepoint.com/:w:/r/teams/Team1234/Claims/Complete%20Guide%20Title.docx?web=1'
+      const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { sourceLink })
+      mockReferenceData()
+      const createGuide = nock(GUIDANCE_API_BASE_URL)
+        .post('/guides', { ...CONVERSION_REQUEST, sourceLink })
+        .reply(statusCodes.HTTP_STATUS_CREATED, createdGuideResponse())
+
+      const response = await server.inject({
+        method: 'POST',
+        url: CHECK_ANSWERS_URL,
+        payload: {},
+        headers: { cookie }
+      })
+
+      createGuide.done()
+      expect(response.headers.location).toBe(CONVERTED_URL)
+    })
+
     describe('Saving the converted document in the background', () => {
       const CONVERTING_URL = '/create-guidance/upload-guide/converting'
 
