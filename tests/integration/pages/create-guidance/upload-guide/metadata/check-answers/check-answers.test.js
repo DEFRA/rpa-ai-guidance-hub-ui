@@ -304,6 +304,41 @@ describe('#checkAnswersController Integration', () => {
         expect(response.headers.location).toBe('/create-guidance/upload-guide/converting')
       })
 
+      describe('whose latest version has a SharePoint link', () => {
+        const linkedGuide = guideResponse({
+          id: GUIDE_ID,
+          versions: [versionResponse({
+            sourceLink: 'https://example.sharepoint.com/:w:/r/teams/Team1234/Claims/2025/Claiming%20the%20SFI%20payment.docx?web=1'
+          })]
+        })
+        const LINKED_VERSION_REQUEST = { ...CONVERSION_REQUEST, replacesVersionId: linkedGuide.versions[0].id }
+
+        test('POST sends the SharePoint link the maintainer gave for the new version, not the latest version\'s', async () => {
+          const sourceLink = 'https://example.sharepoint.com/:w:/r/teams/Team1234/Claims/2026/Claiming%20the%20SFI%20payment.docx?web=1'
+          const cookie = await uploadReadyToConvert(server, { updates: linkedGuide, sourceLink })
+          mockReferenceData()
+          const createVersion = nock(GUIDANCE_API_BASE_URL)
+            .post(`/guides/${GUIDE_ID}/versions`, { ...LINKED_VERSION_REQUEST, sourceLink })
+            .reply(statusCodes.HTTP_STATUS_ACCEPTED, SAVE_STARTED, SAVE_STARTED_AT)
+
+          await submit(cookie)
+
+          createVersion.done()
+        })
+
+        test('POST sends no SharePoint link when the maintainer cleared the one the new version started with', async () => {
+          const cookie = await uploadReadyToConvert(server, { updates: linkedGuide })
+          mockReferenceData()
+          const createVersion = nock(GUIDANCE_API_BASE_URL)
+            .post(`/guides/${GUIDE_ID}/versions`, LINKED_VERSION_REQUEST)
+            .reply(statusCodes.HTTP_STATUS_ACCEPTED, SAVE_STARTED, SAVE_STARTED_AT)
+
+          await submit(cookie)
+
+          createVersion.done()
+        })
+      })
+
       test('POST again asks for the new version as submitted, though New guide and another title are chosen while it saves', async () => {
         const { cookie: submittedCookie } = await convertInBackground()
 
