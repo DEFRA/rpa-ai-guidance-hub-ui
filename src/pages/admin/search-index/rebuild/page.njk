@@ -1,0 +1,31 @@
+{% extends "common/layout.njk" %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+
+{% block beforeContent %}
+  <a class="govuk-back-link" href="/admin/search-index">Back</a>
+{% endblock %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds app-content">
+      <h1 class="govuk-heading-l">Are you sure you want to rebuild the search index?</h1>
+
+      <p class="govuk-body">
+        This sends every guide to search again. Guides appear in search results
+        over the next few minutes. It does not remove anything that is already
+        in search.
+      </p>
+
+      <form method="post">
+        {{ govukButton({
+          text: "Yes, rebuild the search index",
+          preventDoubleClick: true
+        }) }}
+      </form>
+
+      <p class="govuk-body">
+        <a class="govuk-link" href="/admin/search-index">Cancel</a>
+      </p>
+    </div>
+  </div>
+{% endblock %}

@@ -42,6 +42,28 @@ describe('#registerRoutes', () => {
     })
   })
 
+  test.each(['/admin', '/admin/search-index', '/admin/search-index/delete'])(
+    'requires the administrator role on %s',
+    (path) => {
+      const server = { route: vi.fn() }
+      const routes = [{ method: 'GET', path, handler: vi.fn() }]
+
+      registerRoutes(server, [{ routes }])
+
+      const [registered] = server.route.mock.calls[0][0]
+      expect(registered.options.auth).toEqual(requireRoles(ROLES.ADMIN))
+    }
+  )
+
+  test('does not take a path that only starts with admin for the administrator\'s', () => {
+    const server = { route: vi.fn() }
+    const route = { method: 'GET', path: '/administer', handler: vi.fn() }
+
+    registerRoutes(server, [{ routes: [route] }])
+
+    expect(server.route.mock.calls[0][0][0]).toBe(route)
+  })
+
   test('leaves routes outside create-guidance as they are', () => {
     const server = { route: vi.fn() }
     const route = { method: 'GET', path: '/hub/create-guidance', handler: vi.fn() }

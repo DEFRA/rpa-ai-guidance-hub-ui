@@ -154,6 +154,42 @@ describe('views plugin', () => {
       expect(viewPlugin.options.context(mockRequest).roles).toEqual(['Hub.Editor'])
     })
 
+    describe('isAdmin', () => {
+      function requestWith (roles) {
+        return {
+          auth: { isAuthenticated: true, credentials: { roles, profile: { roles } } }
+        }
+      }
+
+      test('is true for an administrator', async () => {
+        const { viewPlugin } = await import('../../../../src/server/plugins/views.js')
+
+        const ctx = viewPlugin.options.context(requestWith(['Hub.Viewer', 'Hub.Admin']))
+
+        expect(ctx.isAdmin).toBe(true)
+      })
+
+      test('is false for a maintainer who is not an administrator', async () => {
+        const { viewPlugin } = await import('../../../../src/server/plugins/views.js')
+
+        const ctx = viewPlugin.options.context(requestWith(['Hub.Viewer', 'Hub.Editor']))
+
+        expect(ctx.isAdmin).toBe(false)
+      })
+
+      test('is true for anyone when roles are not enforced', async () => {
+        // The modules are reset for each test, so this config is the one the
+        // plugin reads, and it goes with them
+        const { config } = await import('../../../../src/config/config.js')
+        config.set('auth.enforceRoles', false)
+        const { viewPlugin } = await import('../../../../src/server/plugins/views.js')
+
+        const ctx = viewPlugin.options.context(requestWith([]))
+
+        expect(ctx.isAdmin).toBe(true)
+      })
+    })
+
     test('Should expose userRolesCaption formatted as friendly role names', async () => {
       const { viewPlugin } = await import('../../../../src/server/plugins/views.js')
 

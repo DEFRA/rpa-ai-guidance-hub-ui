@@ -1,0 +1,56 @@
+{% extends "common/layout.njk" %}
+{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds app-content">
+      {% if notification %}
+        {% call govukNotificationBanner({
+          type: "success" if notification.type == "success" else undefined,
+          role: "alert" if notification.type == "success" else "region"
+        }) %}
+          <p class="govuk-notification-banner__heading">{{ notification.text }}</p>
+          {% if notification.offersRebuild %}
+            {{ govukButton({
+              text: "Rebuild search index",
+              href: "/admin/search-index/rebuild"
+            }) }}
+          {% endif %}
+        {% endcall %}
+      {% endif %}
+
+      <h1 class="govuk-heading-l">Index management</h1>
+
+      <p class="govuk-body">
+        To rebuild search from scratch, delete the search index, then rebuild it.
+      </p>
+
+      <h2 class="govuk-heading-m">Rebuild search index</h2>
+
+      <p class="govuk-body">
+        Sends every guide to search again. Guides appear in search results over
+        the next few minutes. You can do this at any time. It does not remove
+        anything that is already in search.
+      </p>
+
+      {{ govukButton({
+        text: "Rebuild search index",
+        href: "/admin/search-index/rebuild"
+      }) }}
+
+      <h2 class="govuk-heading-m">Delete search index</h2>
+
+      <p class="govuk-body">
+        Deletes everything search holds. Search will show no results until you
+        rebuild the index.
+      </p>
+
+      {{ govukButton({
+        text: "Delete search index",
+        href: "/admin/search-index/delete",
+        classes: "govuk-button--warning"
+      }) }}
+    </div>
+  </div>
+{% endblock %}
