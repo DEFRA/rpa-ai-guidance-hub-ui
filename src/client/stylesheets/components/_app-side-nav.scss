@@ -720,6 +720,16 @@ details:not([open]) > summary .app-side-nav__chevron {
   }
 }
 
+// The Search button, out of sight until it has focus, then in the box's
+// right-hand end and big enough to press (WCAG 2.5.8).
+.app-side-nav__search-submit:focus {
+  @include app-side-nav-focus;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 4px 8px;
+}
+
 .app-side-nav__link .app-side-nav-icon {
   color: $app-side-nav-muted;
 }
@@ -1027,6 +1037,15 @@ details:not([open]) > summary .app-side-nav__chevron {
 }
 
 // A section's link is a sublink (the page gives it both classes), smaller.
+// A guide or a section with a "..." menu beside it fills its row, as a link of
+// the top list does, so the menu's button is at the row's end however short
+// the name: its menu opens leftwards from there, and from mid-row it ran off
+// the navigation's left edge on a narrow window.
+.app-side-nav__row > .app-side-nav__sublink {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .app-side-nav__section-link {
   padding-top: 2px;
   padding-bottom: 2px;

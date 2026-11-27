@@ -10,6 +10,7 @@ import { initFiltersToggle } from './hub-filters.js'
 import { initSortSelect } from './hub-sort.js'
 import { initSideNavDrawer } from './side-nav-drawer.js'
 import { initSideNavLists } from './side-nav-lists.js'
+import { initSideNavMenus } from './side-nav-menus.js'
 import { initReorder } from './side-nav-reorder.js'
 import { initResizeHandles } from './resize-handle.js'
 import { initSearchAllGuides } from './search-shortcuts.js'
@@ -31,6 +32,7 @@ initSortSelect()
 initFiltersToggle()
 initReorder()
 initSideNavLists()
+initSideNavMenus()
 initSideNavDrawer()
 initResizeHandles()
 initCookieBanner()

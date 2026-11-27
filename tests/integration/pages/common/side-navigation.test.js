@@ -182,7 +182,7 @@ describe('Side navigation', () => {
       const firstDown = formOf(first, 'Move down')
       const secondUp = formOf(second, 'Move up')
 
-      expect(within(first).getByText('More actions for Claiming a payment')).toBeInTheDocument()
+      expect(within(first).getByText('More actions for Claiming a payment').closest('details')).toHaveAttribute('data-side-nav-menu')
       expect(within(first).getByRole('link', { name: 'Open' })).toHaveAttribute('href', `/guides/${FIRST}`)
       expect(unpin).toHaveAttribute('action', '/pin-toggle')
       expect(unpin).toHaveFormValues({ pin: 'false', position: '0' })
@@ -447,7 +447,7 @@ describe('Side navigation', () => {
         const remove = formOf(first, 'Remove bookmark')
         const moveDown = formOf(first, 'Move down')
 
-        expect(within(first).getByText('More actions for Case W1234567')).toBeInTheDocument()
+        expect(within(first).getByText('More actions for Case W1234567').closest('details')).toHaveAttribute('data-side-nav-menu')
         expect(remove).toHaveAttribute('action', '/case-bookmarks/remove')
         expect(remove).toHaveFormValues({ key: K1 })
         expect(formOf(first, 'Move up')).toHaveAttribute('hidden')
@@ -468,7 +468,7 @@ describe('Side navigation', () => {
         const moveDown = formOf(guideRow, 'Move down')
         const removeSection = formOf(assign, 'Remove')
 
-        expect(within(guideRow).getByText('More actions for Claiming a payment')).toBeInTheDocument()
+        expect(within(guideRow).getByText('More actions for Claiming a payment').closest('details')).toHaveAttribute('data-side-nav-menu')
         expect(removeGuide).toHaveFormValues({ guideId: GUIDE })
         expect(within(removeGuide).getByRole('button')).toHaveTextContent('Remove Claiming a payment from Case W1234567')
         expect(formOf(guideRow, 'Move up')).toHaveAttribute('hidden')
@@ -476,7 +476,7 @@ describe('Side navigation', () => {
         expect(moveDown).toHaveAttribute('data-reorder-move', '1')
         expect(moveDown).toHaveFormValues({ key: K1, from: '0', to: '1' })
         expect(moveDown).toSendInOrder('order', [GUIDE, OTHER])
-        expect(within(assign).getByText('More actions for 2 Assign case, in Claiming a payment')).toBeInTheDocument()
+        expect(within(assign).getByText('More actions for 2 Assign case, in Claiming a payment').closest('details')).toHaveAttribute('data-side-nav-menu')
         expect(removeSection).toHaveFormValues({ sectionId: ASSIGN.sectionId })
         expect(within(removeSection).getByRole('button')).toHaveTextContent('Remove 2 Assign case, in Claiming a payment, from Case W1234567')
         expect(within(sections).queryAllByRole('button', { name: /^Move/, hidden: true })).toEqual([])
@@ -656,6 +656,14 @@ describe('Side navigation', () => {
       expect(box).toHaveAttribute('name', 'q')
       expect(box).toHaveAttribute('maxlength', '500')
       expect(box).toHaveAttribute('placeholder', 'Search all guides')
+    })
+
+    test('has a Search button for its box, styled to be big enough to press once it has focus', async () => {
+      const search = (await navOf('/create-guidance/upload-guide')).getByRole('search')
+      const button = within(search).getByRole('button', { name: 'Search' })
+
+      expect(button).toHaveAttribute('type', 'submit')
+      expect(button).toHaveClass('govuk-visually-hidden-focusable', 'app-side-nav__search-submit')
     })
 
     test('leaves the search to the hub\'s own search box on the hub', async () => {

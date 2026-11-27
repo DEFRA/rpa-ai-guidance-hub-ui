@@ -100,7 +100,7 @@
     <label class="govuk-visually-hidden" for="side-nav-search">Search all guides</label>
     <span class="app-side-nav__search-icon">{{ icon("search") }}</span>
     <input class="app-side-nav__search-input" id="side-nav-search" name="q" type="search" maxlength="{{ searchWordsMaxLength }}" autocomplete="off" placeholder="Search all guides">
-    <button type="submit" class="govuk-visually-hidden-focusable">Search</button>
+    <button type="submit" class="govuk-visually-hidden-focusable app-side-nav__search-submit">Search</button>
   </form>
   {% endif %}
 
@@ -157,13 +157,16 @@
           {% set pinName = pin.label + (", in " + pin.guideTitle if pin.guideTitle else "") + (", " + pin.removed if pin.removed else "") %}
           {# A section that a later version removed has nowhere to go, so it is no link. #}
           {% set pinTag = "a" if pin.href else "span" %}
+          {# Each "More actions" menu opens and closes without JavaScript. With
+             it, Escape, focus leaving, a click elsewhere and another menu
+             opening close it (side-nav-menus.js). #}
           <li class="app-side-nav__row" data-reorder-id="{{ pin.key }}" data-reorder-label="{{ pinName }}">
             <{{ pinTag }} class="app-side-nav__link{% if not pin.href %} app-side-nav__link--removed{% endif %}"{% if pin.href %} href="{{ pin.href }}" draggable="false"{% endif %} data-reorder-handle>
               {{ icon("star-filled", "app-side-nav__star") }}
               {# A section's guide on a line of its own, wrapping with the heading. #}
               <span class="app-side-nav__text">{{ pin.label }}{% if pin.guideTitle %}<span class="govuk-visually-hidden">, in </span><span class="app-side-nav__in-guide">{{ pin.guideTitle }}</span>{% endif %}{% if pin.removed %}<span class="govuk-visually-hidden">, </span><span class="app-side-nav__removed">{{ pin.removed }}</span>{% endif %}</span>
             </{{ pinTag }}>
-            <details class="app-side-nav__more">
+            <details class="app-side-nav__more" data-side-nav-menu>
               <summary class="app-side-nav__icon-button app-side-nav__more-button">
                 {{ icon("more") }}
                 <span class="govuk-visually-hidden">More actions for {{ pinName }}</span>
@@ -222,7 +225,7 @@
                   <span class="govuk-visually-hidden">: </span>{{ case.ref }}</span>
                 <span class="app-side-nav__meta">{{ case.guides.length }} guide{{ "s" if case.guides.length != 1 }}</span>
               </a>
-              <details class="app-side-nav__more">
+              <details class="app-side-nav__more" data-side-nav-menu>
                 <summary class="app-side-nav__icon-button app-side-nav__more-button">
                   {{ icon("more") }}
                   <span class="govuk-visually-hidden">More actions for {{ case.name }}</span>
@@ -251,7 +254,7 @@
                   <li data-reorder-id="{{ guide.id }}" data-reorder-label="{{ guide.title }}">
                     <div class="app-side-nav__row">
                       <a class="app-side-nav__sublink" href="{{ guide.href }}" draggable="false" data-reorder-handle>{{ guide.title }}</a>
-                      <details class="app-side-nav__more">
+                      <details class="app-side-nav__more" data-side-nav-menu>
                         <summary class="app-side-nav__icon-button app-side-nav__more-button">
                           {{ icon("more") }}
                           <span class="govuk-visually-hidden">More actions for {{ guide.title }}</span>
@@ -288,7 +291,7 @@
                           {% else %}
                             <span class="app-side-nav__sublink app-side-nav__section-link app-side-nav__section-link--removed">{{ section.label }}<span class="govuk-visually-hidden">, </span><span class="app-side-nav__removed">{{ section.removed }}</span></span>
                           {% endif %}
-                          <details class="app-side-nav__more">
+                          <details class="app-side-nav__more" data-side-nav-menu>
                             <summary class="app-side-nav__icon-button app-side-nav__more-button">
                               {{ icon("more") }}
                               <span class="govuk-visually-hidden">More actions for {{ sectionName }}</span>
