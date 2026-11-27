@@ -8,7 +8,7 @@ const routes = [
     method: 'GET',
     path: '/admin/search-index/delete',
     options: {
-      app: { roleRequiredReason: 'manage the hub' }
+      app: { roleRequiredReason: 'delete the search index' }
     },
     handler: getDeleteSearchIndex
   },
@@ -16,7 +16,7 @@ const routes = [
     method: 'POST',
     path: '/admin/search-index/delete',
     options: {
-      app: { roleRequiredReason: 'manage the hub' }
+      app: { roleRequiredReason: 'delete the search index' }
     },
     handler: postDeleteSearchIndex
   }

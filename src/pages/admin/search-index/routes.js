@@ -5,7 +5,7 @@ const routes = [
     method: 'GET',
     path: '/admin/search-index',
     options: {
-      app: { roleRequiredReason: 'manage the hub' }
+      app: { roleRequiredReason: 'manage the search index' }
     },
     handler: getSearchIndex
   }

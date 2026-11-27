@@ -8,7 +8,7 @@ const routes = [
     method: 'GET',
     path: '/admin/search-index/rebuild',
     options: {
-      app: { roleRequiredReason: 'manage the hub' }
+      app: { roleRequiredReason: 'rebuild the search index' }
     },
     handler: getRebuildSearchIndex
   },
@@ -16,7 +16,7 @@ const routes = [
     method: 'POST',
     path: '/admin/search-index/rebuild',
     options: {
-      app: { roleRequiredReason: 'manage the hub' }
+      app: { roleRequiredReason: 'rebuild the search index' }
     },
     handler: postRebuildSearchIndex
   }
