@@ -42,9 +42,11 @@
   max-width: 640px;
 }
 
+// Not the prototype's: its caption is white at 80%, which is 3.6:1 on the
+// green and too little for text this size on a small screen. White is 4.8:1.
 .app-sign-in-hero__caption {
   @include govuk-font($size: 24);
-  color: rgb(255, 255, 255, 0.8);
+  color: $govuk-white;
   margin: 0 0 govuk-spacing(1);
 }
 

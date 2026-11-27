@@ -33,21 +33,21 @@
   -moz-osx-font-smoothing: grayscale;
   font-size: 22px;
   font-weight: 700;
-  color: $defra-green-aa;
+  color: $defra-green;
   line-height: 1.2;
   text-decoration: none;
 
   // Explicit link states to override govuk-frontend global `a{color:#1d70b8}`
   &:link {
-    color: $defra-green-aa;
+    color: $defra-green;
   }
 
   &:visited {
-    color: $defra-green-aa;
+    color: $defra-green;
   }
 
   &:hover {
-    color: $defra-green-aa;
+    color: $defra-green;
     text-decoration: underline;
     text-decoration-thickness: 3px;
     text-underline-offset: 0.15em;
@@ -82,11 +82,11 @@
   &,
   &:link,
   &:visited {
-    color: $defra-green-aa;
+    color: $defra-green;
   }
 
   &:hover {
-    color: $defra-green-aa;
+    color: $defra-green;
     text-decoration-thickness: 3px;
     text-underline-offset: 0.15em;
   }
