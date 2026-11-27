@@ -1,5 +1,6 @@
 import { constants as statusCodes } from 'node:http2'
 
+import { within } from '@testing-library/dom'
 import nock from 'nock'
 
 import { config } from '../../../../src/config/config.js'
@@ -83,6 +84,15 @@ describe('A guide\'s top row', () => {
     for (const later of [pin, widths, title, format]) {
       expect(isBefore(page.document, back, later)).toBe(true)
     }
+  })
+
+  test('names each page width, so focus comes back to the one chosen after the page reloads', async () => {
+    const page = await guidePage()
+    const widths = within(page.getByRole('group', { name: 'Page width' }))
+
+    expect(widths.getByRole('button', { name: 'Standard' })).toHaveAttribute('data-focus-return', 'reading-width-standard')
+    expect(widths.getByRole('button', { name: 'Wide' })).toHaveAttribute('data-focus-return', 'reading-width-wide')
+    expect(widths.getByRole('button', { name: 'Full width' })).toHaveAttribute('data-focus-return', 'reading-width-full')
   })
 
   test('shows a label for each group of buttons, which names the group', async () => {

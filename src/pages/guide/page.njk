@@ -92,7 +92,8 @@
               </form>
             {% endif %}
             {# The page width, at the right of the row, with its label in sight,
-               as the guide format has. #}
+               as the guide format has. Once the page is back, focus is on the
+               width chosen (focus-return.js). #}
             <form class="app-guide-reading-width" method="post" action="/guides/reading-width">
               <input type="hidden" name="returnTo" value="{{ returnTo }}">
               <span class="app-guide-reading-width__label" id="guide-reading-width-label">Page width</span>
@@ -100,7 +101,8 @@
                 {% for option in readingWidths %}
                   <button type="submit" name="width" value="{{ option.value }}"
                     class="app-guide-format-toggle__option{{ ' app-guide-format-toggle__option--active' if option.value == readingWidth }}"
-                    aria-pressed="{{ 'true' if option.value == readingWidth else 'false' }}">{{ option.text }}</button>
+                    aria-pressed="{{ 'true' if option.value == readingWidth else 'false' }}"
+                    data-focus-return="reading-width-{{ option.value }}">{{ option.text }}</button>
                 {% endfor %}
               </div>
             </form>

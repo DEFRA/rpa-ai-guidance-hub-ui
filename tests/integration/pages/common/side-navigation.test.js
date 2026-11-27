@@ -857,6 +857,24 @@ describe('Side navigation', () => {
           .toHaveFormValues({ collapsed: 'true', returnTo: '/hub' })
       })
 
+      test('takes focus after the page reloads when the navigation\'s own button, folded or open, cannot', async () => {
+        const open = await pageAt('/create-guidance/upload-guide')
+        const { cookie } = await fold(await loginAsDevUser(server), true, '/hub')
+        const folded = await pageAt('/hub', cookie)
+        const inOrder = [
+          sideNavOf(open).getByRole('button', { name: 'Collapse navigation' }),
+          buttonAbovePage(open, 'Collapse navigation'),
+          sideNavOf(folded).getByRole('button', { name: 'Expand navigation' }),
+          buttonAbovePage(folded, 'Expand navigation')
+        ]
+
+        for (const button of inOrder) {
+          expect(button).toHaveAttribute('data-focus-return', 'side-nav-toggle')
+        }
+        expect(inOrder[0].compareDocumentPosition(inOrder[1])).toBe(open.document.DOCUMENT_POSITION_FOLLOWING)
+        expect(inOrder[2].compareDocumentPosition(inOrder[3])).toBe(folded.document.DOCUMENT_POSITION_FOLLOWING)
+      })
+
       test('opens the navigation out when it is folded away', async () => {
         const { cookie } = await fold(await loginAsDevUser(server), true, '/hub')
 

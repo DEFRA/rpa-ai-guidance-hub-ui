@@ -683,10 +683,20 @@ describe('#hubController', () => {
       expect(listing.isDone()).toBe(true)
       expect(sort).toHaveAttribute('name', 'sort')
       expect(sort.form).toBe(filtersOf(page).getByRole('button', { name: 'Apply' }).form)
-      expect(sort).toHaveAttribute('data-sort-select', 'true')
       expect(sort).toHaveDisplayValue('Oldest updated')
       expect(within(sort).getByRole('option', { name: 'Most relevant' })).toBeDisabled()
       expect(page.getByText('(Most relevant once you search)')).toBeInTheDocument()
+    })
+
+    test('sort with a button beside the sort, not as soon as the sort changes', async () => {
+      const { page } = await hubWith({})
+      const sort = page.getByRole('combobox', { name: 'Sort by:' })
+      const button = page.getByRole('button', { name: 'Sort' })
+
+      expect(button).toHaveAttribute('type', 'submit')
+      expect(button.form).toBe(sort.form)
+      expect(sort.parentElement.parentElement).toContainElement(button)
+      expect(sort).not.toHaveAttribute('data-sort-select')
     })
 
     test('show a value the hub no longer has as a box that cannot be ticked, as choosing it would be refused', async () => {
