@@ -29,9 +29,11 @@ let jwksClient = null
  * held (in the OIDC state cookie) until the callback, to be checked against
  * the response and passed to `exchangeCode`/`verifyIdToken`.
  *
- * `response_mode=query` has Entra return the code on the callback URL as a
- * GET, as the app registration is not set up for POST (`form_post`)
- * callbacks.
+ * `response_mode=form_post` has Entra POST the code to the callback in the
+ * request body, keeping it out of URLs and so out of access logs, browser
+ * history and `Referer` headers. That POST is cross-site, so the OIDC state
+ * cookie must be `SameSite=None` (see `_getOidcStateCookieOptions` in
+ * `auth.js`).
  *
  * @returns {{ url: string, state: string, nonce: string, codeVerifier: string }}
  */
@@ -45,7 +47,7 @@ function buildAuthorizationRequest () {
   url.search = new URLSearchParams({
     client_id: entraClientId,
     response_type: 'code',
-    response_mode: 'query',
+    response_mode: 'form_post',
     redirect_uri: getRedirectUri(),
     scope: SCOPES.join(' '),
     state,

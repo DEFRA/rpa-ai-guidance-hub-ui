@@ -33,9 +33,8 @@ function startEntraLogin (_request, h) {
 }
 
 /**
- * GET|POST /login/callback (Redirect URI) — 'entra' provider. Entra returns
- * the authorization response here, on the query string for `response_mode=query`
- * (what we request) or in a POST body for `form_post`. Checks it against
+ * POST /login/callback (Redirect URI) — 'entra' provider. Entra posts the
+ * authorization response here (`response_mode=form_post`). Checks it against
  * the OIDC state cookie, exchanges the code for tokens, verifies the
  * id_token and starts a session.
  *
@@ -44,18 +43,18 @@ function startEntraLogin (_request, h) {
  * @returns {Promise<any>}
  */
 async function handleEntraCallback (request, h) {
-  const { code, state, error, error_description: errorDescription } = request.payload ?? request.query ?? {}
+  const payload = request.payload
   const oidcState = request.state[OIDC_STATE_COOKIE]
 
   h.unstate(OIDC_STATE_COOKIE)
 
-  if (error) {
-    _failLogin(new Error(`${error}: ${errorDescription}`), 'entra_callback_error', 'warn')
+  if (payload.error) {
+    _failLogin(new Error(`${payload.error}: ${payload.errorDescription}`), 'entra_callback_error', 'warn')
   }
 
-  if (!_isValidCallback({ code, state }, oidcState)) {
+  if (!_isValidCallback(payload, oidcState)) {
     _failLogin(
-      new Error(oidcState ? 'State mismatch or missing code' : 'Missing OIDC state cookie'),
+      new Error(_invalidCallbackReason(request, payload, oidcState)),
       'entra_state_mismatch',
       'warn'
     )
@@ -64,7 +63,7 @@ async function handleEntraCallback (request, h) {
   let tokens
 
   try {
-    tokens = await oidc.exchangeCode({ code, codeVerifier: oidcState.codeVerifier })
+    tokens = await oidc.exchangeCode({ code: payload.code, codeVerifier: oidcState.codeVerifier })
   } catch (err) {
     _failLogin(err, 'entra_token_exchange_failed', 'error')
   }
@@ -84,6 +83,23 @@ async function handleEntraCallback (request, h) {
     token: tokens.access_token,
     refreshToken: tokens.refresh_token
   })
+}
+
+/**
+ * The `failAction` for `/login/callback`: a body that is not what Entra
+ * posts (none at all, or a field that is not a string) is rejected like
+ * any other bad callback - a logged, generic 401 - and the OIDC state
+ * cookie is cleared.
+ *
+ * @param {Hapi.Request} _request
+ * @param {Hapi.ResponseToolkit} h
+ * @param {Error} error - Joi's validation error
+ * @throws {Boom.Boom} always
+ */
+function rejectInvalidCallback (_request, h, error) {
+  h.unstate(OIDC_STATE_COOKIE)
+
+  _failLogin(error, 'entra_callback_invalid', 'warn')
 }
 
 /**
@@ -216,21 +232,54 @@ function _failLogin (error, type, level) {
  * @param {{ state?: string, nonce?: string } | undefined} oidcState
  * @returns {boolean}
  */
-function _isValidCallback ({ code, state }, oidcState) {
-  if (!code || !oidcState?.nonce) {
+function _isValidCallback (params, oidcState) {
+  if (!params.code || !oidcState?.nonce) {
     return false
   }
 
-  if (!state) {
+  if (!params.state) {
     return false
   }
 
-  return state === oidcState.state
+  return params.state === oidcState.state
+}
+
+/**
+ * @private
+ * Why `_isValidCallback` rejected a callback, for the log. Tells a state
+ * cookie the browser never sent (a SameSite problem) from one it sent that
+ * could not be read (e.g. the cookie password changed). Names what is wrong,
+ * never the values.
+ *
+ * @param {Hapi.Request} request
+ * @param {{ code?: string, state?: string }} params
+ * @param {{ state?: string, nonce?: string } | undefined} oidcState
+ * @returns {string}
+ */
+function _invalidCallbackReason (request, params, oidcState) {
+  if (!oidcState?.nonce) {
+    const cookieSent = (request.headers.cookie ?? '').includes(`${OIDC_STATE_COOKIE}=`)
+
+    return cookieSent
+      ? 'OIDC state cookie sent but could not be read'
+      : 'OIDC state cookie not sent by the browser'
+  }
+
+  if (!params.code) {
+    return 'Callback has no code'
+  }
+
+  if (!params.state) {
+    return 'Callback has no state'
+  }
+
+  return 'State does not match the OIDC state cookie'
 }
 
 export {
   handleEntraCallback,
   loginAsDevUser,
   logout,
+  rejectInvalidCallback,
   startEntraLogin
 }

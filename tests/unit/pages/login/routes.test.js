@@ -57,13 +57,19 @@ describe('#loginRoutes', () => {
       expect(loginRoute.handler).toBe(controller.startEntraLogin)
     })
 
-    test.each(['GET', 'POST'])('accepts the callback on an unauthenticated %s /login/callback route', async (method) => {
+    test('accepts the callback on an unauthenticated POST /login/callback route', async () => {
       const routes = await getRoutes()
       const controller = await getController()
-      const callbackRoute = findRoute(routes, method, '/login/callback')
+      const callbackRoute = findRoute(routes, 'POST', '/login/callback')
 
       expect(callbackRoute.options.auth).toBe(false)
       expect(callbackRoute.handler).toBe(controller.handleEntraCallback)
+    })
+
+    test('does not accept the callback by GET, so the code never travels in a URL', async () => {
+      const routes = await getRoutes()
+
+      expect(findRoute(routes, 'GET', '/login/callback')).toBeUndefined()
     })
   })
 })

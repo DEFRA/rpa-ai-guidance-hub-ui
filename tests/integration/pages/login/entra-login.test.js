@@ -17,14 +17,6 @@ function cookieHeader (response) {
     .join('; ')
 }
 
-function getCallback (server, { cookie, params }) {
-  return server.inject({
-    method: 'GET',
-    url: `/login/callback?${new URLSearchParams(params)}`,
-    headers: { cookie }
-  })
-}
-
 function postCallback (server, { cookie, params }) {
   return server.inject({
     method: 'POST',
@@ -62,10 +54,7 @@ describe('#loginController under the entra provider', () => {
     vi.resetModules()
   })
 
-  describe.each([
-    ['GET', getCallback],
-    ['POST', postCallback]
-  ])('a successful sign-in via a %s callback', (_method, sendCallback) => {
+  describe('a successful sign-in', () => {
     test('Should redirect to /hub, where the new session is accepted and the Entra profile is shown', async () => {
       const login = await server.inject({ method: 'GET', url: '/login' })
       const authorizeUrl = new URL(login.headers.location)
@@ -83,7 +72,7 @@ describe('#loginController under the entra provider', () => {
         .get(`${TENANT_PATH}/discovery/v2.0/keys`)
         .reply(statusCodes.HTTP_STATUS_OK, getJwks())
 
-      const callback = await sendCallback(server, {
+      const callback = await postCallback(server, {
         cookie: cookieHeader(login),
         params: { code: 'auth-code', state }
       })
@@ -126,7 +115,7 @@ describe('#loginController under the entra provider', () => {
         .get(`${TENANT_PATH}/discovery/v2.0/keys`)
         .reply(statusCodes.HTTP_STATUS_OK, getJwks())
 
-      const callback = await sendCallback(server, {
+      const callback = await postCallback(server, {
         cookie: cookieHeader(login),
         params: { code: 'auth-code', state }
       })
@@ -161,7 +150,7 @@ describe('#loginController under the entra provider', () => {
         .get(`${TENANT_PATH}/discovery/v2.0/keys`)
         .reply(statusCodes.HTTP_STATUS_OK, getJwks())
 
-      const callback = await sendCallback(server, {
+      const callback = await postCallback(server, {
         cookie: cookieHeader(login),
         params: { code: 'auth-code', state }
       })

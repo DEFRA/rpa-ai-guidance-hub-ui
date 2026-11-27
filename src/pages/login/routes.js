@@ -1,5 +1,6 @@
 import { config } from '../../config/config.js'
 import * as controller from './controller.js'
+import { callbackPayloadSchema } from './schemas.js'
 
 const isEntra = config.get('auth.provider') === 'entra'
 
@@ -13,13 +14,18 @@ const routes = [
     handler: isEntra ? controller.startEntraLogin : controller.loginAsDevUser
   },
   // The Entra redirect URI. Only exists for the 'entra' provider - the
-  // 'local' provider signs in directly from `/login`.
+  // 'local' provider signs in directly from `/login`. POST only: Entra sends
+  // the code in a `form_post` body, so it never appears in a URL.
   ...(isEntra
     ? [{
-        method: ['GET', 'POST'],
+        method: 'POST',
         path: '/login/callback',
         options: {
-          auth: false
+          auth: false,
+          validate: {
+            payload: callbackPayloadSchema,
+            failAction: controller.rejectInvalidCallback
+          }
         },
         handler: controller.handleEntraCallback
       }]

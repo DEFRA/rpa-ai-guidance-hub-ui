@@ -93,14 +93,6 @@ function postCallback (server, { cookie, params }) {
   })
 }
 
-function getCallback (server, { cookie, params }) {
-  return server.inject({
-    method: 'GET',
-    url: `/login/callback?${new URLSearchParams(params)}`,
-    headers: cookie ? { cookie } : {}
-  })
-}
-
 function mockTokenEndpoint (tokens, status = 200) {
   return nock(ENTRA_HOST)
     .post(`${TENANT_PATH}/oauth2/v2.0/token`)
@@ -134,6 +126,15 @@ function expectFailureLogged (type, level = 'error') {
   )
 }
 
+function expectStateMismatchReason (reason) {
+  expect(mockLoggerWarn).toHaveBeenCalledWith(
+    expect.objectContaining({
+      error: expect.objectContaining({ message: reason })
+    }),
+    `Entra callback failed: ${reason}`
+  )
+}
+
 describe('#loginController', () => {
   let server
 
@@ -153,7 +154,7 @@ describe('#loginController', () => {
   })
 
   describe('#startEntraLogin', () => {
-    test('redirects to the Entra authorize endpoint with PKCE, state, nonce and query response mode', async () => {
+    test('redirects to the Entra authorize endpoint with PKCE, state, nonce and the form_post response mode', async () => {
       const { response, location } = await startLogin(server)
 
       expect(response.statusCode).toBe(302)
@@ -161,7 +162,7 @@ describe('#loginController', () => {
       expect(Object.fromEntries(location.searchParams)).toEqual({
         client_id: 'fake-client-id',
         response_type: 'code',
-        response_mode: 'query',
+        response_mode: 'form_post',
         redirect_uri: 'http://localhost:3000/login/callback',
         scope: 'User.Read openid profile email offline_access',
         state: expect.any(String),
@@ -181,6 +182,14 @@ describe('#loginController', () => {
       expect(stateCookie).toContain('HttpOnly')
     })
 
+    test('lets the OIDC state cookie travel on Entra\'s cross-site form_post', async () => {
+      const { response } = await startLogin(server)
+      const [stateCookie] = response.headers['set-cookie']
+
+      expect(stateCookie).toContain('SameSite=None')
+      expect(stateCookie).toContain('Secure')
+    })
+
     test('generates fresh values for every sign-in', async () => {
       const first = await startLogin(server)
       const second = await startLogin(server)
@@ -190,10 +199,7 @@ describe('#loginController', () => {
     })
   })
 
-  describe.each([
-    ['POST', postCallback],
-    ['GET', getCallback]
-  ])('#handleEntraCallback via %s', (_method, sendCallback) => {
+  describe('#handleEntraCallback', () => {
     test('exchanges the code, starts a session from the id_token claims and redirects to the hub', async () => {
       const { state, nonce, cookie } = await startLogin(server)
       const accessToken = generateEntraJwt()
@@ -216,7 +222,7 @@ describe('#loginController', () => {
       mockJwks()
       const usersScope = mockUsersEndpoint()
 
-      const callback = await sendCallback(server, { cookie, params: { code: 'auth-code', state } })
+      const callback = await postCallback(server, { cookie, params: { code: 'auth-code', state } })
 
       expect(tokenScope.isDone()).toBe(true)
       expect(usersScope.isDone()).toBe(true)
@@ -254,7 +260,7 @@ describe('#loginController', () => {
       })
       mockJwks()
 
-      const callback = await sendCallback(server, { cookie, params: { code: 'auth-code', state } })
+      const callback = await postCallback(server, { cookie, params: { code: 'auth-code', state } })
 
       expect(callback.statusCode).toBe(302)
 
@@ -279,7 +285,7 @@ describe('#loginController', () => {
       mockJwks()
       nock(GUIDANCE_API).post('/users').reply(503)
 
-      const callback = await sendCallback(server, { cookie, params: { code: 'auth-code', state } })
+      const callback = await postCallback(server, { cookie, params: { code: 'auth-code', state } })
       const { result } = await server.inject({ method: 'GET', url: '/protected', headers: { cookie: cookieHeader(callback) } })
 
       expect(callback.headers.location).toBe('/hub')
@@ -299,7 +305,7 @@ describe('#loginController', () => {
       })
       mockJwks()
 
-      const callback = await sendCallback(server, { cookie, params: { code: 'auth-code', state } })
+      const callback = await postCallback(server, { cookie, params: { code: 'auth-code', state } })
 
       expect(callback.headers['set-cookie']).toEqual(
         expect.arrayContaining([expect.stringMatching(/^entra-oidc=; Max-Age=0/)])
@@ -310,35 +316,69 @@ describe('#loginController', () => {
       const { cookie } = await startLogin(server)
       const tokenScope = mockTokenEndpoint({})
 
-      const callback = await sendCallback(server, { cookie, params: { code: 'auth-code', state: 'forged' } })
+      const callback = await postCallback(server, { cookie, params: { code: 'auth-code', state: 'forged' } })
 
       expect(callback.statusCode).toBe(401)
       expect(tokenScope.isDone()).toBe(false)
       expectFailureLogged('entra_state_mismatch', 'warn')
+      expectStateMismatchReason('State does not match the OIDC state cookie')
     })
 
-    test('rejects a callback without the OIDC state cookie', async () => {
+    test('rejects a callback the browser sent without the OIDC state cookie', async () => {
       const { state } = await startLogin(server)
 
-      const callback = await sendCallback(server, { params: { code: 'auth-code', state } })
+      const callback = await postCallback(server, { params: { code: 'auth-code', state } })
 
       expect(callback.statusCode).toBe(401)
       expectFailureLogged('entra_state_mismatch', 'warn')
+      expectStateMismatchReason('OIDC state cookie not sent by the browser')
+    })
+
+    test('rejects a callback whose OIDC state cookie cannot be read', async () => {
+      const { state } = await startLogin(server)
+
+      const callback = await postCallback(server, { cookie: 'entra-oidc=not-sealed', params: { code: 'auth-code', state } })
+
+      expect(callback.statusCode).toBe(401)
+      expectFailureLogged('entra_state_mismatch', 'warn')
+      expectStateMismatchReason('OIDC state cookie sent but could not be read')
     })
 
     test('rejects a callback without a code', async () => {
       const { state, cookie } = await startLogin(server)
 
-      const callback = await sendCallback(server, { cookie, params: { state } })
+      const callback = await postCallback(server, { cookie, params: { state } })
 
       expect(callback.statusCode).toBe(401)
       expectFailureLogged('entra_state_mismatch', 'warn')
+      expectStateMismatchReason('Callback has no code')
+    })
+
+    test('rejects a callback without a state', async () => {
+      const { cookie } = await startLogin(server)
+
+      const callback = await postCallback(server, { cookie, params: { code: 'auth-code' } })
+
+      expect(callback.statusCode).toBe(401)
+      expectFailureLogged('entra_state_mismatch', 'warn')
+      expectStateMismatchReason('Callback has no state')
+    })
+
+    test('never logs the code or state it was sent', async () => {
+      const { state } = await startLogin(server)
+
+      await postCallback(server, { params: { code: 'secret-auth-code', state } })
+
+      const logged = JSON.stringify(mockLoggerWarn.mock.calls)
+
+      expect(logged).not.toContain('secret-auth-code')
+      expect(logged).not.toContain(state)
     })
 
     test('rejects and logs an error returned by Entra', async () => {
       const { state, cookie } = await startLogin(server)
 
-      const callback = await sendCallback(server, {
+      const callback = await postCallback(server, {
         cookie,
         params: { error: 'access_denied', error_description: 'User cancelled', state }
       })
@@ -352,7 +392,7 @@ describe('#loginController', () => {
 
       mockTokenEndpoint({ error: 'invalid_grant', error_description: 'AADSTS70008' }, 400)
 
-      const callback = await sendCallback(server, { cookie, params: { code: 'auth-code', state } })
+      const callback = await postCallback(server, { cookie, params: { code: 'auth-code', state } })
 
       expect(callback.statusCode).toBe(401)
       expect(callback.result.message).toBe('Authentication failed. Please try again.')
@@ -374,7 +414,7 @@ describe('#loginController', () => {
       })
       mockJwks()
 
-      const callback = await sendCallback(server, { cookie, params: { code: 'auth-code', state } })
+      const callback = await postCallback(server, { cookie, params: { code: 'auth-code', state } })
 
       expect(callback.statusCode).toBe(401)
       expectFailureLogged('entra_token_verification_failed')
@@ -389,7 +429,7 @@ describe('#loginController', () => {
       })
       mockJwks()
 
-      const callback = await sendCallback(server, { cookie, params: { code: 'auth-code', state } })
+      const callback = await postCallback(server, { cookie, params: { code: 'auth-code', state } })
 
       expect(callback.statusCode).toBe(401)
       expectFailureLogged('entra_token_verification_failed')
@@ -407,7 +447,7 @@ describe('#loginController', () => {
         .get(`${TENANT_PATH}/discovery/v2.0/keys`)
         .reply(200, { keys: [{ kty: 'RSA', kid: ENTRA_TEST_KID, use: 'sig', n: 'xGOr-H7A-PWLt', e: 'AQAB' }] })
 
-      const response = await sendCallback(server, { cookie, params: { code: 'auth-code', state } })
+      const response = await postCallback(server, { cookie, params: { code: 'auth-code', state } })
 
       expect(response.statusCode).toBe(401)
       expect(response.headers['set-cookie']).not.toEqual(
