@@ -10,6 +10,7 @@ import {
   completeDetails,
   expectFreshUploadForm,
   mockReferenceData,
+  mockStagedFileRead,
   startMigration,
   uploadReadyToConvert
 } from '../../../../../helpers/upload-journey.js'
@@ -303,6 +304,41 @@ describe('#checkAnswersController Integration', () => {
         expect(response.headers.location).toBe('/create-guidance/upload-guide/converting')
       })
 
+      describe('whose latest version has a SharePoint link', () => {
+        const linkedGuide = guideResponse({
+          id: GUIDE_ID,
+          versions: [versionResponse({
+            sourceLink: 'https://example.sharepoint.com/:w:/r/teams/Team1234/Claims/2025/Claiming%20the%20SFI%20payment.docx?web=1'
+          })]
+        })
+        const LINKED_VERSION_REQUEST = { ...CONVERSION_REQUEST, replacesVersionId: linkedGuide.versions[0].id }
+
+        test('POST sends the SharePoint link the maintainer gave for the new version, not the latest version\'s', async () => {
+          const sourceLink = 'https://example.sharepoint.com/:w:/r/teams/Team1234/Claims/2026/Claiming%20the%20SFI%20payment.docx?web=1'
+          const cookie = await uploadReadyToConvert(server, { updates: linkedGuide, sourceLink })
+          mockReferenceData()
+          const createVersion = nock(GUIDANCE_API_BASE_URL)
+            .post(`/guides/${GUIDE_ID}/versions`, { ...LINKED_VERSION_REQUEST, sourceLink })
+            .reply(statusCodes.HTTP_STATUS_ACCEPTED, SAVE_STARTED, SAVE_STARTED_AT)
+
+          await submit(cookie)
+
+          createVersion.done()
+        })
+
+        test('POST sends no SharePoint link when the maintainer cleared the one the new version started with', async () => {
+          const cookie = await uploadReadyToConvert(server, { updates: linkedGuide })
+          mockReferenceData()
+          const createVersion = nock(GUIDANCE_API_BASE_URL)
+            .post(`/guides/${GUIDE_ID}/versions`, LINKED_VERSION_REQUEST)
+            .reply(statusCodes.HTTP_STATUS_ACCEPTED, SAVE_STARTED, SAVE_STARTED_AT)
+
+          await submit(cookie)
+
+          createVersion.done()
+        })
+      })
+
       test('POST again asks for the new version as submitted, though New guide and another title are chosen while it saves', async () => {
         const { cookie: submittedCookie } = await convertInBackground()
 
@@ -458,6 +494,8 @@ describe('#checkAnswersController Integration', () => {
         const failed = await submit(readyCookie)
         const failedCookie = mergeCookies(readyCookie, failed.headers['set-cookie'])
 
+        // Not submitted, so the new choice starts the details again, reading the file.
+        mockStagedFileRead()
         const afterChoiceCookie = await chooseNewGuide(failedCookie)
 
         const afterDetailsCookie = await completeDetails(server, afterChoiceCookie)
@@ -621,6 +659,25 @@ describe('#checkAnswersController Integration', () => {
       expect(converted.statusCode).toBe(statusCodes.HTTP_STATUS_OK)
 
       await expectFreshUploadForm(server, mergeCookies(convertedCookie, converted.headers['set-cookie']))
+    })
+
+    test('POST sends the SharePoint link the maintainer gave, as given, beside the title', async () => {
+      const sourceLink = 'https://example.sharepoint.com/:w:/r/teams/Team1234/Claims/Complete%20Guide%20Title.docx?web=1'
+      const cookie = await completeAllMetadata(server, await loginAsDevUser(server), { sourceLink })
+      mockReferenceData()
+      const createGuide = nock(GUIDANCE_API_BASE_URL)
+        .post('/guides', { ...CONVERSION_REQUEST, sourceLink })
+        .reply(statusCodes.HTTP_STATUS_CREATED, createdGuideResponse())
+
+      const response = await server.inject({
+        method: 'POST',
+        url: CHECK_ANSWERS_URL,
+        payload: {},
+        headers: { cookie }
+      })
+
+      createGuide.done()
+      expect(response.headers.location).toBe(CONVERTED_URL)
     })
 
     describe('Saving the converted document in the background', () => {

@@ -57,7 +57,9 @@ const METADATA_MESSAGES = Object.freeze({
   titleTooLong: 'Guidance title must be 200 characters or fewer',
   versionNumberRequired: 'Enter the version number',
   versionNumberFormat: 'Enter the version number as 2 whole numbers with a full stop between them, for example 1.0',
-  schemeRequired: 'Select at least one scheme this guidance relates to'
+  schemeRequired: 'Select at least one scheme this guidance relates to',
+  sourceLinkNotSharepoint: 'Enter a SharePoint link to the Word document. Open the document in Word for the web and copy the address from your browser',
+  sourceLinkNotAWordDocument: 'Enter a link to a Word document, not to a folder, a page or another kind of file. Open the document in Word for the web and copy the address from your browser'
 })
 
 const PURPOSE_MESSAGES = Object.freeze({

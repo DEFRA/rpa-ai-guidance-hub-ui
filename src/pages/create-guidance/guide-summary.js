@@ -60,6 +60,7 @@ function buildGuideDetailsCard ({
     rows: [
       buildSummaryRow('Guidance title', _valueOrNotProvided(metadata.guideTitle)),
       buildSummaryRow('Version number', _valueOrNotProvided(metadata.versionNumber)),
+      buildSummaryRow('SharePoint link', _valueOrNotProvided(metadata.sourceLink)),
       buildSummaryRow(
         'Last modified date',
         _valueOrNotProvided(formatStagedDocumentDate(stagedDocument?.lastModified))

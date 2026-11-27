@@ -6,6 +6,7 @@ const OPTIONAL_FIELDS = [
   'title',
   'version',
   'lastModified',
+  'documentIdLink',
   'documentId',
   'promotedAt',
   'savingStatus',
@@ -25,6 +26,8 @@ const OPTIONAL_FIELDS = [
  * @property {string|null} [title]
  * @property {string|null} [version]
  * @property {string|null} [lastModified]
+ * @property {string|null} [documentIdLink] - The file's link by its
+ *   SharePoint Document ID, if it has one
  * @property {string|null} [documentId] - The document this file was converted
  *   into, once its ids are reserved
  * @property {string|null} [promotedAt] - When that conversion was committed;

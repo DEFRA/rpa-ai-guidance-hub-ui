@@ -69,7 +69,9 @@ async function _validateMetadata (upload) {
     systemOptions: systems,
     audienceOptions: audience
   })
-  const { error } = schema.validate(upload.metadata, { abortEarly: false })
+  // Not the source link again: its rule cannot change, and the API checks it once more
+  // when the guide is saved.
+  const { error } = schema.validate(upload.metadata, { abortEarly: false, externals: false })
 
   return { error, referenceOptions }
 }

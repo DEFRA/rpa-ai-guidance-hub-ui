@@ -38,6 +38,8 @@ import * as stagedDocumentsService from './staged-documents.js'
  *   null for a version made before versions had numbers
  * @property {{id: string, displayName: string|null}|null} createdBy
  * @property {string} createdAt
+ * @property {string|null} sourceLink - Where the maintainer said its document
+ *   came from, as they gave it; null when they gave none
  */
 
 /**
@@ -127,16 +129,17 @@ async function createVersion (guideId, version) {
  * @returns {Promise<{code: string}>} One of `RESULTS`
  */
 async function _convert ({ uploadId, fileId, metadata, user }, send, whyConflict) {
-  const { versionNumber, guideTitle, ...details } = metadata
+  const { versionNumber, guideTitle, sourceLink, ...details } = metadata
   const kept = details.schemes ? { ...details, schemes: schemesAsKept(details.schemes) } : details
 
   const res = await send({
     source: { uploadId, fileId },
     // The scheme year is fixed, so the form does not send it.
     metadata: { ...kept, schemeYear: SCHEME_YEAR },
-    // Each version keeps its own title, outside the guide's details.
+    // Each version keeps its own title and source link, outside the guide's details.
     title: guideTitle,
     versionNumber,
+    ...(sourceLink ? { sourceLink } : {}),
     createdBy: { id: user.id, displayName: user.displayName }
   })
 
@@ -391,7 +394,8 @@ function _toVersion (version) {
     title: version.title ?? null,
     versionNumber: version.versionNumber ?? null,
     createdBy: version.createdBy ?? null,
-    createdAt: version.createdAt
+    createdAt: version.createdAt,
+    sourceLink: version.sourceLink ?? null
   }
 }
 

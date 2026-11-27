@@ -20,7 +20,8 @@ describe('staged-documents service', () => {
         parsingError: null,
         title: 'Guide Title',
         version: '1.0',
-        lastModified: '2026-05-10T12:00:00.000Z'
+        lastModified: '2026-05-10T12:00:00.000Z',
+        documentIdLink: 'https://example.sharepoint.com/_layouts/15/DocIdRedir.aspx?ID=A-1'
       }
     })
 
@@ -33,6 +34,7 @@ describe('staged-documents service', () => {
       title: 'Guide Title',
       version: '1.0',
       lastModified: '2026-05-10T12:00:00.000Z',
+      documentIdLink: 'https://example.sharepoint.com/_layouts/15/DocIdRedir.aspx?ID=A-1',
       documentId: null,
       promotedAt: null,
       savingStatus: null,
@@ -61,6 +63,7 @@ describe('staged-documents service', () => {
       title: null,
       version: null,
       lastModified: null,
+      documentIdLink: null,
       documentId: null,
       promotedAt: null,
       savingStatus: null,

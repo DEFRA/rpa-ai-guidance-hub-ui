@@ -2,7 +2,7 @@ import { statusCodes } from '../../../../constants/status-codes.js'
 import { answersOf, getGuideById, guidesTitledLike } from '../../../../services/guides.js'
 import { getStagedDocumentById } from '../../../../services/staged-documents.js'
 import { mapValidationError } from '../../form-errors.js'
-import { getGuideUpload, setGuideUploadUpdates } from '../../session.js'
+import { getGuideUpload, setGuideUploadMetadata, setGuideUploadUpdates } from '../../session.js'
 import { ChoiceViewModel } from './view-model.js'
 
 const CHOICE_VIEW = 'create-guidance/upload-guide/new-or-update/page.njk'
@@ -62,15 +62,31 @@ async function choiceFailAction (request, h, err) {
  * Keep the choice, then go on to the details, which start with the chosen
  * guide's. A new version replaces the guide's latest version as it is now.
  *
+ * The source link starts, while the details have none, with the file's own
+ * link by its SharePoint Document ID, which names it for good; else with the
+ * link the guide's latest version was given.
+ *
  * @param {import('@hapi/hapi').Request} request
  * @param {import('@hapi/hapi').ResponseToolkit} h
  */
 async function postChoice (request, h) {
+  if (!getGuideUpload(request)?.hasUpload()) {
+    return h.redirect(UPLOAD_GUIDE_URL)
+  }
+
   const { kind, guideId } = request.payload
   const updates = kind === 'update' ? guideId : null
   const guide = updates ? await getGuideById(updates) : null
 
   setGuideUploadUpdates(request, updates, guide ? answersOf(guide) : {}, guide?.latestVersion?.id ?? null)
+
+  const upload = getGuideUpload(request)
+  if (!upload.isSubmitted && upload.metadata?.sourceLink === undefined) {
+    const file = await getStagedDocumentById(upload.fileId)
+    setGuideUploadMetadata(request, {
+      sourceLink: file?.documentIdLink ?? guide?.latestVersion?.sourceLink ?? null
+    })
+  }
 
   return h.redirect(METADATA_URL)
 }

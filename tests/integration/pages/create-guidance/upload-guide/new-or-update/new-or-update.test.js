@@ -11,6 +11,7 @@ import { errorSummaryOf, pageOf } from '../../../../helpers/page.js'
 import { completeParse } from '../../../../helpers/upload-journey.js'
 import {
   audiencesResponse,
+  checkedSourceLinkResponse,
   guideResponse,
   guideTitlesResponse,
   refusalResponse,
@@ -28,11 +29,14 @@ const FILE_TITLE = 'Claiming the SFI payment'
 const GUIDE_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d90'
 const OTHER_ID = '0199b8a2-4c1e-7b3a-9d2f-6a1e3c5b7d91'
 
-function mockFileTitle () {
+function mockFileTitle (documentIdLink = null) {
   nock(GUIDANCE_API_URL)
     .get('/guides/staging/file-1')
-    .reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'complete', title: FILE_TITLE }))
+    .reply(statusCodes.HTTP_STATUS_OK, stagedDocumentResponse({ parsingStatus: 'complete', title: FILE_TITLE, documentIdLink }))
 }
+
+const DOCUMENT_ID_LINK = 'https://example.sharepoint.com/teams/Team1234/_layouts/15/DocIdRedir.aspx?ID=RPAINTRA-405-3434'
+const LATEST_SOURCE_LINK = 'https://example.sharepoint.com/:w:/r/teams/Team1234/Claims/Claiming%20the%20SFI%20payment.docx'
 
 function mockGuidesLike (words, items) {
   nock(GUIDANCE_API_URL)
@@ -124,7 +128,13 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
     return within(page.getByRole('group', { name: `Guides like ‘${FILE_TITLE}’` }))
   }
 
-  async function choose (cookie, payload) {
+  /**
+   * Choose, with the file read as having the Document ID link given, if any:
+   * the source link starts with it when the details have none yet.
+   */
+  async function choose (cookie, payload, documentIdLink = null) {
+    mockFileTitle(documentIdLink)
+
     const response = await server.inject({
       method: 'POST',
       url: CHOICE_URL,
@@ -137,10 +147,10 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
     return mergeCookies(cookie, response.headers['set-cookie'])
   }
 
-  async function chooseGuide (cookie, guide) {
+  async function chooseGuide (cookie, guide, documentIdLink = null) {
     mockGuide(guide)
 
-    return choose(cookie, { kind: 'update', guideId: guide.id, q: FILE_TITLE })
+    return choose(cookie, { kind: 'update', guideId: guide.id, q: FILE_TITLE }, documentIdLink)
   }
 
   async function detailsPage (cookie) {
@@ -208,6 +218,18 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
     const response = await server.inject({
       method: 'GET',
       url: CHOICE_URL,
+      headers: { cookie: await loginAsDevUser(server) }
+    })
+
+    expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
+    expect(response.headers.location).toBe('/create-guidance/upload-guide')
+  })
+
+  test('sends a choice with no upload, as from a form left open once the session is cleared, back to the upload page', async () => {
+    const response = await server.inject({
+      method: 'POST',
+      url: CHOICE_URL,
+      payload: { kind: 'new', q: FILE_TITLE },
       headers: { cookie: await loginAsDevUser(server) }
     })
 
@@ -310,6 +332,7 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
 
   test('goes on to the details of a new guide', async () => {
     const cookie = await processed()
+    mockFileTitle()
 
     const response = await server.inject({
       method: 'POST',
@@ -325,6 +348,7 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
   test('goes on to the details of an update once a guide is chosen', async () => {
     const cookie = await processed()
     mockGuide(CHOSEN_GUIDE)
+    mockFileTitle()
 
     const response = await server.inject({
       method: 'POST',
@@ -435,6 +459,32 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
     expect(page.getByRole('checkbox', { name: 'Team leader' })).not.toBeChecked()
   })
 
+  test('starts the SharePoint link of a new guide with the file\'s Document ID link', async () => {
+    const cookie = await choose(await processed(), { kind: 'new', q: FILE_TITLE }, DOCUMENT_ID_LINK)
+
+    const page = await detailsPage(cookie)
+
+    expect(page.getByLabelText('SharePoint link to the document (optional)')).toHaveValue(DOCUMENT_ID_LINK)
+  })
+
+  test('starts the SharePoint link of a new version with its guide\'s latest version\'s', async () => {
+    const guide = guideResponse({ ...CHOSEN_GUIDE, versions: [versionResponse({ sourceLink: LATEST_SOURCE_LINK })] })
+    const cookie = await uploadWithGuideChosen(guide)
+
+    const page = await detailsPage(cookie)
+
+    expect(page.getByLabelText('SharePoint link to the document (optional)')).toHaveValue(LATEST_SOURCE_LINK)
+  })
+
+  test('starts the SharePoint link of a new version with the file\'s Document ID link, before the latest version\'s', async () => {
+    const guide = guideResponse({ ...CHOSEN_GUIDE, versions: [versionResponse({ sourceLink: LATEST_SOURCE_LINK })] })
+    const cookie = await chooseGuide(await processed(), guide, DOCUMENT_ID_LINK)
+
+    const page = await detailsPage(cookie)
+
+    expect(page.getByLabelText('SharePoint link to the document (optional)')).toHaveValue(DOCUMENT_ID_LINK)
+  })
+
   test('starts a guide kept with no scheme as not scheme-specific', async () => {
     const guide = aGuide({ id: GUIDE_ID, title: 'Claiming any payment', schemes: [] })
     const cookie = await uploadWithGuideChosen(guide)
@@ -490,5 +540,34 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
 
     expect(page.getByLabelText('Guidance title')).toHaveValue('Claiming the SFI payment, 2026')
     expect(page.getByLabelText('Version number')).toHaveValue('2.0')
+  })
+
+  test.each([
+    ['a link the maintainer changed', 'https://example.sharepoint.com/:w:/r/teams/Team1234/Claims/Claiming%20the%20SFI%20payment%202026.docx'],
+    ['a link the maintainer cleared', '']
+  ])('keeps %s when the same guide is chosen again, not the one it started with', async (_, sourceLink) => {
+    const guide = guideResponse({ ...CHOSEN_GUIDE, versions: [versionResponse({ sourceLink: LATEST_SOURCE_LINK })] })
+    const guideChosen = await uploadWithGuideChosen(guide)
+    nock(GUIDANCE_API_URL)
+      .get('/reference/schemes')
+      .reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
+    if (sourceLink) {
+      nock(GUIDANCE_API_URL)
+        .post('/guides/source-link-checks', { link: sourceLink })
+        .reply(statusCodes.HTTP_STATUS_OK, checkedSourceLinkResponse())
+    }
+
+    const changed = await server.inject({
+      method: 'POST',
+      url: METADATA_URL,
+      payload: { guideTitle: FILE_TITLE, versionNumber: '2.0', schemes: ['sustainable-farming-incentive-sfi'], sourceLink },
+      headers: { cookie: guideChosen }
+    })
+    expect(changed.headers.location).toBe(PURPOSE_URL)
+    const sameGuideChosenAgain = await chooseGuide(mergeCookies(guideChosen, changed.headers['set-cookie']), guide)
+
+    const page = await detailsPage(sameGuideChosenAgain)
+
+    expect(page.getByLabelText('SharePoint link to the document (optional)')).toHaveValue(sourceLink)
   })
 })

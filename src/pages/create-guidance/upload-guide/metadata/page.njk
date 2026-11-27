@@ -82,6 +82,29 @@
           >
         </div>
 
+        <div class="govuk-form-group{% if errors.sourceLink %} govuk-form-group--error{% endif %}">
+          <label class="govuk-label govuk-label--s" for="source-link">
+            SharePoint link to the document (optional)
+          </label>
+          <div id="source-link-hint" class="govuk-hint">
+            Open the document in Word for the web, then copy the address from your browser.
+          </div>
+          {% if errors.sourceLink %}
+            <p id="source-link-error" class="govuk-error-message">
+              <span class="govuk-visually-hidden">Error:</span> {{ errors.sourceLink }}
+            </p>
+          {% endif %}
+          <input
+            class="govuk-input{% if errors.sourceLink %} govuk-input--error{% endif %}"
+            id="source-link"
+            name="sourceLink"
+            type="url"
+            value="{{ values.sourceLink }}"
+            spellcheck="false"
+            aria-describedby="source-link-hint{% if errors.sourceLink %} source-link-error{% endif %}"
+          >
+        </div>
+
         <dl class="govuk-summary-list">
           <div class="govuk-summary-list__row">
             <dt class="govuk-summary-list__key">

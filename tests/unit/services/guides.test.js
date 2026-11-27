@@ -46,6 +46,27 @@ describe('guides service', () => {
     })
   })
 
+  test('sends the source link beside the answers, as the maintainer gave it', async () => {
+    const createGuideSpy = mockApiResponse(statusCodes.HTTP_STATUS_CREATED)
+    const sourceLink = 'https://example.sharepoint.com/:w:/r/teams/Team1234/Claims/Claims%20guide.docx?web=1'
+
+    await guideService.createGuide({ ...guide, metadata: { ...guide.metadata, sourceLink } })
+
+    expect(createGuideSpy).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: { schemeYear: 2026 },
+      sourceLink
+    }))
+  })
+
+  test('sends no source link when the maintainer gave none', async () => {
+    const createGuideSpy = mockApiResponse(statusCodes.HTTP_STATUS_CREATED)
+
+    await guideService.createGuide({ ...guide, metadata: { ...guide.metadata, sourceLink: null } })
+
+    expect(createGuideSpy.mock.calls[0][0]).not.toHaveProperty('sourceLink')
+    expect(createGuideSpy.mock.calls[0][0].metadata).toEqual({ schemeYear: 2026 })
+  })
+
   test('sends a guide not specific to any scheme with no scheme, never the words', async () => {
     const createGuideSpy = mockApiResponse(statusCodes.HTTP_STATUS_CREATED)
 

@@ -6,6 +6,7 @@ describe('buildGuideSummaryCards', () => {
       metadata: {
         guideTitle: 'A title',
         versionNumber: '2.0',
+        sourceLink: 'https://example.sharepoint.com/:w:/r/teams/Team1234/Claims/Claims%20guide.docx',
         schemes: ['Sustainable Farming Incentive (SFI)', 'Not scheme-specific'],
         owner: 'owner@example.com',
         goal: 'A purpose',
@@ -37,6 +38,10 @@ describe('buildGuideSummaryCards', () => {
       rows: [
         { key: { text: 'Guidance title' }, value: { text: 'A title' } },
         { key: { text: 'Version number' }, value: { text: '2.0' } },
+        {
+          key: { text: 'SharePoint link' },
+          value: { text: 'https://example.sharepoint.com/:w:/r/teams/Team1234/Claims/Claims%20guide.docx' }
+        },
         { key: { text: 'Last modified date' }, value: { text: '29 June 2026' } },
         { key: { text: 'Scheme year' }, value: { text: '2026' } },
         {
@@ -69,6 +74,7 @@ describe('buildGuideSummaryCards', () => {
     const { guideDetailsCard, ownerPurposeCard } = buildGuideSummaryCards()
 
     expect(guideDetailsCard.rows.map((row) => row.value.text)).toEqual([
+      'Not provided',
       'Not provided',
       'Not provided',
       'Not provided',
@@ -105,7 +111,7 @@ describe('buildGuideSummaryCards', () => {
       }
     })
 
-    expect(guideDetailsCard.rows[4].value.text).toBe('Sustainable Farming Incentive (SFI), Retired scheme')
+    expect(guideDetailsCard.rows[5].value.text).toBe('Sustainable Farming Incentive (SFI), Retired scheme')
     expect(ownerPurposeCard.rows[3].value.text).toBe('CRM')
     expect(ownerPurposeCard.rows[4].value.text).toBe('Processor')
   })
