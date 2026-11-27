@@ -43,7 +43,7 @@
 {% endmacro %}
 
 {% macro railExpand(text, iconName) %}
-  <button type="submit" form="side-nav-toggle-form" class="app-side-nav__rail-item" data-side-nav-tooltip>
+  <button type="submit" form="side-nav-toggle-form" class="app-side-nav__rail-item" data-side-nav-tooltip data-focus-return="side-nav-toggle">
     {{ icon(iconName) }}
     <span class="app-side-nav__rail-label">{{ text }}</span>
     <span class="app-side-nav__tooltip" aria-hidden="true">{{ text }}</span>
@@ -88,8 +88,10 @@
         <a href="/hub" class="app-side-nav__service-link">{{ serviceName }}</a>
       </p>
     </div>
-    {# In the narrow window's drawer it closes the drawer (side-nav-drawer.js). #}
-    <button type="submit" form="side-nav-toggle-form" class="app-side-nav__icon-button" data-side-nav-collapse>
+    {# In the narrow window's drawer it closes the drawer (side-nav-drawer.js).
+       Once the page is back, focus is on the button that undoes this one
+       (focus-return.js). #}
+    <button type="submit" form="side-nav-toggle-form" class="app-side-nav__icon-button" data-side-nav-collapse data-focus-return="side-nav-toggle">
       {{ icon("collapse") }}
       <span class="govuk-visually-hidden">Collapse navigation</span>
     </button>

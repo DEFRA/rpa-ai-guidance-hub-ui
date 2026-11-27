@@ -1,9 +1,11 @@
+{% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/select/macro.njk" import govukSelect %}
 
 {#
   Sort by, in the list's header, as the prototype's hub has it. Part of the
-  filter form (form="hub-filters"): "Apply" sends it without
-  JavaScript, and hub-sort.js sends it as soon as it changes. Reads
+  filter form (form="hub-filters"), which its own "Sort" button sends, as
+  "Apply" does. Not the prototype's: there, choosing an option sends it at
+  once, which reloads the page on each arrow key in a closed select. Reads
   `filters.sort`.
 #}
 {% set sortItems = [] %}
@@ -18,8 +20,13 @@
     label: { text: "Sort by:", classes: "app-hub-results__sort-label" },
     classes: "app-hub-results__sort-select",
     formGroup: { classes: "govuk-!-margin-bottom-0 app-hub-results__sort-group" },
-    attributes: { form: "hub-filters", "data-sort-select": true },
+    attributes: { form: "hub-filters" },
     items: sortItems
+  }) }}
+  {{ govukButton({
+    text: "Sort",
+    classes: "govuk-button--secondary govuk-!-margin-bottom-0",
+    attributes: { form: "hub-filters" }
   }) }}
   <span class="app-hub-results__sort-hint">(Most relevant once you search)</span>
 </div>

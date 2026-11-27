@@ -65,9 +65,11 @@
         {# Only on a narrow or zoomed window (_app-side-nav.scss), where the
            navigation is a drawer this button opens (side-nav-drawer.js).
            Without that script the navigation is above the page, and the
-           button folds it away or opens it out as its own button does. #}
+           button folds it away or opens it out as its own button does. Focus
+           comes back to it when the navigation's own button is out of sight
+           in the closed drawer (focus-return.js). #}
         <div class="app-layout__toolbar">
-          <button type="submit" form="side-nav-toggle-form" class="app-layout__toolbar-toggle" aria-controls="app:layout:nav" data-side-nav-toolbar-toggle>
+          <button type="submit" form="side-nav-toggle-form" class="app-layout__toolbar-toggle" aria-controls="app:layout:nav" data-side-nav-toolbar-toggle data-focus-return="side-nav-toggle">
             {{ icon("sidebar") }}
             <span class="govuk-visually-hidden" data-side-nav-toolbar-label>{{ "Expand navigation" if sideNavCollapsed else "Collapse navigation" }}</span>
           </button>
