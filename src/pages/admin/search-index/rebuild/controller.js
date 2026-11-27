@@ -15,7 +15,7 @@ const REBUILD_VIEW = 'admin/search-index/rebuild/page.njk'
  * @param {import('@hapi/hapi').ResponseToolkit} h
  * @returns {import('@hapi/hapi').ResponseObject}
  */
-function getRebuildSearchIndex (request, h) {
+function getRebuildSearchIndex (_request, h) {
   return h
     .view(REBUILD_VIEW, {
       pageTitle: 'Rebuild the search index',

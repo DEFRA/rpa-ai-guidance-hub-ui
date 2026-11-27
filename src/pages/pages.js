@@ -28,11 +28,11 @@ async function loadRouteModules (routeFiles) {
 const ROLE_PATHS = [
   {
     role: ROLES.EDITOR,
-    matches: (path) => path.startsWith('/create-guidance/')
+    matches: (routePath) => routePath.startsWith('/create-guidance/')
   },
   {
     role: ROLES.ADMIN,
-    matches: (path) => path === '/admin' || path.startsWith('/admin/')
+    matches: (routePath) => routePath === '/admin' || routePath.startsWith('/admin/')
   }
 ]
 

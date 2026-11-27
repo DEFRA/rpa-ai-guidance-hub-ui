@@ -15,7 +15,7 @@ const DELETE_VIEW = 'admin/search-index/delete/page.njk'
  * @param {import('@hapi/hapi').ResponseToolkit} h
  * @returns {import('@hapi/hapi').ResponseObject}
  */
-function getDeleteSearchIndex (request, h) {
+function getDeleteSearchIndex (_request, h) {
   return h
     .view(DELETE_VIEW, {
       pageTitle: 'Delete the search index',

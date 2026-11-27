@@ -14,7 +14,8 @@ const SEARCH_INDEX_VIEW = 'admin/search-index/page.njk'
  * @returns {import('@hapi/hapi').ResponseObject}
  */
 function getSearchIndex (request, h) {
-  const [flashed] = request.yar.flash(SEARCH_INDEX_FLASH_KEY)
+  // Yar queues flashes, so the last one is the latest outcome
+  const flashed = request.yar.flash(SEARCH_INDEX_FLASH_KEY).at(-1)
   const notification = SEARCH_INDEX_NOTIFICATIONS[flashed] ?? null
 
   return h

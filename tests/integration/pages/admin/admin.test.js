@@ -37,10 +37,17 @@ describe('Admin area (Hub.Admin)', () => {
     nock.cleanAll()
   })
 
-  async function inject (roles, method, url) {
+  async function login (roles) {
     vi.stubEnv('DEV_USER_ROLES', roles)
-    const cookie = await loginAsDevUser(server)
 
+    return loginAsDevUser(server)
+  }
+
+  async function inject (roles, method, url) {
+    return injectWith(await login(roles), method, url)
+  }
+
+  function injectWith (cookie, method, url) {
     return server.inject({
       method,
       url,
@@ -81,17 +88,24 @@ describe('Admin area (Hub.Admin)', () => {
 
   describe.each(ADMIN_ROUTES)('%s %s', (method, url) => {
     test('is refused for a maintainer without the administrator role, with no backend call', async () => {
-      const api = nock(config.get('guidanceApi.baseUrl'))
-        .persist()
-        .get(/.*/).reply(200, {})
-        .post(/.*/).reply(200, {})
-        .delete(/.*/).reply(200, {})
+      const cookie = await login('Hub.Viewer,Hub.Editor')
+      const backendRequests = []
+      const record = (uri) => {
+        backendRequests.push(uri)
 
-      const response = await inject('Hub.Viewer,Hub.Editor', method, url)
+        return {}
+      }
+      nock(config.get('guidanceApi.baseUrl'))
+        .persist()
+        .get(/.*/).reply(200, record)
+        .post(/.*/).reply(200, record)
+        .delete(/.*/).reply(200, record)
+
+      const response = await injectWith(cookie, method, url)
 
       expect(response.statusCode).toBe(statusCodes.HTTP_STATUS_FOUND)
       expect(response.headers.location).toBe('/access-denied/role-required')
-      expect(api.pendingMocks().length).toBeGreaterThan(0)
+      expect(backendRequests).toEqual([])
     })
 
     test('is sent to access-denied for an administrator without the viewer role', async () => {
