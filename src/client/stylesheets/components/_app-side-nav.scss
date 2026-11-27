@@ -147,13 +147,25 @@ $app-side-nav-muted: #505a5f;
   }
 }
 
+// Not the prototype's: its current item is a light green that cannot be told
+// from the navigation behind it (1.06:1). This is the green of the chosen
+// guide format (_app-guide.scss), 4.3:1 against the navigation, with a white
+// icon at 4.8:1 on it.
 .app-side-nav__rail-item--current {
-  background-color: $defra-light-green;
-  box-shadow: inset 4px 0 0 $defra-green;
+  background-color: $defra-green;
 
   &:link,
   &:visited {
-    color: $defra-green-hover;
+    color: $govuk-white;
+  }
+
+  &:hover {
+    background-color: $defra-green-hover;
+    color: $govuk-white;
+  }
+
+  &:focus {
+    @include app-side-nav-focus;
   }
 }
 
@@ -728,28 +740,41 @@ details:not([open]) > summary .app-side-nav__chevron {
   color: $govuk-black;
 }
 
+// Not the prototype's, as the folded navigation's current item is not: the
+// same green, with its words and icon white on it. What is in the item takes
+// its colours from the item, so each is set for the green too.
 .app-side-nav__link--current {
-  background-color: $defra-light-green;
+  background-color: $defra-green;
   font-weight: 700;
 
-  &::before {
-    content: '';
-    position: absolute;
-    top: 6px;
-    bottom: 6px;
-    left: 0;
-    width: 4px;
-    border-radius: 2px;
-    background-color: $defra-green;
+  &:link,
+  &:visited {
+    color: $govuk-white;
   }
 
-  .app-side-nav-icon {
-    color: $defra-green-hover;
+  .app-side-nav-icon,
+  .app-side-nav__ref-type,
+  .app-side-nav__meta {
+    color: $govuk-white;
+  }
+
+  // The count is on white of its own.
+  .app-side-nav__badge {
+    color: $govuk-black;
   }
 
   &:hover {
-    background-color: $defra-light-green;
+    background-color: $defra-green-hover;
     text-decoration: underline;
+  }
+
+  &:focus {
+    @include app-side-nav-focus;
+
+    .app-side-nav__ref-type,
+    .app-side-nav__meta {
+      color: $govuk-black;
+    }
   }
 }
 

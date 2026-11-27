@@ -82,17 +82,17 @@
 
 .defra-hero__button {
   background-color: $govuk-white;
-  color: $defra-green-aa;
+  color: $defra-green;
   box-shadow: 0 2px 0 $govuk-mid-grey;
 
   &:link,
   &:visited {
-    color: $defra-green-aa;
+    color: $defra-green;
   }
 
   &:hover {
     background-color: $govuk-light-grey;
-    color: $defra-green-aa;
+    color: $defra-green-hover;
   }
 
   &:active {
