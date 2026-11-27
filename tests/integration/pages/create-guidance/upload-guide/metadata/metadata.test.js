@@ -208,7 +208,7 @@ describe('#metadataController Integration', () => {
 
       const field = pageOf(response.payload).getByLabelText('SharePoint link to the document (optional)')
       expect(field).toHaveAttribute('name', 'sourceLink')
-      expect(field).toHaveAccessibleDescription('Open the document in Word for the web, then copy the address from your browser.')
+      expect(field).toHaveAccessibleDescription('In SharePoint, select the document, then select Copy link.')
     })
 
     test.each([
