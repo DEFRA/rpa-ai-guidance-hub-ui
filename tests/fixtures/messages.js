@@ -58,8 +58,8 @@ const METADATA_MESSAGES = Object.freeze({
   versionNumberRequired: 'Enter the version number',
   versionNumberFormat: 'Enter the version number as 2 whole numbers with a full stop between them, for example 1.0',
   schemeRequired: 'Select at least one scheme this guidance relates to',
-  sourceLinkNotSharepoint: 'Enter a SharePoint link to the Word document. Open the document in Word for the web and copy the address from your browser',
-  sourceLinkNotAWordDocument: 'Enter a link to a Word document, not to a folder, a page or another kind of file. Open the document in Word for the web and copy the address from your browser'
+  sourceLinkNotSharepoint: 'Enter a SharePoint link to the Word document. In SharePoint, select the document, then select Copy link',
+  sourceLinkNotAWordDocument: 'Enter a link to a Word document, not to a folder, a page or another kind of file. In SharePoint, select the document, then select Copy link'
 })
 
 const PURPOSE_MESSAGES = Object.freeze({
