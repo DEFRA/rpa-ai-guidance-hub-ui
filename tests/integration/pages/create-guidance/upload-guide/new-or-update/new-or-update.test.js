@@ -11,6 +11,7 @@ import { errorSummaryOf, pageOf } from '../../../../helpers/page.js'
 import { completeParse } from '../../../../helpers/upload-journey.js'
 import {
   audiencesResponse,
+  checkedSourceLinkResponse,
   guideResponse,
   guideTitlesResponse,
   refusalResponse,
@@ -539,5 +540,34 @@ describe('Choosing whether an upload is a new guide or a new version of one', ()
 
     expect(page.getByLabelText('Guidance title')).toHaveValue('Claiming the SFI payment, 2026')
     expect(page.getByLabelText('Version number')).toHaveValue('2.0')
+  })
+
+  test.each([
+    ['a link the maintainer changed', 'https://example.sharepoint.com/:w:/r/teams/Team1234/Claims/Claiming%20the%20SFI%20payment%202026.docx'],
+    ['a link the maintainer cleared', '']
+  ])('keeps %s when the same guide is chosen again, not the one it started with', async (_, sourceLink) => {
+    const guide = guideResponse({ ...CHOSEN_GUIDE, versions: [versionResponse({ sourceLink: LATEST_SOURCE_LINK })] })
+    const guideChosen = await uploadWithGuideChosen(guide)
+    nock(GUIDANCE_API_URL)
+      .get('/reference/schemes')
+      .reply(statusCodes.HTTP_STATUS_OK, schemesResponse())
+    if (sourceLink) {
+      nock(GUIDANCE_API_URL)
+        .post('/guides/source-link-checks', { link: sourceLink })
+        .reply(statusCodes.HTTP_STATUS_OK, checkedSourceLinkResponse())
+    }
+
+    const changed = await server.inject({
+      method: 'POST',
+      url: METADATA_URL,
+      payload: { guideTitle: FILE_TITLE, versionNumber: '2.0', schemes: ['sustainable-farming-incentive-sfi'], sourceLink },
+      headers: { cookie: guideChosen }
+    })
+    expect(changed.headers.location).toBe(PURPOSE_URL)
+    const sameGuideChosenAgain = await chooseGuide(mergeCookies(guideChosen, changed.headers['set-cookie']), guide)
+
+    const page = await detailsPage(sameGuideChosenAgain)
+
+    expect(page.getByLabelText('SharePoint link to the document (optional)')).toHaveValue(sourceLink)
   })
 })
